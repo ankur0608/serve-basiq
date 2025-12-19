@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Default Next.js variables */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-jakarta); 
+
+  /* --- SERVEMATE CUSTOM COLORS --- */
+  
+  /* Brand Blue */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-900: #1e3a8a;
+
+  /* Commerce Green */
+  --color-commerce-50: #f0fdf4;
+  --color-commerce-100: #dcfce7;
+  --color-commerce-500: #22c55e;
+  --color-commerce-600: #16a34a;
+  --color-commerce-700: #15803d;
+  --color-commerce-900: #14532d;
+
+  /* --- CUSTOM SHADOWS --- */
+  --shadow-soft: 0 20px 40px -15px rgba(0,0,0,0.05);
+  --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+  --shadow-up: 0 -4px 15px rgba(0, 0, 0, 0.05);
+  
+  /* --- ANIMATIONS --- */
+  --animate-fade-in: fadeIn 0.5s ease-out forwards;
+  --animate-slide-up: slideUp 0.5s ease-out forwards;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* Base Root Variables - FORCING LIGHT MODE */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+/* I HAVE REMOVED THE DARK MODE BLOCK HERE.
+   This prevents the black background from appearing.
+*/
+
+/* Base Styles */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Utility to hide scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
