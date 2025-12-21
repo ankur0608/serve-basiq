@@ -1,8 +1,7 @@
 // app/page.tsx
 import Link from 'next/link';
-import { services, products } from '@/lib/data';
-import ServiceCard from '@/components/ui/ServiceCard';
-import ProductCard from '@/components/ui/ProductCard';
+import FeaturedProviders from '@/components/sections/FeaturedProviders'; // Import New Component
+import TrendingProducts from '@/components/sections/TrendingProducts'; // Import New Component
 
 // Icons
 import {
@@ -11,23 +10,17 @@ import {
   FaBullhorn,
   FaShop,
   FaStar,
-  FaShieldHalved,
-  FaHandHoldingDollar,
-  FaLock,
   FaUserPlus,
   FaStore
 } from 'react-icons/fa6';
 
 export default function Home() {
-  const featuredServices = services.slice(0, 3);
-  const featuredProducts = products.slice(0, 4);
-
   return (
     <div className="pb-12">
 
       {/* ================= HERO SECTION ================= */}
       <div className="bg-gradient-to-br from-brand-50 via-white to-commerce-50 pb-16 pt-12 md:py-24 px-4 text-center rounded-b-[3rem] shadow-sm relative overflow-hidden">
-        {/* Background Pattern */}
+        {/* ... (Hero content same as before) ... */}
         <div className="absolute inset-0 opacity-40 pointer-events-none"
           style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '32px 32px' }}>
         </div>
@@ -94,7 +87,6 @@ export default function Home() {
           <p className="text-gray-500 mb-12 max-w-lg mx-auto">Simple, fast, and transparent. Get your job done in 3 easy steps.</p>
 
           <div className="grid md:grid-cols-3 gap-8 relative">
-            {/* Connector Line (Desktop Only) */}
             <div className="hidden md:block absolute top-12 left-[20%] right-[20%] h-0.5 bg-gray-200 -z-10"></div>
 
             <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm relative hover:-translate-y-2 transition duration-300">
@@ -117,41 +109,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ================= FEATURED SERVICES ================= */}
-        <div>
-          <div className="flex justify-between items-center mb-6 px-1">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">Trusted Experts</h2>
-              <p className="text-gray-500 text-sm">Top rated professionals near you.</p>
-            </div>
-            <Link href="/services" className="text-brand-600 font-bold text-sm bg-brand-50 px-3 py-1.5 rounded-lg hover:bg-brand-100 transition">
-              View All
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredServices.map(service => (
-              <ServiceCard key={service.id} service={service} />
-            ))}
-          </div>
-        </div>
-
-        {/* ================= FEATURED PRODUCTS ================= */}
-        <div>
-          <div className="flex justify-between items-center mb-6 px-1">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">Trending Wholesale</h2>
-              <p className="text-gray-500 text-sm">Direct factory prices for bulk orders.</p>
-            </div>
-            <Link href="/b2b" className="text-commerce-600 font-bold text-sm bg-commerce-50 px-3 py-1.5 rounded-lg hover:bg-commerce-100 transition">
-              View All
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {featuredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </div>
+        {/* ================= FEATURED SECTIONS (Using New Components) ================= */}
+        <FeaturedProviders />
+        <TrendingProducts />
 
         {/* ================= CUSTOMER STORIES ================= */}
         <div>
@@ -193,7 +153,6 @@ export default function Home() {
 
         {/* ================= JOIN SECTION ================= */}
         <div className="bg-slate-900 rounded-3xl p-8 md:p-16 text-center text-white relative overflow-hidden">
-          {/* Decor Blobs */}
           <div className="absolute -top-24 -left-24 w-64 h-64 bg-brand-600 rounded-full blur-[80px] opacity-40"></div>
           <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-commerce-600 rounded-full blur-[80px] opacity-40"></div>
 

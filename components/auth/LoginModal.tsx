@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { FaXmark, FaGoogle, FaApple, FaMobileScreen } from "react-icons/fa6";
 import clsx from "clsx";
 import { useUIStore } from "@/lib/store";
-
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,6 +12,7 @@ interface LoginModalProps {
 export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [showModal, setShowModal] = useState(false);
   const [phone, setPhone] = useState("");
+  const [error, setError] = useState(""); // New Error State
   const onOpenOtp = useUIStore((state) => state.onOpenOtp);
 
   // Animation + Scroll Lock
@@ -20,6 +20,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     if (isOpen) {
       setShowModal(true);
       document.body.style.overflow = "hidden";
+      setError(""); // Reset error when modal opens
+      setPhone(""); // Optional: Reset phone
     } else {
       const timer = setTimeout(() => setShowModal(false), 300);
       document.body.style.overflow = "unset";
@@ -27,12 +29,31 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     }
   }, [isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone.length > 9) {
-      onOpenOtp(phone); // Trigger OTP Modal
+
+    if (!phone || phone.length < 10) {
+      setError("Enter valid 10-digit number");
+      return;
     }
+
+    const res = await fetch("/api/auth/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError("Failed to send OTP");
+      return;
+    }
+
+    // ✅ Pass OTP in dev
+    onOpenOtp(phone, data.otp);
   };
+
 
   if (!isOpen && !showModal) return null;
 
@@ -66,13 +87,27 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} // Only numbers
-                    placeholder="98765 43210"
+                    onChange={(e) => {
+                      setPhone(e.target.value.replace(/\D/g, '')); // Only numbers
+                      if (error) setError(""); // Clear error on typing
+                    }}
+                    placeholder="Your Number "
                     maxLength={10}
-                    className="w-full pl-16 pr-10 py-3.5 bg-white border border-gray-200 rounded-xl focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-lg text-slate-900 placeholder-gray-300 tracking-wide transition-all"
+                    className={clsx(
+                      "w-full pl-16 pr-10 py-3.5 bg-white border rounded-xl outline-none font-bold text-lg text-slate-900 placeholder-gray-300 tracking-wide transition-all",
+                      error
+                        ? "border-red-500 focus:ring-4 focus:ring-red-500/10"
+                        : "border-gray-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
+                    )}
                     autoFocus
                   />
                 </div>
+                {/* Error Message Display */}
+                {error && (
+                  <p className="text-red-500 text-xs font-bold mt-2 ml-1 animate-fade-in">
+                    {error}
+                  </p>
+                )}
               </div>
 
               <button type="submit" className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black hover:-translate-y-0.5 transition-all duration-200">
@@ -82,8 +117,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
             {/* Divider */}
             {/* <div className="relative flex items-center justify-center py-6">
-              <div className="border-t border-gray-100 w-full absolute" />
-              <span className="bg-white px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider relative z-10">Or continue with</span>
+               <div className="border-t border-gray-100 w-full absolute" />
+               <span className="bg-white px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider relative z-10">Or continue with</span>
             </div> */}
 
             {/* Socials */}

@@ -8,6 +8,7 @@ import {
     FaGlobe,
     FaHandshakeSimple,
     FaXmark,
+    FaCartShopping,
 } from "react-icons/fa6";
 import { useUIStore } from "@/lib/store";
 
@@ -60,9 +61,9 @@ const Navbar = () => {
                             <input
                                 autoFocus
                                 type="text"
+                                suppressHydrationWarning={true} // <--- FIX HERE
                                 placeholder="Search Services, Products or Suppliers..."
-                                className="w-full h-11 pl-11 pr-10 rounded-xl bg-gray-100 text-sm
-                focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                className="w-full h-11 pl-11 pr-10 rounded-xl bg-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
                             <button
                                 onClick={() => setShowMobileSearch(false)}
@@ -90,15 +91,26 @@ const Navbar = () => {
                             <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
+                                suppressHydrationWarning={true} // <--- FIX HERE
                                 placeholder="Search Services, Products or Suppliers..."
-                                className="w-full h-11 pl-11 pr-4 rounded-full bg-slate-50 border border-gray-200
-                text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                className="w-full h-11 pl-11 pr-4 rounded-full bg-slate-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
                         </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button className="flex items-center gap-1 text-sm text-gray-600">
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 md:gap-4">
+                            <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+                                <Link href="/services" className="hover:text-blue-600 transition">Services</Link>
+                                <Link href="/b2b" className="hover:text-blue-600 transition">Products</Link>
+                            </div>
+
+                            <Link href="/cart" className="p-2 hover:bg-gray-100 rounded-full text-gray-600">
+                                <FaCartShopping />
+                            </Link>
+                        </div>
+                        <button className="flex items-center gap-1 text-sm text-gray-600 ">
                             <FaGlobe /> EN
                         </button>
 
@@ -107,7 +119,7 @@ const Navbar = () => {
                             <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border border-white" />
                         </button>
 
-                        <Link href="/post-request" className="text-sm font-bold text-gray-600 hover:text-blue-600">
+                        <Link href="/post-requirement" className="text-sm font-bold text-gray-600 hover:text-blue-600">
                             Post Request
                         </Link>
 

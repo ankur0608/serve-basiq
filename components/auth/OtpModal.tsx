@@ -12,20 +12,25 @@ interface OtpModalProps {
 
 export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     const [showModal, setShowModal] = useState(false);
-    const mobileNumber = useUIStore((state) => state.mobileNumber);
-    const onOpenLogin = useUIStore((state) => state.onOpenLogin);
 
-    // OTP Logic
-    const [otp, setOtp] = useState(["", "", "", ""]);
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const mobileNumber = useUIStore((state) => state.mobileNumber);
+    const devOtp = useUIStore((state) => state.devOtp); // ✅ DEV OTP
+    const onOpenLogin = useUIStore((state) => state.onOpenLogin);
     const onCloseOtp = useUIStore((state) => state.onCloseOtp);
 
+    // OTP state
+    const [otp, setOtp] = useState(["", "", "", ""]);
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+    /* ---------------- Modal animation & scroll lock ---------------- */
     useEffect(() => {
         if (isOpen) {
             setShowModal(true);
             document.body.style.overflow = "hidden";
-            // Auto focus first input
-            setTimeout(() => inputRefs.current[0]?.focus(), 100);
+
+            setTimeout(() => {
+                inputRefs.current[0]?.focus();
+            }, 100);
         } else {
             const timer = setTimeout(() => setShowModal(false), 300);
             document.body.style.overflow = "unset";
@@ -33,35 +38,62 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         }
     }, [isOpen]);
 
+    /* ---------------- DEV: Auto-fill OTP ---------------- */
+    useEffect(() => {
+        if (devOtp && devOtp.length === 4) {
+            const digits = devOtp.split("");
+            setOtp(digits);
+
+            setTimeout(() => {
+                inputRefs.current[3]?.focus();
+            }, 150);
+        }
+    }, [devOtp]);
+
+    /* ---------------- Input handlers ---------------- */
     const handleChange = (index: number, value: string) => {
         if (isNaN(Number(value))) return;
+
         const newOtp = [...otp];
         newOtp[index] = value;
         setOtp(newOtp);
 
-        // Auto move to next input
         if (value && index < 3) {
             inputRefs.current[index + 1]?.focus();
         }
     };
 
     const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-        // Backspace logic
         if (e.key === "Backspace" && !otp[index] && index > 0) {
             inputRefs.current[index - 1]?.focus();
         }
     };
-    const handleVerify = (e: React.FormEvent) => {
+
+    /* ---------------- Verify OTP ---------------- */
+    const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // OPTIONAL: validate OTP length
-        if (otp.some((d) => d === "")) return;
+        const code = otp.join("");
+        if (code.length !== 4) return;
 
-        // ✅ CLOSE OTP MODAL
+        const res = await fetch("/api/auth/verify-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                phone: mobileNumber,
+                otp: code,
+            }),
+        });
+
+        if (!res.ok) {
+            alert("Invalid OTP");
+            return;
+        }
+
+        const data = await res.json();
+        console.log("Logged in user:", data.user);
+
         onCloseOtp();
-
-        // OPTIONAL (later):
-        // mark user logged in
     };
 
     if (!isOpen && !showModal) return null;
@@ -69,33 +101,61 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     return (
         <div className="fixed inset-0 z-[100] overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4 text-center">
-                <div className={clsx("fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300", isOpen ? "opacity-100" : "opacity-0")} onClick={onClose} />
+                {/* Overlay */}
+                <div
+                    className={clsx(
+                        "fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300",
+                        isOpen ? "opacity-100" : "opacity-0"
+                    )}
+                    onClick={onClose}
+                />
 
-                <div className={clsx("relative w-full max-w-md bg-white rounded-3xl shadow-2xl text-left transform transition-all duration-300", isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4")}>
-
-                    <button onClick={onOpenLogin} className="absolute top-4 left-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition-colors">
+                {/* Modal */}
+                <div
+                    className={clsx(
+                        "relative w-full max-w-md bg-white rounded-3xl shadow-2xl text-left transform transition-all duration-300",
+                        isOpen
+                            ? "scale-100 opacity-100 translate-y-0"
+                            : "scale-95 opacity-0 translate-y-4"
+                    )}
+                >
+                    {/* Back */}
+                    <button
+                        onClick={onOpenLogin}
+                        className="absolute top-4 left-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10"
+                    >
                         <FaArrowLeft className="text-lg" />
                     </button>
 
-                    <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition-colors">
+                    {/* Close */}
+                    <button
+                        onClick={onClose}
+                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10"
+                    >
                         <FaXmark className="text-lg" />
                     </button>
 
                     <div className="p-8">
                         <div className="text-center mb-8 mt-4">
-                            <h2 className="text-2xl font-extrabold text-slate-900">Verify OTP</h2>
+                            <h2 className="text-2xl font-extrabold text-slate-900">
+                                Verify OTP
+                            </h2>
                             <p className="text-sm text-gray-500 mt-2">
-                                Code sent to <span className="font-bold text-slate-900">+91 {mobileNumber}</span>
+                                Code sent to{" "}
+                                <span className="font-bold text-slate-900">
+                                    +91 {mobileNumber}
+                                </span>
                             </p>
                         </div>
 
                         <form onSubmit={handleVerify} className="space-y-8">
-
                             <div className="flex justify-center gap-3">
                                 {otp.map((digit, index) => (
                                     <input
                                         key={index}
-                                        ref={(el) => { inputRefs.current[index] = el }}
+                                        ref={(el) => {
+                                            inputRefs.current[index] = el;
+                                        }}
                                         type="text"
                                         maxLength={1}
                                         value={digit}
@@ -103,16 +163,23 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                                         onKeyDown={(e) => handleKeyDown(index, e)}
                                         className="w-14 h-16 rounded-xl border-2 border-gray-200 text-center text-2xl font-bold text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all"
                                     />
+
                                 ))}
                             </div>
 
-                            <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:-translate-y-0.5 transition-all duration-200">
+                            <button
+                                type="submit"
+                                className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition"
+                            >
                                 Verify & Continue
                             </button>
                         </form>
 
                         <div className="mt-8 text-center text-sm font-medium">
-                            Didn't receive code? <button className="text-slate-900 font-bold hover:underline">Resend in 30s</button>
+                            Didn’t receive code?{" "}
+                            <button className="text-slate-900 font-bold hover:underline">
+                                Resend in 30s
+                            </button>
                         </div>
                     </div>
                 </div>

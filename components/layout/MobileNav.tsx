@@ -2,51 +2,51 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FaHouse, FaHelmetSafety, FaShop, FaHeart, FaUser } from 'react-icons/fa6';
-import clsx from 'clsx'; // Make sure to npm install clsx
+import {
+  FaHouse, FaClipboardList, FaBoxOpen, FaWallet, FaUser
+} from 'react-icons/fa6';
+import clsx from 'clsx';
 
 export default function MobileNav() {
   const pathname = usePathname();
 
-  const navItems = [
-    { name: 'Home', href: '/', icon: FaHouse },
-    { name: 'Services', href: '/services', icon: FaHelmetSafety },
-    { name: 'Shop', href: '/b2b', icon: FaShop, isB2B: true },
-    { name: 'Saved', href: '/profile/saved', icon: FaHeart },
-    { name: 'Account', href: '/profile', icon: FaUser },
+  if (pathname.startsWith('/auth')) return null;
+
+  const links = [
+    { href: '/', label: 'Home', icon: FaHouse },
+    { href: '/bookings', label: 'Bookings', icon: FaClipboardList },
+    { href: '/orders', label: 'Orders', icon: FaBoxOpen },
+    { href: '/wallet', label: 'Wallet', icon: FaWallet },
+    { href: '/profile', label: 'Profile', icon: FaUser },
   ];
 
-  // Hide nav on specific detail pages if needed, otherwise show everywhere
-  // const shouldHide = pathname.includes('/detail'); 
-  // if (shouldHide) return null;
-
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[60] pb-safe h-[70px]">
-      <div className="grid grid-cols-5 h-full">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-          
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 pb-safe z-50">
+      <div className="flex justify-around items-center h-16">
+        {links.map((link) => {
+          const isActive = pathname === link.href;
           return (
-            <Link 
-              key={item.name} 
-              href={item.href}
-              className={clsx(
-                "flex flex-col items-center justify-center space-y-1 transition relative",
-                isActive ? (item.isB2B ? "text-commerce-600" : "text-brand-600") : "text-gray-400 hover:text-gray-600"
-              )}
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex-1 flex flex-col items-center justify-center h-full gap-1 active:scale-95 transition"
             >
-              {item.isB2B && (
-                <div className="absolute -top-3 bg-commerce-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shadow-sm animate-bounce">
-                  B2B
-                </div>
-              )}
-              <Icon className="text-lg" />
-              <span className="text-[10px] font-bold">{item.name}</span>
+              <div className={clsx(
+                "text-xl transition-colors",
+                isActive ? "text-primary" : "text-gray-400"
+              )}>
+                <link.icon />
+              </div>
+              <span className={clsx(
+                "text-[10px] font-medium transition-colors",
+                isActive ? "text-primary" : "text-gray-400"
+              )}>
+                {link.label}
+              </span>
             </Link>
           );
         })}
       </div>
-    </nav>
+    </div>
   );
 }
