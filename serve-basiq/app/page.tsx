@@ -69,7 +69,7 @@ export default function Home() {
               <FaBullhorn />
             </div>
             <h3 className="font-bold text-slate-900">Post Your Need</h3>
-            <p className="text-xs text-gray-500 mt-1">We'll find options</p>
+            <p className="text-xs text-gray-500 mt-1">We&apos;ll find options</p>
           </Link>
 
           <Link href="/auth/register" className="bg-white p-6 rounded-2xl shadow-card hover:-translate-y-1 transition text-center border border-gray-100 group">
@@ -122,7 +122,7 @@ export default function Home() {
                 <FaStar /><FaStar /><FaStar /><FaStar /><FaStar />
               </div>
               <p className="text-lg font-medium leading-relaxed text-slate-700 italic mb-6">
-                "ServeMate transformed how we source raw materials. The B2B market is incredibly efficient and secure."
+                &quot;ServeMate transformed how we source raw materials. The B2B market is incredibly efficient and secure.&quot;
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center font-bold">R</div>
@@ -138,7 +138,7 @@ export default function Home() {
                 <FaStar /><FaStar /><FaStar /><FaStar /><FaStar />
               </div>
               <p className="text-lg font-medium leading-relaxed italic mb-6">
-                "Found a plumber in 5 minutes for an emergency leak. He arrived within the hour. Absolute lifesaver app!"
+                &quot;Found a plumber in 5 minutes for an emergency leak. He arrived within the hour. Absolute lifesaver app!&quot;
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white text-brand-600 rounded-full flex items-center justify-center font-bold">S</div>

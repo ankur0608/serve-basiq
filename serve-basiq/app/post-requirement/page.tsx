@@ -84,7 +84,7 @@ export default function PostRequirementPage() {
                     </div>
                     <h1 className="text-3xl font-bold text-slate-900 mb-2">Post Your Requirement</h1>
                     <p className="text-gray-500">
-                        Tell us what you need and we'll connect you with the right professionals
+                        Tell us what you need and we&apos;ll connect you with the right professionals
                     </p>
                 </div>
 

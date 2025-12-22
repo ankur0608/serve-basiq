@@ -11,8 +11,11 @@ export interface UIState {
 
   onOpenOtp: (phone: string, otp?: string) => void;
   onCloseOtp: () => void;
+
   onOpenLogin: () => void;
+  onCloseLogin: () => void; // ✅ ADD THIS
 }
+
 
 export const useUIStore = create<UIState>((set) => ({
   mobileNumber: "",
@@ -42,4 +45,11 @@ export const useUIStore = create<UIState>((set) => ({
       isOtpOpen: false,
       devOtp: undefined,
     }),
+
+  onCloseLogin: () =>
+    set({
+      isLoginOpen: false,
+      devOtp: undefined,
+    }),
 }));
+
