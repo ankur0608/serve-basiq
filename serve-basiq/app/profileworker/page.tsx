@@ -239,3 +239,6 @@
 //         </div>
 //     );
 // }
+export default function ProfileWorkerPage() {
+    return null; // or <div />
+}
