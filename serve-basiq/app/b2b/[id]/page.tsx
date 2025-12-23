@@ -1,26 +1,13 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { use, useState } from 'react';
+import { notFound, useRouter } from 'next/navigation';
+import { products } from '@/lib/data';
 import {
   FaArrowLeft, FaHeart, FaRegHeart, FaBuilding, FaCircleCheck,
   FaTruckFast, FaBox, FaRotateLeft, FaPaperPlane, FaCommentDots
 } from 'react-icons/fa6';
 import clsx from 'clsx';
-
-// Define the shape of our Product data (Matches Prisma/API)
-interface Product {
-  id: number;
-  name: string;
-  cat: string;
-  price: number;
-  moq: string;
-  supplier: string;
-  img: string;
-  desc: string;
-  // Add other fields if your API returns them
-}
 
 type Params = {
   id: string;
@@ -31,66 +18,23 @@ export default function ProductDetail({
 }: {
   params: Promise<Params>;
 }) {
-  const { id } = use(params); // Next.js 15 Unwrap
+  const { id } = use(params); // ✅ REQUIRED IN NEXT 16
   const router = useRouter();
 
-  // State
-  const [product, setProduct] = useState<Product | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const productId = Number(id);
+  const product = products.find((p) => p.id === productId);
+
   const [activeTab, setActiveTab] = useState<'desc' | 'specs' | 'ship'>('desc');
   const [isFav, setIsFav] = useState(false);
 
-  // Fetch Data on Mount
-  useEffect(() => {
-    async function fetchProduct() {
-      try {
-        const res = await fetch(`/api/b2b/${id}`);
-        if (!res.ok) {
-          // If 404 or error, you might want to redirect or show error
-          return;
-        }
-        const data = await res.json();
-        setProduct(data);
-      } catch (error) {
-        console.error("Failed to fetch product:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchProduct();
-  }, [id]);
+  if (!product) return notFound();
 
-  // Loading Screen
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="text-gray-500 font-medium">Loading Product...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error / Not Found State
-  if (!product) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4">
-        <h2 className="text-2xl font-bold text-slate-900">Product Not Found</h2>
-        <button onClick={() => router.back()} className="text-blue-600 font-bold hover:underline">
-          Go Back
-        </button>
-      </div>
-    );
-  }
-
-  // Mock Specs (You can move this to DB later if needed)
   const specs = [
     { label: "Material", value: "Premium Grade" },
-    { label: "MOQ", value: product.moq }, // Use real MOQ
-    { label: "Category", value: product.cat },
-    { label: "Warranty", value: "Standard Manufacturer" },
-    { label: "Certification", value: "Verified Supplier" },
+    { label: "Weight", value: "12.5 kg" },
+    { label: "Dimensions", value: "45 x 30 x 20 cm" },
+    { label: "Warranty", value: "2 Years Manufacturer" },
+    { label: "Certification", value: "ISO 9001:2015" },
   ];
 
   return (
@@ -100,15 +44,12 @@ export default function ProductDetail({
         {/* ================= LEFT: GALLERY ================= */}
         <div className="space-y-4">
           <div className="bg-gray-50 p-8 rounded-3xl border border-gray-100 flex items-center justify-center relative h-[300px] md:h-[500px] group overflow-hidden">
-            {/* Using Next.js Image for optimization */}
-            <div className="relative w-full h-full">
-              <Image
-                src={product.img}
-                alt={product.name}
-                fill
-                className="object-contain mix-blend-multiply relative z-10 hover:scale-110 transition duration-700"
-              />
-            </div>
+            <img
+              src={product.img}
+              alt={product.name}
+              // fill
+              className="object-contain mix-blend-multiply relative z-10 hover:scale-110 transition duration-700"
+            />
 
             <button onClick={() => router.back()} className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 hover:text-slate-900 z-20 transition">
               <FaArrowLeft />
@@ -120,8 +61,10 @@ export default function ProductDetail({
 
           <div className="grid grid-cols-4 gap-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-gray-50 border border-gray-100 p-2 rounded-xl h-20 md:h-24 flex items-center justify-center cursor-pointer hover:border-blue-500 transition relative">
-                <Image src={product.img} alt="thumb" fill className="object-contain mix-blend-multiply p-2" />
+              <div key={i} className="bg-gray-50 border border-gray-100 p-2 rounded-xl h-20 md:h-24 flex items-center justify-center cursor-pointer hover:border-commerce-500 transition">
+                <div className="relative w-full h-full">
+                  <img src={product.img} alt="thumb" className="object-contain mix-blend-multiply" />
+                </div>
               </div>
             ))}
           </div>
@@ -148,7 +91,7 @@ export default function ProductDetail({
               <div className="text-xs text-gray-500 uppercase font-bold">Supplier</div>
               <div className="font-bold text-slate-900 text-lg flex items-center gap-2">{product.supplier} <FaCircleCheck className="text-blue-500 text-sm" /></div>
             </div>
-            <button className="ml-auto text-sm font-bold text-blue-600 hover:underline">View Profile</button>
+            <button className="ml-auto text-sm font-bold text-commerce-600 hover:underline">View Profile</button>
           </div>
 
           {/* TABS HEADER */}
@@ -161,31 +104,16 @@ export default function ProductDetail({
           {/* TABS CONTENT */}
           <div className="min-h-[150px]">
             {activeTab === 'desc' && <p className="text-gray-600 leading-relaxed whitespace-pre-line animate-fade-in">{product.desc}</p>}
-            {activeTab === 'specs' && (
-              <div className="grid grid-cols-2 gap-y-3 text-sm animate-fade-in">
-                {specs.map((s, i) => (
-                  <div key={i} className="contents">
-                    <div className="text-gray-500">{s.label}</div>
-                    <div className="font-medium text-slate-900">{s.value}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {activeTab === 'ship' && (
-              <div className="space-y-4 text-sm text-gray-600 animate-fade-in">
-                <div className="flex items-center gap-3"><FaTruckFast className="text-slate-900 text-lg" /> Ships within 24 hours</div>
-                <div className="flex items-center gap-3"><FaBox className="text-slate-900 text-lg" /> Secure industrial packaging</div>
-                <div className="flex items-center gap-3"><FaRotateLeft className="text-slate-900 text-lg" /> 7-day return policy for defects</div>
-              </div>
-            )}
+            {activeTab === 'specs' && <div className="grid grid-cols-2 gap-y-3 text-sm animate-fade-in">{specs.map((s, i) => (<div key={i} className="contents"><div className="text-gray-500">{s.label}</div><div className="font-medium text-slate-900">{s.value}</div></div>))}</div>}
+            {activeTab === 'ship' && <div className="space-y-4 text-sm text-gray-600 animate-fade-in"><div className="flex items-center gap-3"><FaTruckFast className="text-slate-900 text-lg" /> Ships within 24 hours</div><div className="flex items-center gap-3"><FaBox className="text-slate-900 text-lg" /> Secure industrial packaging</div><div className="flex items-center gap-3"><FaRotateLeft className="text-slate-900 text-lg" /> 7-day return policy for defects</div></div>}
           </div>
         </div>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-[70] p-4 md:p-6 flex justify-center pointer-events-none">
-        <div className="bg-white/95 backdrop-blur-xl border border-gray-200 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] rounded-2xl p-4 w-full max-w-4xl pointer-events-auto flex items-center gap-3 md:gap-6">
+        <div className="bg-white/95 backdrop-blur-xl border border-gray-200 shadow-up rounded-2xl p-4 w-full max-w-4xl pointer-events-auto flex items-center gap-3 md:gap-6">
           <button className="flex-1 bg-gray-100 text-gray-700 py-3.5 rounded-xl font-bold text-sm hover:bg-gray-200 transition flex items-center justify-center gap-2"><FaCommentDots /> Chat</button>
-          <button className="flex-[2] bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition transform active:scale-95 flex items-center justify-center gap-2">Request Quote <FaPaperPlane /></button>
+          <button className="flex-[2] bg-commerce-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-commerce-600/30 hover:bg-commerce-700 transition transform active:scale-95 flex items-center justify-center gap-2">Request Quote <FaPaperPlane /></button>
         </div>
       </div>
     </div>
