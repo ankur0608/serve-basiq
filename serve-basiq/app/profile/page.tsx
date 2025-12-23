@@ -1,241 +1,218 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { services, products } from '@/lib/data';
-import ServiceCard from '@/components/ui/ServiceCard';
-import ProductCard from '@/components/ui/ProductCard';
+import { useRouter } from 'next/navigation';
+import { useUIStore } from '@/lib/store';
 import {
-    FaUser, FaRightFromBracket, FaCalendarCheck,
-    FaFileInvoice, FaHeart, FaGear, FaPhone, FaWallet
+    FaUser, FaCalendarCheck, FaGear, FaPhone, FaPencil, FaCheck,
+    FaLocationDot, FaHeadset, FaRightFromBracket, FaHouse, FaBriefcase,
+    FaPlus, FaTrash, FaEnvelope, FaIdCard, FaStar, FaHeart
 } from 'react-icons/fa6';
 import clsx from 'clsx';
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import ProfileStats from '@/components/profile/ProfileStats';
+import ProfileEditModal from '@/components/profile/ProfileEditModal';
+
+interface Address {
+    id: number;
+    type: 'Home' | 'Work' | 'Other';
+    line1: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country: string;
+}
 
 export default function ProfilePage() {
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'saved' | 'settings'>('dashboard');
+    const router = useRouter();
+    const { currentUser, logout, onOpenLogin, setCurrentUser } = useUIStore();
 
-    // --- MOCK DATA ---
-    const user = {
-        name: "Rajesh Kumar",
-        phone: "+91 98765 43210",
-        initials: "RK",
-        memberSince: "Jan 2025"
+    // Tabs
+    const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'profile' | 'settings'>('overview');
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [isSaving, setIsSaving] = useState(false); // Add loading state
+
+    const [addresses, setAddresses] = useState<Address[]>([]);
+    useEffect(() => {
+        if (!currentUser?.id) return;
+
+        const fetchProfile = async () => {
+            try {
+                const res = await fetch(`/api/user/profile?userId=${currentUser.id}`);
+                if (!res.ok) return;
+
+                const data = await res.json();
+
+                // ✅ backend is source of truth
+                setCurrentUser(data);
+                setAddresses(data.addresses ?? []);
+            } catch (error) {
+                console.error('Failed to fetch profile', error);
+            }
+        };
+
+        fetchProfile();
+    }, [currentUser?.id]);
+
+    // Derived Data for Modal
+    const primaryAddress = addresses[0];
+
+    const modalInitialData = {
+        name: currentUser?.name ?? '',
+        email: currentUser?.email ?? '',
+        phone: currentUser?.phone ?? '',
+        addressLine: primaryAddress?.line1 ?? '',
+        city: primaryAddress?.city ?? '',
+        state: primaryAddress?.state ?? '',
+        pincode: primaryAddress?.pincode ?? '',
     };
 
-    const stats = [
-        { label: "Total Bookings", value: "12", icon: FaCalendarCheck, color: "text-blue-600", bg: "bg-blue-50" },
-        { label: "Total Spend", value: "₹45k", icon: FaWallet, color: "text-green-600", bg: "bg-green-50" },
-        { label: "Pending Quotes", value: "3", icon: FaFileInvoice, color: "text-orange-600", bg: "bg-orange-50" },
-    ];
+    // --- SAVE HANDLER WITH API CALL ---
+    const handleSaveData = async (data: typeof modalInitialData) => {
+        if (!currentUser) return;
+        setIsSaving(true);
 
-    const bookings = [
-        { id: 1, provider: "Elite Cleaners", service: "Home Cleaning", price: "₹1,200", status: "Completed", date: "Yesterday", type: 'service' },
-        { id: 2, provider: "Mike's Plumbing", service: "Pipe Repair", price: "₹450", status: "Confirmed", date: "Tomorrow, 10:00 AM", type: 'service' }
-    ];
+        try {
+            const response = await fetch('/api/user/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    name: data.name,
+                    email: data.email,
+                    addressLine: data.addressLine,
+                    city: data.city,
+                    state: data.state,
+                    pincode: data.pincode,
+                    country: 'India',
+                }),
+            });
 
-    const quotes = [
-        { id: 101, product: "CNC Lathe Machine", supplier: "Global Machineries", status: "Pending", date: "2 days ago" },
-    ];
+            if (!response.ok) {
+                throw new Error('Failed to update profile');
+            }
 
-    // Simulating saved items
-    const savedServices = services.slice(0, 2);
-    const savedProducts = products.slice(1, 2);
+            const updatedUser = await response.json();
 
-    return (
-        <div className="min-h-screen pb-32">
+            // ✅ SINGLE SOURCE OF TRUTH = BACKEND
+            setCurrentUser(updatedUser);
+            setAddresses(updatedUser.addresses ?? []);
 
-            {/* ================= HEADER SECTION ================= */}
-            <div className="bg-slate-900 text-white pt-12 pb-24 px-4 relative overflow-hidden">
-                {/* Background Pattern */}
-                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+            setShowEditModal(false);
+            alert('Profile updated successfully!');
+        } catch (error) {
+            console.error(error);
+            alert('Failed to save changes. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
-                <div className="max-w-4xl mx-auto relative z-10 flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
-                    {/* Avatar */}
-                    <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-3xl font-bold text-white shadow-2xl border-4 border-slate-800">
-                        {user.initials}
-                    </div>
 
-                    {/* User Info */}
-                    <div className="flex-1 mb-2">
-                        <h1 className="text-3xl font-bold mb-1">{user.name}</h1>
-                        <div className="flex items-center justify-center md:justify-start gap-4 text-slate-400 text-sm font-medium">
-                            <span className="flex items-center gap-1.5"><FaPhone className="text-xs" /> {user.phone}</span>
-                            <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-                            <span>Member since {user.memberSince}</span>
-                        </div>
-                    </div>
-
-                    {/* Logout Button */}
-                    <button className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm mb-2">
-                        <FaRightFromBracket /> Logout
-                    </button>
+    // Guest View
+    if (!currentUser) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
+                <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full">
+                    <div className="w-16 h-16 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center text-2xl mx-auto mb-4"><FaUser /></div>
+                    <h2 className="text-2xl font-extrabold text-slate-900 mb-2">Guest Access</h2>
+                    <p className="text-gray-500 mb-6 text-sm">Please login to access your profile.</p>
+                    <button onClick={onOpenLogin} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-black transition">Login / Sign Up</button>
                 </div>
             </div>
+        );
+    }
 
-            <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20">
+    const isWorker = currentUser.isWorker;
 
-                {/* ================= STATS CARDS ================= */}
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                    {stats.map((stat, i) => (
-                        <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center hover:-translate-y-1 transition duration-300">
-                            <div className={clsx("w-10 h-10 rounded-full flex items-center justify-center mb-2 text-lg", stat.bg, stat.color)}>
-                                <stat.icon />
-                            </div>
-                            <div className="text-2xl font-extrabold text-slate-900">{stat.value}</div>
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{stat.label}</div>
-                        </div>
+    return (
+        <div className="min-h-screen pb-32 bg-slate-50">
+            {/* Header */}
+            <ProfileHeader onEditClick={() => setShowEditModal(true)} />
+
+            <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20 space-y-6">
+
+                <ProfileStats />
+
+                {/* Tabs */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 flex overflow-x-auto no-scrollbar">
+                    {[
+                        { id: 'overview', label: 'Overview', icon: FaUser },
+                        { id: 'bookings', label: isWorker ? 'My Jobs' : 'Bookings', icon: FaCalendarCheck },
+                        { id: 'profile', label: 'My Data', icon: FaIdCard },
+                        { id: 'settings', label: 'Settings', icon: FaGear },
+                    ].map(tab => (
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={clsx("flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all whitespace-nowrap px-4", activeTab === tab.id ? (isWorker ? "bg-slate-900 text-white shadow-md" : "bg-blue-600 text-white shadow-md") : "text-gray-500 hover:bg-gray-50")}>
+                            <tab.icon /> {tab.label}
+                        </button>
                     ))}
                 </div>
 
-                {/* ================= TABS ================= */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 mb-8 flex overflow-x-auto no-scrollbar">
-                    <button
-                        onClick={() => setActiveTab('dashboard')}
-                        className={clsx(
-                            "flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all whitespace-nowrap px-4",
-                            activeTab === 'dashboard' ? "bg-slate-900 text-white shadow-md" : "text-gray-500 hover:bg-gray-50"
-                        )}
-                    >
-                        <FaUser /> Dashboard
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('saved')}
-                        className={clsx(
-                            "flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all whitespace-nowrap px-4",
-                            activeTab === 'saved' ? "bg-red-500 text-white shadow-md" : "text-gray-500 hover:bg-gray-50"
-                        )}
-                    >
-                        <FaHeart /> Favourites
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('settings')}
-                        className={clsx(
-                            "flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all whitespace-nowrap px-4",
-                            activeTab === 'settings' ? "bg-slate-200 text-slate-900" : "text-gray-500 hover:bg-gray-50"
-                        )}
-                    >
-                        <FaGear /> Settings
-                    </button>
+                {/* Content */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[300px]">
+
+                    {/* ... (Overview and Bookings tabs same as before) ... */}
+                    {activeTab === 'overview' && (
+                        <div className="text-center py-12 animate-fade-in border border-dashed border-gray-200 rounded-xl">
+                            <p className="text-gray-400 text-sm">No recent activity found.</p>
+                            {!isWorker && <Link href="/services" className="text-blue-600 font-bold text-sm hover:underline mt-2 inline-block">Find a Service</Link>}
+                        </div>
+                    )}
+
+                    {activeTab === 'bookings' && (
+                        <div className="text-center py-12 animate-fade-in border border-dashed border-gray-200 rounded-xl">
+                            <FaCalendarCheck className="mx-auto text-4xl text-gray-200 mb-3" />
+                            <p className="text-gray-400 text-sm">No bookings found.</p>
+                        </div>
+                    )}
+
+                    {/* PROFILE TAB */}
+                    {activeTab === 'profile' && (
+                        <div className="space-y-8 animate-fade-in">
+                            <div>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-bold text-lg text-slate-900">Personal Information</h3>
+                                    <button onClick={() => setShowEditModal(true)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition shadow-sm"><FaPencil className="text-sm" /></button>
+                                </div>
+                                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
+                                    <div className="flex items-center justify-between border-b border-gray-200 pb-3"><span className="text-xs font-bold text-gray-400 uppercase">Name</span><span className="text-sm font-bold text-slate-900 flex items-center gap-2"><FaUser className="text-gray-400 text-xs" /> {currentUser.name || "N/A"}</span></div>
+                                    <div className="flex items-center justify-between border-b border-gray-200 pb-3"><span className="text-xs font-bold text-gray-400 uppercase">Phone</span><span className="text-sm font-bold text-slate-900 flex items-center gap-2"><FaPhone className="text-gray-400 text-xs" /> {currentUser.phone} <FaCheck className="text-green-500" /></span></div>
+                                    <div className="flex items-center justify-between"><span className="text-xs font-bold text-gray-400 uppercase">Email</span><span className="text-sm font-bold text-slate-900 flex items-center gap-2"><FaEnvelope className="text-gray-400 text-xs" /> {modalInitialData.email}</span></div>
+                                </div>
+                            </div>
+                            <hr className="border-gray-100" />
+                            <div>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-bold text-lg text-slate-900">Saved Address</h3>
+                                    <button onClick={() => setShowEditModal(true)} className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-black transition"><FaPlus /> Add/Edit</button>
+                                </div>
+                                <div className="space-y-3">
+                                    {addresses.map(addr => (
+                                        <div key={addr.id} className="bg-white border border-gray-200 p-4 rounded-xl flex items-center gap-4 hover:border-blue-300 transition">
+                                            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-lg flex-shrink-0"><FaHouse /></div>
+                                            <div className="flex-1"><div className="font-bold text-slate-900 text-sm flex items-center gap-2">{addr.type}</div><div className="text-xs text-gray-500 leading-relaxed mt-0.5">{addr.line1}, {addr.city} - {addr.pincode}</div></div>
+                                            <button className="text-gray-300 hover:text-red-500 p-2"><FaTrash /></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ... (Settings tab same as before) ... */}
+                    {activeTab === 'settings' && (
+                        <div className="space-y-4 animate-fade-in">
+                            <h3 className="font-bold text-lg text-slate-900 mb-4">App Settings</h3>
+                            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><FaLocationDot /></div><div><div className="font-bold text-slate-900 text-sm">Notifications</div><div className="text-xs text-gray-500">Manage alerts</div></div></div><div className="w-10 h-6 bg-green-500 rounded-full relative"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div></div>
+                            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><FaHeadset /></div><div><div className="font-bold text-slate-900 text-sm">Help & Support</div><div className="text-xs text-gray-500">Contact us</div></div></div></div>
+                            <div onClick={() => { logout(); router.push('/'); }} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition group"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><FaRightFromBracket /></div><div><div className="font-bold text-red-600 text-sm">Logout</div><div className="text-xs text-red-400/70">Sign out</div></div></div></div>
+                        </div>
+                    )}
                 </div>
-
-                {/* ================= CONTENT: DASHBOARD ================= */}
-                {activeTab === 'dashboard' && (
-                    <div className="space-y-8 animate-fade-in">
-
-                        {/* Bookings */}
-                        <div>
-                            <div className="flex justify-between items-end mb-4">
-                                <h3 className="font-bold text-lg text-slate-900">Recent Bookings</h3>
-                                <Link href="/bookings" className="text-xs font-bold text-blue-600 hover:underline">View All</Link>
-                            </div>
-                            <div className="space-y-3">
-                                {bookings.map((b) => (
-                                    <div key={b.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-md transition group cursor-pointer">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl group-hover:scale-110 transition">
-                                                <FaCalendarCheck />
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-slate-900">{b.provider}</div>
-                                                <div className="text-xs text-gray-500">{b.service} • {b.date}</div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-none pt-3 sm:pt-0">
-                                            <div className="font-bold text-slate-900">{b.price}</div>
-                                            <div className={clsx(
-                                                "text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide",
-                                                b.status === 'Completed' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                                            )}>
-                                                {b.status}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* B2B Quotes */}
-                        <div>
-                            <h3 className="font-bold text-lg mb-4 text-slate-900">Quote Requests</h3>
-                            <div className="space-y-3">
-                                {quotes.map((q) => (
-                                    <div key={q.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-md transition">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center text-xl">
-                                                <FaFileInvoice />
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-slate-900">{q.product}</div>
-                                                <div className="text-xs text-gray-500">{q.supplier}</div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-none pt-3 sm:pt-0">
-                                            <div className="text-xs text-gray-400">Sent {q.date}</div>
-                                            <div className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 uppercase tracking-wide">
-                                                {q.status}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                    </div>
-                )}
-
-                {/* ================= CONTENT: SAVED ================= */}
-                {activeTab === 'saved' && (
-                    <div className="animate-fade-in">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {savedServices.map(service => (
-                                <ServiceCard key={service.id} service={service} />
-                            ))}
-                            {savedProducts.map(product => (
-                                <div key={product.id} className="h-full">
-                                    <ProductCard product={product} />
-                                </div>
-                            ))}
-                        </div>
-
-                        {savedServices.length === 0 && savedProducts.length === 0 && (
-                            <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
-                                <div className="text-gray-300 text-4xl mb-4"><FaHeart /></div>
-                                <p className="text-gray-500 font-medium">No saved items yet.</p>
-                                <Link href="/services" className="text-blue-600 font-bold text-sm hover:underline mt-2 inline-block">Explore Services</Link>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ================= CONTENT: SETTINGS ================= */}
-                {activeTab === 'settings' && (
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 animate-fade-in">
-                        <h3 className="font-bold text-lg mb-6">Account Settings</h3>
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between py-2">
-                                <div>
-                                    <div className="font-bold text-sm text-slate-900">Notifications</div>
-                                    <div className="text-xs text-gray-500">Receive updates on bookings</div>
-                                </div>
-                                <div className="w-10 h-6 bg-green-500 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
-                            </div>
-                            <hr className="border-gray-100" />
-                            <div className="flex items-center justify-between py-2">
-                                <div>
-                                    <div className="font-bold text-sm text-slate-900">Dark Mode</div>
-                                    <div className="text-xs text-gray-500">Switch app appearance</div>
-                                </div>
-                                <div className="w-10 h-6 bg-gray-200 rounded-full relative cursor-pointer"><div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div></div>
-                            </div>
-                            <hr className="border-gray-100" />
-                            <button className="text-red-500 font-bold text-sm flex items-center gap-2 hover:bg-red-50 px-4 py-2 rounded-lg -ml-4 transition w-full">
-                                <FaRightFromBracket /> Delete Account
-                            </button>
-                        </div>
-                    </div>
-                )}
-
             </div>
+
+            <ProfileEditModal isOpen={showEditModal} onClose={() => setShowEditModal(false)} initialData={modalInitialData} onSave={handleSaveData} />
         </div>
     );
 }

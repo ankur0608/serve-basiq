@@ -9,17 +9,26 @@ import {
     FaHandshakeSimple,
     FaXmark,
     FaCartShopping,
+    FaUser,
 } from "react-icons/fa6";
 import { useUIStore } from "@/lib/store";
 
 const Navbar = () => {
     const [showMobileSearch, setShowMobileSearch] = useState(false);
+
+    // ✅ Get Auth State
     const openLogin = useUIStore((state) => state.onOpenLogin);
+    const currentUser = useUIStore((state) => state.currentUser);
+
+    // Helper to get initials (e.g., "Mike" -> "M")
+    const getInitials = () => {
+        if (currentUser?.name) return currentUser.name[0].toUpperCase();
+        return "U";
+    };
 
     return (
         <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
             <nav className="mx-auto max-w-7xl px-4">
-
                 {/* ================= MOBILE TOP BAR ================= */}
                 <div className="flex md:hidden items-center justify-between h-14">
                     <Link href="/" className="flex items-center gap-2">
@@ -44,12 +53,21 @@ const Navbar = () => {
                             <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border border-white" />
                         </button>
 
-                        <button
-                            onClick={openLogin}
-                            className="px-4 h-9 flex items-center rounded-full bg-slate-900 text-white text-xs font-bold"
-                        >
-                            Login
-                        </button>
+                        {/* ✅ LOGIC: Show Avatar if Logged In, else Login Button */}
+                        {currentUser ? (
+                            <Link href="/profile">
+                                <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-gray-100">
+                                    {getInitials()}
+                                </div>
+                            </Link>
+                        ) : (
+                            <button
+                                onClick={openLogin}
+                                className="px-4 h-9 flex items-center rounded-full bg-slate-900 text-white text-xs font-bold"
+                            >
+                                Login
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -61,7 +79,7 @@ const Navbar = () => {
                             <input
                                 autoFocus
                                 type="text"
-                                suppressHydrationWarning={true} // <--- FIX HERE
+                                suppressHydrationWarning={true}
                                 placeholder="Search Services, Products or Suppliers..."
                                 className="w-full h-11 pl-11 pr-10 rounded-xl bg-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
@@ -91,7 +109,7 @@ const Navbar = () => {
                             <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
-                                suppressHydrationWarning={true} // <--- FIX HERE
+                                suppressHydrationWarning={true}
                                 placeholder="Search Services, Products or Suppliers..."
                                 className="w-full h-11 pl-11 pr-4 rounded-full bg-slate-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
@@ -102,11 +120,18 @@ const Navbar = () => {
                         {/* Actions */}
                         <div className="flex items-center gap-2 md:gap-4">
                             <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-                                <Link href="/services" className="hover:text-blue-600 transition">Services</Link>
-                                <Link href="/b2b" className="hover:text-blue-600 transition">Products</Link>
+                                <Link href="/services" className="hover:text-blue-600 transition">
+                                    Services
+                                </Link>
+                                <Link href="/b2b" className="hover:text-blue-600 transition">
+                                    Products
+                                </Link>
                             </div>
 
-                            <Link href="/cart" className="p-2 hover:bg-gray-100 rounded-full text-gray-600">
+                            <Link
+                                href="/cart"
+                                className="p-2 hover:bg-gray-100 rounded-full text-gray-600"
+                            >
                                 <FaCartShopping />
                             </Link>
                         </div>
@@ -119,16 +144,39 @@ const Navbar = () => {
                             <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border border-white" />
                         </button>
 
-                        <Link href="/post-requirement" className="text-sm font-bold text-gray-600 hover:text-blue-600">
+                        <Link
+                            href="/post-requirement"
+                            className="text-sm font-bold text-gray-600 hover:text-blue-600"
+                        >
                             Post Request
                         </Link>
 
-                        <button
-                            onClick={openLogin}
-                            className="px-6 h-10 rounded-full bg-slate-900 text-white text-sm font-bold hover:bg-black"
-                        >
-                            Login
-                        </button>
+                        {/* ✅ LOGIC: Desktop Profile View */}
+                        {currentUser ? (
+                            <Link
+                                href="/profile"
+                                className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-100 transition border border-transparent hover:border-gray-200"
+                            >
+                                <div className="text-right hidden lg:block">
+                                    <div className="text-xs font-bold text-slate-900">
+                                        {currentUser.name || "User"}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500">
+                                        {currentUser.isWorker ? "Professional" : "Customer"}
+                                    </div>
+                                </div>
+                                <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
+                                    {getInitials()}
+                                </div>
+                            </Link>
+                        ) : (
+                            <button
+                                onClick={openLogin}
+                                className="px-6 h-10 rounded-full bg-slate-900 text-white text-sm font-bold hover:bg-black transition"
+                            >
+                                Login
+                            </button>
+                        )}
                     </div>
                 </div>
             </nav>

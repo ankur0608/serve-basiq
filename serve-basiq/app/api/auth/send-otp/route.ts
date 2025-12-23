@@ -21,20 +21,20 @@ export async function POST(req: Request) {
     where: { phone },
   });
 
+  // Create new OTP
   await prisma.otp.create({
     data: {
       phone,
       code: otp,
-      purpose: "LOGIN",
+      // purpose line is removed
       expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 min
     },
   });
 
   console.log("DEV OTP:", otp);
 
-  // ⚠️ DEV ONLY: return OTP
   return NextResponse.json({
     success: true,
-    otp, // ❗ REMOVE IN PRODUCTION
+    otp, 
   });
 }

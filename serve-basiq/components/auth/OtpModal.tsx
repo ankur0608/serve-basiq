@@ -14,9 +14,10 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     const [showModal, setShowModal] = useState(false);
 
     const mobileNumber = useUIStore((state) => state.mobileNumber);
-    const devOtp = useUIStore((state) => state.devOtp); // ✅ DEV OTP
+    const devOtp = useUIStore((state) => state.devOtp);
     const onOpenLogin = useUIStore((state) => state.onOpenLogin);
     const onCloseOtp = useUIStore((state) => state.onCloseOtp);
+    const setCurrentUser = useUIStore((state) => state.setCurrentUser);
 
     // OTP state
     const [otp, setOtp] = useState(["", "", "", ""]);
@@ -76,24 +77,33 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         const code = otp.join("");
         if (code.length !== 4) return;
 
-        const res = await fetch("/api/auth/verify-otp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                phone: mobileNumber,
-                otp: code,
-            }),
-        });
+        try {
+            // Calling the updated verify-otp API
+            const res = await fetch("/api/auth/verify-otp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    phone: mobileNumber,
+                    otp: code,
+                }),
+            });
 
-        if (!res.ok) {
-            alert("Invalid OTP");
-            return;
+            if (!res.ok) {
+                alert("Invalid or Expired OTP");
+                return;
+            }
+
+            const user = await res.json();
+            console.log("Logged in user:", user);
+
+            // Save user to global store and close modal
+            setCurrentUser(user);
+            onCloseOtp();
+
+        } catch (error) {
+            console.error("Verification failed", error);
+            alert("Something went wrong. Please try again.");
         }
-
-        const data = await res.json();
-        console.log("Logged in user:", data.user);
-
-        onCloseOtp();
     };
 
     if (!isOpen && !showModal) return null;
@@ -163,7 +173,6 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                                         onKeyDown={(e) => handleKeyDown(index, e)}
                                         className="w-14 h-16 rounded-xl border-2 border-gray-200 text-center text-2xl font-bold text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all"
                                     />
-
                                 ))}
                             </div>
 
