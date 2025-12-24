@@ -1,93 +1,69 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  // output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// --- USER MODEL ---
 model User {
-  id    String  @id @default(cuid())
-  phone String  @unique
-  name  String?
-  email String? @unique // ✅ ADDED THIS
-  role  String  @default("USER")
-
-  isPhoneVerified Boolean @default(false)
-  isWorker        Boolean @default(false)
-  isVerified      Boolean @default(false)
-
-  // Relations
-  service   Service?
-  addresses Address[] // ✅ ADDED THIS (One User has many Addresses)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(cuid())
+  phone     String    @unique
+  name      String?
+  role      String    @default("USER")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Service   Service[]
 }
 
-// --- ADDRESS MODEL (NEW) ---
-model Address {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  type    String @default("Home") // Home, Work, Other
-  line1   String // Flat, Building, Street
-  city    String
-  state   String
-  pincode String
-  country String @default("India")
-
-  createdAt DateTime @default(now())
-}
-
-// --- OTP MODEL ---
 model Otp {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   phone     String
   code      String
+  purpose   OtpPurpose
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
+
+  @@unique([phone, purpose])
+  @@index([phone])
 }
 
-// --- SERVICE MODEL ---
 model Service {
-  id        Int      @id @default(autoincrement())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  name      String
-  cat       String
-  img       String
-  price     Float
-  rating    Float    @default(5.0)
-  loc       String
-  desc      String
-  verified  Boolean  @default(false)
-  social    Json?
-  gallery   String[]
-  reviews   Json?
-  createdAt DateTime @default(now())
+  id          String   @id
+  title       String
+  category    String
+  description String
+  price       Float
+  location    String
+  rating      Float    @default(5.0)
+  isVerified  Boolean  @default(false)
+  providerId  String?
+  images      String[]
+  socialLinks Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  User        User?    @relation(fields: [providerId], references: [id])
+
+  @@index([category])
+  @@index([location])
 }
 
-// --- PRODUCT MODEL ---
 model Product {
-  id        Int      @id @default(autoincrement())
-  name      String
-  cat       String
-  img       String
-  price     Float
-  moq       String
-  supplier  String
-  desc      String
-  social    Json?
-  gallery   String[]
-  createdAt DateTime @default(now())
+  id          String   @id
+  name        String
+  category    String
+  price       Float
+  description String
+  supplier    String
+  minOrderQty String
+  images      String[]
+  socialLinks Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+
+  @@index([category])
+}
+
+enum OtpPurpose {
+  LOGIN
 }
