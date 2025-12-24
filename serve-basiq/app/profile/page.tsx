@@ -95,7 +95,6 @@ export default function ProfilePage() {
 
             const updatedUser = await response.json();
 
-            // ✅ SINGLE SOURCE OF TRUTH = BACKEND
             setCurrentUser(updatedUser);
             setAddresses(updatedUser.addresses ?? []);
 

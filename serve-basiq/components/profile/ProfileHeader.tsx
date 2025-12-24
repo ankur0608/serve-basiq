@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/lib/store';
-import { FaPhone, FaRightFromBracket, FaPencil } from 'react-icons/fa6';
+import { FaPhone, FaRightFromBracket, FaPencil, FaBriefcase, FaGaugeHigh } from 'react-icons/fa6';
 import clsx from 'clsx';
 
 interface ProfileHeaderProps {
@@ -18,6 +18,17 @@ export default function ProfileHeader({ onEditClick }: ProfileHeaderProps) {
     const isWorker = currentUser.isWorker;
     const getInitials = () => (currentUser.name ? currentUser.name.substring(0, 2).toUpperCase() : "U");
 
+    // ✅ NEW FLOW LOGIC
+    const handleProviderClick = () => {
+        if (isWorker) {
+            // If already a worker, go to Dashboard
+            router.push('/provider/dashboard');
+        } else {
+            // If not a worker, go to Apply Form
+            router.push('/services/new');
+        }
+    };
+
     return (
         <div className={clsx("pt-12 pb-24 px-4 relative overflow-hidden transition-colors duration-500", isWorker ? "bg-slate-900 text-white" : "bg-blue-600 text-white")}>
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
@@ -32,7 +43,6 @@ export default function ProfileHeader({ onEditClick }: ProfileHeaderProps) {
                 <div className="flex-1 mb-2">
                     <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
                         <h1 className="text-3xl font-extrabold">{currentUser.name || "Hello, User"}</h1>
-                        {/* ✅ EDIT BUTTON IN HEADER */}
                         <button
                             onClick={onEditClick}
                             className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition backdrop-blur-sm cursor-pointer"
@@ -50,10 +60,30 @@ export default function ProfileHeader({ onEditClick }: ProfileHeaderProps) {
                     </div>
                 </div>
 
-                {/* Logout */}
-                <button onClick={() => { logout(); router.push('/'); }} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm">
-                    <FaRightFromBracket /> Logout
-                </button>
+                {/* ACTION BUTTONS */}
+                <div className="flex items-center gap-3">
+
+                    {/* ✅ DYNAMIC PROVIDER BUTTON */}
+                    <button
+                        onClick={handleProviderClick}
+                        className={clsx(
+                            "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm shadow-lg border",
+                            isWorker
+                                ? "bg-green-500 text-white border-green-400 hover:bg-green-600"
+                                : "bg-white text-blue-600 border-white hover:bg-blue-50"
+                        )}
+                    >
+                        {isWorker ? <><FaGaugeHigh /> Dashboard</> : <><FaBriefcase /> Become a Pro</>}
+                    </button>
+
+                    {/* Logout */}
+                    <button
+                        onClick={() => { logout(); router.push('/'); }}
+                        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm"
+                    >
+                        <FaRightFromBracket />
+                    </button>
+                </div>
             </div>
         </div>
     );

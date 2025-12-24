@@ -14,29 +14,29 @@ export default function ProfileStats() {
         <div className="space-y-6">
             {/* STATS GRID */}
             <div className="grid grid-cols-3 gap-3 md:gap-6">
-                <StatCard 
-                    icon={isWorker ? FaWallet : FaCalendarCheck} 
-                    value={isWorker ? "₹12k" : "2"} 
-                    label={isWorker ? "Earnings" : "Orders"} 
-                    color={isWorker ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-600"} 
+                <StatCard
+                    icon={isWorker ? FaWallet : FaCalendarCheck}
+                    value={isWorker ? "₹12k" : "2"}
+                    label={isWorker ? "Earnings" : "Orders"}
+                    color={isWorker ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-600"}
                 />
-                <StatCard 
-                    icon={isWorker ? FaBriefcase : FaHeart} 
-                    value={isWorker ? "5" : "14"} 
-                    label={isWorker ? "Jobs" : "Saved"} 
-                    color={isWorker ? "bg-orange-50 text-orange-600" : "bg-purple-50 text-purple-600"} 
+                <StatCard
+                    icon={isWorker ? FaBriefcase : FaHeart}
+                    value={isWorker ? "5" : "14"}
+                    label={isWorker ? "Jobs" : "Saved"}
+                    color={isWorker ? "bg-orange-50 text-orange-600" : "bg-purple-50 text-purple-600"}
                 />
-                <StatCard 
-                    icon={isWorker ? FaStar : FaBoxOpen} 
-                    value={isWorker ? "4.8" : "0"} 
-                    label={isWorker ? "Rating" : "Returns"} 
-                    color={isWorker ? "bg-blue-50 text-blue-600" : "bg-yellow-50 text-yellow-600"} 
+                <StatCard
+                    icon={isWorker ? FaStar : FaBoxOpen}
+                    value={isWorker ? "4.8" : "0"}
+                    label={isWorker ? "Rating" : "Returns"}
+                    color={isWorker ? "bg-blue-50 text-blue-600" : "bg-yellow-50 text-yellow-600"}
                 />
             </div>
 
-            {/* PRO BANNER */}
+            {/* PRO BANNER (Only Visible if NOT a worker) */}
             {!isWorker && (
-                <Link href="/join-pro" className="block relative group cursor-pointer">
+                <Link href="/services/new" className="block relative group cursor-pointer">
                     <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-6 text-white flex items-center justify-between shadow-lg relative overflow-hidden">
                         <div className="relative z-10">
                             <h3 className="font-bold text-lg mb-1">Become a Service Provider</h3>
@@ -50,7 +50,7 @@ export default function ProfileStats() {
                 </Link>
             )}
 
-            {/* WORKER ALERT */}
+            {/* WORKER ALERT (Only Visible if Worker but Unverified) */}
             {isWorker && !currentUser.isVerified && (
                 <div className="bg-orange-50 border border-orange-100 p-4 rounded-2xl flex items-start gap-4 shadow-sm animate-pulse">
                     <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center flex-shrink-0 text-xl"><FaCircleExclamation /></div>

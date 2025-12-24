@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
-import MobileNav from "@/components/layout/MobileNav";
+import ClientLayout from "@/components/layout/ClientLayout"; 
 import ModalProvider from "@/components/providers/ModalProvider";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -24,15 +22,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${jakarta.variable} font-sans bg-slate-50 text-slate-800 flex flex-col min-h-screen pb-[80px] md:pb-0`}>
-        <Header />
-        <main className="flex-grow w-full relative">
+
+        <ClientLayout>
           {children}
+        </ClientLayout>
 
-        </main>
         <ModalProvider />
-
-        <Footer />
-        <MobileNav />
       </body>
     </html>
   );
