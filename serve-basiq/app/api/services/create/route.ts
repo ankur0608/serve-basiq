@@ -11,11 +11,7 @@ const ServiceSchema = z.object({
     desc: z.string().min(10),
     img: z.string().url(),
     gallery: z.array(z.string().url()).max(4).optional(),
-    social: z.object({
-        instagram: z.string().url().optional(),
-        facebook: z.string().url().optional(),
-        website: z.string().url().optional(),
-    }).optional(),
+
 });
 
 export async function POST(req: Request) {
@@ -42,20 +38,22 @@ export async function POST(req: Request) {
                     desc: body.desc,
                     img: body.img,
                     gallery: body.gallery ?? [],
-                    social: body.social ?? {},
                 },
                 create: {
                     ...body,
                     gallery: body.gallery ?? [],
-                    social: body.social ?? {},
                     verified: false,
                     rating: 5,
                 },
             });
 
+            // Update User Role AND switch to Admin Dashboard mode
             await tx.user.update({
                 where: { id: body.userId },
-                data: { isWorker: true },
+                data: {
+                    isWorker: true,
+                    isWebsite: false // ✅ Switch to Admin Dashboard mode
+                },
             });
 
             return service;
@@ -75,74 +73,3 @@ export async function POST(req: Request) {
         return NextResponse.json({ message: "Server error" }, { status: 500 });
     }
 }
-
-
-
-// import { NextResponse } from "next/server";
-// import { prisma } from "@/lib/prisma";
-
-// export async function POST(req: Request) {
-//     try {
-//         const body = await req.json();
-//         const { userId, name, cat, price, loc, desc, img, gallery, social } = body;
-
-//         console.log(`[API] Received request for User ID: ${userId}`);
-
-//         // 🔍 DEBUG: Check Payload Size
-//         // Calculate size in Megabytes
-//         const payloadSize = JSON.stringify(body).length / 1024 / 1024;
-//         console.log(`[API] Payload Size: ${payloadSize.toFixed(2)} MB`);
-
-//         // 🛑 SAFETY CHECK: Reject if > 2MB (Neon/Prisma often struggle with more)
-//         if (payloadSize > 2) {
-//             console.error("[API] Payload too large!");
-//             return NextResponse.json({
-//                 message: `Images are too large (${payloadSize.toFixed(2)}MB). Total limit is 2MB. Please use smaller images.`
-//             }, { status: 413 }); // 413 = Payload Too Large
-//         }
-
-//         // 1. Validation
-//         if (!userId || !name || !cat || !price) {
-//             return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
-//         }
-
-//         // 2. Check if User Exists
-//         const user = await prisma.user.findUnique({ where: { id: userId } });
-//         if (!user) {
-//             return NextResponse.json({ message: "User not found. Re-login." }, { status: 404 });
-//         }
-
-//         // 3. Create/Update Service
-//         console.log("[API] Upserting Service...");
-//         const service = await prisma.service.upsert({
-//             where: { userId: userId },
-//             update: { name, cat, price, loc, desc, img, gallery, social },
-//             create: {
-//                 userId,
-//                 name,
-//                 cat,
-//                 price,
-//                 loc,
-//                 desc,
-//                 img,
-//                 gallery: gallery || [],
-//                 social: social || {},
-//                 verified: false,
-//                 rating: 5.0
-//             }
-//         });
-
-//         // 4. Update User Role
-//         await prisma.user.update({
-//             where: { id: userId },
-//             data: { isWorker: true }
-//         });
-
-//         console.log("[API] Success!");
-//         return NextResponse.json({ success: true, service });
-
-//     } catch (error: any) {
-//         console.error("Create Service Error:", error);
-//         return NextResponse.json({ message: "Server Error", error: error.message }, { status: 500 });
-//     }
-// }

@@ -27,7 +27,6 @@ export default async function ServiceDetail({ params }: Props) {
   if (!service) return notFound();
 
   // 2. Parse JSON fields safely
-  const social = service.social as any || {};
 
   return (
     <div className="pb-32 bg-slate-50 min-h-screen">
@@ -65,9 +64,6 @@ export default async function ServiceDetail({ params }: Props) {
                 <FaLocationDot className="text-blue-500" /> {service.loc}
               </p>
 
-              <div className="flex gap-3">
-                {social.website && <a href={social.website} target="_blank" className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition"><FaGlobe /></a>}
-              </div>
             </div>
 
             <div className="flex flex-row md:flex-col justify-between w-full md:w-auto items-end gap-3">

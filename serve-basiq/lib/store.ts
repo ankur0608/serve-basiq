@@ -19,7 +19,7 @@ export interface Address {
 interface User {
   id: string;
   phone: string;
-
+  isWebsite: boolean;
   // ✅ ADD THIS
   email?: string | null;
 

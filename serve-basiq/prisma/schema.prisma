@@ -14,16 +14,17 @@ model User {
   email String? @unique // ✅ ADDED THIS
   role  String  @default("USER")
 
-  isPhoneVerified Boolean @default(false)
-  isWorker        Boolean @default(false)
-  isVerified      Boolean @default(false)
-
+  isPhoneVerified Boolean   @default(false)
+  isWorker        Boolean   @default(false)
+  isVerified      Boolean   @default(false)
+  isWebsite       Boolean   @default(true)
   // Relations
-  service   Service?
-  addresses Address[] // ✅ ADDED THIS (One User has many Addresses)
+  service         Service?
+  addresses       Address[] // ✅ ADDED THIS (One User has many Addresses)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
 }
 
 // --- ADDRESS MODEL (NEW) ---
@@ -64,7 +65,6 @@ model Service {
   loc       String
   desc      String
   verified  Boolean  @default(false)
-  social    Json?
   gallery   String[]
   reviews   Json?
   createdAt DateTime @default(now())
@@ -72,15 +72,18 @@ model Service {
 
 // --- PRODUCT MODEL ---
 model Product {
-  id        Int      @id @default(autoincrement())
-  name      String
-  cat       String
-  img       String
-  price     Float
-  moq       String
-  supplier  String
-  desc      String
-  social    Json?
-  gallery   String[]
+  id Int @id @default(autoincrement())
+
+  userId String // ✅ Link to Seller
+  user   User   @relation(fields: [userId], references: [id])
+
+  name    String
+  cat     String
+  img     String
+  price   Float
+  moq     String // Minimum Order Quantity (e.g., "10 Units")
+  desc    String
+  gallery String[]
+
   createdAt DateTime @default(now())
 }
