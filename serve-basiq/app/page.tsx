@@ -56,7 +56,7 @@ export default function Home() {
             <p className="text-xs text-gray-500 mt-1">Plumbers, Cleaners...</p>
           </Link>
 
-          <Link href="/b2b" className="bg-white p-6 rounded-2xl shadow-card hover:-translate-y-1 transition text-center border border-gray-100 group">
+          <Link href="/products" className="bg-white p-6 rounded-2xl shadow-card hover:-translate-y-1 transition text-center border border-gray-100 group">
             <div className="w-14 h-14 mx-auto bg-green-50 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition shadow-sm">
               <FaCartShopping />
             </div>

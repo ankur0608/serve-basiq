@@ -139,7 +139,7 @@ export default function OrdersPage() {
                             : `No ${filter} orders`}
                     </p>
                     <Link
-                        href="/b2b"
+                        href="/products"
                         className="inline-flex items-center gap-2 bg-commerce-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-commerce-700 transition"
                     >
                         Browse Products

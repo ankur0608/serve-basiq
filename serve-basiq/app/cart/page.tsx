@@ -36,7 +36,7 @@ export default function CartPage() {
         <div className="max-w-4xl mx-auto px-4 py-8 pb-32">
             {/* Back Button */}
             <Link
-                href="/b2b"
+                href="/products"
                 className="inline-flex items-center gap-2 text-gray-500 hover:text-slate-900 mb-6 transition"
             >
                 <FaArrowLeft /> Continue Shopping
@@ -155,7 +155,7 @@ export default function CartPage() {
                         Browse our products and add items to your cart
                     </p>
                     <Link
-                        href="/b2b"
+                        href="/products"
                         className="inline-flex items-center gap-2 bg-commerce-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-commerce-700 transition"
                     >
                         Browse Products

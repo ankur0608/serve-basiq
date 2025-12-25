@@ -38,7 +38,7 @@ export default function MobileNav() {
       icon: FaScrewdriverWrench
     },
     {
-      href: "/b2b",
+      href: "/products",
       label: "Products",
       icon: FaBoxOpen,
       badge: "Shop" // Optional badge for products

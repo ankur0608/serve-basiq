@@ -1,10 +1,25 @@
 import Link from 'next/link';
-import { products } from '@/lib/data';
+import { prisma } from '@/lib/prisma';
 import ProductCard from '@/components/ui/ProductCard';
 
-export default function TrendingProducts() {
-  // Take first 4 products for the home page display
-  const trendingProducts = products.slice(0, 4);
+export default async function TrendingProducts() {
+  // 1. Fetch real data from DB
+  const data = await prisma.product.findMany({
+    take: 4,                        // Limit to 4 items
+    orderBy: { createdAt: 'desc' }, // Show newest items first (or change logic for "trending")
+    include: {
+      user: {
+        select: { name: true }      // Get the supplier's name
+      }
+    }
+  });
+
+  // 2. Transform data to match what ProductCard expects
+  // (We need to flatten "user.name" into "supplier")
+  const trendingProducts = data.map((product) => ({
+    ...product,
+    supplier: product.user?.name || "Verified Seller",
+  }));
 
   return (
     <section>
@@ -14,18 +29,25 @@ export default function TrendingProducts() {
           <p className="text-gray-500 text-sm">Direct factory prices for bulk orders.</p>
         </div>
         <Link 
-          href="/b2b" 
-          className="text-commerce-600 font-bold text-sm bg-commerce-50 px-3 py-1.5 rounded-lg hover:bg-commerce-100 transition"
+          href="/products" 
+          className="text-blue-600 font-bold text-sm bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition"
         >
           View All
         </Link>
       </div>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4" id="home-top-products">
-        {trendingProducts.map(product => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      {/* 3. Handle empty state just in case */}
+      {trendingProducts.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4" id="home-top-products">
+          {trendingProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400">
+          No trending products yet.
+        </div>
+      )}
     </section>
   );
 }
