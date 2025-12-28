@@ -2,39 +2,52 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
-    try {
-        const { userId } = await req.json();
+  try {
+    const { userId } = await req.json();
 
-        if (!userId) {
-            return NextResponse.json({ message: "User ID required" }, { status: 400 });
-        }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { service: true },
+    });
 
-        // 1. Get Service Details
-        const service = await prisma.service.findUnique({
-            where: { userId: userId },
-            include: {
-                // Assuming you have an Order/Booking model. 
-                // If not, we return 0 for now until you create that model.
-                // bookings: true 
-            }
-        });
+    if (!user) throw new Error("User not found");
 
-        if (!service) {
-            return NextResponse.json({ message: "Service profile not found" }, { status: 404 });
-        }
+    // LOGIC: Check if profile is complete
+    // 1. Service Details (Category + Location)
+    const hasServiceDetails = !!(
+      user.service?.categoryId &&
+      user.service?.latitude &&
+      user.service?.workingDays.length > 0
+    );
 
-        // 2. Calculate Stats (Mocking logic for now based on your schema)
-        // In a real app, you would count `prisma.order.count({ where: { serviceId: service.id } })`
-        const stats = {
-            revenue: 1250, // Replace with real aggregation later
-            jobsCompleted: 24,
-            rating: service.rating || 5.0,
-            pendingRequests: 3
-        };
+    // 2. Verification Details (Bank + ID)
+    const hasVerification = !!(
+      user.bankAccountNumber &&
+      user.idProofImg
+    );
 
-        return NextResponse.json({ success: true, service, stats });
+    const isSetupComplete = hasServiceDetails && hasVerification;
 
-    } catch (error) {
-        return NextResponse.json({ message: "Error fetching stats" }, { status: 500 });
-    }
+    // Mock Stats
+    const stats = {
+      revenue: 1250,
+      jobsCompleted: 14,
+      rating: user.service?.rating || 5.0,
+      pendingRequests: 3,
+    };
+
+    return NextResponse.json({
+      success: true,
+      user,
+      service: user.service,
+      stats,
+      isSetupComplete, // <--- Crucial Flag
+      missingSteps: {
+        service: !hasServiceDetails,
+        verification: !hasVerification
+      }
+    });
+  } catch (error) {
+    return NextResponse.json({ success: false }, { status: 500 });
+  }
 }

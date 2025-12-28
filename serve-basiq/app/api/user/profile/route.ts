@@ -57,6 +57,7 @@ export async function POST(request: Request) {
           userId,
           type: 'Home',
           line1: addressLine,
+          line2: '',
           city,
           state,
           pincode,

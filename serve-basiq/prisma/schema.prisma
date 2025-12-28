@@ -6,25 +6,42 @@ datasource db {
   provider = "postgresql"
 }
 
-// --- USER MODEL ---
 model User {
   id    String  @id @default(cuid())
   phone String  @unique
   name  String?
-  email String? @unique // ✅ ADDED THIS
+  email String? @unique
   role  String  @default("USER")
+  img   String?
 
-  isPhoneVerified Boolean   @default(false)
-  isWorker        Boolean   @default(false)
-  isVerified      Boolean   @default(false)
-  isWebsite       Boolean   @default(true)
+  isPhoneVerified Boolean @default(false)
+  isWorker        Boolean @default(false)
+  isWebsite       Boolean @default(true)
+
+  // ✅ STATUS FLAGS
+  isVerified         Boolean @default(false) // Final Admin Approval
+  verificationStatus String  @default("PENDING") // PENDING, SUBMITTED, REJECTED
+
+  // ✅ BANKING DETAILS (Directly in User)
+  bankAccountHolder String?
+  bankAccountNumber String?
+  bankIfsc          String?
+  bankName          String?
+  upiId             String?
+
+  // ✅ KYC DOCUMENTS (Directly in User)
+  idProofType      String? @default("Aadhaar") // Aadhaar, PAN, DL
+  idProofNumber    String?
+  idProofImg       String?
+  businessProofImg String?
+
   // Relations
-  service         Service?
-  addresses       Address[] // ✅ ADDED THIS (One User has many Addresses)
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  service   Service?
+  addresses Address[]
   products  Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // --- ADDRESS MODEL (NEW) ---
@@ -35,6 +52,7 @@ model Address {
 
   type    String @default("Home") // Home, Work, Other
   line1   String // Flat, Building, Street
+  line2   String
   city    String
   state   String
   pincode String
@@ -52,22 +70,47 @@ model Otp {
   createdAt DateTime @default(now())
 }
 
-// --- SERVICE MODEL ---
 model Service {
-  id        Int      @id @default(autoincrement())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  name      String
-  cat       String
-  img       String
-  price     Float
-  rating    Float    @default(5.0)
-  loc       String
-  desc      String
-  verified  Boolean  @default(false)
-  gallery   String[]
-  reviews   Json?
+  id     Int    @id @default(autoincrement())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Basic Profile (from Onboarding)
+  name       String
+  desc       String
+  img        String
+  experience String?
+  altPhone   String?
+
+  // ✅ NEW FIELDS (Service Details)
+  categoryId     String?
+  subCategoryIds String[] // Array of strings
+
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  pincode      String?
+
+  latitude  Float?
+  longitude Float?
+  radiusKm  Int?   @default(10)
+
+  workingDays String[] // e.g. ["Mon", "Tue"]
+  openTime    String? // e.g. "09:00"
+  closeTime   String? // e.g. "18:00"
+
+  // Existing fields
+  cat      String? // Keeping for backward compatibility if needed
+  price    Float    @default(0)
+  rating   Float    @default(5.0)
+  loc      String?
+  verified Boolean  @default(false)
+  gallery  String[]
+  reviews  Json?
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // --- PRODUCT MODEL ---

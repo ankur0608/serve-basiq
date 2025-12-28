@@ -7,7 +7,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 export interface Address {
   id: string;
-  type: "Home" | "Work" | "Other";
+  userId: string;
+  type: "Home" | "Work" | "Other" | string;
   line1: string;
   city: string;
   state: string;
@@ -16,23 +17,26 @@ export interface Address {
   createdAt?: string;
 }
 
-interface User {
+export interface User {
   id: string;
   phone: string;
-  isWebsite: boolean;
-  // ✅ ADD THIS
-  email?: string | null;
 
-  name?: string | null;
-  role: string;
+  // Personal Info
+  name: string | null;
+  email: string | null;
+  img: string | null; // Changed from 'image' to 'img' to match Prisma
+  role: string;       // "USER" | "ADMIN"
 
+  // Status Flags
   isPhoneVerified: boolean;
   isWorker: boolean;
   isVerified: boolean;
+  isWebsite: boolean;
 
-  // ✅ ADD THIS (from API)
+  // Relations
   addresses?: Address[];
 
+  // Timestamps
   createdAt?: string;
   updatedAt?: string;
 }
@@ -44,6 +48,7 @@ export interface UIState {
   setCurrentUser: (user: User | null) => void;
   logout: () => void;
 
+  // Auth Modal State
   mobileNumber: string;
   devOtp?: string;
   isLoginOpen: boolean;
@@ -98,6 +103,7 @@ export const useUIStore = create<UIState>()(
     {
       name: "servemate-storage",
       storage: createJSONStorage(() => localStorage),
+      // Only persist the currentUser, not the UI state (modals)
       partialize: (state) => ({ currentUser: state.currentUser }),
     }
   )

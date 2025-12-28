@@ -1,24 +1,37 @@
 'use client';
 
 import Link from 'next/link';
-import { FaHeart, FaRegHeart, FaStar } from 'react-icons/fa6'; // Updated to fa6 to match other files
+import { FaHeart, FaRegHeart, FaStar } from 'react-icons/fa6';
 import { useState } from 'react';
 import clsx from 'clsx';
 
-// 1. Define the interface locally to match your Database/Prisma output
-interface ServiceProps {
+// Updated Interface to match Prisma/Database output more closely
+export interface ServiceProps {
   id: number;
   name: string;
-  cat: string;
-  price: number;
-  loc: string;
-  img: string;
-  rating: number;
-  verified: boolean;
+  cat?: string | null;       // Made optional/nullable
+  price?: number | null;     // Made optional/nullable
+
+  // Location handling: support both pre-formatted 'loc' or raw 'city/state'
+  loc?: string | null;
+  city?: string | null;
+  state?: string | null;
+
+  img?: string | null;       // Made optional/nullable
+  rating?: number | null;    // Made optional/nullable
+  verified?: boolean;
 }
 
 export default function ServiceCard({ service }: { service: ServiceProps }) {
   const [isFav, setIsFav] = useState(false);
+
+  // Helper to determine location text safely
+  const locationText = service.loc
+    ? service.loc
+    : (service.city ? `${service.city}${service.state ? `, ${service.state}` : ''}` : 'Location N/A');
+
+  // Helper for Category fallback
+  const categoryText = service.cat || 'General';
 
   return (
     <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-card transition flex gap-4 group h-full relative overflow-hidden">
@@ -26,7 +39,7 @@ export default function ServiceCard({ service }: { service: ServiceProps }) {
       {/* Favorite Button */}
       <button
         onClick={(e) => {
-          e.preventDefault(); // Prevent clicking the link when clicking the heart
+          e.preventDefault();
           setIsFav(!isFav);
         }}
         className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-sm z-20 transition-all hover:scale-110"
@@ -34,7 +47,7 @@ export default function ServiceCard({ service }: { service: ServiceProps }) {
         {isFav ? <FaHeart className="text-red-500" /> : <FaRegHeart className="text-gray-400" />}
       </button>
 
-      {/* 2. Link to the dynamic details page */}
+      {/* Link to details page */}
       <Link href={`/services/${service.id}`} className="flex gap-4 w-full">
 
         {/* Image Container */}
@@ -53,16 +66,16 @@ export default function ServiceCard({ service }: { service: ServiceProps }) {
               {service.name}
             </h4>
             <div className="text-xs text-gray-500 mt-1 truncate">
-              {service.cat} • {service.loc}
+              {categoryText} • {locationText}
             </div>
           </div>
 
           <div className="flex items-center justify-between mt-2">
             <span className="text-sm font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-lg">
-              ₹{service.price}/hr
+              ₹{service.price || 0}/hr
             </span>
             <span className="text-xs font-bold text-amber-500 flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg">
-              {service.rating} <FaStar />
+              {service.rating || 0} <FaStar />
             </span>
           </div>
         </div>

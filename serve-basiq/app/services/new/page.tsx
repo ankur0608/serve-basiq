@@ -1,268 +1,292 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useUIStore } from '@/lib/store';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useUIStore } from "@/lib/store";
 import {
-    FaArrowLeft, FaCamera, FaImages, FaLocationDot, FaTag,
-    FaIndianRupeeSign, FaCheck, FaSpinner
-} from 'react-icons/fa6';
-import clsx from 'clsx';
+    ArrowLeft, Camera, User, Mail, Phone, MapPin,
+    Check, Loader2, AlertTriangle, UploadCloud
+} from 'lucide-react';
+import { onboardSchema } from "@/lib/validators";
 
-/* ---------------- 1. ImageKit Logic ---------------- */
+// --- HELPER: ImageKit Upload ---
 async function uploadToImageKit(file: File): Promise<string> {
     const authRes = await fetch("/api/imagekit/auth");
+    if (!authRes.ok) throw new Error("Failed to get auth token");
+
     const auth = await authRes.json();
-
     const formData = new FormData();
-    formData.append("file", file);                    // REQUIRED
-    formData.append("fileName", file.name);           // REQUIRED
-    formData.append("publicKey", auth.publicKey);     // REQUIRED
-    formData.append("signature", auth.signature);     // REQUIRED
-    formData.append("expire", String(auth.expire));   // MUST be string
-    formData.append("token", auth.token);             // REQUIRED
-    formData.append("useUniqueFileName", "true");     // MUST be "true"
-    formData.append("folder", "/services");           // ✅ IMPORTANT
+    formData.append("file", file);
+    formData.append("fileName", file.name);
+    formData.append("publicKey", auth.publicKey);
+    formData.append("signature", auth.signature);
+    formData.append("expire", String(auth.expire));
+    formData.append("token", auth.token);
+    formData.append("useUniqueFileName", "true");
+    formData.append("folder", "/services");
 
-    const res = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
-        method: "POST",
-        body: formData,
-    });
-
+    const res = await fetch("https://upload.imagekit.io/api/v1/files/upload", { method: "POST", body: formData });
     const data = await res.json();
-
-    if (!res.ok) {
-        console.error("ImageKit upload failed:", data);
-        throw new Error(data?.message || "Upload failed");
-    }
-
+    if (!res.ok) throw new Error(data?.message || "Upload failed");
     return data.url;
 }
 
-export default function CreateServicePage() {
+export default function BecomeProPage() {
     const router = useRouter();
     const { currentUser, setCurrentUser } = useUIStore();
 
-    // States
-    const [loading, setLoading] = useState(false); // For form submission
-    const [uploading, setUploading] = useState(false); // For image uploading status
+    const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [imgPreview, setImgPreview] = useState<string | null>(null);
+    const [errors, setErrors] = useState<any>({});
 
-    // ✅ Removed social fields from state
-    const [formData, setFormData] = useState({
-        name: '',
-        cat: '',
-        price: '',
-        loc: '',
-        desc: ''
+    // Form State
+    const [form, setForm] = useState({
+        fullName: currentUser?.name || "",
+        email: currentUser?.email || "",
+        altPhone: "",
+        addressLine1: "",
+        addressLine2: "",
+        city: "",
+        state: "",
+        pincode: "",
     });
 
-    const [coverImg, setCoverImg] = useState<string | null>(null);
-    const [gallery, setGallery] = useState<string[]>([]);
-
-    const CATEGORIES = ["Cleaning", "Plumbing", "Electrical", "Carpentry", "Beauty", "Repairs", "Movers"];
-
-    /* ---------------- 2. Handlers ---------------- */
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    // Handle Cover Image Upload (Real Upload)
-    const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Handle Image Upload
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         try {
             setUploading(true);
             const url = await uploadToImageKit(file);
-            setCoverImg(url);
+            setImgPreview(url);
+            // Clear specific error if it exists
+            setErrors((prev: any) => ({ ...prev, img: null }));
         } catch (err) {
-            alert('Cover upload failed');
+            alert("Image upload failed. Please try again.");
         } finally {
             setUploading(false);
         }
     };
 
-    // Handle Gallery Upload (Real Upload)
-    const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || gallery.length >= 4) return;
-
-        try {
-            setUploading(true);
-            const url = await uploadToImageKit(file);
-            setGallery((prev) => [...prev, url]);
-        } catch {
-            alert('Gallery upload failed');
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    // Handle Final Submit
+    // Handle Submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentUser) return alert("Please login first");
-        if (!coverImg) return alert("Please upload a cover image");
+
+        if (!currentUser) {
+            router.push('/login');
+            return;
+        }
 
         setLoading(true);
+        setErrors({});
 
         try {
+            // 1. Prepare Payload
             const payload = {
-                userId: currentUser.id,
-                name: formData.name,
-                cat: formData.cat,
-                price: parseFloat(formData.price),
-                loc: formData.loc,
-                desc: formData.desc,
-                img: coverImg,
-                gallery: gallery,
-                social: {} // ✅ Sending empty object since UI inputs are removed
+                ...form,
+                img: imgPreview || ""
             };
 
-            const res = await fetch('/api/services/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+            // 2. Validate with Zod (Frontend Check)
+            // This throws an error if validation fails, catching in the catch block below
+            onboardSchema.parse(payload);
+
+            // 3. Submit to Backend
+            const res = await fetch("/api/provider/onboard", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: currentUser.id, ...payload }),
             });
 
-            if (!res.ok) throw new Error("Failed to create service");
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Registration failed");
 
-            // Update Local State
-            setCurrentUser({ ...currentUser, isWorker: true });
+            // 4. Success: Update Store & Redirect
+            setCurrentUser({ ...currentUser, isWorker: true, isWebsite: false });
 
-            alert("🎉 Congratulations! You are now a Service Provider.");
-            router.push('/provider/dashboard');
-        } catch (error) {
-            console.error(error);
-            alert("Something went wrong. Please try again.");
+            // Redirect with 'new=true' to trigger the Welcome Toast on the dashboard
+            router.push("/provider/dashboard?new=true");
+
+        } catch (error: any) {
+            if (error.issues) {
+                // Handle Zod Validation Errors
+                const formattedErrors: any = {};
+                error.issues.forEach((issue: any) => {
+                    formattedErrors[issue.path[0]] = issue.message;
+                });
+                setErrors(formattedErrors);
+
+                // Scroll to top to see errors if needed
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                // Handle Generic API Errors
+                alert(error.message || "Something went wrong.");
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    /* ---------------- 3. UI ---------------- */
+    // Helper for Input Styling
+    const getInputClass = (fieldName: string) => `w-full bg-slate-50 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition ${errors[fieldName] ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`;
+    const ErrorMsg = ({ field }: { field: string }) => errors[field] ? <p className="text-red-500 text-xs mt-1 font-medium">{errors[field]}</p> : null;
+
     return (
-        <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6">
-            <div className="max-w-3xl mx-auto">
+        <div className="min-h-screen bg-slate-50 py-10 px-4">
+            <div className="max-w-xl mx-auto">
 
                 {/* Header */}
-                <div className="mb-8 flex items-center gap-4">
-                    <button onClick={() => router.back()} className="p-3 bg-white hover:bg-gray-50 rounded-full shadow-sm text-slate-500 transition">
-                        <FaArrowLeft />
+                <div className="flex items-center gap-4 mb-8">
+                    <button onClick={() => router.back()} className="p-2 bg-white rounded-full border border-slate-200 hover:bg-slate-50 transition">
+                        <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900">Become a Pro</h1>
-                        <p className="text-slate-500">Create your service profile to start earning.</p>
+                        <h1 className="text-2xl font-bold text-slate-900">Partner Registration</h1>
+                        <p className="text-slate-500 text-sm">Fill in your details to start earning.</p>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
 
-                    {/* 1. Details Card */}
-                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-8">
-                        <h2 className="font-bold text-lg mb-6 text-slate-900">Service Details</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="col-span-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Service Name</label>
-                                <input required name="name" onChange={handleInputChange} placeholder="e.g. Expert Home Cleaning" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" />
-                            </div>
+                    {/* 1. PROFILE IMAGE */}
+                    <div className={`bg-white p-6 rounded-2xl shadow-sm border flex flex-col items-center ${errors.img ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}>
+                        <div className="relative w-32 h-32 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg cursor-pointer hover:opacity-90 transition group">
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
 
+                            {uploading ? (
+                                <Loader2 className="animate-spin text-blue-500" />
+                            ) : imgPreview ? (
+                                <img src={imgPreview} className="w-full h-full object-cover" alt="Profile Preview" />
+                            ) : (
+                                <Camera className="text-slate-400 group-hover:text-blue-500 transition" size={32} />
+                            )}
+                        </div>
+                        <p className={`text-xs font-bold uppercase mt-3 ${errors.img ? 'text-red-600' : 'text-slate-400'}`}>
+                            {errors.img ? errors.img : "Upload Profile Photo"}
+                        </p>
+                    </div>
+
+                    {/* 2. PERSONAL DETAILS */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100 mb-2">
+                            <User className="text-blue-600" size={20} /> <span className="font-bold text-slate-900">Personal Details</span>
+                        </div>
+                        <div className="space-y-4">
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Category</label>
-                                <div className="relative">
-                                    <select required name="cat" onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 appearance-none outline-none focus:border-blue-500 transition">
-                                        <option value="">Select...</option>
-                                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                    <FaTag className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Full Name</label>
+                                <input
+                                    value={form.fullName}
+                                    onChange={e => setForm({ ...form, fullName: e.target.value })}
+                                    className={getInputClass('fullName')}
+                                    placeholder="John Doe"
+                                />
+                                <ErrorMsg field="fullName" />
                             </div>
-
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Starting Price</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Email</label>
                                 <div className="relative">
-                                    <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center border-r border-slate-200 text-slate-400"><FaIndianRupeeSign /></div>
-                                    <input required type="number" name="price" onChange={handleInputChange} placeholder="0.00" className="w-full pl-16 bg-slate-50 border border-slate-200 rounded-xl pr-4 py-3 font-bold text-slate-900 outline-none focus:border-blue-500 transition" />
+                                    <Mail size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                                    <input
+                                        type="email"
+                                        value={form.email}
+                                        onChange={e => setForm({ ...form, email: e.target.value })}
+                                        className={`${getInputClass('email')} pl-9`}
+                                        placeholder="john@example.com"
+                                    />
                                 </div>
+                                <ErrorMsg field="email" />
                             </div>
-
-                            <div className="col-span-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Location</label>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Alternate Phone Number</label>
                                 <div className="relative">
-                                    <input required name="loc" onChange={handleInputChange} placeholder="e.g. Mumbai, Maharashtra" className="w-full pl-10 bg-slate-50 border border-slate-200 rounded-xl pr-4 py-3 font-bold text-slate-900 outline-none focus:border-blue-500 transition" />
-                                    <FaLocationDot className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <Phone size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                                    <input
+                                        value={form.altPhone}
+                                        onChange={e => setForm({ ...form, altPhone: e.target.value })}
+                                        className={`${getInputClass('altPhone')} pl-9`}
+                                        placeholder="+91 XXXXX XXXXX"
+                                    />
                                 </div>
-                            </div>
-
-                            <div className="col-span-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Description</label>
-                                <textarea required name="desc" rows={4} onChange={handleInputChange} placeholder="Describe your service..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-900 outline-none focus:border-blue-500 transition" />
+                                <ErrorMsg field="altPhone" />
                             </div>
                         </div>
                     </div>
 
-                    {/* 2. Images Card */}
-                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-8">
-                        <h2 className="font-bold text-lg mb-6 text-slate-900">Portfolio & Cover</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                            {/* Cover Image Upload */}
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Cover Image</label>
-                                <div className={clsx("relative w-full aspect-video rounded-xl border-2 border-dashed flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition", coverImg ? "border-blue-500" : "border-slate-300")}>
-                                    <input disabled={uploading} type="file" accept="image/*" onChange={handleCoverUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-
-                                    {uploading && !coverImg ? (
-                                        <div className="flex flex-col items-center text-blue-500 animate-pulse">
-                                            <FaSpinner className="animate-spin text-2xl mb-2" />
-                                            <span className="text-xs font-bold">Uploading...</span>
-                                        </div>
-                                    ) : coverImg ? (
-                                        <img src={coverImg} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="text-center text-slate-400">
-                                            <FaCamera className="mx-auto mb-2 text-xl" />
-                                            <span className="text-xs font-bold">Upload Cover</span>
-                                        </div>
-                                    )}
-                                </div>
+                    {/* 3. ADDRESS */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100 mb-2">
+                            <MapPin className="text-blue-600" size={20} /> <span className="font-bold text-slate-900">Permanent Address</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="col-span-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Address Line 1</label>
+                                <input
+                                    value={form.addressLine1}
+                                    onChange={e => setForm({ ...form, addressLine1: e.target.value })}
+                                    className={getInputClass('addressLine1')}
+                                    placeholder="Flat, House No, Building"
+                                />
+                                <ErrorMsg field="addressLine1" />
                             </div>
-
-                            {/* Gallery Upload */}
+                            <div className="col-span-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Address Line 2 (Optional)</label>
+                                <input
+                                    value={form.addressLine2}
+                                    onChange={e => setForm({ ...form, addressLine2: e.target.value })}
+                                    className={getInputClass('addressLine2')}
+                                    placeholder="Area, Street, Sector"
+                                />
+                            </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Gallery (Add up to 4)</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {gallery.map((img, i) => (
-                                        <img key={i} src={img} className="w-full aspect-square object-cover rounded-lg border border-slate-200" />
-                                    ))}
-
-                                    {gallery.length < 4 && (
-                                        <div className="relative w-full aspect-square rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition">
-                                            <input disabled={uploading} type="file" accept="image/*" onChange={handleGalleryUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                                            {uploading && gallery.length < 4 ? (
-                                                <FaSpinner className="animate-spin text-blue-500 text-xl" />
-                                            ) : (
-                                                <FaImages className="text-slate-400 text-xl" />
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">City</label>
+                                <input
+                                    value={form.city}
+                                    onChange={e => setForm({ ...form, city: e.target.value })}
+                                    className={getInputClass('city')}
+                                />
+                                <ErrorMsg field="city" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Pincode</label>
+                                <input
+                                    value={form.pincode}
+                                    onChange={e => setForm({ ...form, pincode: e.target.value })}
+                                    className={getInputClass('pincode')}
+                                    maxLength={6}
+                                />
+                                <ErrorMsg field="pincode" />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">State</label>
+                                <input
+                                    value={form.state}
+                                    onChange={e => setForm({ ...form, state: e.target.value })}
+                                    className={getInputClass('state')}
+                                />
+                                <ErrorMsg field="state" />
                             </div>
                         </div>
                     </div>
+
+                    {/* General Error Banner */}
+                    {Object.keys(errors).length > 0 && (
+                        <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 text-sm font-bold border border-red-100 animate-in fade-in slide-in-from-bottom-2">
+                            <AlertTriangle size={20} className="shrink-0" />
+                            <span>Please fix the highlighted errors before submitting.</span>
+                        </div>
+                    )}
 
                     <button
                         type="submit"
                         disabled={loading || uploading}
-                        className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-xl hover:bg-black hover:-translate-y-1 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-xl hover:bg-black transition flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                        {loading || uploading ? (
-                            <>
-                                <FaSpinner className="animate-spin" />
-                                {uploading ? "Uploading Images..." : "Creating Profile..."}
-                            </>
+                        {loading ? (
+                            <Loader2 className="animate-spin" />
                         ) : (
-                            <><FaCheck /> Create Professional Profile</>
+                            <>Complete Registration <Check /></>
                         )}
                     </button>
                 </form>
