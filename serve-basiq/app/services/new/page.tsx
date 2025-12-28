@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUIStore } from "@/lib/store";
 import {
     ArrowLeft, Camera, User, Mail, Phone, MapPin,
-    Check, Loader2, AlertTriangle, UploadCloud
+    Check, Loader2, AlertTriangle, Navigation // ✅ Added Navigation Icon
 } from 'lucide-react';
 import { onboardSchema } from "@/lib/validators";
 
@@ -37,6 +37,7 @@ export default function BecomeProPage() {
 
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [gettingLoc, setGettingLoc] = useState(false); // ✅ Location loading state
     const [imgPreview, setImgPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<any>({});
 
@@ -50,7 +51,35 @@ export default function BecomeProPage() {
         city: "",
         state: "",
         pincode: "",
+        latitude: 0,  // ✅ Init Lat
+        longitude: 0, // ✅ Init Lng
     });
+
+    // --- ✅ GEOLOCATION HANDLER ---
+    const handleGetLocation = () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+
+        setGettingLoc(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setForm(prev => ({
+                    ...prev,
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                }));
+                setGettingLoc(false);
+            },
+            (error) => {
+                console.error(error);
+                alert("Unable to retrieve your location. Please allow GPS access.");
+                setGettingLoc(false);
+            },
+            { enableHighAccuracy: true }
+        );
+    };
 
     // Handle Image Upload
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,7 +90,6 @@ export default function BecomeProPage() {
             setUploading(true);
             const url = await uploadToImageKit(file);
             setImgPreview(url);
-            // Clear specific error if it exists
             setErrors((prev: any) => ({ ...prev, img: null }));
         } catch (err) {
             alert("Image upload failed. Please try again.");
@@ -83,17 +111,15 @@ export default function BecomeProPage() {
         setErrors({});
 
         try {
-            // 1. Prepare Payload
             const payload = {
                 ...form,
                 img: imgPreview || ""
             };
 
-            // 2. Validate with Zod (Frontend Check)
-            // This throws an error if validation fails, catching in the catch block below
+            // Zod Validation
             onboardSchema.parse(payload);
 
-            // 3. Submit to Backend
+            // Submit to Backend
             const res = await fetch("/api/provider/onboard", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -103,25 +129,19 @@ export default function BecomeProPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Registration failed");
 
-            // 4. Success: Update Store & Redirect
+            // Success
             setCurrentUser({ ...currentUser, isWorker: true, isWebsite: false });
-
-            // Redirect with 'new=true' to trigger the Welcome Toast on the dashboard
             router.push("/provider/dashboard?new=true");
 
         } catch (error: any) {
             if (error.issues) {
-                // Handle Zod Validation Errors
                 const formattedErrors: any = {};
                 error.issues.forEach((issue: any) => {
                     formattedErrors[issue.path[0]] = issue.message;
                 });
                 setErrors(formattedErrors);
-
-                // Scroll to top to see errors if needed
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-                // Handle Generic API Errors
                 alert(error.message || "Something went wrong.");
             }
         } finally {
@@ -129,7 +149,6 @@ export default function BecomeProPage() {
         }
     };
 
-    // Helper for Input Styling
     const getInputClass = (fieldName: string) => `w-full bg-slate-50 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition ${errors[fieldName] ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`;
     const ErrorMsg = ({ field }: { field: string }) => errors[field] ? <p className="text-red-500 text-xs mt-1 font-medium">{errors[field]}</p> : null;
 
@@ -154,7 +173,6 @@ export default function BecomeProPage() {
                     <div className={`bg-white p-6 rounded-2xl shadow-sm border flex flex-col items-center ${errors.img ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}>
                         <div className="relative w-32 h-32 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg cursor-pointer hover:opacity-90 transition group">
                             <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-
                             {uploading ? (
                                 <Loader2 className="animate-spin text-blue-500" />
                             ) : imgPreview ? (
@@ -214,7 +232,7 @@ export default function BecomeProPage() {
                         </div>
                     </div>
 
-                    {/* 3. ADDRESS */}
+                    {/* 3. ADDRESS & LOCATION */}
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                         <div className="flex items-center gap-2 pb-2 border-b border-slate-100 mb-2">
                             <MapPin className="text-blue-600" size={20} /> <span className="font-bold text-slate-900">Permanent Address</span>
@@ -266,6 +284,23 @@ export default function BecomeProPage() {
                                     className={getInputClass('state')}
                                 />
                                 <ErrorMsg field="state" />
+                            </div>
+
+                            {/* ✅ GEO LOCATION BUTTON */}
+                            <div className="col-span-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={handleGetLocation}
+                                    className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 py-3 rounded-lg font-bold transition"
+                                >
+                                    {gettingLoc ? <Loader2 className="animate-spin" size={18} /> : <Navigation size={18} />}
+                                    {form.latitude !== 0 ? "Location Captured ✓" : "Get Current Location"}
+                                </button>
+                                {form.latitude !== 0 && (
+                                    <p className="text-xs text-center text-green-600 mt-2 font-mono">
+                                        Lat: {form.latitude.toFixed(5)}, Lng: {form.longitude.toFixed(5)}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>

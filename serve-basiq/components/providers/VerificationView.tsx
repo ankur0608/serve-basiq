@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Save, UploadCloud, FileText, CreditCard, Loader2, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 
 // --- ImageKit Upload Helper ---
@@ -24,52 +25,63 @@ async function uploadToImageKit(file: File, folder: string): Promise<string> {
 }
 
 export function VerificationView({ userId, existingData, showToast, onBack }: any) {
+    const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [uploadingId, setUploadingId] = useState(false);
     const [uploadingBiz, setUploadingBiz] = useState(false);
-
-    // State for validation errors
     const [errors, setErrors] = useState<any>({});
 
+    // 1. Initial State
     const [form, setForm] = useState({
-        // Bank
         bankAccountHolder: existingData?.bankAccountHolder || '',
         bankAccountNumber: existingData?.bankAccountNumber || '',
         bankIfsc: existingData?.bankIfsc || '',
         bankName: existingData?.bankName || '',
         upiId: existingData?.upiId || '',
-
-        // Docs
-        idProofType: existingData?.idProofType || 'Aadhaar',
+        idProofType: existingData?.idProofType || 'Aadhaar Card',
         idProofNumber: existingData?.idProofNumber || '',
         idProofImg: existingData?.idProofImg || '',
         businessProofImg: existingData?.businessProofImg || '',
     });
 
-    // --- INPUT HANDLERS (STRICT FORMATTING) ---
+    // 2. ✅ Sync state when existingData loads or changes
+    // This ensures data appears when the user navigates back to this view
+    useEffect(() => {
+        if (existingData) {
+            setForm(prev => ({
+                ...prev,
+                bankAccountHolder: existingData.bankAccountHolder || prev.bankAccountHolder,
+                bankAccountNumber: existingData.bankAccountNumber || prev.bankAccountNumber,
+                bankIfsc: existingData.bankIfsc || prev.bankIfsc,
+                bankName: existingData.bankName || prev.bankName,
+                upiId: existingData.upiId || prev.upiId,
+                idProofType: existingData.idProofType || prev.idProofType,
+                idProofNumber: existingData.idProofNumber || prev.idProofNumber,
+                idProofImg: existingData.idProofImg || prev.idProofImg,
+                businessProofImg: existingData.businessProofImg || prev.businessProofImg,
+            }));
+        }
+    }, [existingData]);
 
-    // 1. Only Letters & Spaces (Name, Bank Name)
+    // --- INPUT HANDLERS ---
     const handleTextOnly = (field: string, value: string) => {
         const cleanValue = value.replace(/[^a-zA-Z\s]/g, '');
         setForm(prev => ({ ...prev, [field]: cleanValue }));
         if (errors[field]) setErrors((prev: any) => ({ ...prev, [field]: null }));
     };
 
-    // 2. Only Numbers (Account No, Aadhaar)
     const handleNumberOnly = (field: string, value: string) => {
         const cleanValue = value.replace(/[^0-9]/g, '');
         setForm(prev => ({ ...prev, [field]: cleanValue }));
         if (errors[field]) setErrors((prev: any) => ({ ...prev, [field]: null }));
     };
 
-    // 3. Alphanumeric Uppercase (IFSC, PAN, ID)
     const handleAlphaNumeric = (field: string, value: string) => {
         const cleanValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
         setForm(prev => ({ ...prev, [field]: cleanValue }));
         if (errors[field]) setErrors((prev: any) => ({ ...prev, [field]: null }));
     };
 
-    // --- FILE UPLOAD ---
     const handleFileUpload = async (e: any, field: string) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -80,7 +92,7 @@ export function VerificationView({ userId, existingData, showToast, onBack }: an
         try {
             const url = await uploadToImageKit(file, "/documents");
             setForm(prev => ({ ...prev, [field]: url }));
-            setErrors((prev: any) => ({ ...prev, [field]: null })); // Clear error
+            setErrors((prev: any) => ({ ...prev, [field]: null }));
             showToast("Document uploaded successfully", "success");
         } catch (error) {
             showToast("Upload failed", "error");
@@ -90,21 +102,16 @@ export function VerificationView({ userId, existingData, showToast, onBack }: an
         }
     };
 
-    // --- VALIDATION LOGIC ---
     const validate = () => {
         let newErrors: any = {};
         let isValid = true;
 
-        // Bank Validations
         if (!form.bankAccountHolder.trim()) newErrors.bankAccountHolder = "Account holder name is required";
-        if (form.bankAccountNumber.length < 9) newErrors.bankAccountNumber = "Invalid Account Number (min 9 digits)";
+        if (form.bankAccountNumber.length < 9) newErrors.bankAccountNumber = "Invalid Account Number";
         if (!form.bankName.trim()) newErrors.bankName = "Bank name is required";
-
-        // IFSC: Must be exactly 11 characters
         if (form.bankIfsc.length !== 11) newErrors.bankIfsc = "IFSC Code must be 11 characters";
 
-        // ID Proof Validations
-        if (form.idProofType === 'Aadhaar') {
+        if (form.idProofType === 'Aadhaar Card') {
             if (form.idProofNumber.length !== 12) newErrors.idProofNumber = "Aadhaar must be 12 digits";
         } else if (form.idProofType === 'PAN Card') {
             if (form.idProofNumber.length !== 10) newErrors.idProofNumber = "PAN must be 10 characters";
@@ -117,18 +124,17 @@ export function VerificationView({ userId, existingData, showToast, onBack }: an
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             isValid = false;
-            // Scroll to top to show errors
             window.scrollTo({ top: 0, behavior: 'smooth' });
             showToast("Please fix the highlighted errors", "error");
         }
-
         return isValid;
     };
 
+    // --- SUBMIT HANDLER ---
     const handleSubmit = async (e: any) => {
         e.preventDefault();
 
-        if (!validate()) return; // Stop if validation fails
+        if (!validate()) return;
 
         setLoading(true);
 
@@ -140,10 +146,16 @@ export function VerificationView({ userId, existingData, showToast, onBack }: an
             });
 
             const data = await res.json();
+
             if (data.success) {
-                showToast("Verification details submitted for review!", "success");
+                showToast("Verification details updated successfully!", "success");
+
+                // 3. ✅ Return to Dashboard Profile View
+                setTimeout(() => {
+                    onBack();
+                }, 1000);
             } else {
-                showToast("Failed to save details", "error");
+                showToast(data.message || "Failed to save details", "error");
             }
         } catch (error) {
             showToast("Server error", "error");
@@ -152,14 +164,12 @@ export function VerificationView({ userId, existingData, showToast, onBack }: an
         }
     };
 
-    // Helper for input styles
     const getInputClass = (fieldName: string) => `w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 transition ${errors[fieldName] ? 'border-red-500 ring-red-100 bg-red-50' : 'border-slate-200 bg-slate-50 focus:ring-blue-500'}`;
     const ErrorMsg = ({ field }: { field: string }) => errors[field] ? <p className="text-red-500 text-xs mt-1 font-medium flex items-center gap-1"><AlertCircle size={10} /> {errors[field]}</p> : null;
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto pb-10">
-
-            {/* HEADER */}
+            {/* Header */}
             <div className="flex items-center gap-3 mb-6">
                 <button onClick={onBack} className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm">
                     <ArrowLeft size={20} className="text-slate-600" />
@@ -170,7 +180,7 @@ export function VerificationView({ userId, existingData, showToast, onBack }: an
                 </div>
             </div>
 
-            {/* STATUS BANNER */}
+            {/* Status Banner */}
             <div className="flex justify-end items-center mb-6">
                 {existingData?.isVerified ? (
                     <span className="flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold text-sm">
@@ -209,7 +219,7 @@ export function VerificationView({ userId, existingData, showToast, onBack }: an
                                 onChange={e => handleNumberOnly('bankAccountNumber', e.target.value)}
                                 className={getInputClass('bankAccountNumber')}
                                 placeholder="XXXXXXXXXXXX"
-                                maxLength={18} // Standard max length
+                                maxLength={18}
                             />
                             <ErrorMsg field="bankAccountNumber" />
                         </div>

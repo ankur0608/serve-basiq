@@ -184,7 +184,7 @@ export default function ProviderDashboard() {
                     {/* ✅ System Section for Settings */}
                     <div className="pt-4 mt-4 border-t border-slate-100">
                         <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">System</p>
-                        <NavButton id="settings" icon={Settings} label="Settings" active={activeView} set={handleViewChange} />
+                        <NavButton id="settings" icon={Settings} label="Service" active={activeView} set={handleViewChange} />
                     </div>
                 </nav>
 
@@ -249,8 +249,9 @@ export default function ProviderDashboard() {
                     {/* ✅ Settings View */}
                     {activeView === 'settings' && (
                         <ServiceSettingsView
-                            userId={currentUser?.id}
-                            existingData={serviceData} // <--- PASS THIS
+                            userId={currentUser?.id || ""}
+                            serviceData={serviceData}
+                            userAddress={userData?.addresses?.[0]}
                             showToast={showToast}
                         />
                     )}
@@ -258,12 +259,15 @@ export default function ProviderDashboard() {
                     {activeView === 'edit-profile' && (
                         <VerificationView
                             userId={currentUser?.id}
-                            existingData={serviceData}
+                            // 👇 CHANGE THIS: Pass userData instead of serviceData
+                            existingData={userData}
                             showToast={showToast}
-                            onBack={() => setActiveView('profile')}
+                            onBack={() => {
+                                // Optional: Refresh data here if you want immediate updates without refresh
+                                setActiveView('profile');
+                            }}
                         />
                     )}
-
                     {activeView === 'products' && (
                         <ProductsView
                             setActiveView={handleViewChange}

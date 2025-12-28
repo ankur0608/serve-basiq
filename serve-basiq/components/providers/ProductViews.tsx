@@ -263,13 +263,13 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                 </div>
 
                 {/* Banking Info (Visual Only for now) */}
-                <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-5 opacity-50 pointer-events-none">
+                {/* <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-5 opacity-50 pointer-events-none">
                     <div className="col-span-2 text-sm font-bold text-slate-900">Banking Information (Coming Soon)</div>
                     <div className="col-span-2">
                         <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Account Holder Name</label>
                         <input disabled value={form.bank_account_holder_name} className="w-full border border-slate-200 rounded-lg px-4 py-2 bg-slate-50" />
                     </div>
-                </div>
+                </div> */}
 
                 <button disabled={loading || uploading} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-black transition flex items-center justify-center gap-2">
                     {loading ? <Loader2 className="animate-spin" /> : (editingProduct ? "Update Product" : "Save Product")}
