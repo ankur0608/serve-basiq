@@ -3,7 +3,7 @@
 import {
     DollarSign, Briefcase, Star, Bell, Wallet, Filter, ShieldCheck, ArrowLeft
 } from 'lucide-react';
-import { StatCard, ActivityItem, RequestCard, LeadCard } from './DashboardComponents'; // Ensure this path is correct based on your folder structure
+import { StatCard, ActivityItem, RequestCard, LeadCard } from './DashboardComponents';
 import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -51,7 +51,7 @@ export function DashboardHomeView({ stats, setActiveView, onBackToHome }: any) {
             <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900">Dashboard Overview</h2>
-                    <p className="text-slate-500 text-sm mt-1">Welcome back, {stats?.service.name}!</p>
+                    <p className="text-slate-500 text-sm mt-1">Welcome back, {stats?.service?.name || "Provider"}!</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -171,16 +171,30 @@ export function EarningsView() {
     )
 }
 
+// ✅ UPDATED PROFILE VIEW TO USE USER IMAGE
 export function ProfileView({ stats, onEdit }: any) {
+    // This will now correctly be the User Image if you applied the ProviderDashboard fix
+    const imageUrl = stats?.service?.img || "https://i.pravatar.cc/150";
+
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+                {/* Banner Background */}
                 <div className="h-32 md:h-48 w-full bg-gradient-to-r from-blue-600 to-indigo-600 relative"></div>
+
                 <div className="px-6 pb-6 relative">
                     <div className="flex justify-between items-end -mt-12 mb-4">
-                        <img src={stats?.service.img || "https://i.pravatar.cc/150"} className="w-24 h-24 rounded-2xl border-4 border-white shadow-md bg-white object-cover" />
+                        {/* Profile Image */}
+                        <div className="w-24 h-24 rounded-2xl border-4 border-white shadow-md bg-white overflow-hidden">
+                            <img
+                                src={imageUrl}
+                                alt={stats?.service?.name || "Profile"}
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.currentTarget.src = "https://i.pravatar.cc/150"; }}
+                            />
+                        </div>
 
-                        {/* ✅ This button now triggers the Verification/Edit Form */}
+                        {/* Edit Button */}
                         <button
                             onClick={onEdit}
                             className="bg-slate-900 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-black transition shadow-md"
@@ -188,13 +202,15 @@ export function ProfileView({ stats, onEdit }: any) {
                             Edit Profile & Verification
                         </button>
                     </div>
+
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        {stats?.service.name} <ShieldCheck className="w-5 h-5 text-blue-500 fill-blue-100" />
+                        {stats?.service?.name || "Provider Name"} <ShieldCheck className="w-5 h-5 text-blue-500 fill-blue-100" />
                     </h1>
-                    <p className="text-slate-500">{stats?.service.cat} Expert</p>
+                    <p className="text-slate-500">{stats?.service?.cat || "Service"} Expert</p>
+
                     <div className="mt-6">
                         <h3 className="font-bold mb-2">About</h3>
-                        <p className="text-sm text-slate-600 leading-relaxed">{stats?.service.desc}</p>
+                        <p className="text-sm text-slate-600 leading-relaxed">{stats?.service?.desc || "No description provided."}</p>
                     </div>
                 </div>
             </div>

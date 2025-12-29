@@ -10,7 +10,6 @@ export async function POST(req: Request) {
         const validData = onboardSchema.parse(body);
         const { userId } = body;
 
-        // Transaction: Update User, Create Address, Create Skeleton Service with Location
         await prisma.$transaction(async (tx) => {
             // 1. Update User Profile
             await tx.user.update({
@@ -36,39 +35,9 @@ export async function POST(req: Request) {
                 },
             });
 
-            // 3. Create Skeleton Service with Lat/Lng
-            const existingService = await tx.service.findUnique({ where: { userId } });
-
-            if (!existingService) {
-                await tx.service.create({
-                    data: {
-                        userId: userId,
-                        name: validData.fullName,
-                        desc: "New Service Provider",
-                        img: validData.img,
-                        altPhone: validData.altPhone,
-
-                        // ✅ SAVE LOCATION HERE
-                        latitude: validData.latitude || 0,
-                        longitude: validData.longitude || 0,
-
-                        // Also save address fields to Service for backup/search
-                        addressLine1: validData.addressLine1,
-                        city: validData.city,
-                        state: validData.state,
-                        pincode: validData.pincode,
-                    },
-                });
-            } else {
-                // Optional: Update existing service if they came back
-                await tx.service.update({
-                    where: { userId },
-                    data: {
-                        latitude: validData.latitude || existingService.latitude,
-                        longitude: validData.longitude || existingService.longitude,
-                    }
-                })
-            }
+            // ❌ REMOVED: The logic that automatically created a service.
+            // Now, the user will finish onboarding, but have 0 services.
+            // They must click "Create New Service" in the dashboard manually.
         });
 
         return NextResponse.json({ success: true });

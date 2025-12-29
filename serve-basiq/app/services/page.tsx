@@ -4,45 +4,50 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaMagnifyingGlass, FaSliders } from 'react-icons/fa6';
 import clsx from 'clsx';
-import ServiceCard from '@/components/ui/ServiceCard';
-
-// Define Interface
-interface Service {
-  id: number;
-  name: string;
-  cat: string;
-  price: number;
-  loc: string;
-  img: string;
-  rating: number;
-  verified: boolean;
-  reviews?: any[];
-}
+import ServiceCard, { ServiceProps } from '@/components/ui/ServiceCard'; // ✅ Use shared interface
 
 export default function ServicesPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
-  const [services, setServices] = useState<Service[]>([]);
+  // Use the interface from your Card component
+  const [services, setServices] = useState<ServiceProps[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchServices = async () => {
-      console.log("🚀 Starting fetch request to /api/services/all...");
+      console.log("🚀 Starting fetch request...");
 
       try {
         const res = await fetch('/api/services/all');
+        if (!res.ok) throw new Error(`HTTP Error! status: ${res.status}`);
 
-        console.log("Response Status:", res.status); // Should be 200
+        const rawData = await res.json();
+        console.log("📦 Raw DB Data:", rawData);
 
-        if (!res.ok) {
-          throw new Error(`HTTP Error! status: ${res.status}`);
-        }
+        // ✅ CRITICAL STEP: Map DB fields to UI fields
+        const formattedData = rawData.map((item: any) => ({
+          id: item.id,
+          // 1. Prefer the "Service Brand Name" (e.g., Joe's Plumbing), fallback to User Name
+          name: item.name || item.user?.name || "Service Provider",
 
-        const data = await res.json();
-        console.log("📦 Data Received:", data);
-        setServices(data);
+          // 2. Map 'categoryId' (DB) to 'cat' (UI)
+          cat: item.categoryId || item.cat || "General",
+
+          // 3. Map 'city' (DB) to 'loc' (UI)
+          loc: item.city ? `${item.city}, ${item.state || ''}` : item.loc,
+
+          // 4. Ensure numbers
+          price: Number(item.price) || 0,
+          rating: Number(item.rating) || 0,
+
+          // 5. Images
+          img: item.user?.img || item.img || "/default-avatar.png",
+          verified: item.user?.isVerified || false
+        }));
+
+        setServices(formattedData);
 
       } catch (error) {
         console.error("❌ Error fetching services:", error);
@@ -55,19 +60,26 @@ export default function ServicesPage() {
 
   // Filter Logic
   const filteredServices = services.filter((service) => {
+    const categoryName = service.cat || '';
+
     const matchesSearch =
       service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.cat.toLowerCase().includes(searchTerm.toLowerCase());
+      categoryName.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesCategory = activeCategory === 'All' || service.cat === activeCategory;
+
     return matchesSearch && matchesCategory;
   });
 
-  // Extract Categories
-  const categories = Array.from(new Set(services.map(s => s.cat)));
+  // Extract Categories (Safe Filter)
+  const categories = Array.from(new Set(
+    services
+      .map(s => s.cat)
+      .filter((cat): cat is string => typeof cat === 'string' && cat.length > 0)
+  ));
 
   return (
     <div className="min-h-screen pb-20 bg-slate-50">
-
       {/* Header */}
       <div className="bg-white border-b border-gray-100 top-16 z-30 pt-6 pb-4 px-4 shadow-sm">
         <div className="max-w-7xl mx-auto">
@@ -78,7 +90,7 @@ export default function ServicesPage() {
               <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search services, experts..."
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-2 focus:ring-blue-500 transition"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

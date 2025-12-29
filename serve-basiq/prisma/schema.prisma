@@ -1,132 +1,161 @@
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+    provider = "postgresql"
 }
 
 model User {
-  id    String  @id @default(cuid())
-  phone String  @unique
-  name  String?
-  email String? @unique
-  role  String  @default("USER")
-  img   String?
+    id    String  @id @default(cuid())
+    phone String  @unique
+    name  String?
+    email String? @unique
+    role  String  @default("USER")
+    img   String?
 
-  isPhoneVerified Boolean @default(false)
-  isWorker        Boolean @default(false)
-  isWebsite       Boolean @default(true)
+    isPhoneVerified Boolean @default(false)
+    isWorker        Boolean @default(false)
+    isWebsite       Boolean @default(true)
 
-  // ✅ STATUS FLAGS
-  isVerified         Boolean @default(false) // Final Admin Approval
-  verificationStatus String  @default("PENDING") // PENDING, SUBMITTED, REJECTED
+    // ✅ STATUS FLAGS
+    isVerified         Boolean @default(false) // Final Admin Approval
+    verificationStatus String  @default("PENDING") // PENDING, SUBMITTED, REJECTED
 
-  // ✅ BANKING DETAILS (Directly in User)
-  bankAccountHolder String?
-  bankAccountNumber String?
-  bankIfsc          String?
-  bankName          String?
-  upiId             String?
+    // ✅ BANKING DETAILS (Directly in User)
+    bankAccountHolder String?
+    bankAccountNumber String?
+    bankIfsc          String?
+    bankName          String?
+    upiId             String?
 
-  // ✅ KYC DOCUMENTS (Directly in User)
-  idProofType      String? @default("Aadhaar") // Aadhaar, PAN, DL
-  idProofNumber    String?
-  idProofImg       String?
-  businessProofImg String?
+    // ✅ KYC DOCUMENTS (Directly in User)
+    idProofType      String? @default("Aadhaar") // Aadhaar, PAN, DL
+    idProofNumber    String?
+    idProofImg       String?
+    businessProofImg String?
 
-  // Relations
-  service   Service?
-  addresses Address[]
-  products  Product[]
+    // Relations
+    services  Service[]
+    addresses Address[]
+    products  Product[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    reviews   Review[]
 }
 
 // --- ADDRESS MODEL (NEW) ---
 model Address {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id     String @id @default(cuid())
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  type    String @default("Home") // Home, Work, Other
-  line1   String // Flat, Building, Street
-  line2   String
-  city    String
-  state   String
-  pincode String
-  country String @default("India")
+    type    String @default("Home") // Home, Work, Other
+    line1   String // Flat, Building, Street
+    line2   String
+    city    String
+    state   String
+    pincode String
+    country String @default("India")
 
-  createdAt DateTime @default(now())
+    createdAt DateTime @default(now())
 }
 
 // --- OTP MODEL ---
 model Otp {
-  id        String   @id @default(cuid())
-  phone     String
-  code      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+    id        String   @id @default(cuid())
+    phone     String
+    code      String
+    expiresAt DateTime
+    createdAt DateTime @default(now())
 }
 
 model Service {
-  id     Int    @id @default(autoincrement())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
+    id Int @id @default(autoincrement())
 
-  // Basic Profile (from Onboarding)
-  name       String
-  desc       String
-  img        String
-  experience String?
-  altPhone   String?
+    userId     String
+    user       User    @relation(fields: [userId], references: [id])
+    // Basic Profile
+    name       String
+    desc       String
+    img        String
+    experience String?
+    altPhone   String?
 
-  // ✅ NEW FIELDS (Service Details)
-  categoryId     String?
-  subCategoryIds String[] // Array of strings
+    category   Category? @relation(fields: [categoryId], references: [id])
+    categoryId String?
 
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  state        String?
-  pincode      String?
+    subCategoryIds String[]
 
-  latitude  Float?
-  longitude Float?
-  radiusKm  Int?   @default(10)
+    // Location
+    addressLine1 String?
+    addressLine2 String?
+    city         String?
+    state        String?
+    pincode      String?
 
-  workingDays String[] // e.g. ["Mon", "Tue"]
-  openTime    String? // e.g. "09:00"
-  closeTime   String? // e.g. "18:00"
+    // ✅ IMPROVEMENT: Use Decimal for precision in Maps
+    latitude  Decimal?
+    longitude Decimal?
+    radiusKm  Int?     @default(10)
 
-  // Existing fields
-  cat      String? // Keeping for backward compatibility if needed
-  price    Float    @default(0)
-  rating   Float    @default(5.0)
-  loc      String?
-  verified Boolean  @default(false)
-  gallery  String[]
-  reviews  Json?
+    // Scheduling
+    workingDays String[] // ["Mon", "Tue"]
+    openTime    String? // "09:00"
+    closeTime   String? // "18:00"
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    // Details
+    price    Float    @default(0)
+    rating   Float    @default(5.0) // You can calculate this dynamically from the Review table later
+    loc      String?
+    verified Boolean  @default(false)
+    gallery  String[]
+
+    // ✅ IMPROVEMENT: Separate Model for Reviews
+    reviews Review[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+// Example Helper Models
+model Category {
+    id       String    @id @default(uuid())
+    name     String
+    services Service[]
+}
+
+model Review {
+    id      Int     @id @default(autoincrement())
+    rating  Int
+    comment String?
+
+    // Link to the Service
+    serviceId Int
+    service   Service @relation(fields: [serviceId], references: [id])
+
+    // Link to the User who wrote it
+    authorId String
+    author   User   @relation(fields: [authorId], references: [id])
+
+    createdAt DateTime @default(now())
 }
 
 // --- PRODUCT MODEL ---
 model Product {
-  id Int @id @default(autoincrement())
+    id Int @id @default(autoincrement())
 
-  userId String // ✅ Link to Seller
-  user   User   @relation(fields: [userId], references: [id])
+    userId String // ✅ Link to Seller
+    user   User   @relation(fields: [userId], references: [id])
 
-  name    String
-  cat     String
-  img     String
-  price   Float
-  moq     String // Minimum Order Quantity (e.g., "10 Units")
-  desc    String
-  gallery String[]
+    name    String
+    cat     String
+    img     String
+    price   Float
+    moq     String // Minimum Order Quantity (e.g., "10 Units")
+    desc    String
+    gallery String[]
 
-  createdAt DateTime @default(now())
+    createdAt DateTime @default(now())
 }

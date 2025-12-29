@@ -1,15 +1,36 @@
 import Link from 'next/link';
-import { prisma } from '@/lib/prisma'; // ✅ Import Prisma
+import { prisma } from '@/lib/prisma';
 import ServiceCard from '@/components/ui/ServiceCard';
 
 export default async function FeaturedProviders() {
+  // ✅ FIX: Explicitly tell TypeScript this is an array (using 'any[]' is the easiest fix here)
+  let services: any[] = [];
 
-  // 1. Fetch real data from Neon Database
-  // We take the top 3 services, ordered by newest first (or you can use rating: 'desc')
-  const featuredServices = await prisma.service.findMany({
-    take: 3,
-    orderBy: { createdAt: 'desc' }
-  });
+  try {
+    services = await prisma.service.findMany({
+      take: 3,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      where: {
+        categoryId: {
+          not: null
+        }
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            img: true,
+            isVerified: true
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Database connection failed:", error);
+    services = []; // Fallback to empty array on error
+  }
 
   return (
     <section>
@@ -26,19 +47,29 @@ export default async function FeaturedProviders() {
         </Link>
       </div>
 
-      {/* 2. Render Real Data */}
-      {featuredServices.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="home-featured-providers">
-          {featuredServices.map(service => (
-            <ServiceCard key={service.id} service={service} />
+      {services.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {services.map((service) => (
+            <ServiceCard
+              key={service.id}
+              service={{
+                id: service.id,
+                name: service.user?.name || "Service Provider",
+                cat: service.categoryId || "General",
+                price: Number(service.price) || 0,
+                loc: service.city || "Location N/A",
+                img: service.user?.img || "/default-avatar.png",
+                rating: Number(service.rating) || 0,
+                verified: service.user?.isVerified || false
+              }}
+            />
           ))}
         </div>
       ) : (
-        // Fallback if no data exists yet
         <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-gray-200">
           <p className="text-gray-500">No professionals found yet.</p>
-          <Link href="/services/new" className="text-blue-600 font-bold text-sm hover:underline">
-            Become the first Pro!
+          <Link href="/provider/dashboard" className="text-blue-600 font-bold text-sm hover:underline">
+            Be the first to join!
           </Link>
         </div>
       )}
