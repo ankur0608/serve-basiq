@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
           desc: description,
           img: imageUrl,
-          verified: false, // Badge is false initially
+          isVerified: false, // Badge is false initially
 
           // ✅ FIX 3: Add required fields for the new schema with defaults
           latitude: 0,

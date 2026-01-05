@@ -66,7 +66,7 @@ export async function POST(req: Request) {
         data: {
           userId, // Link to the user
           ...payload,
-          verified: false,
+          isVerified: false,
           rating: 5.0,
           img: "",
         },

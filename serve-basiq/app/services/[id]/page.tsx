@@ -53,7 +53,7 @@ export default async function ServiceDetail({ params }: Props) {
     ? `${service.city}${service.state ? `, ${service.state}` : ''}`
     : "Location N/A"; // Removed fallback to 'service.loc' if it doesn't exist on schema
 
-  const isVerified = service.verified || service.user?.isVerified || false;
+  const isVerified = service.user?.isVerified || false;
 
   // ✅ FIX: Removed 'service.cat' fallback which caused the error
   const categoryName = formatCategory(service.categoryId);

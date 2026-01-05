@@ -93,7 +93,20 @@ export default function ProviderDashboard() {
     const userData = dashboardData?.user;
     const displayName = userData?.name || currentUser?.name || "Provider";
     const displayImg = userData?.img || "https://i.pravatar.cc/150";
-    const isSetupComplete = services.length > 0;
+
+    // ✅ Logic Fix: Determine strictly what is missing
+    const hasServices = services.length > 0;
+    // Assume profile is incomplete if no phone or address (adjust logic to match your VerificationView requirements)
+    const hasProfileData = userData?.phone && userData?.addresses?.length > 0;
+
+    // This controls the "Blocking"
+    const isSetupComplete = hasServices;
+
+    // ✅ This controls the "Visual Indicators" in the modal
+    const missingSteps = {
+        service: !hasServices,     // If true, shows Red X. If false, shows Green Check.
+        verification: !hasProfileData
+    };
 
     const safeStats = {
         stats: dashboardData?.stats || { revenue: 0, jobsCompleted: 0, rating: 5.0, pendingRequests: 0 },
@@ -131,10 +144,17 @@ export default function ProviderDashboard() {
             <ProfileCheckModal
                 isOpen={showProfileModal}
                 onClose={() => setShowProfileModal(false)}
-                onGoToProfile={() => {
+                // ✅ UPDATED: Pass missingSteps so checks turn Red/Green correctly
+                missingSteps={missingSteps}
+                // ✅ UPDATED: Route user to the actual missing page
+                onFix={() => {
                     setShowProfileModal(false);
-                    setActiveView('settings');
-                    setIsCreatingService(true);
+                    if (missingSteps.service) {
+                        setActiveView('settings');
+                        setIsCreatingService(true);
+                    } else {
+                        setActiveView('profile');
+                    }
                 }}
                 action={blockedAction}
             />

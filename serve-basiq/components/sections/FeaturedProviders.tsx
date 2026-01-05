@@ -3,26 +3,40 @@ import { prisma } from '@/lib/prisma';
 import ServiceCard from '@/components/ui/ServiceCard';
 
 export default async function FeaturedProviders() {
-  // ❌ REMOVED try/catch so we can see the REAL error if it fails
-  const services = await prisma.service.findMany({
-    take: 3,
-    orderBy: { createdAt: 'desc' },
-    // 🔍 Comment this out temporarily to ensure filters aren't hiding your data
-    // where: { categoryId: { not: null } }, 
-    include: {
-      user: {
-        select: {
-          name: true,
-          img: true,
+  let services: any[] = [];
+
+  try {
+    services = await prisma.service.findMany({
+      take: 3,
+      orderBy: { createdAt: 'desc' },
+      where: {
+        // ✅ 1. Service must be verified (matches your schema 'isVerified')
+        isVerified: true,
+
+        // ✅ 2. Ensure it has a category
+        categoryId: { not: null },
+
+        // ✅ 3. Provider must be verified
+        user: {
           isVerified: true
         }
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            img: true,
+            isVerified: true
+          }
+        }
       }
-    }
-  });
+    });
+  } catch (error) {
+    console.error("❌ Featured Providers Error:", error);
+  }
 
   return (
     <section>
-      {/* ... keep your existing JSX return ... */}
       <div className="flex justify-between items-center mb-6 px-1">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Trusted Experts</h2>
@@ -44,7 +58,8 @@ export default async function FeaturedProviders() {
                 price: Number(service.price) || 0,
                 loc: service.city || "Location N/A",
                 img: service.user?.img || "/default-avatar.png",
-                rating: Number(service.rating) || 0,
+                rating: Number(service.rating) || 5.0,
+                // Pass the verification status explicitly
                 verified: service.user?.isVerified || false
               }}
             />
@@ -52,10 +67,7 @@ export default async function FeaturedProviders() {
         </div>
       ) : (
         <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-gray-200">
-          <p className="text-gray-500">No professionals found yet (DB returned 0).</p>
-          <Link href="/provider/dashboard" className="text-blue-600 font-bold text-sm hover:underline">
-            Be the first to join!
-          </Link>
+          <p className="text-gray-500">No trusted experts found.</p>
         </div>
       )}
     </section>

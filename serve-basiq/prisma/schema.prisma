@@ -1,49 +1,128 @@
 generator client {
-    provider = "prisma-client-js"
+    provider        = "prisma-client-js"
+    engineType      = "library"
+    previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
     provider = "postgresql"
 }
 
+model Admin {
+    id        String   @id @default(uuid())
+    email     String   @unique
+    password  String // Will be hashed
+    isOnline  Boolean  @default(false)
+    lastLogin DateTime @default(now())
+    createdAt DateTime @default(now())
+}
+
 model User {
-    id    String  @id @default(cuid())
-    phone String  @unique
-    name  String?
-    email String? @unique
-    role  String  @default("USER")
-    img   String?
+    id   String  @id @default(cuid())
+    name String?
+
+    // ⚠️ CHANGE: Phone must be optional for Google Auth (users might not have one yet)
+    phone String? @unique
+
+    email         String?   @unique
+    emailVerified DateTime? // ✅ Added: Standard NextAuth field
+    image         String? // ✅ Added: Standard NextAuth profile image field
+
+    role String  @default("USER")
+    img  String? // Your existing custom image field (keep this if your UI uses it)
 
     isPhoneVerified Boolean @default(false)
     isWorker        Boolean @default(false)
     isWebsite       Boolean @default(true)
 
     // ✅ STATUS FLAGS
-    isVerified         Boolean @default(false) // Final Admin Approval
-    verificationStatus String  @default("PENDING") // PENDING, SUBMITTED, REJECTED
+    isVerified         Boolean @default(false)
+    verificationStatus String  @default("PENDING")
 
-    // ✅ BANKING DETAILS (Directly in User)
+    // ✅ BANKING DETAILS
     bankAccountHolder String?
     bankAccountNumber String?
     bankIfsc          String?
     bankName          String?
     upiId             String?
 
-    // ✅ KYC DOCUMENTS (Directly in User)
-    idProofType      String? @default("Aadhaar") // Aadhaar, PAN, DL
+    // ✅ KYC DOCUMENTS
+    idProofType      String? @default("Aadhaar")
     idProofNumber    String?
     idProofImg       String?
     businessProofImg String?
+
+    // ✅ RELATION: Link to the Account model for Google/NextAuth
+    accounts Account[]
 
     // Relations
     services  Service[]
     addresses Address[]
     products  Product[]
+    reviews   Review[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
-    reviews   Review[]
 }
+
+// ✅ NEW: Account Model (Required for NextAuth/Google)
+model Account {
+    id                String  @id @default(cuid())
+    userId            String
+    type              String
+    provider          String
+    providerAccountId String
+    refresh_token     String? @db.Text
+    access_token      String? @db.Text
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String? @db.Text
+    session_state     String?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([provider, providerAccountId])
+}
+
+// model User {
+//     id    String  @id @default(cuid())
+//     phone String  @unique
+//     name  String?
+//     email String? @unique
+//     role  String  @default("USER")
+//     img   String?
+
+//     isPhoneVerified Boolean @default(false)
+//     isWorker        Boolean @default(false)
+//     isWebsite       Boolean @default(true)
+
+//     // ✅ STATUS FLAGS
+//     isVerified         Boolean @default(false) // Final Admin Approval
+//     verificationStatus String  @default("PENDING") // PENDING, SUBMITTED, REJECTED
+
+//     // ✅ BANKING DETAILS (Directly in User)
+//     bankAccountHolder String?
+//     bankAccountNumber String?
+//     bankIfsc          String?
+//     bankName          String?
+//     upiId             String?
+
+//     // ✅ KYC DOCUMENTS (Directly in User)
+//     idProofType      String? @default("Aadhaar") // Aadhaar, PAN, DL
+//     idProofNumber    String?
+//     idProofImg       String?
+//     businessProofImg String?
+
+//     // Relations
+//     services  Service[]
+//     addresses Address[]
+//     products  Product[]
+
+//     createdAt DateTime @default(now())
+//     updatedAt DateTime @updatedAt
+//     reviews   Review[]
+// }
 
 // --- ADDRESS MODEL (NEW) ---
 model Address {
@@ -106,11 +185,11 @@ model Service {
     closeTime   String? // "18:00"
 
     // Details
-    price    Float    @default(0)
-    rating   Float    @default(5.0) // You can calculate this dynamically from the Review table later
-    loc      String?
-    verified Boolean  @default(false)
-    gallery  String[]
+    price      Float    @default(0)
+    rating     Float    @default(5.0) // You can calculate this dynamically from the Review table later
+    loc        String?
+    isVerified Boolean  @default(false)
+    gallery    String[]
 
     // ✅ IMPROVEMENT: Separate Model for Reviews
     reviews Review[]
@@ -157,5 +236,6 @@ model Product {
     desc    String
     gallery String[]
 
-    createdAt DateTime @default(now())
+    isVerified Boolean  @default(false)
+    createdAt  DateTime @default(now())
 }

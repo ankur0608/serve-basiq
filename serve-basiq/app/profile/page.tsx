@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/lib/store';
 import {
     FaUser, FaCalendarCheck, FaGear, FaPhone, FaPencil, FaCheck,
-    FaLocationDot, FaHeadset, FaRightFromBracket, FaHouse, FaBriefcase,
-    FaPlus, FaTrash, FaEnvelope, FaIdCard, FaStar, FaHeart
+    FaLocationDot, FaHeadset, FaRightFromBracket, FaHouse,
+    FaPlus, FaTrash, FaEnvelope, FaIdCard, FaGoogle
 } from 'react-icons/fa6';
 import clsx from 'clsx';
 import ProfileHeader from '@/components/profile/ProfileHeader';
@@ -31,9 +31,10 @@ export default function ProfilePage() {
     // Tabs
     const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'profile' | 'settings'>('overview');
     const [showEditModal, setShowEditModal] = useState(false);
-    const [isSaving, setIsSaving] = useState(false); // Add loading state
+    const [isSaving, setIsSaving] = useState(false);
 
     const [addresses, setAddresses] = useState<Address[]>([]);
+
     useEffect(() => {
         if (!currentUser?.id) return;
 
@@ -53,22 +54,22 @@ export default function ProfilePage() {
         };
 
         fetchProfile();
-    }, [currentUser?.id]);
+    }, [currentUser?.id, setCurrentUser]);
 
-    // Derived Data for Modal
+    // Derived Data for Modal (Handle nulls for Google vs Phone users)
     const primaryAddress = addresses[0];
 
     const modalInitialData = {
-        name: currentUser?.name ?? '',
-        email: currentUser?.email ?? '',
-        phone: currentUser?.phone ?? '',
-        addressLine: primaryAddress?.line1 ?? '',
-        city: primaryAddress?.city ?? '',
-        state: primaryAddress?.state ?? '',
-        pincode: primaryAddress?.pincode ?? '',
+        name: currentUser?.name || '', // Google users have names, Phone users might not
+        email: currentUser?.email || '', // Phone users might be null
+        phone: currentUser?.phone || '', // Google users might be null
+        addressLine: primaryAddress?.line1 || '',
+        city: primaryAddress?.city || '',
+        state: primaryAddress?.state || '',
+        pincode: primaryAddress?.pincode || '',
     };
 
-    // --- SAVE HANDLER WITH API CALL ---
+    // --- SAVE HANDLER ---
     const handleSaveData = async (data: typeof modalInitialData) => {
         if (!currentUser) return;
         setIsSaving(true);
@@ -79,12 +80,7 @@ export default function ProfilePage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUser.id,
-                    name: data.name,
-                    email: data.email,
-                    addressLine: data.addressLine,
-                    city: data.city,
-                    state: data.state,
-                    pincode: data.pincode,
+                    ...data, // Spreads name, email, phone, address
                     country: 'India',
                 }),
             });
@@ -99,7 +95,6 @@ export default function ProfilePage() {
             setAddresses(updatedUser.addresses ?? []);
 
             setShowEditModal(false);
-            alert('Profile updated successfully!');
         } catch (error) {
             console.error(error);
             alert('Failed to save changes. Please try again.');
@@ -151,7 +146,7 @@ export default function ProfilePage() {
                 {/* Content */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[300px]">
 
-                    {/* ... (Overview and Bookings tabs same as before) ... */}
+                    {/* Overview Tab */}
                     {activeTab === 'overview' && (
                         <div className="text-center py-12 animate-fade-in border border-dashed border-gray-200 rounded-xl">
                             <p className="text-gray-400 text-sm">No recent activity found.</p>
@@ -159,6 +154,7 @@ export default function ProfilePage() {
                         </div>
                     )}
 
+                    {/* Bookings Tab */}
                     {activeTab === 'bookings' && (
                         <div className="text-center py-12 animate-fade-in border border-dashed border-gray-200 rounded-xl">
                             <FaCalendarCheck className="mx-auto text-4xl text-gray-200 mb-3" />
@@ -166,52 +162,129 @@ export default function ProfilePage() {
                         </div>
                     )}
 
-                    {/* PROFILE TAB */}
+                    {/* PROFILE TAB - UPDATED FOR HYBRID AUTH */}
                     {activeTab === 'profile' && (
                         <div className="space-y-8 animate-fade-in">
                             <div>
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="font-bold text-lg text-slate-900">Personal Information</h3>
-                                    <button onClick={() => setShowEditModal(true)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition shadow-sm"><FaPencil className="text-sm" /></button>
+                                    <button onClick={() => setShowEditModal(true)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition shadow-sm">
+                                        <FaPencil className="text-sm" />
+                                    </button>
                                 </div>
                                 <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                                    <div className="flex items-center justify-between border-b border-gray-200 pb-3"><span className="text-xs font-bold text-gray-400 uppercase">Name</span><span className="text-sm font-bold text-slate-900 flex items-center gap-2"><FaUser className="text-gray-400 text-xs" /> {currentUser.name || "N/A"}</span></div>
-                                    <div className="flex items-center justify-between border-b border-gray-200 pb-3"><span className="text-xs font-bold text-gray-400 uppercase">Phone</span><span className="text-sm font-bold text-slate-900 flex items-center gap-2"><FaPhone className="text-gray-400 text-xs" /> {currentUser.phone} <FaCheck className="text-green-500" /></span></div>
-                                    <div className="flex items-center justify-between"><span className="text-xs font-bold text-gray-400 uppercase">Email</span><span className="text-sm font-bold text-slate-900 flex items-center gap-2"><FaEnvelope className="text-gray-400 text-xs" /> {modalInitialData.email}</span></div>
+
+                                    {/* Name Field */}
+                                    <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                                        <span className="text-xs font-bold text-gray-400 uppercase">Name</span>
+                                        <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                            <FaUser className="text-gray-400 text-xs" />
+                                            {currentUser.name ? currentUser.name : <span className="text-gray-400 italic font-normal">Not Set</span>}
+                                        </span>
+                                    </div>
+
+                                    {/* Phone Field (Hybrid Logic) */}
+                                    <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                                        <span className="text-xs font-bold text-gray-400 uppercase">Phone</span>
+                                        <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                            <FaPhone className="text-gray-400 text-xs" />
+                                            {currentUser.phone ? (
+                                                <>
+                                                    {currentUser.phone}
+                                                    <FaCheck className="text-green-500 ml-1" title="Verified" />
+                                                </>
+                                            ) : (
+                                                <span className="text-orange-500 font-normal text-xs bg-orange-50 px-2 py-0.5 rounded-full">Add Phone</span>
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    {/* Email Field (Hybrid Logic) */}
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-gray-400 uppercase">Email</span>
+                                        <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                            {/* Show Google Icon if it's a gmail, else Envelope */}
+                                            {currentUser.email?.includes('gmail') ? <FaGoogle className="text-gray-400 text-xs" /> : <FaEnvelope className="text-gray-400 text-xs" />}
+
+                                            {currentUser.email ? (
+                                                currentUser.email
+                                            ) : (
+                                                <span className="text-blue-500 font-normal text-xs bg-blue-50 px-2 py-0.5 rounded-full">Add Email</span>
+                                            )}
+                                        </span>
+                                    </div>
+
                                 </div>
                             </div>
+
                             <hr className="border-gray-100" />
+
+                            {/* Addresses */}
                             <div>
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="font-bold text-lg text-slate-900">Saved Address</h3>
-                                    <button onClick={() => setShowEditModal(true)} className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-black transition"><FaPlus /> Add/Edit</button>
+                                    <button onClick={() => setShowEditModal(true)} className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-black transition">
+                                        <FaPlus /> Add/Edit
+                                    </button>
                                 </div>
                                 <div className="space-y-3">
-                                    {addresses.map(addr => (
-                                        <div key={addr.id} className="bg-white border border-gray-200 p-4 rounded-xl flex items-center gap-4 hover:border-blue-300 transition">
-                                            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-lg flex-shrink-0"><FaHouse /></div>
-                                            <div className="flex-1"><div className="font-bold text-slate-900 text-sm flex items-center gap-2">{addr.type}</div><div className="text-xs text-gray-500 leading-relaxed mt-0.5">{addr.line1}, {addr.city} - {addr.pincode}</div></div>
-                                            <button className="text-gray-300 hover:text-red-500 p-2"><FaTrash /></button>
+                                    {addresses.length > 0 ? (
+                                        addresses.map(addr => (
+                                            <div key={addr.id} className="bg-white border border-gray-200 p-4 rounded-xl flex items-center gap-4 hover:border-blue-300 transition">
+                                                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-lg flex-shrink-0">
+                                                    <FaHouse />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="font-bold text-slate-900 text-sm flex items-center gap-2">{addr.type}</div>
+                                                    <div className="text-xs text-gray-500 leading-relaxed mt-0.5">{addr.line1}, {addr.city} - {addr.pincode}</div>
+                                                </div>
+                                                <button className="text-gray-300 hover:text-red-500 p-2"><FaTrash /></button>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                            <p className="text-xs text-gray-400">No address saved yet.</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* ... (Settings tab same as before) ... */}
+                    {/* Settings Tab */}
                     {activeTab === 'settings' && (
                         <div className="space-y-4 animate-fade-in">
                             <h3 className="font-bold text-lg text-slate-900 mb-4">App Settings</h3>
-                            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><FaLocationDot /></div><div><div className="font-bold text-slate-900 text-sm">Notifications</div><div className="text-xs text-gray-500">Manage alerts</div></div></div><div className="w-10 h-6 bg-green-500 rounded-full relative"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div></div>
-                            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><FaHeadset /></div><div><div className="font-bold text-slate-900 text-sm">Help & Support</div><div className="text-xs text-gray-500">Contact us</div></div></div></div>
-                            <div onClick={() => { logout(); router.push('/'); }} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition group"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><FaRightFromBracket /></div><div><div className="font-bold text-red-600 text-sm">Logout</div><div className="text-xs text-red-400/70">Sign out</div></div></div></div>
+                            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><FaLocationDot /></div>
+                                    <div><div className="font-bold text-slate-900 text-sm">Notifications</div><div className="text-xs text-gray-500">Manage alerts</div></div>
+                                </div>
+                                <div className="w-10 h-6 bg-green-500 rounded-full relative"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
+                            </div>
+                            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><FaHeadset /></div>
+                                    <div><div className="font-bold text-slate-900 text-sm">Help & Support</div><div className="text-xs text-gray-500">Contact us</div></div>
+                                </div>
+                            </div>
+                            <div onClick={() => { logout(); router.push('/'); }} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition group">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><FaRightFromBracket /></div>
+                                    <div><div className="font-bold text-red-600 text-sm">Logout</div><div className="text-xs text-red-400/70">Sign out</div></div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            <ProfileEditModal isOpen={showEditModal} onClose={() => setShowEditModal(false)} initialData={modalInitialData} onSave={handleSaveData} />
+            <ProfileEditModal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                initialData={modalInitialData}
+                onSave={handleSaveData}
+            />
         </div>
     );
 }
