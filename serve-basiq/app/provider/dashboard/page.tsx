@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useUIStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
+import { useProviderDashboard } from '@/app/hook/useProviderDashboard';
 import {
     LayoutGrid, BellRing, Search, Wallet, UserCircle,
     Settings, ShieldCheck, Check, Info, ArrowLeft,
@@ -24,51 +25,37 @@ export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
     const router = useRouter();
 
-    const [activeView, setActiveView] = useState('dashboard');
-    const [dashboardData, setDashboardData] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    // --- React Query Hook ---
+    const {
+        data: dashboardData,
+        isLoading: loading,
+        refetch,
+        isError
+    } = useProviderDashboard(currentUser?.id);
 
-    // State for Multiple Services
-    const [services, setServices] = useState<any[]>([]);
-    const [selectedServiceToEdit, setSelectedServiceToEdit] = useState<any>(null);
+    const [activeView, setActiveView] = useState('dashboard');
 
     // State for Views
+    const [selectedServiceToEdit, setSelectedServiceToEdit] = useState<any>(null);
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [isEditingService, setIsEditingService] = useState(false);
     const [isCreatingService, setIsCreatingService] = useState(false);
 
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+    // NOTE: Modal state kept if you ever want to trigger it manually, 
+    // but removed from navigation logic as requested.
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [blockedAction, setBlockedAction] = useState("");
 
-    const fetchDashboardData = useCallback(async () => {
-        if (!currentUser) return;
-        try {
-            const res = await fetch('/api/services/status', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUser?.id })
-            });
-            const data = await res.json();
-            if (data.success) {
-                setDashboardData(data);
-                const processedServices = (data.services || []).map((svc: any) => ({
-                    ...svc,
-                    img: (svc.img && svc.img !== "") ? svc.img : (data.user?.img || "https://i.pravatar.cc/150")
-                }));
-                setServices(processedServices);
-            }
-        } catch (err) {
-            console.error(err);
-            showToast("Failed to load dashboard data", "error");
-        } finally {
-            setLoading(false);
-        }
-    }, [currentUser]);
-
-    useEffect(() => {
-        fetchDashboardData();
-    }, [fetchDashboardData]);
+    // --- Derived State (Memoized) ---
+    const services = useMemo(() => {
+        if (!dashboardData?.services) return [];
+        return dashboardData.services.map((svc: any) => ({
+            ...svc,
+            img: (svc.img && svc.img !== "") ? svc.img : (dashboardData.user?.img || "https://i.pravatar.cc/150")
+        }));
+    }, [dashboardData]);
 
     const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
         setToast({ msg, type });
@@ -94,18 +81,16 @@ export default function ProviderDashboard() {
     const displayName = userData?.name || currentUser?.name || "Provider";
     const displayImg = userData?.img || "https://i.pravatar.cc/150";
 
-    // ✅ Logic Fix: Determine strictly what is missing
+    // --- STATUS CHECK (Visual Only) ---
     const hasServices = services.length > 0;
-    // Assume profile is incomplete if no phone or address (adjust logic to match your VerificationView requirements)
-    const hasProfileData = userData?.phone && userData?.addresses?.length > 0;
+    const hasVerificationData = userData?.bankAccountNumber && userData?.bankAccountNumber !== "";
 
-    // This controls the "Blocking"
-    const isSetupComplete = hasServices;
+    // Used only for the "Online / Incomplete" badge in sidebar
+    const isSetupComplete = hasServices && hasVerificationData;
 
-    // ✅ This controls the "Visual Indicators" in the modal
+    // Defined for the modal, though modal is currently not triggered on nav
     const missingSteps = {
-        service: !hasServices,     // If true, shows Red X. If false, shows Green Check.
-        verification: !hasProfileData
+        verification: !hasVerificationData,
     };
 
     const safeStats = {
@@ -113,18 +98,11 @@ export default function ProviderDashboard() {
         service: services.length > 0 ? services[0] : { name: displayName, img: displayImg }
     };
 
+    // ✅ UPDATED: No Restrictions. User can navigate anywhere.
     const handleViewChange = (view: string) => {
-        if (!isSetupComplete && (view === 'products' || view === 'add-product' || view === 'leads' || view === 'requests')) {
-            let actionName = "use this feature";
-            if (view === 'products' || view === 'add-product') actionName = "add products & services";
-            if (view === 'leads') actionName = "view leads";
-            if (view === 'requests') actionName = "accept jobs";
-
-            setBlockedAction(actionName);
-            setShowProfileModal(true);
-            return;
-        }
         setActiveView(view);
+
+        // Reset specific editing states when changing views
         if (view !== 'settings') {
             setIsEditingService(false);
             setIsCreatingService(false);
@@ -139,21 +117,25 @@ export default function ProviderDashboard() {
         </div>
     );
 
+    if (isError) return (
+        <div className="h-screen flex flex-col items-center justify-center bg-slate-50 text-red-600 gap-3">
+            <AlertTriangle className="h-10 w-10" />
+            <p className="font-bold text-sm">Failed to load dashboard data.</p>
+            <button onClick={() => refetch()} className="text-blue-600 underline">Retry</button>
+        </div>
+    );
+
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
+            {/* Modal component exists but won't trigger automatically anymore */}
             <ProfileCheckModal
                 isOpen={showProfileModal}
                 onClose={() => setShowProfileModal(false)}
-                // ✅ UPDATED: Pass missingSteps so checks turn Red/Green correctly
                 missingSteps={missingSteps}
-                // ✅ UPDATED: Route user to the actual missing page
                 onFix={() => {
                     setShowProfileModal(false);
-                    if (missingSteps.service) {
-                        setActiveView('settings');
-                        setIsCreatingService(true);
-                    } else {
-                        setActiveView('profile');
+                    if (missingSteps.verification) {
+                        setActiveView('edit-profile');
                     }
                 }}
                 action={blockedAction}
@@ -186,14 +168,17 @@ export default function ProviderDashboard() {
 
                 <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
                     <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeView} set={handleViewChange} />
+                    <NavButton id="profile" icon={UserCircle} label="Profile" active={activeView} set={handleViewChange} />
                     <NavButton id="requests" icon={BellRing} label="Requests" active={activeView} set={handleViewChange} badge={safeStats.stats.pendingRequests} />
                     <NavButton id="leads" icon={Search} label="Leads" active={activeView} set={handleViewChange} />
                     <NavButton id="earnings" icon={Wallet} label="Earnings" active={activeView} set={handleViewChange} />
-                    <NavButton id="products" icon={Package} label="Products" active={activeView} set={handleViewChange} />
-                    <NavButton id="profile" icon={UserCircle} label="Profile" active={activeView} set={handleViewChange} />
-                    <div className="pt-4 mt-4 border-t border-slate-100">
-                        <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">System</p>
-                        <NavButton id="settings" icon={Settings} label="Service" active={activeView} set={handleViewChange} />
+
+                    {/* --- MANAGEMENT SECTION --- */}
+                    <div className="pt-4 mt-4 mb-2 border-t border-slate-100">
+                        <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Management</p>
+
+                        <NavButton id="settings" icon={Settings} label="My Services" active={activeView} set={handleViewChange} />
+                        <NavButton id="products" icon={Package} label="Products" active={activeView} set={handleViewChange} />
                     </div>
                 </nav>
 
@@ -280,7 +265,7 @@ export default function ProviderDashboard() {
                                         setIsEditingService(false);
                                         setIsCreatingService(false);
                                         setSelectedServiceToEdit(null);
-                                        fetchDashboardData();
+                                        refetch(); // Call refetch from React Query
                                     }}
                                 />
                             ) : (
@@ -299,7 +284,7 @@ export default function ProviderDashboard() {
 
                                     {/* Render List or Empty State */}
                                     {services.length > 0 ? (
-                                        services.map((svc) => (
+                                        services.map((svc: any) => (
                                             <ProviderServiceList
                                                 key={svc.id}
                                                 service={svc}
@@ -331,7 +316,7 @@ export default function ProviderDashboard() {
                             existingData={userData}
                             showToast={showToast}
                             onBack={() => {
-                                fetchDashboardData();
+                                refetch(); // Refresh data after profile edit
                                 setActiveView('profile');
                             }}
                         />
@@ -345,10 +330,10 @@ export default function ProviderDashboard() {
             {/* Mobile Nav */}
             <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-between px-6 py-3 z-40 pb-safe shadow-t-xl">
                 <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeView} set={handleViewChange} />
-                <MobileNavBtn id="requests" icon={BellRing} label="Requests" active={activeView} set={handleViewChange} badge={true} />
+                <MobileNavBtn id="profile" icon={UserCircle} label="Profile" active={activeView} set={handleViewChange} />
                 <MobileNavBtn id="products" icon={Package} label="Store" active={activeView} set={handleViewChange} />
                 <MobileNavBtn id="earnings" icon={Wallet} label="Earn" active={activeView} set={handleViewChange} />
-                <MobileNavBtn id="profile" icon={UserCircle} label="Profile" active={activeView} set={handleViewChange} />
+                <MobileNavBtn id="settings" icon={Settings} label="Service" active={activeView} set={handleViewChange} />
             </nav>
         </div>
     );

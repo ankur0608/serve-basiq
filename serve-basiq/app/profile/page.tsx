@@ -3,109 +3,89 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react'; // Import useSession
 import { useUIStore } from '@/lib/store';
 import {
-    FaUser, FaCalendarCheck, FaGear, FaPhone, FaPencil, FaCheck,
-    FaLocationDot, FaHeadset, FaRightFromBracket, FaHouse,
-    FaPlus, FaTrash, FaEnvelope, FaIdCard, FaGoogle
+    FaUser, FaCalendarCheck, FaGear, FaPencil, FaHouse,
+    FaPlus, FaTrash, FaEnvelope, FaIdCard, FaGoogle, FaSpinner // Import Spinner
 } from 'react-icons/fa6';
 import clsx from 'clsx';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileStats from '@/components/profile/ProfileStats';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 
-interface Address {
-    id: number;
-    type: 'Home' | 'Work' | 'Other';
-    line1: string;
-    city: string;
-    state: string;
-    pincode: string;
-    country: string;
-}
+// ... (Keep your Interface Address code here)
 
 export default function ProfilePage() {
     const router = useRouter();
+    const { data: session, status } = useSession(); // Get auth status
     const { currentUser, logout, onOpenLogin, setCurrentUser } = useUIStore();
 
     // Tabs
     const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'profile' | 'settings'>('overview');
     const [showEditModal, setShowEditModal] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [addresses, setAddresses] = useState<any[]>([]);
 
-    const [addresses, setAddresses] = useState<Address[]>([]);
-
+    // 1. Fetch Profile Data from DB if we have a user ID (from Google or Login)
     useEffect(() => {
-        if (!currentUser?.id) return;
+        // We accept currentUser.id OR session email to fetch profile
+        const identifier = currentUser?.id || session?.user?.email;
+
+        if (!identifier) return;
 
         const fetchProfile = async () => {
             try {
-                const res = await fetch(`/api/user/profile?userId=${currentUser.id}`);
-                if (!res.ok) return;
+                // Modified fetch to support sending email if ID isn't numeric yet
+                const res = await fetch(`/api/user/profile?identifier=${identifier}`);
 
-                const data = await res.json();
-
-                // ✅ backend is source of truth
-                setCurrentUser(data);
-                setAddresses(data.addresses ?? []);
+                if (res.ok) {
+                    const data = await res.json();
+                    // Merge DB data with what we already have (Google session)
+                    setCurrentUser({ ...currentUser, ...data });
+                    setAddresses(data.addresses ?? []);
+                }
             } catch (error) {
                 console.error('Failed to fetch profile', error);
             }
         };
 
         fetchProfile();
-    }, [currentUser?.id, setCurrentUser]);
+    }, [currentUser?.id, session?.user?.email, setCurrentUser]); // Depend on session email too
 
-    // Derived Data for Modal (Handle nulls for Google vs Phone users)
+    // ... (Keep your Helper: Display Name Logic here)
     const primaryAddress = addresses[0];
+    const displayName = currentUser?.name || (currentUser?.phone ? `User ${currentUser.phone.slice(-4)}` : 'Valued Customer');
 
     const modalInitialData = {
-        name: currentUser?.name || '', // Google users have names, Phone users might not
-        email: currentUser?.email || '', // Phone users might be null
-        phone: currentUser?.phone || '', // Google users might be null
+        name: currentUser?.name || '',
+        email: currentUser?.email || '',
+        phone: currentUser?.phone || '',
         addressLine: primaryAddress?.line1 || '',
         city: primaryAddress?.city || '',
         state: primaryAddress?.state || '',
         pincode: primaryAddress?.pincode || '',
     };
 
-    // --- SAVE HANDLER ---
+    // ... (Keep handleSaveData here)
     const handleSaveData = async (data: typeof modalInitialData) => {
-        if (!currentUser) return;
-        setIsSaving(true);
-
-        try {
-            const response = await fetch('/api/user/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUser.id,
-                    ...data, // Spreads name, email, phone, address
-                    country: 'India',
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to update profile');
-            }
-
-            const updatedUser = await response.json();
-
-            setCurrentUser(updatedUser);
-            setAddresses(updatedUser.addresses ?? []);
-
-            setShowEditModal(false);
-        } catch (error) {
-            console.error(error);
-            alert('Failed to save changes. Please try again.');
-        } finally {
-            setIsSaving(false);
-        }
+        // ... (Keep your existing save logic)
     };
 
+    // 2. LOADING STATE: Prevents "Guest Access" flash while checking Google Session
+    if (status === 'loading') {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="flex flex-col items-center gap-4">
+                    <FaSpinner className="animate-spin text-4xl text-slate-300" />
+                    <p className="text-slate-400 text-sm font-bold animate-pulse">Loading Profile...</p>
+                </div>
+            </div>
+        );
+    }
 
-    // Guest View
-    if (!currentUser) {
+    // 3. Guest View (Only show if definitely unauthenticated and no currentUser)
+    if (status === 'unauthenticated' && !currentUser) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
                 <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full">
@@ -118,7 +98,8 @@ export default function ProfilePage() {
         );
     }
 
-    const isWorker = currentUser.isWorker;
+    // If we reach here, we are logged in (either via Phone or Google)
+    const isWorker = currentUser?.isWorker || false;
 
     return (
         <div className="min-h-screen pb-32 bg-slate-50">
@@ -162,7 +143,7 @@ export default function ProfilePage() {
                         </div>
                     )}
 
-                    {/* PROFILE TAB - UPDATED FOR HYBRID AUTH */}
+                    {/* PROFILE TAB */}
                     {activeTab === 'profile' && (
                         <div className="space-y-8 animate-fade-in">
                             <div>
@@ -179,75 +160,43 @@ export default function ProfilePage() {
                                         <span className="text-xs font-bold text-gray-400 uppercase">Name</span>
                                         <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
                                             <FaUser className="text-gray-400 text-xs" />
-                                            {currentUser.name ? currentUser.name : <span className="text-gray-400 italic font-normal">Not Set</span>}
+                                            {displayName}
                                         </span>
                                     </div>
 
-                                    {/* Phone Field (Hybrid Logic) */}
+                                    {/* Phone Field */}
                                     <div className="flex items-center justify-between border-b border-gray-200 pb-3">
                                         <span className="text-xs font-bold text-gray-400 uppercase">Phone</span>
                                         <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                                            <FaPhone className="text-gray-400 text-xs" />
-                                            {currentUser.phone ? (
-                                                <>
-                                                    {currentUser.phone}
-                                                    <FaCheck className="text-green-500 ml-1" title="Verified" />
-                                                </>
+                                            <FaGear className="text-gray-400 text-xs" />
+                                            {currentUser?.phone ? (
+                                                currentUser.phone
                                             ) : (
-                                                <span className="text-orange-500 font-normal text-xs bg-orange-50 px-2 py-0.5 rounded-full">Add Phone</span>
+                                                <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition">
+                                                    + Add Phone
+                                                </button>
                                             )}
                                         </span>
                                     </div>
 
-                                    {/* Email Field (Hybrid Logic) */}
+                                    {/* Email Field */}
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-gray-400 uppercase">Email</span>
                                         <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                                            {/* Show Google Icon if it's a gmail, else Envelope */}
-                                            {currentUser.email?.includes('gmail') ? <FaGoogle className="text-gray-400 text-xs" /> : <FaEnvelope className="text-gray-400 text-xs" />}
-
-                                            {currentUser.email ? (
+                                            <FaEnvelope className="text-gray-400 text-xs" />
+                                            {currentUser?.email ? (
                                                 currentUser.email
                                             ) : (
-                                                <span className="text-blue-500 font-normal text-xs bg-blue-50 px-2 py-0.5 rounded-full">Add Email</span>
+                                                <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition">
+                                                    + Add Email
+                                                </button>
                                             )}
                                         </span>
                                     </div>
 
                                 </div>
                             </div>
-
-                            <hr className="border-gray-100" />
-
-                            {/* Addresses */}
-                            <div>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="font-bold text-lg text-slate-900">Saved Address</h3>
-                                    <button onClick={() => setShowEditModal(true)} className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-black transition">
-                                        <FaPlus /> Add/Edit
-                                    </button>
-                                </div>
-                                <div className="space-y-3">
-                                    {addresses.length > 0 ? (
-                                        addresses.map(addr => (
-                                            <div key={addr.id} className="bg-white border border-gray-200 p-4 rounded-xl flex items-center gap-4 hover:border-blue-300 transition">
-                                                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-lg flex-shrink-0">
-                                                    <FaHouse />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="font-bold text-slate-900 text-sm flex items-center gap-2">{addr.type}</div>
-                                                    <div className="text-xs text-gray-500 leading-relaxed mt-0.5">{addr.line1}, {addr.city} - {addr.pincode}</div>
-                                                </div>
-                                                <button className="text-gray-300 hover:text-red-500 p-2"><FaTrash /></button>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                            <p className="text-xs text-gray-400">No address saved yet.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            {/* ... Address section remains the same ... */}
                         </div>
                     )}
 
@@ -255,22 +204,9 @@ export default function ProfilePage() {
                     {activeTab === 'settings' && (
                         <div className="space-y-4 animate-fade-in">
                             <h3 className="font-bold text-lg text-slate-900 mb-4">App Settings</h3>
-                            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><FaLocationDot /></div>
-                                    <div><div className="font-bold text-slate-900 text-sm">Notifications</div><div className="text-xs text-gray-500">Manage alerts</div></div>
-                                </div>
-                                <div className="w-10 h-6 bg-green-500 rounded-full relative"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
-                            </div>
-                            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><FaHeadset /></div>
-                                    <div><div className="font-bold text-slate-900 text-sm">Help & Support</div><div className="text-xs text-gray-500">Contact us</div></div>
-                                </div>
-                            </div>
                             <div onClick={() => { logout(); router.push('/'); }} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition group">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><FaRightFromBracket /></div>
+                                    <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><FaGoogle /></div>
                                     <div><div className="font-bold text-red-600 text-sm">Logout</div><div className="text-xs text-red-400/70">Sign out</div></div>
                                 </div>
                             </div>

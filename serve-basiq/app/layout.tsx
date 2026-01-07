@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import ClientLayout from "@/components/layout/ClientLayout"; 
+import ClientLayout from "@/components/layout/ClientLayout";
 import ModalProvider from "@/components/providers/ModalProvider";
+import QueryProvider from "@/components/providers/QueryProvider";
+import AuthProvider from "@/components/providers/AuthProvider"; // <--- 1. Import this
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -22,12 +24,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${jakarta.variable} font-sans bg-slate-50 text-slate-800 flex flex-col min-h-screen pb-[80px] md:pb-0`}>
+        <AuthProvider>
+          <QueryProvider>
+            <ClientLayout>
+              {children}
+            </ClientLayout>
 
-        <ClientLayout>
-          {children}
-        </ClientLayout>
-
-        <ModalProvider />
+            <ModalProvider />
+          </QueryProvider>
+        </AuthProvider>
       </body>
     </html>
   );
