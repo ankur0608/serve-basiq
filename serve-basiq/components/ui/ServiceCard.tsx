@@ -1,36 +1,51 @@
 'use client';
 
 import Link from 'next/link';
-import { FaHeart, FaRegHeart, FaStar } from 'react-icons/fa6';
+import { FaHeart, FaRegHeart, FaStar, FaCircleCheck } from 'react-icons/fa6';
 import { useState } from 'react';
-import clsx from 'clsx';
 
-// Updated Interface to match Prisma/Database output more closely
+// Updated Interface to match Prisma/Database output
 export interface ServiceProps {
   id: number;
   name: string;
-  cat?: string | null;       // Made optional/nullable
-  price?: number | null;     // Made optional/nullable
+  cat?: string | null;
+  price?: number | null;
+  priceType?: 'HOURLY' | 'FIXED' | string; // Added priceType handling
 
-  // Location handling: support both pre-formatted 'loc' or raw 'city/state'
+  // Location
   loc?: string | null;
   city?: string | null;
   state?: string | null;
 
-  img?: string | null;       // Made optional/nullable
-  rating?: number | null;    // Made optional/nullable
+  // Images
+  mainimg?: string | null; // ✅ Added mainimg
+  img?: string | null;     // Legacy/Fallback
+
+  rating?: number | null;
   verified?: boolean;
+
+  // User Fallback Data (Optional)
+  user?: {
+    name?: string | null;
+    img?: string | null;
+  };
 }
 
 export default function ServiceCard({ service }: { service: ServiceProps }) {
   const [isFav, setIsFav] = useState(false);
 
-  // Helper to determine location text safely
+  // 1. ✅ IMAGE LOGIC: Prioritize mainimg -> img -> user.img -> Placeholder
+  const displayImage = service.mainimg
+    || service.mainimg
+    || service.img
+    || "https://via.placeholder.com/150?text=No+Image";
+
+  // 2. Location Logic
   const locationText = service.loc
     ? service.loc
     : (service.city ? `${service.city}${service.state ? `, ${service.state}` : ''}` : 'Location N/A');
 
-  // Helper for Category fallback
+  // 3. Category Logic
   const categoryText = service.cat || 'General';
 
   return (
@@ -51,31 +66,46 @@ export default function ServiceCard({ service }: { service: ServiceProps }) {
       <Link href={`/services/${service.id}`} className="flex gap-4 w-full">
 
         {/* Image Container */}
-        <div className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
+        <div className="relative w-28 h-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
           <img
-            src={service.img || "https://via.placeholder.com/150"}
+            src={displayImage}
             alt={service.name}
             className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+            onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150?text=Error"}
           />
         </div>
 
         {/* Text Content */}
         <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
           <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md truncate max-w-[120px]">
+                {categoryText}
+              </span>
+              {service.verified && (
+                <FaCircleCheck className="text-blue-500 text-xs" title="Verified Provider" />
+              )}
+            </div>
+
             <h4 className="font-bold text-slate-900 truncate group-hover:text-blue-600 transition text-lg leading-tight">
               {service.name}
             </h4>
-            <div className="text-xs text-gray-500 mt-1 truncate">
-              {categoryText} • {locationText}
+
+            <div className="text-xs text-gray-500 mt-1 truncate font-medium">
+              {locationText}
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-sm font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-lg">
-              ₹{service.price || 0}/hr
-            </span>
-            <span className="text-xs font-bold text-amber-500 flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg">
-              {service.rating || 0} <FaStar />
+          <div className="flex items-end justify-between mt-2">
+            <div className="text-slate-900 font-extrabold text-lg leading-none">
+              ₹{service.price || 0}
+              <span className="text-xs text-gray-400 font-normal ml-0.5">
+                {service.priceType === 'HOURLY' ? '/hr' : ''}
+              </span>
+            </div>
+
+            <span className="text-xs font-bold text-amber-500 flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+              {service.rating || 5.0} <FaStar />
             </span>
           </div>
         </div>

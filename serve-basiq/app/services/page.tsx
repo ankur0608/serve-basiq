@@ -43,7 +43,7 @@ export default function ServicesPage() {
           rating: Number(item.rating) || 0,
 
           // 5. Images
-          img: item.user?.img || item.img || "/default-avatar.png",
+          img: item.mainimg || "/default-avatar.png",
           verified: item.user?.isVerified || false
         }));
 

@@ -20,13 +20,22 @@ export const serviceSettingsSchema = z.object({
     // Basic Details
     name: z.string().min(3, "Service Brand Name is required"),
     desc: z.string().min(10, "Description must be at least 10 chars"),
+
+    // ✅ UPDATED: Price & Experience
     price: z.number().min(0, "Price cannot be negative"),
-    experience: z.string().optional(), // e.g., "5 Years"
+    priceType: z.enum(["FIXED", "HOURLY"]).default("FIXED"), // New Field
+    experience: z.number().min(0, "Experience must be a positive number").optional(), // Changed String -> Number
+
     altPhone: z.string().optional(),
+
+    // ✅ NEW: Image Fields
+    img: z.string().optional(),       // Fallback/Thumbnail
+    mainimg: z.string().optional(),   // New Field
+    coverImg: z.string().optional(),  // New Field
 
     // Category
     categoryId: z.string().min(1, "Category is required"),
-    subCategoryIds: z.array(z.string()).default([]), // Defaults to empty array if missing
+    subCategoryIds: z.array(z.string()).default([]),
 
     // Address
     addressLine1: z.string().min(1, "Address is required"),
@@ -45,6 +54,7 @@ export const serviceSettingsSchema = z.object({
     openTime: z.string().min(1, "Open time is required"),
     closeTime: z.string().min(1, "Close time is required"),
 });
+
 export const verificationSchema = z.object({
     bankAccountHolder: z.string().min(2, "Account Holder Name is required"),
     bankAccountNumber: z.string().min(5, "Account Number is required"),
@@ -61,3 +71,20 @@ export const verificationSchema = z.object({
     // ✅ ADD THIS: Allow Business Proof Image (Optional)
     businessProofImg: z.string().optional().or(z.literal("")),
 });
+
+// export const verificationSchema = z.object({
+//     bankAccountHolder: z.string().min(2, "Account Holder Name is required"),
+//     bankAccountNumber: z.string().min(5, "Account Number is required"),
+//     bankIfsc: z.string().min(4, "IFSC Code is required"),
+//     bankName: z.string().min(2, "Bank Name is required"),
+
+//     // ✅ ADD THIS: Allow UPI ID (Optional)
+//     upiId: z.string().optional().or(z.literal("")),
+
+//     idProofType: z.string(),
+//     idProofNumber: z.string().min(4, "ID Number is required"),
+//     idProofImg: z.string().url("ID Proof image required"),
+
+//     // ✅ ADD THIS: Allow Business Proof Image (Optional)
+//     businessProofImg: z.string().optional().or(z.literal("")),
+// });

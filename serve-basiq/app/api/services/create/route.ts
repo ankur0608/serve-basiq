@@ -16,59 +16,74 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Validate data
+    // Validate data using Zod
     const data = serviceSettingsSchema.parse(formData);
 
-    // 🔍 LOG 2: Confirm validation passed
+    // 🔍 LOG 2: Validation passed
     console.log("✅ [API] Zod Validation Passed");
 
-    // Prepare payload (convert numbers, etc.)
+    // Prepare payload 
+    // ⚠️ FIX: No need to use parseFloat/parseInt because 'data' fields are already numbers from Zod
     const payload = {
       name: data.name,
       desc: data.desc,
+
+      // Media Fields
+      img: data.mainimg || data.img || "",
+      mainimg: data.mainimg,
+      coverImg: data.coverImg,
+
+      // Pricing & Experience (Already numbers)
       price: data.price,
-      experience: data.experience,
+      priceType: data.priceType || "FIXED",
+      experience: data.experience ?? null,
+
       altPhone: data.altPhone,
 
-      // ✅ FIX: Convert empty string to null to avoid Foreign Key crashes
+      // Categories
       categoryId: data.categoryId === "" ? null : data.categoryId,
-
       subCategoryIds: data.subCategoryIds,
+
+      // Location
       addressLine1: data.addressLine1,
       addressLine2: data.addressLine2,
       city: data.city,
       state: data.state,
       pincode: data.pincode,
+
+      // Geo (Already numbers)
       latitude: data.latitude,
       longitude: data.longitude,
-      radiusKm: data.radiusKm,
+      radiusKm: data.radiusKm ?? 10,
+
+      // Availability
       workingDays: data.workingDays,
       openTime: data.openTime,
       closeTime: data.closeTime,
     };
 
     // 🔍 LOG 3: Check the final object before sending to Prisma
-    console.log("🛠️ [API] Sending to Prisma:", payload);
+    console.log("🛠️ [API] Sending payload to Prisma:", payload);
 
     let result;
 
     if (serviceId) {
-      // ✅ UPDATE
+      // ✅ UPDATE EXISTING SERVICE
       console.log(`🔄 [API] Updating Service ID: ${serviceId}`);
       result = await prisma.service.update({
         where: { id: Number(serviceId) },
         data: payload,
       });
     } else {
-      // ✅ CREATE
+      // ✅ CREATE NEW SERVICE
       console.log(`✨ [API] Creating NEW Service for User: ${userId}`);
       result = await prisma.service.create({
         data: {
-          userId, // Link to the user
+          userId,
           ...payload,
           isVerified: false,
           rating: 5.0,
-          img: "",
+          img: payload.img || "",
         },
       });
     }
@@ -81,6 +96,11 @@ export async function POST(req: Request) {
   } catch (error: any) {
     // 🔍 LOG 5: Catch and print any errors
     console.error("🔥 [API] Service API Error Details:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+
+    if (error.code === 'P2002') {
+      return NextResponse.json({ success: false, message: "Unique constraint violation" }, { status: 409 });
+    }
+
+    return NextResponse.json({ success: false, message: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

@@ -10,60 +10,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "User ID required" }, { status: 400 });
     }
 
-    // ✅ FIX 1: Change 'service' to 'services' (Plural) in the include
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        services: true, // It is an array now []
+        services: true,
         addresses: true,
       },
     });
 
     if (!user) throw new Error("User not found");
 
-    // ✅ FIX 2: Handle the array. Let's check the FIRST service for the "Setup" logic.
-    // If they have at least one service, we check its details.
-    const firstService = user.services?.[0];
+    // --- Verification Check ---
+    // We check if the user has submitted their verification details.
+    // Ideally, check the 'verificationStatus' flag you set in the previous step.
+    const isProfileSubmitted = user.verificationStatus === "SUBMITTED" || user.verificationStatus === "APPROVED";
 
-    // 1. Service Details Check
-    const hasServiceDetails = !!(
-      firstService &&
-      firstService.categoryId &&
-      firstService.latitude !== null &&
-      firstService.workingDays.length > 0
-    );
-
-    // 2. Verification Details Check
-    const hasVerification = !!(
+    // Fallback check: Do they have the critical fields?
+    const hasCriticalFields = !!(
       user.bankAccountNumber &&
       user.idProofImg
     );
 
-    const isSetupComplete = hasServiceDetails && hasVerification;
+    // ✅ UPDATED LOGIC: 
+    // Unlock dashboard if status is SUBMITTED/APPROVED OR if fields exist.
+    const isSetupComplete = isProfileSubmitted || hasCriticalFields;
 
-    // --- Mock Stats ---
-    // ✅ FIX 3: Use the first service for rating (or average them if you prefer later)
     const stats = {
       revenue: 1250,
       jobsCompleted: 14,
-      rating: firstService?.rating || 5.0,
+      rating: 5.0, // Default rating
       pendingRequests: 3,
     };
 
     return NextResponse.json({
       success: true,
       user,
-      services: user.services, // ✅ Return the whole array
+      services: user.services,
       stats,
-      isSetupComplete,
+      isSetupComplete, // This drives the modal visibility
       missingSteps: {
-        service: !hasServiceDetails,
-        verification: !hasVerification
+        verification: !isSetupComplete
       }
     });
 
   } catch (error) {
-    console.error("Stats API Error:", error);
+    console.error("Dashboard API Error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }

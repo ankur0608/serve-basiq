@@ -3,24 +3,36 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
     try {
-        const { userId } = await req.json();
+        const body = await req.json().catch(() => null);
 
-        if (!userId) {
+        if (!body || !body.userId) {
             return NextResponse.json({ success: false, message: "User ID required" }, { status: 400 });
         }
+
+        const { userId } = body;
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: {
-                // ✅ FIX 1: Change 'service' to 'services' (Plural)
                 services: true,
                 addresses: true,
             },
         });
 
-        if (!user) throw new Error("User not found");
+        if (!user) {
+            return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+        }
 
-        // Mock Stats
+        // ✅ FIX: Calculate isSetupComplete
+        // We consider setup complete if they have submitted Banking Info & ID Proof
+        // You can adjust this logic based on your specific requirements
+        const isSetupComplete = !!(
+            user.bankAccountNumber &&
+            user.idProofNumber &&
+            user.phone
+        );
+
+        // Mock Stats (Replace with real logic later)
         const stats = {
             revenue: 1250,
             jobsCompleted: 14,
@@ -28,21 +40,23 @@ export async function POST(req: Request) {
             pendingRequests: 3,
         };
 
-        // ✅ FIX 2: Handle Array. We take the first service for the header, 
-        // or send the whole list for the dashboard.
         const servicesList = user.services || [];
         const primaryService = servicesList.length > 0 ? servicesList[0] : null;
 
         return NextResponse.json({
             success: true,
+
+            // ✅ SEND THIS FIELD TO FRONTEND
+            isSetupComplete,
+
             user,
-            service: primaryService, // For backward compatibility
-            services: servicesList,  // For new multiple service logic
+            service: primaryService,
+            services: servicesList,
             stats,
         });
 
-    } catch (error) {
-        console.error("Stats API Error:", error);
+    } catch (error: any) {
+        console.error("🔥 [API] Stats Error:", error);
         return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
     }
 }

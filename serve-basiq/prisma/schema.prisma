@@ -8,6 +8,11 @@ datasource db {
     provider = "postgresql"
 }
 
+enum PriceType {
+    HOURLY
+    FIXED
+}
+
 model Admin {
     id        String   @id @default(uuid())
     email     String   @unique
@@ -18,8 +23,9 @@ model Admin {
 }
 
 model User {
-    id   String  @id @default(cuid())
-    name String?
+    id       String  @id @default(cuid())
+    name     String?
+    shopName String?
 
     // ⚠️ CHANGE: Phone must be optional for Google Auth (users might not have one yet)
     phone String? @unique
@@ -34,6 +40,7 @@ model User {
     isPhoneVerified Boolean @default(false)
     isWorker        Boolean @default(false)
     isWebsite       Boolean @default(true)
+    rejectionReason String?
 
     // ✅ STATUS FLAGS
     isVerified         Boolean @default(false)
@@ -85,45 +92,6 @@ model Account {
     @@unique([provider, providerAccountId])
 }
 
-// model User {
-//     id    String  @id @default(cuid())
-//     phone String  @unique
-//     name  String?
-//     email String? @unique
-//     role  String  @default("USER")
-//     img   String?
-
-//     isPhoneVerified Boolean @default(false)
-//     isWorker        Boolean @default(false)
-//     isWebsite       Boolean @default(true)
-
-//     // ✅ STATUS FLAGS
-//     isVerified         Boolean @default(false) // Final Admin Approval
-//     verificationStatus String  @default("PENDING") // PENDING, SUBMITTED, REJECTED
-
-//     // ✅ BANKING DETAILS (Directly in User)
-//     bankAccountHolder String?
-//     bankAccountNumber String?
-//     bankIfsc          String?
-//     bankName          String?
-//     upiId             String?
-
-//     // ✅ KYC DOCUMENTS (Directly in User)
-//     idProofType      String? @default("Aadhaar") // Aadhaar, PAN, DL
-//     idProofNumber    String?
-//     idProofImg       String?
-//     businessProofImg String?
-
-//     // Relations
-//     services  Service[]
-//     addresses Address[]
-//     products  Product[]
-
-//     createdAt DateTime @default(now())
-//     updatedAt DateTime @updatedAt
-//     reviews   Review[]
-// }
-
 // --- ADDRESS MODEL (NEW) ---
 model Address {
     id     String @id @default(cuid())
@@ -154,44 +122,41 @@ model Service {
     id Int @id @default(autoincrement())
 
     userId     String
-    user       User    @relation(fields: [userId], references: [id])
-    // Basic Profile
+    user       User      @relation(fields: [userId], references: [id])
     name       String
     desc       String
     img        String
-    experience String?
+    experience Int?
     altPhone   String?
-
+    coverImg   String?
+    mainimg    String?
     category   Category? @relation(fields: [categoryId], references: [id])
     categoryId String?
 
     subCategoryIds String[]
+    priceType      PriceType @default(FIXED)
+    price          Float     @default(0)
 
-    // Location
     addressLine1 String?
     addressLine2 String?
     city         String?
     state        String?
     pincode      String?
 
-    // ✅ IMPROVEMENT: Use Decimal for precision in Maps
     latitude  Decimal?
     longitude Decimal?
     radiusKm  Int?     @default(10)
 
-    // Scheduling
-    workingDays String[] // ["Mon", "Tue"]
-    openTime    String? // "09:00"
-    closeTime   String? // "18:00"
+    workingDays String[]
+    openTime    String?
+    closeTime   String?
 
     // Details
-    price      Float    @default(0)
-    rating     Float    @default(5.0) // You can calculate this dynamically from the Review table later
+    rating     Float    @default(5.0)
     loc        String?
     isVerified Boolean  @default(false)
     gallery    String[]
 
-    // ✅ IMPROVEMENT: Separate Model for Reviews
     reviews Review[]
 
     createdAt DateTime @default(now())

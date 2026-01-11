@@ -57,7 +57,7 @@ export default async function FeaturedProviders() {
                 cat: service.categoryId || "General",
                 price: Number(service.price) || 0,
                 loc: service.city || "Location N/A",
-                img: service.user?.img || "/default-avatar.png",
+                img: service?.mainimg || "/default-avatar.png",
                 rating: Number(service.rating) || 5.0,
                 // Pass the verification status explicitly
                 verified: service.user?.isVerified || false

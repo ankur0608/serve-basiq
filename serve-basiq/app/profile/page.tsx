@@ -3,76 +3,138 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react'; // Import useSession
+import { useSession } from 'next-auth/react';
 import { useUIStore } from '@/lib/store';
 import {
-    FaUser, FaCalendarCheck, FaGear, FaPencil, FaHouse,
-    FaPlus, FaTrash, FaEnvelope, FaIdCard, FaGoogle, FaSpinner // Import Spinner
+    FaUser, FaCalendarCheck, FaGear, FaPencil,
+    FaIdCard, FaGoogle, FaSpinner, FaPhone, FaEnvelope
 } from 'react-icons/fa6';
 import clsx from 'clsx';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileStats from '@/components/profile/ProfileStats';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 
-// ... (Keep your Interface Address code here)
-
 export default function ProfilePage() {
     const router = useRouter();
-    const { data: session, status } = useSession(); // Get auth status
+    const { data: session, status } = useSession();
     const { currentUser, logout, onOpenLogin, setCurrentUser } = useUIStore();
 
-    // Tabs
+    // UI State
     const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'profile' | 'settings'>('overview');
     const [showEditModal, setShowEditModal] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
+
+    // ✅ Local Address State (Critical for immediate UI updates)
     const [addresses, setAddresses] = useState<any[]>([]);
 
-    // 1. Fetch Profile Data from DB if we have a user ID (from Google or Login)
+    // --- 1. DETERMINE LOGIN METHOD ---
+    const isGoogleLogin = !!session?.user?.email;
+    const isMobileLogin = !isGoogleLogin && !!currentUser?.phone;
+
+    // --- 2. FETCH DATA ON LOAD/REFRESH ---
     useEffect(() => {
-        // We accept currentUser.id OR session email to fetch profile
-        const identifier = currentUser?.id || session?.user?.email;
-
-        if (!identifier) return;
-
         const fetchProfile = async () => {
+            // Priority: DB ID -> Google Email -> Phone
+            const identifier = currentUser?.id || session?.user?.email || currentUser?.phone;
+
+            if (!identifier) return;
+
             try {
-                // Modified fetch to support sending email if ID isn't numeric yet
                 const res = await fetch(`/api/user/profile?identifier=${identifier}`);
 
                 if (res.ok) {
-                    const data = await res.json();
-                    // Merge DB data with what we already have (Google session)
-                    setCurrentUser({ ...currentUser, ...data });
-                    setAddresses(data.addresses ?? []);
+                    const dbData = await res.json();
+
+                    // 1. Update Global Store (Zustand)
+                    const finalImage = dbData.img || session?.user?.image || null;
+                    setCurrentUser({
+                        ...currentUser,
+                        ...dbData,
+                        img: finalImage,
+                        addresses: dbData.addresses || []
+                    });
+
+                    // 2. Update Local State (Forces re-render of address fields)
+                    setAddresses(dbData.addresses || []);
                 }
             } catch (error) {
                 console.error('Failed to fetch profile', error);
             }
         };
 
-        fetchProfile();
-    }, [currentUser?.id, session?.user?.email, setCurrentUser]); // Depend on session email too
+        // Trigger fetch when session is ready or we have a cached user ID
+        if (status === 'authenticated' || currentUser?.id) {
+            fetchProfile();
+        }
+    }, [status, session?.user, currentUser?.id, setCurrentUser]);
 
-    // ... (Keep your Helper: Display Name Logic here)
-    const primaryAddress = addresses[0];
-    const displayName = currentUser?.name || (currentUser?.phone ? `User ${currentUser.phone.slice(-4)}` : 'Valued Customer');
+    // --- 3. PREPARE DATA FOR MODAL (Reactive) ---
+    // This runs on every render. If 'addresses' updates, this updates.
+    const primaryAddress = addresses && addresses.length > 0 ? addresses[0] : {};
 
+    const displayName = currentUser?.name || session?.user?.name || (currentUser?.phone ? `User ${currentUser.phone.slice(-4)}` : 'Valued Customer');
+    const displayImage = currentUser?.img || session?.user?.image || '';
+
+    // ✅ This object is now guaranteed to have the latest data from the fetch
     const modalInitialData = {
-        name: currentUser?.name || '',
-        email: currentUser?.email || '',
+        name: displayName,
+        email: currentUser?.email || session?.user?.email || '',
         phone: currentUser?.phone || '',
-        addressLine: primaryAddress?.line1 || '',
-        city: primaryAddress?.city || '',
-        state: primaryAddress?.state || '',
-        pincode: primaryAddress?.pincode || '',
+        addressLine: primaryAddress.line1 || '',
+        city: primaryAddress.city || '',
+        state: primaryAddress.state || '',
+        pincode: primaryAddress.pincode || '',
     };
 
-    // ... (Keep handleSaveData here)
+    // --- 4. HANDLE SAVE ---
     const handleSaveData = async (data: typeof modalInitialData) => {
-        // ... (Keep your existing save logic)
+        // A. Optimistic Update (Update UI instantly)
+        const optimisticAddress = {
+            ...primaryAddress, // Keep existing ID if present
+            line1: data.addressLine,
+            city: data.city,
+            state: data.state,
+            pincode: data.pincode,
+            type: "Home",
+            country: "India"
+        };
+
+        setAddresses([optimisticAddress]); // Update Local State
+
+        setCurrentUser({
+            ...currentUser!,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            addresses: [optimisticAddress]
+        }); // Update Store
+
+        setShowEditModal(false);
+
+        // B. API Call (Persist to DB)
+        try {
+            const res = await fetch('/api/user/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser?.id,
+                    ...data
+                })
+            });
+
+            if (!res.ok) throw new Error("Failed to save");
+
+            // C. Sync with Server Response (Best Practice)
+            const serverData = await res.json();
+            setAddresses(serverData.addresses || []); // Ensure we have the real DB IDs
+            setCurrentUser({ ...currentUser!, ...serverData });
+
+        } catch (error) {
+            console.error("Failed to save profile:", error);
+            alert("Failed to save changes. Please check your connection.");
+        }
     };
 
-    // 2. LOADING STATE: Prevents "Guest Access" flash while checking Google Session
+    // Loading & Guest States
     if (status === 'loading') {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -84,7 +146,6 @@ export default function ProfilePage() {
         );
     }
 
-    // 3. Guest View (Only show if definitely unauthenticated and no currentUser)
     if (status === 'unauthenticated' && !currentUser) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
@@ -98,16 +159,16 @@ export default function ProfilePage() {
         );
     }
 
-    // If we reach here, we are logged in (either via Phone or Google)
     const isWorker = currentUser?.isWorker || false;
 
     return (
         <div className="min-h-screen pb-32 bg-slate-50">
-            {/* Header */}
-            <ProfileHeader onEditClick={() => setShowEditModal(true)} />
+            <ProfileHeader
+                onEditClick={() => setShowEditModal(true)}
+                userImage={displayImage}
+            />
 
             <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20 space-y-6">
-
                 <ProfileStats />
 
                 {/* Tabs */}
@@ -124,26 +185,15 @@ export default function ProfilePage() {
                     ))}
                 </div>
 
-                {/* Content */}
+                {/* Content Area */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[300px]">
-
-                    {/* Overview Tab */}
-                    {activeTab === 'overview' && (
+                    {(activeTab === 'overview' || activeTab === 'bookings') && (
                         <div className="text-center py-12 animate-fade-in border border-dashed border-gray-200 rounded-xl">
-                            <p className="text-gray-400 text-sm">No recent activity found.</p>
-                            {!isWorker && <Link href="/services" className="text-blue-600 font-bold text-sm hover:underline mt-2 inline-block">Find a Service</Link>}
+                            <p className="text-gray-400 text-sm">No activity found.</p>
+                            {activeTab === 'overview' && !isWorker && <Link href="/services" className="text-blue-600 font-bold text-sm hover:underline mt-2 inline-block">Find a Service</Link>}
                         </div>
                     )}
 
-                    {/* Bookings Tab */}
-                    {activeTab === 'bookings' && (
-                        <div className="text-center py-12 animate-fade-in border border-dashed border-gray-200 rounded-xl">
-                            <FaCalendarCheck className="mx-auto text-4xl text-gray-200 mb-3" />
-                            <p className="text-gray-400 text-sm">No bookings found.</p>
-                        </div>
-                    )}
-
-                    {/* PROFILE TAB */}
                     {activeTab === 'profile' && (
                         <div className="space-y-8 animate-fade-in">
                             <div>
@@ -154,60 +204,72 @@ export default function ProfilePage() {
                                     </button>
                                 </div>
                                 <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-
-                                    {/* Name Field */}
+                                    {/* Name */}
                                     <div className="flex items-center justify-between border-b border-gray-200 pb-3">
                                         <span className="text-xs font-bold text-gray-400 uppercase">Name</span>
-                                        <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                                            <FaUser className="text-gray-400 text-xs" />
-                                            {displayName}
-                                        </span>
+                                        <span className="text-sm font-bold text-slate-900 flex items-center gap-2"><FaUser className="text-gray-400 text-xs" /> {displayName}</span>
                                     </div>
-
-                                    {/* Phone Field */}
+                                    {/* Phone */}
                                     <div className="flex items-center justify-between border-b border-gray-200 pb-3">
                                         <span className="text-xs font-bold text-gray-400 uppercase">Phone</span>
                                         <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                                            <FaGear className="text-gray-400 text-xs" />
+                                            <FaPhone className="text-gray-400 text-xs" />
                                             {currentUser?.phone ? (
-                                                currentUser.phone
+                                                <>{currentUser.phone} {isMobileLogin && <span className="text-[10px] bg-green-100 text-green-700 px-2 rounded">Verified</span>}</>
                                             ) : (
-                                                <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition">
-                                                    + Add Phone
-                                                </button>
+                                                <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition">+ Add Phone</button>
                                             )}
                                         </span>
                                     </div>
-
-                                    {/* Email Field */}
+                                    {/* Email */}
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-gray-400 uppercase">Email</span>
                                         <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
                                             <FaEnvelope className="text-gray-400 text-xs" />
                                             {currentUser?.email ? (
-                                                currentUser.email
+                                                <>{currentUser.email} {isGoogleLogin && <span className="text-[10px] bg-green-100 text-green-700 px-2 rounded">Verified</span>}</>
                                             ) : (
-                                                <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition">
-                                                    + Add Email
-                                                </button>
+                                                <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition">+ Add Email</button>
                                             )}
                                         </span>
                                     </div>
-
                                 </div>
                             </div>
-                            {/* ... Address section remains the same ... */}
+
+                            {/* Address Section */}
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-900 mb-4">Saved Address</h3>
+                                {primaryAddress.line1 ? (
+                                    <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                        <div className="flex items-start gap-3">
+                                            <div className="mt-1 text-blue-600"><FaUser /></div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-900 mb-1">Home Address</p>
+                                                <p className="text-xs text-gray-500 leading-relaxed">
+                                                    {primaryAddress.line1}, {primaryAddress.city}<br />
+                                                    {primaryAddress.state} - {primaryAddress.pincode}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div onClick={() => setShowEditModal(true)} className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition group">
+                                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2 group-hover:scale-110 transition"><FaUser /></div>
+                                        <p className="text-sm font-bold text-gray-400">No address added yet</p>
+                                        <span className="text-xs text-blue-600 font-bold mt-1">Click to add address</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
-                    {/* Settings Tab */}
                     {activeTab === 'settings' && (
                         <div className="space-y-4 animate-fade-in">
                             <h3 className="font-bold text-lg text-slate-900 mb-4">App Settings</h3>
                             <div onClick={() => { logout(); router.push('/'); }} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition group">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><FaGoogle /></div>
-                                    <div><div className="font-bold text-red-600 text-sm">Logout</div><div className="text-xs text-red-400/70">Sign out</div></div>
+                                    <div><div className="font-bold text-red-600 text-sm">Logout</div><div className="text-xs text-red-400/70">Sign out of account</div></div>
                                 </div>
                             </div>
                         </div>
@@ -220,6 +282,8 @@ export default function ProfilePage() {
                 onClose={() => setShowEditModal(false)}
                 initialData={modalInitialData}
                 onSave={handleSaveData}
+                isEmailLocked={isGoogleLogin}
+                isPhoneLocked={isMobileLogin}
             />
         </div>
     );

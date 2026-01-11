@@ -21,9 +21,10 @@ interface ProfileEditModalProps {
     onClose: () => void;
     initialData: ProfileData;
     onSave: (data: ProfileData) => void;
+    isEmailLocked?: boolean;
+    isPhoneLocked?: boolean;
 }
 
-// Default state to prevent crashes if initialData is delayed
 const DEFAULT_DATA: ProfileData = {
     name: '',
     email: '',
@@ -34,17 +35,35 @@ const DEFAULT_DATA: ProfileData = {
     pincode: ''
 };
 
-export default function ProfileEditModal({ isOpen, onClose, initialData, onSave }: ProfileEditModalProps) {
-    // ✅ FIX: Initialize with fallback to avoid 'undefined'
+export default function ProfileEditModal({
+    isOpen,
+    onClose,
+    initialData,
+    onSave,
+    isEmailLocked = false,
+    isPhoneLocked = false
+}: ProfileEditModalProps) {
+
     const [formData, setFormData] = useState<ProfileData>(initialData || DEFAULT_DATA);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isAnimating, setIsAnimating] = useState(false);
 
-    // ✅ FIX: Sync state safely when modal opens
+    // ✅ CRITICAL FIX: Update form data when initialData changes (e.g. after API fetch)
     useEffect(() => {
-        if (isOpen) {
-            setFormData(initialData || DEFAULT_DATA);
+        if (isOpen || initialData) {
+            setFormData({
+                name: initialData.name || '',
+                email: initialData.email || '',
+                phone: initialData.phone || '',
+                addressLine: initialData.addressLine || '',
+                city: initialData.city || '',
+                state: initialData.state || '',
+                pincode: initialData.pincode || ''
+            });
             setErrors({});
+        }
+
+        if (isOpen) {
             setIsAnimating(true);
         } else {
             const timer = setTimeout(() => setIsAnimating(false), 300);
@@ -57,12 +76,13 @@ export default function ProfileEditModal({ isOpen, onClose, initialData, onSave 
         if (!formData.name?.trim()) newErrors.name = "Full Name is required";
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!formData.email?.trim()) newErrors.email = "Email is required";
-        else if (!emailRegex.test(formData.email)) newErrors.email = "Invalid email format";
+        if (formData.email && !emailRegex.test(formData.email)) newErrors.email = "Invalid email format";
 
-        if (!formData.addressLine?.trim()) newErrors.addressLine = "Address Line is required";
-        if (!formData.city?.trim()) newErrors.city = "City is required";
-        if (!formData.state?.trim()) newErrors.state = "State is required";
+        if (!formData.phone?.trim()) {
+            // Optional logic
+        } else if (!/^\d{10}$/.test(formData.phone)) {
+            newErrors.phone = "Mobile number must be 10 digits";
+        }
 
         if (!formData.pincode?.trim()) newErrors.pincode = "Pincode is required";
         else if (!/^\d{6}$/.test(formData.pincode)) newErrors.pincode = "Must be 6 digits";
@@ -78,9 +98,17 @@ export default function ProfileEditModal({ isOpen, onClose, initialData, onSave 
         }
     };
 
-    if (!isOpen && !isAnimating) return null;
+    const handlePhoneChange = (val: string) => {
+        const numericVal = val.replace(/\D/g, '');
+        if (numericVal.length <= 10) setFormData({ ...formData, phone: numericVal });
+    };
 
-    // ✅ Guard Clause: Extra safety against rendering undefined state
+    const handlePincodeChange = (val: string) => {
+        const numericVal = val.replace(/\D/g, '');
+        if (numericVal.length <= 6) setFormData({ ...formData, pincode: numericVal });
+    };
+
+    if (!isOpen && !isAnimating) return null;
     if (!formData) return null;
 
     return (
@@ -91,7 +119,7 @@ export default function ProfileEditModal({ isOpen, onClose, initialData, onSave 
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-3xl z-20">
                     <div>
                         <h2 className="text-xl font-extrabold text-slate-900">Edit Profile</h2>
-                        <p className="text-sm text-gray-500">Update your personal details & address</p>
+                        <p className="text-sm text-gray-500">Update your contact & address info</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition text-gray-500 hover:text-red-500"><FaXmark className="text-xl" /></button>
                 </div>
@@ -101,15 +129,41 @@ export default function ProfileEditModal({ isOpen, onClose, initialData, onSave 
                         <div>
                             <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2"><FaUser /> Basic Information</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <InputField label="Full Name" value={formData.name} onChange={(v: string) => setFormData({ ...formData, name: v })} error={errors.name} placeholder="Enter your full name" />
-                                <InputField label="Email Address" value={formData.email} onChange={(v: string) => setFormData({ ...formData, email: v })} error={errors.email} type="email" placeholder="name@example.com" />
                                 <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">Mobile Number</label>
-                                    <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 flex items-center gap-3 cursor-not-allowed">
-                                        <FaPhone className="text-gray-400" /> {formData.phone}
-                                        <span className="ml-auto text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded flex items-center gap-1"><FaCheck size={10} /> Verified</span>
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 mt-1 ml-1">Phone number cannot be changed.</p>
+                                    <InputField
+                                        label="Full Name"
+                                        value={formData.name}
+                                        onChange={(v) => setFormData({ ...formData, name: v })}
+                                        error={errors.name}
+                                        placeholder="Enter your full name"
+                                    />
+                                </div>
+                                <div>
+                                    <InputField
+                                        label="Email Address"
+                                        value={formData.email}
+                                        onChange={(v) => setFormData({ ...formData, email: v })}
+                                        error={errors.email}
+                                        type="email"
+                                        placeholder="name@example.com"
+                                        locked={isEmailLocked}
+                                        icon={<FaEnvelope />}
+                                    />
+                                    {isEmailLocked && <p className="text-[10px] text-gray-400 mt-1 ml-1">Verified via Google.</p>}
+                                </div>
+                                <div>
+                                    <InputField
+                                        label="Mobile Number"
+                                        value={formData.phone}
+                                        onChange={handlePhoneChange}
+                                        error={errors.phone}
+                                        type="tel"
+                                        placeholder="9876543210"
+                                        locked={isPhoneLocked}
+                                        icon={<FaPhone />}
+                                        maxLength={10}
+                                    />
+                                    {isPhoneLocked && <p className="text-[10px] text-gray-400 mt-1 ml-1">Verified via OTP.</p>}
                                 </div>
                             </div>
                         </div>
@@ -120,11 +174,11 @@ export default function ProfileEditModal({ isOpen, onClose, initialData, onSave 
                             <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2"><FaMapLocation /> Default Address</h4>
                             <div className="grid grid-cols-2 gap-5">
                                 <div className="col-span-2">
-                                    <InputField label="Address Line" value={formData.addressLine} onChange={(v: string) => setFormData({ ...formData, addressLine: v })} error={errors.addressLine} placeholder="Flat / Building / Street" icon={<FaLocationDot />} />
+                                    <InputField label="Address Line" value={formData.addressLine} onChange={(v) => setFormData({ ...formData, addressLine: v })} error={errors.addressLine} placeholder="Flat / Building / Street" icon={<FaLocationDot />} />
                                 </div>
-                                <InputField label="City" value={formData.city} onChange={(v: string) => setFormData({ ...formData, city: v })} error={errors.city} placeholder="City Name" icon={<FaCity />} />
-                                <InputField label="Pincode" value={formData.pincode} onChange={(v: string) => { if (/^\d*$/.test(v) && v.length <= 6) setFormData({ ...formData, pincode: v }); }} error={errors.pincode} placeholder="123456" />
-                                <InputField label="State" value={formData.state} onChange={(v: string) => setFormData({ ...formData, state: v })} error={errors.state} placeholder="State" />
+                                <InputField label="City" value={formData.city} onChange={(v) => setFormData({ ...formData, city: v })} error={errors.city} placeholder="City Name" icon={<FaCity />} />
+                                <InputField label="Pincode" value={formData.pincode} onChange={handlePincodeChange} error={errors.pincode} placeholder="123456" maxLength={6} />
+                                <InputField label="State" value={formData.state} onChange={(v) => setFormData({ ...formData, state: v })} error={errors.state} placeholder="State" />
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">Country</label>
                                     <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 flex items-center gap-2 cursor-not-allowed"><FaEarthAmericas /> India</div>
@@ -143,7 +197,6 @@ export default function ProfileEditModal({ isOpen, onClose, initialData, onSave 
     );
 }
 
-// --- HELPER COMPONENT ---
 interface InputFieldProps {
     label: string;
     value: string;
@@ -152,21 +205,33 @@ interface InputFieldProps {
     type?: string;
     placeholder?: string;
     icon?: React.ReactNode;
+    locked?: boolean;
+    maxLength?: number;
 }
 
-function InputField({ label, value, onChange, error, type = "text", placeholder, icon }: InputFieldProps) {
+function InputField({ label, value, onChange, error, type = "text", placeholder, icon, locked = false, maxLength }: InputFieldProps) {
     return (
         <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">{label} <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">
+                {label} {locked && <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded ml-2">Verified</span>}
+            </label>
             <div className="relative">
                 <input
                     type={type}
-                    value={value || ''} // ✅ Fix: Handle undefined values
-                    onChange={(e) => onChange(e.target.value)}
+                    value={value || ''}
+                    onChange={(e) => !locked && onChange(e.target.value)}
                     placeholder={placeholder}
-                    className={clsx("w-full border rounded-xl px-4 py-3 text-sm font-medium outline-none transition", icon ? "pl-10" : "", error ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20" : "border-gray-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20")}
+                    readOnly={locked}
+                    maxLength={maxLength}
+                    className={clsx(
+                        "w-full border rounded-xl px-4 py-3 text-sm font-medium outline-none transition",
+                        icon ? "pl-10" : "",
+                        error ? "border-red-300 bg-red-50 focus:border-red-500" :
+                            locked ? "border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-gray-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                    )}
                 />
-                {icon && <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>}
+                {icon && <div className={clsx("absolute left-3.5 top-1/2 -translate-y-1/2", locked ? "text-gray-400" : "text-gray-400")}>{icon}</div>}
+                {locked && <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-green-500"><FaCheck size={12} /></div>}
             </div>
             {error && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1 animate-pulse">{error}</p>}
         </div>

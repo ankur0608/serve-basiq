@@ -2,122 +2,76 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit, Trash2, MapPin, Star, Briefcase, Plus, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Edit, Trash2, Loader2 } from 'lucide-react';
 
 interface Props {
     service: any | null;
     userId: string;
-    onEdit: () => void;   // Triggers Edit Mode (Prefilled)
-    onCreate: () => void; // ✅ Triggers Create Mode (Empty)
+    onEdit: () => void;
+    onCreate: () => void;
 }
 
 export default function ProviderServiceList({ service, userId, onEdit, onCreate }: Props) {
     const router = useRouter();
     const [deleting, setDeleting] = useState(false);
 
-    // ✅ ROBUST IMAGE LOGIC
-    // We prioritize the Service image if set, otherwise fallback to a placeholder.
-    const serviceImage = service?.img || "https://via.placeholder.com/150?text=No+Image";
     const handleDelete = async () => {
-        if (!confirm("Are you sure you want to delete your service profile?")) return;
+        if (!confirm("Are you sure you want to delete this service?")) return;
         setDeleting(true);
         try {
-            // ✅ Ensure this path is correct: /api/services/delete
-            // And ensure method is DELETE
             const res = await fetch('/api/services/delete', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId,
-                    serviceId: service.id // ✅ Pass the specific service ID to be safe
-                })
+                body: JSON.stringify({ userId, serviceId: service.id })
             });
-
-            if (res.ok) {
-                window.location.reload();
-            } else {
-                alert("Failed to delete service");
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Something went wrong");
-        } finally {
-            setDeleting(false);
-        }
+            if (res.ok) window.location.reload();
+            else alert("Failed to delete");
+        } catch (error) { alert("Error"); }
+        finally { setDeleting(false); }
     };
-    // 1. EMPTY STATE
-    if (!service) {
-        return (
-            <div className="bg-white p-10 rounded-2xl border border-dashed border-blue-200 text-center animate-in fade-in shadow-sm">
-                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Briefcase size={28} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900">No Service Profile Found</h3>
-                <p className="text-gray-500 mb-8 mt-2 max-w-md mx-auto">
-                    You haven't listed your services yet. Create a profile to start receiving job requests.
-                </p>
-                <button
-                    onClick={onCreate}
-                    className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-lg flex items-center gap-2 mx-auto"
-                >
-                    <Plus size={18} /> Create Service Profile
-                </button>
-            </div>
-        );
-    }
 
-    // 2. FILLED STATE
+    if (!service) return null;
+
     return (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 items-center bg-white hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 rounded-xl group">
+            {/* ID - ✅ FIX: Convert number to string safely */}
+            <div className="col-span-1 font-mono text-xs text-slate-400 truncate">
+                #{String(service.id).padStart(4, '0')}
+            </div>
 
-            {/* Service Card */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden animate-in fade-in">
-                <div className="p-6">
-                    <div className="flex flex-col md:flex-row gap-6">
-                        {/* Image Section */}
-                        <div className="w-full md:w-32 h-32 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 relative">
-                            <img
-                                src={serviceImage}
-                                alt={service.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                    e.currentTarget.src = "https://via.placeholder.com/150?text=Error";
-                                }}
-                            />
-                        </div>
+            {/* Name */}
+            <div className="col-span-12 md:col-span-4 font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                {service.name}
+            </div>
 
-                        {/* Details Section */}
-                        <div className="flex-1">
-                            <h3 className="text-2xl font-bold text-slate-900">{service.name}</h3>
-                            <p className="text-gray-500 text-sm mt-1 line-clamp-2">{service.desc}</p>
-                            <div className="flex flex-wrap items-center gap-3 mt-4 text-sm text-gray-600">
-                                <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold uppercase">{service.categoryId || "General"}</span>
-                                <span className="flex items-center gap-1"><MapPin size={16} className="text-red-500" /> {service.city}</span>
-                                <span className="flex items-center gap-1"><Star size={16} className="text-amber-400 fill-current" /> <span className="font-bold text-slate-900">{Number(service.rating).toFixed(1)}</span></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            {/* Category */}
+            <div className="col-span-6 md:col-span-2">
+                <span className="bg-purple-50 text-purple-700 px-2.5 py-1 rounded-md text-xs font-bold uppercase">
+                    {service.categoryId || "General"}
+                </span>
+            </div>
 
-                {/* Actions Footer */}
-                <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t border-gray-100">
+            {/* Rate - ✅ FIX: Handle Hourly vs Fixed */}
+            <div className="col-span-6 md:col-span-2 font-medium text-slate-700">
+                ₹{Number(service.price).toLocaleString()}
+                <span className="text-xs text-slate-400 font-normal ml-1">
+                    {service.priceType === 'HOURLY' ? '/hr' : ' (Fixed)'}
+                </span>
+            </div>
 
-                    {/* ✅ FOOTER STATUS MESSAGE */}
-                    <div className="text-xs font-medium text-gray-500">
-                        {service.verified
-                            ? <span className="text-green-600 font-bold">Profile is visible to customers</span>
-                            : <span className="text-amber-600 font-bold flex items-center gap-1"><AlertTriangle size={12} /> Waiting for admin approval</span>
-                        }
-                    </div>
+            {/* Status & Actions */}
+            <div className="col-span-12 md:col-span-3 flex justify-end items-center gap-3">
+                <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit mr-auto md:mr-0">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Active
+                </span>
 
-                    <div className="flex gap-3">
-                        <button onClick={onEdit} className="flex items-center gap-2 px-5 py-2 bg-white border border-gray-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-gray-50">
-                            <Edit size={16} /> Edit Details
-                        </button>
-                        <button onClick={handleDelete} disabled={deleting} className="flex items-center gap-2 px-5 py-2 bg-white border border-red-100 text-red-600 rounded-lg text-sm font-bold hover:bg-red-50">
-                            {deleting ? "..." : <Trash2 size={16} />} Delete
-                        </button>
-                    </div>
+                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={onEdit} className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
+                        <Edit size={16} />
+                    </button>
+                    <button onClick={handleDelete} disabled={deleting} className="p-2 text-slate-400 hover:text-red-600 transition-colors">
+                        {deleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    </button>
                 </div>
             </div>
         </div>

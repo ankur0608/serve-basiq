@@ -5,30 +5,38 @@ import { useRouter } from "next/navigation";
 import { useUIStore } from "@/lib/store";
 import {
     ArrowLeft, Camera, User, Mail, Phone, MapPin,
-    Check, Loader2, AlertTriangle, Navigation // ✅ Added Navigation Icon
+    Check, Loader2, AlertTriangle, Navigation
 } from 'lucide-react';
 import { onboardSchema } from "@/lib/validators";
 
-// --- HELPER: ImageKit Upload ---
-async function uploadToImageKit(file: File): Promise<string> {
-    const authRes = await fetch("/api/imagekit/auth");
-    if (!authRes.ok) throw new Error("Failed to get auth token");
-
-    const auth = await authRes.json();
+// --- HELPER: Upload to Backend (Standardized R2 Logic) ---
+async function uploadToBackend(file: File): Promise<string> {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("fileName", file.name);
-    formData.append("publicKey", auth.publicKey);
-    formData.append("signature", auth.signature);
-    formData.append("expire", String(auth.expire));
-    formData.append("token", auth.token);
-    formData.append("useUniqueFileName", "true");
-    formData.append("folder", "/services");
 
-    const res = await fetch("https://upload.imagekit.io/api/v1/files/upload", { method: "POST", body: formData });
+    const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Upload failed");
+    }
+
     const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || "Upload failed");
-    return data.url;
+
+    // Return direct URL or constructed ImageKit URL
+    if (data.url) return data.url;
+    if (data.key) {
+        const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
+        if (urlEndpoint) {
+            const cleanEndpoint = urlEndpoint.replace(/\/$/, "");
+            return `${cleanEndpoint}/${data.key}`;
+        }
+    }
+
+    throw new Error("Upload successful but no valid URL returned");
 }
 
 export default function BecomeProPage() {
@@ -36,8 +44,8 @@ export default function BecomeProPage() {
     const { currentUser, setCurrentUser } = useUIStore();
 
     const [loading, setLoading] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const [gettingLoc, setGettingLoc] = useState(false); // ✅ Location loading state
+    const [uploading, setUploading] = useState(false); // ✅ Global uploading state
+    const [gettingLoc, setGettingLoc] = useState(false);
     const [imgPreview, setImgPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<any>({});
 
@@ -51,11 +59,11 @@ export default function BecomeProPage() {
         city: "",
         state: "",
         pincode: "",
-        latitude: 0,  // ✅ Init Lat
-        longitude: 0, // ✅ Init Lng
+        latitude: 0,
+        longitude: 0,
     });
 
-    // --- ✅ GEOLOCATION HANDLER ---
+    // --- GEOLOCATION HANDLER ---
     const handleGetLocation = () => {
         if (!navigator.geolocation) {
             alert("Geolocation is not supported by your browser");
@@ -81,18 +89,23 @@ export default function BecomeProPage() {
         );
     };
 
-    // Handle Image Upload
+    // --- ✅ UPDATED: Handle Image Upload ---
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         try {
             setUploading(true);
-            const url = await uploadToImageKit(file);
+            const url = await uploadToBackend(file);
             setImgPreview(url);
-            setErrors((prev: any) => ({ ...prev, img: null }));
-        } catch (err) {
-            alert("Image upload failed. Please try again.");
+            setErrors((prev: any) => {
+                const newErrors = { ...prev };
+                delete newErrors.img;
+                return newErrors;
+            });
+        } catch (err: any) {
+            console.error("Upload Error:", err);
+            alert(err.message || "Image upload failed. Please try again.");
         } finally {
             setUploading(false);
         }
@@ -172,9 +185,15 @@ export default function BecomeProPage() {
                     {/* 1. PROFILE IMAGE */}
                     <div className={`bg-white p-6 rounded-2xl shadow-sm border flex flex-col items-center ${errors.img ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}>
                         <div className="relative w-32 h-32 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg cursor-pointer hover:opacity-90 transition group">
-                            <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                disabled={uploading}
+                            />
                             {uploading ? (
-                                <Loader2 className="animate-spin text-blue-500" />
+                                <Loader2 className="animate-spin text-blue-500" size={32} />
                             ) : imgPreview ? (
                                 <img src={imgPreview} className="w-full h-full object-cover" alt="Profile Preview" />
                             ) : (
@@ -182,7 +201,7 @@ export default function BecomeProPage() {
                             )}
                         </div>
                         <p className={`text-xs font-bold uppercase mt-3 ${errors.img ? 'text-red-600' : 'text-slate-400'}`}>
-                            {errors.img ? errors.img : "Upload Profile Photo"}
+                            {uploading ? "Uploading..." : (errors.img ? errors.img : "Upload Profile Photo")}
                         </p>
                     </div>
 
@@ -286,12 +305,13 @@ export default function BecomeProPage() {
                                 <ErrorMsg field="state" />
                             </div>
 
-                            {/* ✅ GEO LOCATION BUTTON */}
+                            {/* GEO LOCATION BUTTON */}
                             <div className="col-span-2 pt-2">
                                 <button
                                     type="button"
                                     onClick={handleGetLocation}
-                                    className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 py-3 rounded-lg font-bold transition"
+                                    disabled={gettingLoc}
+                                    className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 py-3 rounded-lg font-bold transition disabled:opacity-70"
                                 >
                                     {gettingLoc ? <Loader2 className="animate-spin" size={18} /> : <Navigation size={18} />}
                                     {form.latitude !== 0 ? "Location Captured ✓" : "Get Current Location"}
