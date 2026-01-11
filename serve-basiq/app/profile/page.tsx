@@ -23,7 +23,7 @@ export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'profile' | 'settings'>('overview');
     const [showEditModal, setShowEditModal] = useState(false);
 
-    // ✅ Local Address State (Critical for immediate UI updates)
+    // Local Address State
     const [addresses, setAddresses] = useState<any[]>([]);
 
     // --- 1. DETERMINE LOGIN METHOD ---
@@ -33,7 +33,6 @@ export default function ProfilePage() {
     // --- 2. FETCH DATA ON LOAD/REFRESH ---
     useEffect(() => {
         const fetchProfile = async () => {
-            // Priority: DB ID -> Google Email -> Phone
             const identifier = currentUser?.id || session?.user?.email || currentUser?.phone;
 
             if (!identifier) return;
@@ -44,7 +43,6 @@ export default function ProfilePage() {
                 if (res.ok) {
                     const dbData = await res.json();
 
-                    // 1. Update Global Store (Zustand)
                     const finalImage = dbData.img || session?.user?.image || null;
                     setCurrentUser({
                         ...currentUser,
@@ -53,7 +51,6 @@ export default function ProfilePage() {
                         addresses: dbData.addresses || []
                     });
 
-                    // 2. Update Local State (Forces re-render of address fields)
                     setAddresses(dbData.addresses || []);
                 }
             } catch (error) {
@@ -61,25 +58,24 @@ export default function ProfilePage() {
             }
         };
 
-        // Trigger fetch when session is ready or we have a cached user ID
         if (status === 'authenticated' || currentUser?.id) {
             fetchProfile();
         }
     }, [status, session?.user, currentUser?.id, setCurrentUser]);
 
-    // --- 3. PREPARE DATA FOR MODAL (Reactive) ---
-    // This runs on every render. If 'addresses' updates, this updates.
+    // --- 3. PREPARE DATA FOR MODAL ---
     const primaryAddress = addresses && addresses.length > 0 ? addresses[0] : {};
 
     const displayName = currentUser?.name || session?.user?.name || (currentUser?.phone ? `User ${currentUser.phone.slice(-4)}` : 'Valued Customer');
     const displayImage = currentUser?.img || session?.user?.image || '';
 
-    // ✅ This object is now guaranteed to have the latest data from the fetch
+    // ✅ UPDATED: Map to addressLine1 and addressLine2
     const modalInitialData = {
         name: displayName,
         email: currentUser?.email || session?.user?.email || '',
         phone: currentUser?.phone || '',
-        addressLine: primaryAddress.line1 || '',
+        addressLine1: primaryAddress.line1 || '',
+        addressLine2: primaryAddress.line2 || '',
         city: primaryAddress.city || '',
         state: primaryAddress.state || '',
         pincode: primaryAddress.pincode || '',
@@ -87,10 +83,11 @@ export default function ProfilePage() {
 
     // --- 4. HANDLE SAVE ---
     const handleSaveData = async (data: typeof modalInitialData) => {
-        // A. Optimistic Update (Update UI instantly)
+        // A. Optimistic Update
         const optimisticAddress = {
-            ...primaryAddress, // Keep existing ID if present
-            line1: data.addressLine,
+            ...primaryAddress,
+            line1: data.addressLine1, // ✅ Map back to schema
+            line2: data.addressLine2, // ✅ Map back to schema
             city: data.city,
             state: data.state,
             pincode: data.pincode,
@@ -98,7 +95,7 @@ export default function ProfilePage() {
             country: "India"
         };
 
-        setAddresses([optimisticAddress]); // Update Local State
+        setAddresses([optimisticAddress]);
 
         setCurrentUser({
             ...currentUser!,
@@ -106,26 +103,25 @@ export default function ProfilePage() {
             email: data.email,
             phone: data.phone,
             addresses: [optimisticAddress]
-        }); // Update Store
+        });
 
         setShowEditModal(false);
 
-        // B. API Call (Persist to DB)
+        // B. API Call
         try {
             const res = await fetch('/api/user/profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUser?.id,
-                    ...data
+                    ...data // This sends addressLine1 & 2 which matches the updated API
                 })
             });
 
             if (!res.ok) throw new Error("Failed to save");
 
-            // C. Sync with Server Response (Best Practice)
             const serverData = await res.json();
-            setAddresses(serverData.addresses || []); // Ensure we have the real DB IDs
+            setAddresses(serverData.addresses || []);
             setCurrentUser({ ...currentUser!, ...serverData });
 
         } catch (error) {
@@ -246,8 +242,10 @@ export default function ProfilePage() {
                                             <div>
                                                 <p className="text-sm font-bold text-slate-900 mb-1">Home Address</p>
                                                 <p className="text-xs text-gray-500 leading-relaxed">
-                                                    {primaryAddress.line1}, {primaryAddress.city}<br />
-                                                    {primaryAddress.state} - {primaryAddress.pincode}
+                                                    {primaryAddress.line1}
+                                                    {primaryAddress.line2 && <>, {primaryAddress.line2}</>}
+                                                    <br />
+                                                    {primaryAddress.city}, {primaryAddress.state} - {primaryAddress.pincode}
                                                 </p>
                                             </div>
                                         </div>

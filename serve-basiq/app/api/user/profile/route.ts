@@ -11,7 +11,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Missing identifier' }, { status: 400 });
     }
 
-    // Search for user by ID, Email, OR Phone (whatever identifier was passed)
+    // Search for user by ID, Email, OR Phone
     const user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -43,7 +43,8 @@ export async function POST(request: Request) {
       name,
       email,
       phone,
-      addressLine,
+      addressLine1, // Renamed to match frontend
+      addressLine2, // Added addressLine2 support
       city,
       state,
       pincode,
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
       data: {
         name,
         email,
-        phone, // Update phone number
+        phone,
       },
     });
 
@@ -69,37 +70,33 @@ export async function POST(request: Request) {
       where: { userId },
     });
 
+    const addressData = {
+      line1: addressLine1 || '',
+      line2: addressLine2 || '',
+      city: city || '',
+      state: state || '',
+      pincode: pincode || '',
+      country: country || 'India'
+    };
+
     if (existingAddress) {
-      // Update existing address
       await prisma.address.update({
         where: { id: existingAddress.id },
-        data: {
-          line1: addressLine,
-          city,
-          state,
-          pincode,
-          country: country || 'India'
-        },
+        data: addressData,
       });
     } else {
-      // Create new address ONLY if data is provided
-      if (addressLine || city || pincode) {
+      if (addressLine1 || city || pincode) {
         await prisma.address.create({
           data: {
             userId,
             type: 'Home',
-            line1: addressLine || '',
-            line2: '',
-            city: city || '',
-            state: state || '',
-            pincode: pincode || '',
-            country: country || 'India',
+            ...addressData
           },
         });
       }
     }
 
-    // 3. Return updated user data (including new address)
+    // 3. Return updated user data
     const finalUser = await prisma.user.findUnique({
       where: { id: userId },
       include: { addresses: true },

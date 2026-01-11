@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUIStore } from "@/lib/store";
 import {
@@ -26,7 +26,6 @@ async function uploadToBackend(file: File): Promise<string> {
 
     const data = await res.json();
 
-    // Return direct URL or constructed ImageKit URL
     if (data.url) return data.url;
     if (data.key) {
         const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
@@ -44,15 +43,15 @@ export default function BecomeProPage() {
     const { currentUser, setCurrentUser } = useUIStore();
 
     const [loading, setLoading] = useState(false);
-    const [uploading, setUploading] = useState(false); // ✅ Global uploading state
+    const [uploading, setUploading] = useState(false);
     const [gettingLoc, setGettingLoc] = useState(false);
     const [imgPreview, setImgPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<any>({});
 
-    // Form State
+    // Initial Form State
     const [form, setForm] = useState({
-        fullName: currentUser?.name || "",
-        email: currentUser?.email || "",
+        fullName: "",
+        email: "",
         altPhone: "",
         addressLine1: "",
         addressLine2: "",
@@ -62,6 +61,42 @@ export default function BecomeProPage() {
         latitude: 0,
         longitude: 0,
     });
+
+    // --- FETCH EXISTING DATA ---
+    useEffect(() => {
+        const fetchProfileData = async () => {
+            if (!currentUser?.id) return;
+
+            try {
+                // Fetch using the userId identifier
+                const res = await fetch(`/api/user/profile?identifier=${currentUser.id}`);
+                if (res.ok) {
+                    const data = await res.json();
+
+                    // Find primary address (prefer Home, fallback to first available)
+                    const addr = data.addresses?.find((a: any) => a.type === 'Home') || data.addresses?.[0];
+
+                    setForm(prev => ({
+                        ...prev,
+                        fullName: data.name || prev.fullName,
+                        email: data.email || prev.email,
+                        altPhone: data.phone || prev.altPhone,
+                        addressLine1: addr?.line1 || prev.addressLine1,
+                        addressLine2: addr?.line2 || prev.addressLine2,
+                        city: addr?.city || prev.city,
+                        state: addr?.state || prev.state,
+                        pincode: addr?.pincode || prev.pincode,
+                    }));
+
+                    if (data.img) setImgPreview(data.img);
+                }
+            } catch (error) {
+                console.error("Failed to load profile data:", error);
+            }
+        };
+
+        fetchProfileData();
+    }, [currentUser]);
 
     // --- GEOLOCATION HANDLER ---
     const handleGetLocation = () => {
@@ -89,7 +124,7 @@ export default function BecomeProPage() {
         );
     };
 
-    // --- ✅ UPDATED: Handle Image Upload ---
+    // --- HANDLE IMAGE UPLOAD ---
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -111,7 +146,7 @@ export default function BecomeProPage() {
         }
     };
 
-    // Handle Submission
+    // --- HANDLE SUBMISSION ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -142,7 +177,7 @@ export default function BecomeProPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Registration failed");
 
-            // Success
+            // Update local user state
             setCurrentUser({ ...currentUser, isWorker: true, isWebsite: false });
             router.push("/provider/dashboard?new=true");
 

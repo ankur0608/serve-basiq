@@ -10,7 +10,9 @@ interface ProfileData {
     name: string;
     email: string;
     phone: string;
-    addressLine: string;
+    // ✅ CHANGED: Split address lines
+    addressLine1: string;
+    addressLine2: string;
     city: string;
     state: string;
     pincode: string;
@@ -29,7 +31,8 @@ const DEFAULT_DATA: ProfileData = {
     name: '',
     email: '',
     phone: '',
-    addressLine: '',
+    addressLine1: '',
+    addressLine2: '',
     city: '',
     state: '',
     pincode: ''
@@ -48,14 +51,15 @@ export default function ProfileEditModal({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isAnimating, setIsAnimating] = useState(false);
 
-    // ✅ CRITICAL FIX: Update form data when initialData changes (e.g. after API fetch)
     useEffect(() => {
         if (isOpen || initialData) {
             setFormData({
                 name: initialData.name || '',
                 email: initialData.email || '',
                 phone: initialData.phone || '',
-                addressLine: initialData.addressLine || '',
+                // ✅ CHANGED: Map both address lines
+                addressLine1: initialData.addressLine1 || '',
+                addressLine2: initialData.addressLine2 || '',
                 city: initialData.city || '',
                 state: initialData.state || '',
                 pincode: initialData.pincode || ''
@@ -83,6 +87,9 @@ export default function ProfileEditModal({
         } else if (!/^\d{10}$/.test(formData.phone)) {
             newErrors.phone = "Mobile number must be 10 digits";
         }
+
+        // ✅ CHANGED: Validate addressLine1
+        if (!formData.addressLine1?.trim()) newErrors.addressLine1 = "Address is required";
 
         if (!formData.pincode?.trim()) newErrors.pincode = "Pincode is required";
         else if (!/^\d{6}$/.test(formData.pincode)) newErrors.pincode = "Must be 6 digits";
@@ -173,8 +180,25 @@ export default function ProfileEditModal({
                         <div>
                             <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2"><FaMapLocation /> Default Address</h4>
                             <div className="grid grid-cols-2 gap-5">
+                                {/* ✅ CHANGED: Address Line 1 */}
                                 <div className="col-span-2">
-                                    <InputField label="Address Line" value={formData.addressLine} onChange={(v) => setFormData({ ...formData, addressLine: v })} error={errors.addressLine} placeholder="Flat / Building / Street" icon={<FaLocationDot />} />
+                                    <InputField
+                                        label="Address Line 1"
+                                        value={formData.addressLine1}
+                                        onChange={(v) => setFormData({ ...formData, addressLine1: v })}
+                                        error={errors.addressLine1}
+                                        placeholder="Flat / Building / Street"
+                                        icon={<FaLocationDot />}
+                                    />
+                                </div>
+                                {/* ✅ CHANGED: Address Line 2 */}
+                                <div className="col-span-2">
+                                    <InputField
+                                        label="Address Line 2 (Optional)"
+                                        value={formData.addressLine2}
+                                        onChange={(v) => setFormData({ ...formData, addressLine2: v })}
+                                        placeholder="Area, Landmark"
+                                    />
                                 </div>
                                 <InputField label="City" value={formData.city} onChange={(v) => setFormData({ ...formData, city: v })} error={errors.city} placeholder="City Name" icon={<FaCity />} />
                                 <InputField label="Pincode" value={formData.pincode} onChange={handlePincodeChange} error={errors.pincode} placeholder="123456" maxLength={6} />
