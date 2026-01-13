@@ -103,10 +103,10 @@ export default function BookingWrapper({
     }, []);
 
     const handleOpen = () => {
-        // if (!currentUserId) {
-        //     router.push('/login?callbackUrl=' + window.location.pathname);
-        //     return;
-        // }
+        if (!currentUserId) {
+            router.push('/login?callbackUrl=' + window.location.pathname);
+            return;
+        }
         setIsOpen(true);
     };
 

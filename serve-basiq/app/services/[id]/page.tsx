@@ -277,13 +277,18 @@ export default async function ServiceDetail({ params }: Props) {
   const session = await getServerSession(authOptions);
   let currentUserAddresses: any[] = [];
   const currentUserId = session?.user?.id; // This is now safe to use
-
+  // 🔍 DEBUG LOGS (Check your VS Code Terminal when you refresh the page)
+  console.log("-----------------------------------------");
+  console.log("👤 Session User:", session?.user);
+  console.log("🆔 Current User ID:", currentUserId);
+  console.log("-----------------------------------------");
   if (currentUserId) {
     // If logged in, fetch their saved addresses
     const user = await prisma.user.findUnique({
       where: { id: currentUserId },
       include: { addresses: true }
     });
+    console.log("🏠 Found Addresses:", user?.addresses); // 🔍 Log addresses
     if (user) currentUserAddresses = user.addresses;
   }
 
