@@ -69,13 +69,14 @@ export default function ProfilePage() {
     const displayName = currentUser?.name || session?.user?.name || (currentUser?.phone ? `User ${currentUser.phone.slice(-4)}` : 'Valued Customer');
     const displayImage = currentUser?.img || session?.user?.image || '';
 
-    // ✅ UPDATED: Map to addressLine1 and addressLine2
+    // ✅ FIXED: Added 'landmark' to match ProfileEditModal interface
     const modalInitialData = {
         name: displayName,
         email: currentUser?.email || session?.user?.email || '',
         phone: currentUser?.phone || '',
         addressLine1: primaryAddress.line1 || '',
         addressLine2: primaryAddress.line2 || '',
+        landmark: primaryAddress.landmark || '', // ✅ Added this
         city: primaryAddress.city || '',
         state: primaryAddress.state || '',
         pincode: primaryAddress.pincode || '',
@@ -86,8 +87,9 @@ export default function ProfilePage() {
         // A. Optimistic Update
         const optimisticAddress = {
             ...primaryAddress,
-            line1: data.addressLine1, // ✅ Map back to schema
-            line2: data.addressLine2, // ✅ Map back to schema
+            line1: data.addressLine1,
+            line2: data.addressLine2,
+            landmark: data.landmark, // ✅ Added this
             city: data.city,
             state: data.state,
             pincode: data.pincode,
@@ -114,7 +116,7 @@ export default function ProfilePage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUser?.id,
-                    ...data // This sends addressLine1 & 2 which matches the updated API
+                    ...data
                 })
             });
 
@@ -244,6 +246,7 @@ export default function ProfilePage() {
                                                 <p className="text-xs text-gray-500 leading-relaxed">
                                                     {primaryAddress.line1}
                                                     {primaryAddress.line2 && <>, {primaryAddress.line2}</>}
+                                                    {primaryAddress.landmark && <><br /><span className="text-blue-500 font-medium">Landmark: {primaryAddress.landmark}</span></>}
                                                     <br />
                                                     {primaryAddress.city}, {primaryAddress.state} - {primaryAddress.pincode}
                                                 </p>

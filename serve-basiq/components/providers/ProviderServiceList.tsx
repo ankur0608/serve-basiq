@@ -34,9 +34,9 @@ export default function ProviderServiceList({ service, userId, onEdit, onCreate 
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 items-center bg-white hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 rounded-xl group">
-            {/* ID - ✅ FIX: Convert number to string safely */}
-            <div className="col-span-1 font-mono text-xs text-slate-400 truncate">
-                #{String(service.id).padStart(4, '0')}
+            {/* ID - Truncate UUID for display */}
+            <div className="col-span-1 font-mono text-xs text-slate-400 truncate" title={service.id}>
+                #{String(service.id).slice(-4).toUpperCase()} {/* Shows last 4 chars like #9B89 */}
             </div>
 
             {/* Name */}

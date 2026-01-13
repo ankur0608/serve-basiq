@@ -2,37 +2,54 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+// ✅ 1. Updated Zod Schema to match Frontend Payload & Prisma Model
 const ProductSchema = z.object({
-    userId: z.string().cuid(),
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    cat: z.string().min(1, "Category is required"),
-    price: z.number().positive("Price must be positive"),
-    moq: z.string().min(1, "MOQ is required"),
-    // 👇 This was causing the error because you sent "test"
-    desc: z.string().min(10, "Description must be at least 10 characters"),
-    img: z.string().url("Invalid Image URL"),
-    gallery: z.array(z.string().url()).optional(),
+    userId: z.string(),
+    name: z.string(),
+    desc: z.string(),
+
+    // Matches 'productImage' from frontend
+    productImage: z.string().url(),
+
+    // Matches 'gallery' array
+    gallery: z.array(z.string()).optional(),
+
+    price: z.number(), // ✅ Accepts number now
+    moq: z.number(),   // ✅ Accepts number now (since Prisma 'moq' is Int)
+
+    // Matches 'category' from frontend
+    category: z.string(),
+
+    // Enums
+    stockStatus: z.enum(['IN_STOCK', 'ON_DEMAND']).default('IN_STOCK'),
+    unit: z.enum(['PIECE', 'KG', 'BOX', 'LITER']).default('PIECE'),
+    deliveryType: z.enum(['DELIVERY', 'PICKUP']).default('DELIVERY'),
 });
 
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        console.log("📝 Product Payload:", body); // Debug log
 
-        // 1. Validate Input
+        console.log("📝 Incoming Payload:", body);
+
+        // 1. Validate
         const payload = ProductSchema.parse(body);
 
-        // 2. Create Product in DB
+        // 2. Create in DB
         const product = await prisma.product.create({
             data: {
                 userId: payload.userId,
                 name: payload.name,
-                cat: payload.cat,
+                desc: payload.desc,
+                category: payload.category, // ✅ Mapped correctly
                 price: payload.price,
                 moq: payload.moq,
-                desc: payload.desc,
-                img: payload.img,
+                productImage: payload.productImage, // ✅ Mapped correctly
                 gallery: payload.gallery || [],
+                stockStatus: payload.stockStatus,
+                unit: payload.unit,
+                deliveryType: payload.deliveryType,
+                isVerified: false,
             },
         });
 
@@ -41,18 +58,10 @@ export async function POST(req: Request) {
     } catch (error: any) {
         console.error("❌ Create Product Error:", error);
 
-        // Handle Zod Validation Errors gracefully
         if (error instanceof z.ZodError) {
-            return NextResponse.json(
-                { message: "Validation Error", errors: error },
-                { status: 400 } // Return 400 for bad input, not 500
-            );
+            return NextResponse.json({ success: false}, { status: 400 });
         }
 
-        // Handle Prisma Database Errors
-        return NextResponse.json(
-            { message: "Database Error. Did you run 'npx prisma db push'?" },
-            { status: 500 }
-        );
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }

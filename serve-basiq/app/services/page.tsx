@@ -4,47 +4,56 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaMagnifyingGlass, FaSliders } from 'react-icons/fa6';
 import clsx from 'clsx';
-import ServiceCard, { ServiceProps } from '@/components/ui/ServiceCard'; // ✅ Use shared interface
+import ServiceCard, { ServiceProps } from '@/components/ui/ServiceCard';
 
 export default function ServicesPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
-  // Use the interface from your Card component
   const [services, setServices] = useState<ServiceProps[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchServices = async () => {
-      console.log("🚀 Starting fetch request...");
-
       try {
-        const res = await fetch('/api/services/all');
+        // Assuming this API returns { data: [...] } or just [...] including relations:
+        // include: { category: true, user: true }
+        const res = await fetch('/api/services/all', { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP Error! status: ${res.status}`);
 
         const rawData = await res.json();
-        console.log("📦 Raw DB Data:", rawData);
 
-        // ✅ CRITICAL STEP: Map DB fields to UI fields
-        const formattedData = rawData.map((item: any) => ({
-          id: item.id,
-          // 1. Prefer the "Service Brand Name" (e.g., Joe's Plumbing), fallback to User Name
-          name: item.name || item.user?.name || "Service Provider",
+        // Handle if API returns { success: true, data: [...] } or just array
+        const items = Array.isArray(rawData) ? rawData : (rawData.data || []);
 
-          // 2. Map 'categoryId' (DB) to 'cat' (UI)
-          cat: item.categoryId || item.cat || "General",
+        // ✅ CRITICAL STEP: Map Prisma Schema to UI Interface
+        const formattedData: ServiceProps[] = items.map((item: any) => ({
+          id: item.id, // UUID String
+          name: item.name,
 
-          // 3. Map 'city' (DB) to 'loc' (UI)
-          loc: item.city ? `${item.city}, ${item.state || ''}` : item.loc,
+          // 1. Relations: Handle nested category object or fallback
+          category: item.category?.name || "General",
 
-          // 4. Ensure numbers
+          // 2. Location: Combine city/state or fallback
+          location: item.city
+            ? `${item.city}${item.state ? `, ${item.state}` : ''}`
+            : "Location N/A",
+
+          // 3. Numbers
           price: Number(item.price) || 0,
           rating: Number(item.rating) || 0,
+          priceType: item.priceType || 'FIXED',
 
-          // 5. Images
-          img: item.mainimg || "/default-avatar.png",
-          verified: item.user?.isVerified || false
+          // 4. Image Priority: mainimg -> serviceimg -> placeholder
+          image: item.mainimg || item.serviceimg || "https://via.placeholder.com/300x300?text=Service",
+
+          // 5. Verification status
+          isVerified: item.isVerified || false,
+
+          // 6. Provider Info (Optional)
+          providerName: item.user?.name,
+          providerImage: item.user?.image
         }));
 
         setServices(formattedData);
@@ -60,28 +69,23 @@ export default function ServicesPage() {
 
   // Filter Logic
   const filteredServices = services.filter((service) => {
-    const categoryName = service.cat || '';
-
     const matchesSearch =
       service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      categoryName.toLowerCase().includes(searchTerm.toLowerCase());
+      service.category.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesCategory = activeCategory === 'All' || service.cat === activeCategory;
+    const matchesCategory = activeCategory === 'All' || service.category === activeCategory;
 
     return matchesSearch && matchesCategory;
   });
 
-  // Extract Categories (Safe Filter)
-  const categories = Array.from(new Set(
-    services
-      .map(s => s.cat)
-      .filter((cat): cat is string => typeof cat === 'string' && cat.length > 0)
-  ));
+  // Extract Categories Dynamically
+  const categories = Array.from(new Set(services.map(s => s.category))).sort();
 
   return (
     <div className="min-h-screen pb-20 bg-slate-50">
+
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 top-16 z-30 pt-6 pb-4 px-4 shadow-sm">
+      <div className="bg-white border-b border-gray-100 sticky top-0 md:top-16 z-30 pt-6 pb-4 px-4 shadow-sm">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl font-bold text-slate-900 mb-4">Find a Professional</h1>
 
@@ -90,7 +94,7 @@ export default function ServicesPage() {
               <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search services, experts..."
+                placeholder="Search for plumbers, cleaners, etc..."
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 pl-11 pr-4 outline-none focus:ring-2 focus:ring-blue-500 transition"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -128,7 +132,11 @@ export default function ServicesPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-gray-500">Loading services...</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-40 bg-gray-200 rounded-2xl"></div>
+            ))}
+          </div>
         ) : filteredServices.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredServices.map((service) => (
@@ -139,7 +147,10 @@ export default function ServicesPage() {
           <div className="text-center py-20">
             <div className="text-6xl mb-4">🔍</div>
             <h3 className="text-xl font-bold text-slate-900">No professionals found</h3>
-            <button onClick={() => { setSearchTerm(''); setActiveCategory('All'); }} className="mt-6 text-blue-600 font-bold hover:underline">Clear all filters</button>
+            <p className="text-gray-500 mt-2">Try adjusting your search or filters.</p>
+            <button onClick={() => { setSearchTerm(''); setActiveCategory('All'); }} className="mt-6 text-blue-600 font-bold hover:underline">
+              Clear all filters
+            </button>
           </div>
         )}
       </div>

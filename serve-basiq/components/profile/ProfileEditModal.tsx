@@ -10,9 +10,9 @@ interface ProfileData {
     name: string;
     email: string;
     phone: string;
-    // ✅ CHANGED: Split address lines
     addressLine1: string;
     addressLine2: string;
+    landmark: string; // ✅ NEW FIELD
     city: string;
     state: string;
     pincode: string;
@@ -33,6 +33,7 @@ const DEFAULT_DATA: ProfileData = {
     phone: '',
     addressLine1: '',
     addressLine2: '',
+    landmark: '', // ✅ Default value
     city: '',
     state: '',
     pincode: ''
@@ -57,9 +58,9 @@ export default function ProfileEditModal({
                 name: initialData.name || '',
                 email: initialData.email || '',
                 phone: initialData.phone || '',
-                // ✅ CHANGED: Map both address lines
                 addressLine1: initialData.addressLine1 || '',
                 addressLine2: initialData.addressLine2 || '',
+                landmark: initialData.landmark || '', // ✅ Map initial data
                 city: initialData.city || '',
                 state: initialData.state || '',
                 pincode: initialData.pincode || ''
@@ -88,7 +89,6 @@ export default function ProfileEditModal({
             newErrors.phone = "Mobile number must be 10 digits";
         }
 
-        // ✅ CHANGED: Validate addressLine1
         if (!formData.addressLine1?.trim()) newErrors.addressLine1 = "Address is required";
 
         if (!formData.pincode?.trim()) newErrors.pincode = "Pincode is required";
@@ -180,7 +180,7 @@ export default function ProfileEditModal({
                         <div>
                             <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2"><FaMapLocation /> Default Address</h4>
                             <div className="grid grid-cols-2 gap-5">
-                                {/* ✅ CHANGED: Address Line 1 */}
+
                                 <div className="col-span-2">
                                     <InputField
                                         label="Address Line 1"
@@ -191,19 +191,32 @@ export default function ProfileEditModal({
                                         icon={<FaLocationDot />}
                                     />
                                 </div>
-                                {/* ✅ CHANGED: Address Line 2 */}
+
                                 <div className="col-span-2">
                                     <InputField
                                         label="Address Line 2 (Optional)"
                                         value={formData.addressLine2}
                                         onChange={(v) => setFormData({ ...formData, addressLine2: v })}
-                                        placeholder="Area, Landmark"
+                                        placeholder="Area, Colony"
                                     />
                                 </div>
+
+                                {/* ✅ NEW: Landmark Field */}
+                                <div className="col-span-2">
+                                    <InputField
+                                        label="Landmark (Optional)"
+                                        value={formData.landmark}
+                                        onChange={(v) => setFormData({ ...formData, landmark: v })}
+                                        placeholder="Near City Hospital, Opp. Park"
+                                    />
+                                </div>
+
                                 <InputField label="City" value={formData.city} onChange={(v) => setFormData({ ...formData, city: v })} error={errors.city} placeholder="City Name" icon={<FaCity />} />
                                 <InputField label="Pincode" value={formData.pincode} onChange={handlePincodeChange} error={errors.pincode} placeholder="123456" maxLength={6} />
-                                <InputField label="State" value={formData.state} onChange={(v) => setFormData({ ...formData, state: v })} error={errors.state} placeholder="State" />
-                                <div>
+                                <div className="col-span-2 md:col-span-1">
+                                    <InputField label="State" value={formData.state} onChange={(v) => setFormData({ ...formData, state: v })} error={errors.state} placeholder="State" />
+                                </div>
+                                <div className="col-span-2 md:col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">Country</label>
                                     <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-500 flex items-center gap-2 cursor-not-allowed"><FaEarthAmericas /> India</div>
                                 </div>

@@ -10,16 +10,20 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const productId = parseInt(id);
 
-    if (isNaN(productId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
+    // ❌ REMOVED: const productId = parseInt(id); (IDs are strings now)
 
     const product = await prisma.product.findUnique({
-      where: { id: productId },
+      where: { id }, // Uses string UUID directly
       include: {
-        user: { select: { name: true, isVerified: true } },
+        user: {
+          select: {
+            name: true,
+            shopName: true,
+            isVerified: true,
+            profileImage: true
+          }
+        },
       },
     });
 
@@ -29,7 +33,10 @@ export async function GET(
 
     const formatted = {
       ...product,
-      supplier: product.user?.name || "Verified Seller",
+      // Map for frontend consistency
+      img: product.productImage,
+      supplier: product.user?.shopName || product.user?.name || "Verified Seller",
+      supplierImg: product.user?.profileImage,
       isVerified: product.user?.isVerified || false,
     };
 
@@ -49,42 +56,48 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const productId = parseInt(id);
 
-    if (isNaN(productId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
+    // ❌ REMOVED: parseInt check. UUIDs are strings.
 
     const body = await req.json();
-    console.log("📝 Received Payload:", body);
+    console.log("📝 Received Update Payload:", body);
 
-    // 🔴 CRITICAL FIX: Destructure ONLY the fields that exist in the Product model.
-    // We explicitly exclude 'id', 'userId', and any banking fields that don't belong here.
+    // Destructure strictly what the Prisma Model allows
     const {
       name,
-      cat,
+      category, // Was 'cat'
       price,
       moq,
       desc,
-      img,
+      productImage, // Was 'img'
       gallery,
-      // If you add banking fields to Prisma schema later, add them here too.
+      stockStatus,
+      unit,
+      deliveryType
     } = body;
 
-    // Create a sanitized object
+    // Create a sanitized update object
     const updateData: any = {};
+
     if (name !== undefined) updateData.name = name;
-    if (cat !== undefined) updateData.cat = cat;
-    if (price !== undefined) updateData.price = parseFloat(price); // Ensure number
-    if (moq !== undefined) updateData.moq = moq;
+    if (category !== undefined) updateData.category = category;
     if (desc !== undefined) updateData.desc = desc;
-    if (img !== undefined) updateData.img = img;
+    if (productImage !== undefined) updateData.productImage = productImage;
     if (gallery !== undefined) updateData.gallery = gallery;
+
+    // Numbers
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (moq !== undefined) updateData.moq = parseInt(moq); // ✅ Ensure Int
+
+    // Enums
+    if (stockStatus !== undefined) updateData.stockStatus = stockStatus;
+    if (unit !== undefined) updateData.unit = unit;
+    if (deliveryType !== undefined) updateData.deliveryType = deliveryType;
 
     console.log("✅ Sanitized Update Data:", updateData);
 
     const updated = await prisma.product.update({
-      where: { id: productId },
+      where: { id }, // UUID String
       data: updateData,
     });
 
@@ -115,14 +128,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const productId = parseInt(id);
 
-    if (isNaN(productId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
+    // ❌ REMOVED: parseInt check
 
     await prisma.product.delete({
-      where: { id: productId },
+      where: { id }, // UUID String
     });
 
     return NextResponse.json({ success: true });

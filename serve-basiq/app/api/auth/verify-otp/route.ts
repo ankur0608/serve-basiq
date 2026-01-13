@@ -42,7 +42,7 @@ export async function POST(req: Request) {
         isWorker: false,
         isVerified: false,
         isWebsite: true, // ✅ Default to Website Mode
-        img: "",
+        profileImage: "",
       },
     });
 

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { onboardSchema } from "@/lib/validators";
 
-// --- HELPER: Upload to Backend (Standardized R2 Logic) ---
+// --- HELPER: Upload to Backend ---
 async function uploadToBackend(file: File): Promise<string> {
     const formData = new FormData();
     formData.append("file", file);
@@ -55,6 +55,7 @@ export default function BecomeProPage() {
         altPhone: "",
         addressLine1: "",
         addressLine2: "",
+        landmark: "", // ✅ ADDED: Missing field
         city: "",
         state: "",
         pincode: "",
@@ -68,12 +69,9 @@ export default function BecomeProPage() {
             if (!currentUser?.id) return;
 
             try {
-                // Fetch using the userId identifier
                 const res = await fetch(`/api/user/profile?identifier=${currentUser.id}`);
                 if (res.ok) {
                     const data = await res.json();
-
-                    // Find primary address (prefer Home, fallback to first available)
                     const addr = data.addresses?.find((a: any) => a.type === 'Home') || data.addresses?.[0];
 
                     setForm(prev => ({
@@ -83,12 +81,13 @@ export default function BecomeProPage() {
                         altPhone: data.phone || prev.altPhone,
                         addressLine1: addr?.line1 || prev.addressLine1,
                         addressLine2: addr?.line2 || prev.addressLine2,
+                        landmark: addr?.landmark || prev.landmark, // ✅ Load landmark
                         city: addr?.city || prev.city,
                         state: addr?.state || prev.state,
                         pincode: addr?.pincode || prev.pincode,
                     }));
 
-                    if (data.img) setImgPreview(data.img);
+                    if (data.img || data.profileImage) setImgPreview(data.profileImage || data.img);
                 }
             } catch (error) {
                 console.error("Failed to load profile data:", error);
@@ -135,7 +134,7 @@ export default function BecomeProPage() {
             setImgPreview(url);
             setErrors((prev: any) => {
                 const newErrors = { ...prev };
-                delete newErrors.img;
+                delete newErrors.profileImage; // ✅ Clear correct error key
                 return newErrors;
             });
         } catch (err: any) {
@@ -159,9 +158,13 @@ export default function BecomeProPage() {
         setErrors({});
 
         try {
+            // ✅ CONSTRUCT PAYLOAD MATCHING SCHEMA
+            // Mapping imgPreview -> profileImage
+            // Mapping altPhone -> phone
             const payload = {
                 ...form,
-                img: imgPreview || ""
+                profileImage: imgPreview || "", 
+                phone: form.altPhone
             };
 
             // Zod Validation
@@ -182,6 +185,7 @@ export default function BecomeProPage() {
             router.push("/provider/dashboard?new=true");
 
         } catch (error: any) {
+            console.error("Submission Error:", error);
             if (error.issues) {
                 const formattedErrors: any = {};
                 error.issues.forEach((issue: any) => {
@@ -218,7 +222,7 @@ export default function BecomeProPage() {
                 <form onSubmit={handleSubmit} className="space-y-6">
 
                     {/* 1. PROFILE IMAGE */}
-                    <div className={`bg-white p-6 rounded-2xl shadow-sm border flex flex-col items-center ${errors.img ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}>
+                    <div className={`bg-white p-6 rounded-2xl shadow-sm border flex flex-col items-center ${errors.profileImage ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}>
                         <div className="relative w-32 h-32 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg cursor-pointer hover:opacity-90 transition group">
                             <input
                                 type="file"
@@ -235,8 +239,8 @@ export default function BecomeProPage() {
                                 <Camera className="text-slate-400 group-hover:text-blue-500 transition" size={32} />
                             )}
                         </div>
-                        <p className={`text-xs font-bold uppercase mt-3 ${errors.img ? 'text-red-600' : 'text-slate-400'}`}>
-                            {uploading ? "Uploading..." : (errors.img ? errors.img : "Upload Profile Photo")}
+                        <p className={`text-xs font-bold uppercase mt-3 ${errors.profileImage ? 'text-red-600' : 'text-slate-400'}`}>
+                            {uploading ? "Uploading..." : (errors.profileImage ? "Profile Image Required" : "Upload Profile Photo")}
                         </p>
                     </div>
 
@@ -311,6 +315,18 @@ export default function BecomeProPage() {
                                     placeholder="Area, Street, Sector"
                                 />
                             </div>
+                            {/* ✅ NEW: Landmark Input */}
+                            <div className="col-span-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Landmark (Optional)</label>
+                                <input
+                                    value={form.landmark}
+                                    onChange={e => setForm({ ...form, landmark: e.target.value })}
+                                    className={getInputClass('landmark')}
+                                    placeholder="Near City Hospital"
+                                />
+                                <ErrorMsg field="landmark" />
+                            </div>
+
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">City</label>
                                 <input

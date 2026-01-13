@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// ✅ FIX: Change function name from POST to DELETE to match the frontend request
 export async function DELETE(req: Request) {
     try {
         const { userId, serviceId } = await req.json();
@@ -14,10 +13,11 @@ export async function DELETE(req: Request) {
 
         if (serviceId) {
             // Delete specific service
+            // ✅ FIX: 'id' is a String (UUID), so we removed Number() conversion
             result = await prisma.service.deleteMany({
                 where: {
-                    id: Number(serviceId),
-                    userId: userId
+                    id: serviceId,
+                    userId: userId // Security: Ensure user owns the service
                 }
             });
         } else {

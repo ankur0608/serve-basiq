@@ -1,41 +1,72 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import ProductCard from '@/components/ui/ProductCard';
+import ProductCard, { ProductProps } from '@/components/ui/ProductCard';
 import { FaMagnifyingGlass } from 'react-icons/fa6';
 import clsx from 'clsx';
-
-// ✅ Define Interface based on your DB Schema
-interface Product {
-  id: number;
-  name: string;
-  cat: string;
-  price: number;
-  moq: string;
-  img: string;
-  supplier: string;
-}
 
 export default function B2BMarketplace() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCat, setActiveCat] = useState('All');
 
-  // ✅ New State for Real Data
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductProps[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch Real Data from API
+  // ✅ Fetch & Map Data
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch('/api/products/all');
-        if (res.ok) {
-          const data = await res.json();
-          setProducts(data);
+        console.log("🚀 Starting Product Fetch..."); // Debug log
+
+        const res = await fetch('/api/products/all', { cache: 'no-store' });
+
+        if (!res.ok) {
+          throw new Error(`HTTP Status: ${res.status}`);
         }
+
+        const rawData = await res.json();
+        console.log("📦 Raw API Data:", rawData); // Check this in your browser console
+
+        // Handle various response structures: 
+        // 1. Direct Array: [...]
+        // 2. Wrapped Object: { data: [...] }
+        // 3. Success Wrapper: { success: true, data: [...] }
+        let items = [];
+        if (Array.isArray(rawData)) {
+          items = rawData;
+        } else if (Array.isArray(rawData.data)) {
+          items = rawData.data;
+        } else if (rawData.products && Array.isArray(rawData.products)) {
+          items = rawData.products;
+        }
+
+        console.log("✅ Extracted Items Array:", items);
+
+        if (items.length === 0) {
+          console.warn("⚠️ No items found in response.");
+        }
+
+        // Map Database Schema to UI Interface safely
+        const formattedProducts: ProductProps[] = items.map((item: any) => ({
+          id: String(item.id), // Ensure string for UUIDs
+          name: item.name || "Untitled Product",
+          // Handle Category relation OR simple string field
+          category: typeof item.category === 'object' ? item.category?.name : (item.category || "General"),
+          price: Number(item.price) || 0,
+          moq: Number(item.moq) || 1,
+          unit: item.unit || 'Units',
+          // Prioritize different image fields
+          image: item?.productImage || item.image || item.img || "https://via.placeholder.com/300?text=No+Image",
+          // Handle User relation safely
+          supplier: item.user?.shopName || item.user?.name || "Verified Supplier",
+          isVerified: Boolean(item.isVerified) || Boolean(item.user?.isVerified)
+        }));
+
+        console.log("✨ Formatted Products:", formattedProducts);
+        setProducts(formattedProducts);
+
       } catch (error) {
-        console.error("Failed to fetch products", error);
+        console.error("❌ Failed to fetch products:", error);
       } finally {
         setLoading(false);
       }
@@ -46,12 +77,12 @@ export default function B2BMarketplace() {
   // Filter Logic
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCat = activeCat === 'All' || product.cat === activeCat;
+    const matchesCat = activeCat === 'All' || product.category === activeCat;
     return matchesSearch && matchesCat;
   });
 
-  // ✅ Get Dynamic Categories from Real Data (instead of static file)
-  const productCategories = Array.from(new Set(products.map(p => p.cat)));
+  // Extract Categories dynamically
+  const productCategories = Array.from(new Set(products.map(p => p.category))).sort();
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 pb-32">
@@ -87,7 +118,7 @@ export default function B2BMarketplace() {
             All
           </button>
 
-          {/* ✅ Map through Dynamic Categories */}
+          {/* Dynamic Categories */}
           {productCategories.map((cat) => (
             <button
               key={cat}
@@ -107,7 +138,11 @@ export default function B2BMarketplace() {
 
       {/* Product Grid */}
       {loading ? (
-        <div className="text-center py-20 text-gray-400">Loading products...</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-pulse">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-64 bg-gray-200 rounded-2xl"></div>
+          ))}
+        </div>
       ) : filteredProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredProducts.map((product) => (
@@ -117,6 +152,9 @@ export default function B2BMarketplace() {
       ) : (
         <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
           <p className="text-gray-500 font-medium">No products found matching your search.</p>
+          <p className="text-sm text-gray-400 mt-2">
+            (Debug: Loaded {products.length} total items from API)
+          </p>
           <button onClick={() => { setSearchTerm(''); setActiveCat('All'); }} className="mt-4 text-blue-600 font-bold hover:underline">
             Clear Filters
           </button>

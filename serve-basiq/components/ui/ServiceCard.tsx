@@ -1,55 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import { FaHeart, FaRegHeart, FaStar, FaCircleCheck } from 'react-icons/fa6';
+import { FaHeart, FaRegHeart, FaStar, FaCircleCheck, FaLocationDot } from 'react-icons/fa6';
 import { useState } from 'react';
 
-// Updated Interface to match Prisma/Database output
+// ✅ Updated Interface matching the mapped data from ServicesPage
 export interface ServiceProps {
-  id: number;
+  id: string; // UUID is a string
   name: string;
-  cat?: string | null;
-  price?: number | null;
-  priceType?: 'HOURLY' | 'FIXED' | string; // Added priceType handling
-
-  // Location
-  loc?: string | null;
-  city?: string | null;
-  state?: string | null;
-
-  // Images
-  mainimg?: string | null; // ✅ Added mainimg
-  img?: string | null;     // Legacy/Fallback
-
-  rating?: number | null;
-  verified?: boolean;
-
-  // User Fallback Data (Optional)
-  user?: {
-    name?: string | null;
-    img?: string | null;
-  };
+  category: string;
+  price: number;
+  priceType: 'HOURLY' | 'FIXED' | string;
+  location: string;
+  image: string;
+  rating: number;
+  isVerified: boolean;
+  providerName?: string;
+  providerImage?: string;
 }
 
 export default function ServiceCard({ service }: { service: ServiceProps }) {
   const [isFav, setIsFav] = useState(false);
 
-  // 1. ✅ IMAGE LOGIC: Prioritize mainimg -> img -> user.img -> Placeholder
-  const displayImage = service.mainimg
-    || service.mainimg
-    || service.img
-    || "https://via.placeholder.com/150?text=No+Image";
-
-  // 2. Location Logic
-  const locationText = service.loc
-    ? service.loc
-    : (service.city ? `${service.city}${service.state ? `, ${service.state}` : ''}` : 'Location N/A');
-
-  // 3. Category Logic
-  const categoryText = service.cat || 'General';
-
   return (
-    <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-card transition flex gap-4 group h-full relative overflow-hidden">
+    <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex gap-4 group h-full relative overflow-hidden">
 
       {/* Favorite Button */}
       <button
@@ -62,50 +36,55 @@ export default function ServiceCard({ service }: { service: ServiceProps }) {
         {isFav ? <FaHeart className="text-red-500" /> : <FaRegHeart className="text-gray-400" />}
       </button>
 
-      {/* Link to details page */}
+      {/* Main Link */}
       <Link href={`/services/${service.id}`} className="flex gap-4 w-full">
 
-        {/* Image Container */}
+        {/* Image Section */}
         <div className="relative w-28 h-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
           <img
-            src={displayImage}
+            src={service.image}
             alt={service.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-            onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150?text=Error"}
+            className="w-full h-full object-cover group-hover:scale-110 transition duration-700 ease-out"
+            onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150?text=No+Image"}
           />
         </div>
 
-        {/* Text Content */}
+        {/* Content Section */}
         <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md truncate max-w-[120px]">
-                {categoryText}
+            {/* Category & Badge */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md truncate max-w-[100px]">
+                {service.category}
               </span>
-              {service.verified && (
-                <FaCircleCheck className="text-blue-500 text-xs" title="Verified Provider" />
+              {service.isVerified && (
+                <FaCircleCheck className="text-emerald-500 text-xs" title="Verified Provider" />
               )}
             </div>
 
+            {/* Title */}
             <h4 className="font-bold text-slate-900 truncate group-hover:text-blue-600 transition text-lg leading-tight">
               {service.name}
             </h4>
 
-            <div className="text-xs text-gray-500 mt-1 truncate font-medium">
-              {locationText}
+            {/* Location */}
+            <div className="text-xs text-gray-500 mt-1 truncate font-medium flex items-center gap-1">
+              <FaLocationDot size={10} className="text-gray-300" />
+              {service.location}
             </div>
           </div>
 
+          {/* Footer: Price & Rating */}
           <div className="flex items-end justify-between mt-2">
             <div className="text-slate-900 font-extrabold text-lg leading-none">
-              ₹{service.price || 0}
-              <span className="text-xs text-gray-400 font-normal ml-0.5">
+              ₹{service.price}
+              <span className="text-xs text-gray-400 font-normal ml-0.5 uppercase">
                 {service.priceType === 'HOURLY' ? '/hr' : ''}
               </span>
             </div>
 
             <span className="text-xs font-bold text-amber-500 flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-              {service.rating || 5.0} <FaStar />
+              {service.rating > 0 ? service.rating.toFixed(1) : 'New'} <FaStar size={10} />
             </span>
           </div>
         </div>

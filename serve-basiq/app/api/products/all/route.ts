@@ -18,7 +18,12 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }, // Newest first
       include: {
         user: {
-          select: { name: true, isVerified: true, img: true } // Fetch Supplier details
+          select: {
+            name: true,
+            shopName: true, // ✅ Useful for products/B2B context
+            isVerified: true,
+            profileImage: true // ✅ Correct field name from User Model
+          }
         }
       }
     });
@@ -26,16 +31,30 @@ export async function GET() {
     // Transform data for frontend
     const formattedProducts = products.map(product => ({
       ...product,
-      supplier: product.user?.name || "Verified Seller",
-      supplierImg: product.user?.img,
-      // This will always be true now because of the filter, but good to keep
-      isVerified: product.isVerified
+
+      // ✅ Map DB 'productImage' to 'img' for easier frontend usage if needed
+      img: product.productImage,
+
+      // ✅ Ensure new fields are explicitly passed (though ...product does this, explicit is safer)
+      category: product.category,
+      moq: product.moq,
+      unit: product.unit,
+      stockStatus: product.stockStatus,
+      deliveryType: product.deliveryType,
+
+      // ✅ Supplier Details
+      supplier: product.user?.shopName || product.user?.name || "Verified Seller",
+      supplierImg: product.user?.profileImage || "",
     }));
 
-    return NextResponse.json(formattedProducts);
+    // ✅ Return standardized response format
+    return NextResponse.json({
+      success: true,
+      products: formattedProducts
+    });
 
   } catch (error) {
     console.error("❌ Get Products Error:", error);
-    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Failed to fetch products" }, { status: 500 });
   }
 }

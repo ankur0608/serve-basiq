@@ -43,8 +43,9 @@ export async function POST(request: Request) {
       name,
       email,
       phone,
-      addressLine1, // Renamed to match frontend
-      addressLine2, // Added addressLine2 support
+      addressLine1,
+      addressLine2,
+      landmark, // ✅ NEW: Extract landmark
       city,
       state,
       pincode,
@@ -70,9 +71,11 @@ export async function POST(request: Request) {
       where: { userId },
     });
 
+    // ✅ Added landmark to addressData
     const addressData = {
       line1: addressLine1 || '',
       line2: addressLine2 || '',
+      landmark: landmark || '', // ✅ Save landmark
       city: city || '',
       state: state || '',
       pincode: pincode || '',

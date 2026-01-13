@@ -12,12 +12,13 @@ import clsx from 'clsx';
 
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
 import {
-    DashboardHomeView, RequestsView, LeadsView, EarningsView, ProfileView
+    DashboardHomeView, LeadsView, EarningsView, ProfileView
 } from '@/components/providers/GeneralViews';
 import { ProductsView, AddProductView } from '@/components/providers/ProductViews';
 import { ServiceSettingsView } from '@/components/providers/ServiceSettingsView';
 import ProviderServiceList from '@/components/providers/ProviderServiceList';
 import { VerificationView } from '@/components/providers/VerificationView';
+import RequestsView from '@/components/providers/RequestsView';
 
 export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
@@ -35,14 +36,29 @@ export default function ProviderDashboard() {
     // State for the Welcome/Restriction Modal
     const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
+    // ✅ EXTRACT BOOKINGS AND ORDERS
+    const bookings = dashboardData?.bookings || [];
+    const orders = dashboardData?.orders || []; // <--- ✅ ADDED THIS LINE
+
+    // ✅ RE-ESTABLISH userData from dashboardData
+    const userData = dashboardData?.user;
+
     // Derived State
     const services = useMemo(() => {
-        if (!dashboardData?.services) return [];
-        return dashboardData.services.map((svc: any) => ({
+        const rawServices = dashboardData?.user?.services || dashboardData?.services || [];
+
+        return rawServices.map((svc: any) => ({
             ...svc,
-            img: (svc.img && svc.img !== "") ? svc.img : svc.img
+            img: svc.serviceimg || svc.mainimg || svc.img || ""
         }));
     }, [dashboardData]);
+
+    // ✅ CONSOLIDATED DATA for VerificationView
+    const extendedUserData = useMemo(() => {
+        if (!dashboardData?.user) return null;
+        return dashboardData.user;
+    }, [dashboardData]);
+
 
     const isVerified = dashboardData?.isSetupComplete || false;
 
@@ -51,7 +67,6 @@ export default function ProviderDashboard() {
         setTimeout(() => setToast(null), 3000);
     };
 
-    // ✅ Initial check: Show Popup if not verified
     useEffect(() => {
         if (dashboardData && !dashboardData.isSetupComplete) {
             setShowRestrictionModal(true);
@@ -73,9 +88,8 @@ export default function ProviderDashboard() {
         }
     };
 
-    const userData = dashboardData?.user;
     const displayName = userData?.name || currentUser?.name || "Provider";
-    const displayImg = userData?.img || "https://i.pravatar.cc/150";
+    const displayImg = userData?.profileImage || userData?.img || "https://i.pravatar.cc/150";
 
     const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -84,28 +98,21 @@ export default function ProviderDashboard() {
         service: services.length > 0 ? services[0] : { name: displayName, img: displayImg }
     };
 
-    // ✅ FIXED: View Change Handler
     const handleViewChange = (view: string) => {
-        // 1. Dashboard and Profile don't need verification checks
-        if (view === 'dashboard' || view === 'profile') {
+        if (view === 'dashboard' || view === 'profile' || view === 'edit-profile') {
             setActiveView(view);
-            // We know 'view' is NOT 'settings' here, so we just reset state directly
             setIsEditingService(false);
             setIsCreatingService(false);
             setSelectedServiceToEdit(null);
             return;
         }
 
-        // 2. All other views require verification
         if (!isVerified) {
             setShowRestrictionModal(true);
             return;
         }
 
-        // 3. Switch View
         setActiveView(view);
-
-        // Only reset editing state if we aren't going to the settings page
         if (view !== 'settings') {
             setIsEditingService(false);
             setIsCreatingService(false);
@@ -133,7 +140,7 @@ export default function ProviderDashboard() {
 
             {/* --- "COMPLETE PROFILE" POPUP MODAL --- */}
             {showRestrictionModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden relative animate-in zoom-in-95 duration-300">
                         <button onClick={() => setShowRestrictionModal(false)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors text-slate-500">
                             <X size={20} />
@@ -155,18 +162,18 @@ export default function ProviderDashboard() {
                                 </button>
                             </div>
                         </div>
-                        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                        <div className="h-1.5 w-full bg-linear-to-r from-blue-500 via-purple-500 to-pink-500"></div>
                     </div>
                 </div>
             )}
 
             {toast && (
-                <div className={clsx("fixed top-5 right-5 z-[100] animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-[300px] bg-white", toast.type === 'success' ? "border-emerald-500 text-emerald-700" : toast.type === 'error' ? "border-red-500 text-red-700" : "border-blue-500 text-blue-700")}>
+                <div className={clsx("fixed top-5 right-5 z-100 animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-75 bg-white", toast.type === 'success' ? "border-emerald-500 text-emerald-700" : toast.type === 'error' ? "border-red-500 text-red-700" : "border-blue-500 text-blue-700")}>
                     <span className="font-bold text-sm">{toast.msg}</span>
                 </div>
             )}
 
-            {/* --- SIDEBAR (Desktop) --- */}
+            {/* --- SIDEBAR --- */}
             <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.03)]">
                 <div className="flex items-center gap-3 h-20 px-8 border-b border-slate-100">
                     <div className="bg-blue-600 text-white p-2.5 rounded-xl"><Hexagon size={24} fill="currentColor" /></div>
@@ -185,7 +192,7 @@ export default function ProviderDashboard() {
                 <div className="p-4 border-t border-slate-100">
                     <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group border border-transparent hover:border-slate-200" onClick={() => setActiveView('profile')}>
                         <div className="relative">
-                            <img src={displayImg} className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm" alt="Profile" onError={(e) => e.currentTarget.src = "https://i.pravatar.cc/150"} />
+                            <img src={displayImg} className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm" alt="Profile" />
                             <div className={clsx("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white", isVerified ? "bg-emerald-500" : "bg-orange-500")}></div>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -197,7 +204,6 @@ export default function ProviderDashboard() {
                 </div>
             </aside>
 
-            {/* --- MAIN CONTENT --- */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 h-20 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20 shadow-sm">
                     <div className="flex items-center gap-4">
@@ -211,16 +217,11 @@ export default function ProviderDashboard() {
                         <button onClick={handleBackToHome} className="hidden md:flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-white px-4 py-2.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all group">
                             <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Back to Website
                         </button>
-                        <button onClick={handleBackToHome} className="md:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition-all"><ArrowLeft size={20} /></button>
-
-                        <div className="h-6 w-px bg-slate-200 mx-1"></div>
-
                         <button className="relative p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all">
                             <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white animate-pulse"></span>
                             <BellRing size={20} />
                         </button>
-
-                        <div className="h-9 w-9 rounded-full overflow-hidden border border-slate-200 cursor-pointer hover:ring-2 hover:ring-slate-200 transition-all" onClick={() => setActiveView('profile')}>
+                        <div className="h-9 w-9 rounded-full overflow-hidden border border-slate-200 cursor-pointer" onClick={() => setActiveView('profile')}>
                             <img src={displayImg} className="h-full w-full object-cover" alt="Profile" />
                         </div>
                     </div>
@@ -229,10 +230,19 @@ export default function ProviderDashboard() {
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-32 lg:pb-8 scroll-smooth">
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {activeView === 'dashboard' && <DashboardHomeView stats={safeStats} setActiveView={handleViewChange} onBackToHome={handleBackToHome} isVerified={isVerified} />}
-                        {activeView === 'requests' && <RequestsView showToast={showToast} />}
+
+                        {/* 📋 REQUESTS VIEW (UPDATED) */}
+                        {activeView === 'requests' && (
+                            <RequestsView
+                                bookings={bookings}
+                                orders={orders} // <--- ✅ ADDED THIS PROP
+                                showToast={showToast}
+                                onRefresh={refetch}
+                            />
+                        )}
+
                         {activeView === 'leads' && <LeadsView />}
                         {activeView === 'earnings' && <EarningsView />}
-
                         {activeView === 'profile' && <ProfileView stats={safeStats} user={userData} onEdit={() => setActiveView('edit-profile')} />}
 
                         {activeView === 'settings' && (
@@ -241,11 +251,11 @@ export default function ProviderDashboard() {
                                     <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-[#0f172a] text-white shadow-md transition-all">Services</button>
                                     <button onClick={() => setActiveView('products')} className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all">Products</button>
                                 </div>
-                                <div className="bg-white rounded-2xl shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden">
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                                     <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
                                         <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2"><Package size={20} className="text-pink-500" /> My Services</h3>
                                         {!isEditingService && !isCreatingService && (
-                                            <button onClick={() => setIsCreatingService(true)} className="flex items-center gap-2 bg-[#0f172a] text-white px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95 text-sm font-bold"><Plus size={16} /> Add Service</button>
+                                            <button onClick={() => setIsCreatingService(true)} className="flex items-center gap-2 bg-[#0f172a] text-white px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all shadow-lg text-sm font-bold"><Plus size={16} /> Add Service</button>
                                         )}
                                     </div>
                                     <div className="p-6">
@@ -288,7 +298,17 @@ export default function ProviderDashboard() {
                             </div>
                         )}
 
-                        {activeView === 'edit-profile' && <VerificationView userId={currentUser?.id} existingData={userData} showToast={showToast} onBack={() => { refetch(); setActiveView('profile'); }} />}
+                        {activeView === 'edit-profile' && (
+                            <VerificationView
+                                userId={currentUser?.id || ""}
+                                existingData={extendedUserData}
+                                showToast={showToast}
+                                onBack={() => {
+                                    refetch();
+                                    setActiveView('profile');
+                                }}
+                            />
+                        )}
                         {activeView === 'add-product' && <AddProductView setActiveView={handleViewChange} userId={currentUser?.id} showToast={showToast} editingProduct={selectedProduct} />}
                     </div>
                 </main>

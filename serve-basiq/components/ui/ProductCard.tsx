@@ -1,16 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { FaTag } from 'react-icons/fa6';
+import { FaTag, FaCircleCheck } from 'react-icons/fa6';
 
-interface ProductProps {
-  id: number;
+// ✅ Updated Interface based on Schema
+export interface ProductProps {
+  id: string; // UUID is a string
   name: string;
-  cat: string;
+  category: string;
   price: number;
-  moq: string;
-  img: string;
+  moq: number; // MOQ is Int in schema
+  image: string; // Schema uses 'productImage'
   supplier: string;
+  isVerified: boolean;
+  unit: string;
 }
 
 export default function ProductCard({ product }: { product: ProductProps }) {
@@ -21,31 +24,36 @@ export default function ProductCard({ product }: { product: ProductProps }) {
         {/* Image */}
         <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 mb-3">
             <img 
-            src={product.img || "https://via.placeholder.com/300"} 
+            src={product?.image} 
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+            onError={(e) => e.currentTarget.src = "https://via.placeholder.com/300?text=No+Image"}
             />
             <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-sm">
-                MOQ: {product.moq}
+                MOQ: {product.moq} {product.unit}
             </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 flex flex-col">
             <div className="text-xs text-blue-600 font-bold mb-1 flex items-center gap-1">
-                <FaTag size={10} /> {product.cat}
+                <FaTag size={10} /> 
+                <span className="truncate max-w-[120px]">{product.category}</span>
+                {product.isVerified && <FaCircleCheck className="text-emerald-500 text-[10px]" />}
             </div>
+            
             <h4 className="font-bold text-slate-900 leading-tight mb-1 line-clamp-2 group-hover:text-blue-600 transition">
             {product.name}
             </h4>
+            
             <p className="text-xs text-gray-400 mb-3 truncate">By {product.supplier}</p>
             
             <div className="mt-auto flex items-center justify-between">
             <span className="text-lg font-extrabold text-slate-900">
                 ₹{product.price}
             </span>
-            <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600">
-                Buy Now
+            <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 hover:bg-slate-200 transition">
+                Details
             </span>
             </div>
         </div>

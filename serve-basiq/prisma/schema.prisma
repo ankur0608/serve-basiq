@@ -13,6 +13,81 @@ enum PriceType {
     FIXED
 }
 
+enum BookingStatus {
+    PENDING
+    CONFIRMED
+    COMPLETED
+    CANCELLED
+}
+
+enum RequestType {
+    PRODUCT
+    SERVICE
+}
+
+enum RequestStatus {
+    OPEN
+    IN_PROGRESS
+    CLOSED
+}
+
+enum OrderStatus {
+    PENDING
+    CONFIRMED
+    SHIPPED
+    OUT_FOR_DELIVERY
+    DELIVERED
+    CANCELLED
+    RETURNED
+}
+
+enum PaymentStatus {
+    PENDING
+    PAID
+    FAILED
+    REFUNDED
+}
+
+enum Gender {
+    MALE
+    FEMALE
+    OTHER
+}
+
+enum PropertyType {
+    FLAT
+    VILLA
+    OFFICE
+    OTHER
+}
+
+enum PaymentMode {
+    ONLINE
+    CASH
+}
+
+enum StockStatus {
+    IN_STOCK
+    ON_DEMAND
+}
+
+enum UnitType {
+    PIECE
+    KG
+    BOX
+    LITER
+}
+
+enum DeliveryType {
+    PICKUP
+    DELIVERY
+}
+
+enum PayoutMethod {
+    BANK
+    UPI
+}
+
 model Admin {
     id        String   @id @default(uuid())
     email     String   @unique
@@ -22,57 +97,150 @@ model Admin {
     createdAt DateTime @default(now())
 }
 
+model Booking {
+    id String @id @default(cuid())
+
+    // 1. RELATIONS: Who, What, Where
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    serviceId String
+    service   Service @relation(fields: [serviceId], references: [id])
+
+    addressId String
+    address   Address @relation(fields: [addressId], references: [id])
+
+    bookingDate DateTime
+    timeSlot    String
+
+    propertyType PropertyType
+
+    specialInstructions String?
+
+    paymentMode PaymentMode
+
+    couponCode String?
+
+    status BookingStatus @default(PENDING)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+// ✅ UPDATED ORDER MODEL
+model Order {
+    id String @id @default(cuid())
+
+    // --- 1. RELATIONS ---
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    productId String
+    product   Product @relation(fields: [productId], references: [id])
+
+    // Address is optional because DeliveryType could be 'PICKUP'
+    addressId String?
+    address   Address? @relation(fields: [addressId], references: [id])
+
+    // --- 2. ORDER DETAILS ---
+    quantity   Int
+    unit       UnitType // Uses your existing UnitType enum
+    totalPrice Float // Price * Quantity (calculated at creation)
+
+    deliveryType DeliveryType // Uses your existing DeliveryType enum
+
+    // --- 3. STATUS & PAYMENT ---
+    status OrderStatus @default(PENDING) // ✅ Uses new Enum
+
+    paymentMode PaymentMode @default(CASH) // ✅ Uses existing Enum
+
+    paymentStatus PaymentStatus @default(PENDING) // ✅ Uses new Enum
+
+    // --- 4. EXTRAS ---
+    specialInstructions String?
+    trackingId          String? // For courier tracking number
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
 model User {
-    id       String  @id @default(cuid())
-    name     String?
-    shopName String?
-
-    // ⚠️ CHANGE: Phone must be optional for Google Auth (users might not have one yet)
-    phone String? @unique
-
+    id            String    @id @default(cuid())
+    name          String?
+    shopName      String?
+    phone         String?   @unique
     email         String?   @unique
-    emailVerified DateTime? // ✅ Added: Standard NextAuth field
-    image         String? // ✅ Added: Standard NextAuth profile image field
+    emailVerified DateTime?
+    image         String?
 
-    role String  @default("USER")
-    img  String? // Your existing custom image field (keep this if your UI uses it)
+    role         String  @default("USER")
+    profileImage String?
+
+    gender            Gender?
+    dob               DateTime?
+    preferredLanguage String?   @default("English")
 
     isPhoneVerified Boolean @default(false)
     isWorker        Boolean @default(false)
     isWebsite       Boolean @default(true)
     rejectionReason String?
 
-    // ✅ STATUS FLAGS
-    isVerified         Boolean @default(false)
-    verificationStatus String  @default("PENDING")
+    // ✅ UPDATED: Kept the fast status flag here, but details are moved
+    isVerified Boolean @default(false)
 
-    // ✅ BANKING DETAILS
-    bankAccountHolder String?
-    bankAccountNumber String?
-    bankIfsc          String?
-    bankName          String?
-    upiId             String?
+    // Banking (Can stay here or move to its own model too, but fine here for now)
+    bankAccountHolder     String?
+    bankAccountNumber     String?
+    bankIfsc              String?
+    bankName              String?
+    upiId                 String?
+    preferredPayoutMethod PayoutMethod? @default(BANK)
 
-    // ✅ KYC DOCUMENTS
-    idProofType      String? @default("Aadhaar")
-    idProofNumber    String?
-    idProofImg       String?
+    // ✅ NEW: Relation to KYC Model
+    kycDetails KycDetails?
+
+    accounts     Account[]
+    services     Service[]
+    addresses    Address[]
+    products     Product[]
+    reviews      Review[]
+    bookings     Booking[]
+    requirements Requirement[] // Add this relation
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    orders    Order[]
+}
+
+// ✅ NEW MODEL: Separated KYC Logic
+model KycDetails {
+    id String @id @default(cuid())
+
+    // 1:1 Relation with User
+    userId String @unique
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    // Document Details
+    idProofType   String? @default("Aadhaar")
+    idProofNumber String?
+
+    // Images
+    idProofFrontImg  String?
+    idProofBackImg   String?
     businessProofImg String?
 
-    // ✅ RELATION: Link to the Account model for Google/NextAuth
-    accounts Account[]
+    // Tax Info
+    gstRegistered Boolean @default(false)
+    gstNumber     String?
 
-    // Relations
-    services  Service[]
-    addresses Address[]
-    products  Product[]
-    reviews   Review[]
+    // Status for the KYC specifically
+    status       String  @default("PENDING") // PENDING, APPROVED, REJECTED
+    rejectionMsg String?
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 }
 
-// ✅ NEW: Account Model (Required for NextAuth/Google)
 model Account {
     id                String  @id @default(cuid())
     userId            String
@@ -94,19 +262,50 @@ model Account {
 
 // --- ADDRESS MODEL (NEW) ---
 model Address {
-    id     String @id @default(cuid())
-    userId String
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id           String        @id @default(cuid())
+    userId       String
+    user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+    landmark     String? // ✅ NEW: Added Landmark
+    type         String        @default("Home") // Home, Work, Other
+    line1        String // Flat, Building, Street
+    line2        String
+    city         String
+    state        String
+    pincode      String
+    country      String        @default("India")
+    requirements Requirement[] // Add this relation
 
-    type    String @default("Home") // Home, Work, Other
-    line1   String // Flat, Building, Street
-    line2   String
-    city    String
-    state   String
-    pincode String
-    country String @default("India")
+    createdAt DateTime  @default(now())
+    bookings  Booking[]
+    orders    Order[]
+}
+
+model Requirement {
+    id String @id @default(cuid())
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    type        RequestType // PRODUCT or SERVICE
+    category    String // e.g. "Electronics", "Plumbing"
+    title       String // Product Name or Service Title
+    description String // Detailed requirement
+
+    // specific to products
+    quantity Int?
+    unit     UnitType? // PIECE, KG, etc.
+    budget   String? // e.g. "500-1000"
+
+    // Location & Payment
+    addressId String
+    address   Address @relation(fields: [addressId], references: [id])
+
+    paymentMode PaymentMode // ONLINE or CASH
+
+    status RequestStatus @default(OPEN)
 
     createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 // --- OTP MODEL ---
@@ -119,13 +318,13 @@ model Otp {
 }
 
 model Service {
-    id Int @id @default(autoincrement())
+    id String @id @default(uuid())
 
     userId     String
     user       User      @relation(fields: [userId], references: [id])
     name       String
     desc       String
-    img        String
+    serviceimg String
     experience Int?
     altPhone   String?
     coverImg   String?
@@ -151,6 +350,11 @@ model Service {
     openTime    String?
     closeTime   String?
 
+    instagramUrl String?
+    facebookUrl  String?
+    websiteUrl   String?
+    youtubeUrl   String?
+
     // Details
     rating     Float    @default(5.0)
     loc        String?
@@ -159,11 +363,11 @@ model Service {
 
     reviews Review[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    bookings  Booking[]
 }
 
-// Example Helper Models
 model Category {
     id       String    @id @default(uuid())
     name     String
@@ -175,32 +379,36 @@ model Review {
     rating  Int
     comment String?
 
-    // Link to the Service
-    serviceId Int
+    serviceId String
     service   Service @relation(fields: [serviceId], references: [id])
 
-    // Link to the User who wrote it
     authorId String
     author   User   @relation(fields: [authorId], references: [id])
 
     createdAt DateTime @default(now())
 }
 
-// --- PRODUCT MODEL ---
 model Product {
-    id Int @id @default(autoincrement())
+    id String @id @default(uuid())
 
-    userId String // ✅ Link to Seller
+    userId String
     user   User   @relation(fields: [userId], references: [id])
 
-    name    String
-    cat     String
-    img     String
-    price   Float
-    moq     String // Minimum Order Quantity (e.g., "10 Units")
-    desc    String
-    gallery String[]
+    name     String
+    category String
+    desc     String
+
+    productImage String
+    gallery      String[]
+
+    price Float
+    moq   Int
+
+    stockStatus  StockStatus  @default(IN_STOCK)
+    unit         UnitType     @default(PIECE)
+    deliveryType DeliveryType @default(DELIVERY)
 
     isVerified Boolean  @default(false)
     createdAt  DateTime @default(now())
+    orders     Order[]
 }

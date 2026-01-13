@@ -2,7 +2,9 @@
 
 import {
     TrendingUp, Briefcase, Bell, Star, PieChart,
-    Wallet, Clock, CreditCard, QrCode, Check, Pencil, MapPin, User, FileText, Landmark
+    Wallet, Clock, CreditCard, QrCode, Check, Pencil, MapPin, User, FileText, Landmark,
+    Loader2,
+    CalendarClock
 } from 'lucide-react';
 import { StatCard, RequestCard, LeadCard } from './DashboardComponents';
 import { Line, Doughnut } from 'react-chartjs-2';
@@ -10,6 +12,7 @@ import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement,
     LineElement, Title, Tooltip, Legend, Filler, ArcElement
 } from 'chart.js';
+import { useState } from 'react';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -86,20 +89,80 @@ export function DashboardHomeView({ stats, setActiveView }: any) {
     )
 }
 
-export function RequestsView({ showToast }: any) {
-    return (
-        <div className="bg-white rounded-2xl shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 bg-white flex justify-between items-center">
-                <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">Incoming Requests</h3>
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">Recent First</div>
-            </div>
-            <div className="p-4 space-y-3 bg-white">
-                <RequestCard id="101" title="Kitchen Tap Replacement" customer="John Doe" location="Thaltej, Ahm" price="650" urgent={true} onAccept={() => showToast('Accepted', 'success')} onReject={() => showToast('Rejected', 'error')} />
-                <RequestCard id="102" title="Bathroom Inspection" customer="Sarah Smith" location="Bopal, Ahm" price="300" urgent={false} onAccept={() => showToast('Accepted', 'success')} onReject={() => showToast('Rejected', 'error')} />
-            </div>
-        </div>
-    )
-}
+// export function RequestsView({ bookings = [], showToast, onRefresh }: any) {
+//     const [processingId, setProcessingId] = useState<string | null>(null);
+
+//     // Filter only PENDING requests
+//     const pendingRequests = bookings.filter((b: any) => b.status === 'PENDING');
+
+//     const handleStatusUpdate = async (bookingId: string, newStatus: string) => {
+//         setProcessingId(bookingId);
+//         try {
+//             const res = await fetch('/api/bookings/update-status', {
+//                 method: 'PATCH',
+//                 headers: { 'Content-Type': 'application/json' },
+//                 body: JSON.stringify({ bookingId, status: newStatus })
+//             });
+//             const data = await res.json();
+
+//             if (data.success) {
+//                 showToast(newStatus === 'CONFIRMED' ? "Request Accepted!" : "Request Rejected", newStatus === 'CONFIRMED' ? "success" : "info");
+//                 if (onRefresh) onRefresh(); // Trigger refetch in parent
+//             } else {
+//                 showToast("Failed to update status", "error");
+//             }
+//         } catch (error) {
+//             showToast("Network error", "error");
+//         } finally {
+//             setProcessingId(null);
+//         }
+//     };
+
+//     return (
+//         <div className="bg-white rounded-2xl shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden">
+//             <div className="px-6 py-5 border-b border-slate-100 bg-white flex justify-between items-center">
+//                 <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">Incoming Requests</h3>
+//                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+//                     {pendingRequests.length} Pending
+//                 </div>
+//             </div>
+
+//             <div className="p-4 space-y-3 bg-white min-h-[300px]">
+//                 {pendingRequests.length === 0 ? (
+//                     <div className="flex flex-col items-center justify-center h-48 text-slate-400">
+//                         <CalendarClock size={48} className="mb-2 opacity-20" />
+//                         <p>No pending requests.</p>
+//                     </div>
+//                 ) : (
+//                     pendingRequests.map((req: any) => (
+//                         <div key={req.id} className="relative">
+//                             {/* Loading Overlay for specific card */}
+//                             {processingId === req.id && (
+//                                 <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center rounded-xl">
+//                                     <Loader2 className="animate-spin text-blue-600" />
+//                                 </div>
+//                             )}
+
+//                             {/* Reusing your RequestCard logic, but mapping real data */}
+//                             <RequestCard
+//                                 id={req.id}
+//                                 title={req.service.name}
+//                                 customer={req.user.name || "Guest User"}
+//                                 location={req.address ? `${req.address.line1}, ${req.address.city}` : "Location Provided via Chat"}
+//                                 price={req.service.price}
+//                                 urgent={false}
+//                                 date={new Date(req.bookingDate).toDateString()}
+//                                 time={req.timeSlot}
+//                                 onAccept={() => handleStatusUpdate(req.id, 'CONFIRMED')}
+//                                 onReject={() => handleStatusUpdate(req.id, 'CANCELLED')}
+//                             />
+//                         </div>
+//                     ))
+//                 )}
+//             </div>
+//         </div>
+//     );
+// }
 
 export function LeadsView() {
     return (
@@ -163,14 +226,17 @@ export function EarningsView() {
     )
 }
 
-// ✅ UPDATED ProfileView to use 'user' AND 'stats.service' for Biz Name
+// ✅ UPDATED ProfileView to use 'kycDetails' Relation
 export function ProfileView({ stats, user, onEdit }: any) {
     // Fallback to default avatar if user.img is missing
-    const imageUrl = user?.img || "https://i.pravatar.cc/150";
+    const imageUrl = user?.profileImage || user?.img || "https://i.pravatar.cc/150";
 
     // Find addresses safely
     const homeAddress = user?.addresses?.find((a: any) => a.type === 'Home');
     const workAddress = user?.addresses?.find((a: any) => a.type === 'Work') || homeAddress;
+
+    // ✅ EXTRACT KYC DETAILS (New Schema)
+    const kyc = user?.kycDetails || {};
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -208,7 +274,6 @@ export function ProfileView({ stats, user, onEdit }: any) {
                     <MapPin className="absolute top-4 right-4 text-orange-100 -rotate-12" size={48} />
                     <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2"><MapPin size={14} /> Location</h3>
                     <div className="space-y-3 text-sm">
-                        {/* ✅ UPDATED: Prefer Service Shop Name, Fallback to User Shop Name */}
                         <p className="text-slate-600 flex justify-between"><strong>Shop/Biz Name:</strong> <span className="text-slate-900">{stats?.service?.shopName || user?.shopName || "N/A"}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>City:</strong> <span className="text-slate-900">{workAddress?.city || "N/A"}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Address:</strong> <span className="text-slate-900 truncate max-w-[200px]">{workAddress?.line1 || "N/A"}</span></p>
@@ -226,14 +291,15 @@ export function ProfileView({ stats, user, onEdit }: any) {
                     </div>
                 </div>
 
-                {/* KYC */}
+                {/* KYC - ✅ UPDATED TO USE kycDetails */}
                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-purple-500 p-6 relative overflow-hidden">
                     <FileText className="absolute top-4 right-4 text-purple-100 -rotate-12" size={48} />
                     <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2"><FileText size={14} /> KYC Verification</h3>
                     <div className="space-y-3 text-sm">
-                        <p className="text-slate-600 flex justify-between"><strong>ID Type:</strong> <span className="text-slate-900">{user?.idProofType || "N/A"}</span></p>
+                        {/* Access from kyc variable */}
+                        <p className="text-slate-600 flex justify-between"><strong>ID Type:</strong> <span className="text-slate-900">{kyc.idProofType || "N/A"}</span></p>
                         <p className="text-slate-600 flex justify-between items-center"><strong>Status:</strong>
-                            {user?.idProofImg ? (
+                            {kyc.idProofFrontImg ? (
                                 <span className="text-emerald-600 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full text-xs"><Check size={12} /> Uploaded</span>
                             ) : (
                                 <span className="text-red-500 font-bold text-xs">Missing</span>

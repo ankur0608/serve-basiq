@@ -29,7 +29,7 @@ export async function POST(request: Request) {
           pincode: "000000", // Default value
 
           desc: description,
-          img: imageUrl,
+          serviceimg: imageUrl,
           isVerified: false, // Badge is false initially
 
           // ✅ FIX 3: Add required fields for the new schema with defaults
