@@ -118,10 +118,10 @@ export default function ProductWrapper({
     }, []);
 
     const handleOpen = () => {
-        if (!currentUserId) {
-            router.push('/login?callbackUrl=' + window.location.pathname);
-            return;
-        }
+        // if (!currentUserId) {
+        //     router.push('/login?callbackUrl=' + window.location.pathname);
+        //     return;
+        // }
         setIsOpen(true);
     };
 
