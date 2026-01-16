@@ -1,18 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useProducts } from '@/app/hook/useProducts'; // Ensure path is correct
+import { useProducts } from '@/app/hook/useProducts';
 import {
-    Plus, Package, Image as ImageIcon, Loader2, Pencil, Trash2, ArrowLeft,
-    Check, X, UploadCloud, Layers, AlertCircle
+    Package, ImageIcon, BadgeIndianRupee,
+    ChevronRight, Loader2, Save, UploadCloud,
+    Trash2, X, Tag, Layers, Truck, Box, Plus, Camera
 } from 'lucide-react';
 
-// --- HELPER: Upload to Backend (R2) ---
+// --- HELPER: Upload to Backend ---
 async function uploadToBackend(file: File): Promise<string> {
     const formData = new FormData();
     formData.append("file", file);
 
-    // Call your centralized upload API (handles R2/S3)
     const res = await fetch("/api/upload", {
         method: "POST",
         body: formData
@@ -20,107 +20,25 @@ async function uploadToBackend(file: File): Promise<string> {
 
     if (!res.ok) throw new Error("Upload failed");
     const data = await res.json();
-
-    // Return the URL provided by your backend
     return data.url;
 }
 
-// ==========================================
-// 1. PRODUCTS LIST VIEW
-// ==========================================
-export function ProductsView({ setActiveView, userId, setSelectedProduct, showToast }: any) {
-    const { products, loading, fetchProducts, deleteProduct } = useProducts(userId);
-
-    useEffect(() => { fetchProducts(); }, [fetchProducts]);
-
-    const handleEdit = (product: any) => {
-        setSelectedProduct(product);
-        setActiveView('add-product');
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this product?")) return;
-        const success = await deleteProduct(id);
-        if (success) showToast("Product deleted successfully", "success");
-        else showToast("Failed to delete", "error");
-    };
-
-    return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-900">My Inventory</h2>
-                    <p className="text-sm text-slate-500">Manage your stock, pricing, and galleries.</p>
-                </div>
-                <button
-                    onClick={() => { setSelectedProduct(null); setActiveView('add-product'); }}
-                    className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-black transition shadow-lg"
-                >
-                    <Plus size={18} /> Add Product
-                </button>
-            </div>
-
-            {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
-                    <Loader2 className="animate-spin" />
-                    <span>Loading inventory...</span>
-                </div>
-            ) : products.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
-                    <Package className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-                    <h3 className="text-slate-900 font-bold">No products yet</h3>
-                    <p className="text-slate-500 text-sm mb-4">Start selling your items today.</p>
-                    <button onClick={() => setActiveView('add-product')} className="text-blue-600 font-bold text-sm hover:underline">Add your first product</button>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {products.map((p) => (
-                        <div key={p.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex gap-4 group hover:shadow-md transition relative overflow-hidden">
-                            {/* Status Badge */}
-                            <div className={`absolute top-0 left-0 px-3 py-1 rounded-br-xl text-[10px] font-bold uppercase z-10 ${p.stockStatus === 'IN_STOCK' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
-                                }`}>
-                                {p.stockStatus?.replace('_', ' ')}
-                            </div>
-
-                            <img src={p.productImage} className="w-24 h-24 rounded-lg object-cover bg-slate-100 border border-slate-100" />
-
-                            <div className="flex-1 flex flex-col justify-between pt-4">
-                                <div>
-                                    <h4 className="font-bold text-slate-900 line-clamp-1">{p.name}</h4>
-                                    <div className="text-xs text-slate-500 mb-1">{p.category}</div>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="font-bold text-blue-600 text-lg">₹{p.price}</span>
-                                        <span className="text-xs text-slate-400">/ {p.unit.toLowerCase()}</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 mt-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleEdit(p)} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">
-                                        <Pencil size={14} />
-                                    </button>
-                                    <button onClick={() => handleDelete(p.id)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition">
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
+interface AddProductProps {
+    setActiveView: (view: string) => void;
+    userId: string;
+    showToast: (msg: string, type: 'success' | 'error') => void;
+    editingProduct?: any;
 }
 
-
-// ==========================================
-// 2. ADD / EDIT PRODUCT FORM
-// ==========================================
-export function AddProductView({ setActiveView, userId, showToast, editingProduct }: any) {
+export function AddProductView({ setActiveView, userId, showToast, editingProduct }: AddProductProps) {
     const { saveProduct, loading: saving } = useProducts(userId);
 
+    // UI State
+    const [step, setStep] = useState(1);
     const [uploading, setUploading] = useState(false);
-    const [uploadTarget, setUploadTarget] = useState<'main' | 'gallery' | null>(null);
+    const [activeUploadField, setActiveUploadField] = useState<'main' | 'gallery' | null>(null);
 
-    // Form State matching Prisma Model
+    // Form State
     const [form, setForm] = useState({
         name: '',
         category: 'Spare Parts',
@@ -128,12 +46,13 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         productImage: '',
         gallery: [] as string[],
         price: '',
-        moq: '',
+        moq: '1',
         stockStatus: 'IN_STOCK',
         unit: 'PIECE',
         deliveryType: 'DELIVERY'
     });
 
+    // Load Data if Editing
     useEffect(() => {
         if (editingProduct) {
             setForm({
@@ -143,7 +62,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                 productImage: editingProduct.productImage || '',
                 gallery: editingProduct.gallery || [],
                 price: editingProduct.price ? String(editingProduct.price) : '',
-                moq: editingProduct.moq ? String(editingProduct.moq) : '',
+                moq: editingProduct.moq ? String(editingProduct.moq) : '1',
                 stockStatus: editingProduct.stockStatus || 'IN_STOCK',
                 unit: editingProduct.unit || 'PIECE',
                 deliveryType: editingProduct.deliveryType || 'DELIVERY'
@@ -151,45 +70,47 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         }
     }, [editingProduct]);
 
-    // Unified Image Upload Handler
-    async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>, target: 'main' | 'gallery') {
+    // --- Handlers ---
+
+    const handleChange = (field: string, value: any) => {
+        setForm(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'main' | 'gallery') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setUploading(true);
-        setUploadTarget(target);
+        setActiveUploadField(target);
 
         try {
-            const url = await uploadToBackend(file); // Uses the R2 API
-
+            const url = await uploadToBackend(file);
             if (target === 'main') {
-                setForm(prev => ({ ...prev, productImage: url }));
+                handleChange('productImage', url);
             } else {
-                setForm(prev => ({ ...prev, gallery: [...prev.gallery, url] }));
+                handleChange('gallery', [...form.gallery, url]);
             }
             showToast("Image uploaded!", "success");
-        } catch (e: any) {
-            console.error(e);
+        } catch (e) {
             showToast("Upload failed", "error");
         } finally {
             setUploading(false);
-            setUploadTarget(null);
+            setActiveUploadField(null);
         }
-    }
-
-    const removeGalleryImage = (index: number) => {
-        setForm(prev => ({
-            ...prev,
-            gallery: prev.gallery.filter((_, i) => i !== index)
-        }));
     };
 
-    async function handleSubmit(e: React.FormEvent) {
+    const removeGalleryImg = (index: number) => {
+        const newGallery = [...form.gallery];
+        newGallery.splice(index, 1);
+        handleChange('gallery', newGallery);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.productImage) return showToast("Main product image is required", "error");
 
         const payload = {
-            id: editingProduct?.id, // Only needed for update
+            id: editingProduct?.id,
             ...form,
             price: parseFloat(form.price),
             moq: parseInt(form.moq),
@@ -203,158 +124,251 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         } else {
             showToast(result.error || "Failed to save", "error");
         }
-    }
+    };
 
-    // Styles
-    const inputClass = "w-full border border-slate-200 rounded-xl px-4 py-3 bg-white outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition text-sm font-medium";
-    const labelClass = "text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2";
+    const closeForm = () => setActiveView('products');
+
+    // Styles matching ServiceSettingsView
+    const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
+    const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto pb-20">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-6 top-0 bg-[#F8F9FC] z-10 py-4">
-                <button onClick={() => setActiveView('products')} className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-sm"><ArrowLeft size={20} /></button>
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-900">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
-                    <p className="text-xs text-slate-500">Fill in the details below to list your item.</p>
-                </div>
-            </div>
+        // 🟢 MODAL WRAPPER
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-lg w-full mx-auto relative flex flex-col max-h-[90vh]">
 
-                {/* LEFT COL: IMAGES */}
-                <div className="lg:col-span-1 space-y-6">
-                    {/* Main Image */}
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                        <label className={labelClass}>Main Product Image</label>
-                        <div className="relative aspect-square rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 hover:border-blue-400 transition flex flex-col items-center justify-center overflow-hidden group">
-                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'main')} disabled={uploading} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                {/* Close Button */}
+                <button onClick={closeForm} className="absolute top-4 right-4 z-10 text-white/70 hover:text-white transition">
+                    <X size={24} />
+                </button>
 
-                            {uploading && uploadTarget === 'main' ? (
-                                <Loader2 className="animate-spin text-blue-600" />
-                            ) : form.productImage ? (
-                                <img src={form.productImage} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="text-center text-slate-400">
-                                    <ImageIcon className="mx-auto mb-2" />
-                                    <span className="text-xs font-bold">Upload Main Image</span>
-                                </div>
-                            )}
-                        </div>
+                {/* --- HEADER --- */}
+                <div className="bg-slate-900 p-6 text-white relative shrink-0">
+                    <div className="flex justify-between items-center mb-1">
+                        <h2 className="text-xl font-bold">
+                            {editingProduct ? 'Edit Product' : 'Add Product'}
+                        </h2>
+                        <span className="text-xs font-bold bg-white/10 px-2 py-1 rounded text-slate-300">
+                            Step {step} of 4
+                        </span>
                     </div>
+                    <p className="text-slate-400 text-sm">
+                        {step === 1 && "Product Details"}
+                        {step === 2 && "Product Images"}
+                        {step === 3 && "Inventory & Shipping"}
+                        {step === 4 && "Pricing Finalization"}
+                    </p>
 
-                    {/* Gallery */}
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                        <label className={labelClass}>Gallery (Optional)</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {form.gallery.map((img, idx) => (
-                                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-slate-100 group">
-                                    <img src={img} className="w-full h-full object-cover" />
-                                    <button type="button" onClick={() => removeGalleryImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition">
-                                        <X size={10} />
-                                    </button>
-                                </div>
-                            ))}
-                            <div className="relative aspect-square rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 hover:border-blue-400 transition flex items-center justify-center cursor-pointer">
-                                <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'gallery')} disabled={uploading} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                {uploading && uploadTarget === 'gallery' ? <Loader2 className="animate-spin w-4 h-4 text-blue-600" /> : <Plus className="text-slate-400" />}
-                            </div>
-                        </div>
+                    {/* Progress Bar */}
+                    <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-800">
+                        <div
+                            className="h-full bg-blue-500 transition-all duration-300"
+                            style={{ width: `${(step / 4) * 100}%` }}
+                        />
                     </div>
                 </div>
 
-                {/* RIGHT COL: DETAILS */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* General Info */}
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                        <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
-                            <Package className="text-blue-600" size={20} />
-                            <h3 className="font-bold text-lg">Product Details</h3>
-                        </div>
+                {/* SCROLLABLE FORM AREA */}
+                <form onSubmit={handleSubmit} className="p-6 overflow-y-auto">
 
-                        <div className="grid grid-cols-2 gap-5">
-                            <div className="col-span-2">
+                    {/* --- STEP 1: BASIC INFO --- */}
+                    {step === 1 && (
+                        <div className="space-y-5 animate-in slide-in-from-right duration-300">
+
+                            {/* Name */}
+                            <div>
                                 <label className={labelClass}>Product Name</label>
-                                <input required value={form.name} className={inputClass} placeholder="e.g. Heavy Duty Drill" onChange={e => setForm({ ...form, name: e.target.value })} />
+                                <div className="relative">
+                                    <Package className="absolute left-3 top-3 text-slate-400" size={18} />
+                                    <input
+                                        className={`${inputClass} pl-10`}
+                                        placeholder="e.g. Heavy Duty Drill"
+                                        value={form.name}
+                                        onChange={e => handleChange('name', e.target.value)}
+                                    />
+                                </div>
                             </div>
 
-                            <div className="col-span-2">
-                                <label className={labelClass}>Description</label>
-                                <textarea required rows={4} value={form.desc} className={inputClass} placeholder="Describe your product..." onChange={e => setForm({ ...form, desc: e.target.value })} />
-                            </div>
-
+                            {/* Category */}
                             <div>
                                 <label className={labelClass}>Category</label>
-                                <select value={form.category} className={inputClass} onChange={e => setForm({ ...form, category: e.target.value })}>
-                                    <option>Spare Parts</option>
-                                    <option>Tools</option>
-                                    <option>Materials</option>
-                                    <option>Safety Gear</option>
-                                    <option>Electronics</option>
-                                    <option>Plumbing</option>
-                                </select>
+                                <div className="relative">
+                                    <Tag className="absolute left-3 top-3 text-slate-400" size={18} />
+                                    <select className={`${inputClass} pl-10`} value={form.category} onChange={e => handleChange('category', e.target.value)}>
+                                        <option>Spare Parts</option>
+                                        <option>Tools</option>
+                                        <option>Materials</option>
+                                        <option>Safety Gear</option>
+                                        <option>Electronics</option>
+                                        <option>Plumbing</option>
+                                    </select>
+                                </div>
                             </div>
 
+                            {/* Description */}
                             <div>
-                                <label className={labelClass}>Stock Status</label>
-                                <select value={form.stockStatus} className={inputClass} onChange={e => setForm({ ...form, stockStatus: e.target.value })}>
-                                    <option value="IN_STOCK">In Stock</option>
-                                    <option value="ON_DEMAND">On Demand</option>
-                                </select>
+                                <label className={labelClass}>Description</label>
+                                <textarea
+                                    className={inputClass}
+                                    rows={4}
+                                    placeholder="Describe your product features..."
+                                    value={form.desc}
+                                    onChange={e => handleChange('desc', e.target.value)}
+                                />
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setStep(2)}
+                                className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-4"
+                            >
+                                Next Step <ChevronRight size={18} />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* --- STEP 2: VISUALS --- */}
+                    {step === 2 && (
+                        <div className="space-y-6 animate-in slide-in-from-right duration-300">
+
+                            {/* Main Image */}
+                            <div>
+                                <label className={labelClass}>Main Product Image</label>
+                                <div className="relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-300 transition-colors">
+                                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'main')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                    {form.productImage ? (
+                                        <img src={form.productImage} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="text-center text-slate-400">
+                                            <UploadCloud className="mx-auto mb-2" size={24} />
+                                            <span className="text-xs font-bold">Click to Upload</span>
+                                        </div>
+                                    )}
+                                    {uploading && activeUploadField === 'main' && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>}
+                                </div>
+                            </div>
+
+                            {/* Gallery */}
+                            <div>
+                                <label className={labelClass}>Gallery (Optional)</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {form.gallery.map((img: string, i: number) => (
+                                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-100">
+                                            <img src={img} className="w-full h-full object-cover" />
+                                            <button type="button" onClick={() => removeGalleryImg(i)} className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl-lg opacity-0 group-hover:opacity-100 transition"><Trash2 size={10} /></button>
+                                        </div>
+                                    ))}
+                                    <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center hover:border-blue-300 transition-colors cursor-pointer">
+                                        <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'gallery')} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                        {uploading && activeUploadField === 'gallery' ? <Loader2 className="animate-spin text-blue-400" size={16} /> : <Plus className="text-slate-400" size={20} />}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">Back</button>
+                                <button type="button" onClick={() => setStep(3)} className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition">Next <ChevronRight size={18} /></button>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Pricing & Units */}
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                        <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
-                            <Layers className="text-blue-600" size={20} />
-                            <h3 className="font-bold text-lg">Pricing & Units</h3>
+                    {/* --- STEP 3: INVENTORY & LOGISTICS --- */}
+                    {step === 3 && (
+                        <div className="space-y-5 animate-in slide-in-from-right duration-300">
+
+                            {/* Stock & Unit */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass}>Stock Status</label>
+                                    <div className="relative">
+                                        <Box className="absolute left-3 top-3 text-slate-400" size={18} />
+                                        <select className={`${inputClass} pl-10`} value={form.stockStatus} onChange={e => handleChange('stockStatus', e.target.value)}>
+                                            <option value="IN_STOCK">In Stock</option>
+                                            <option value="ON_DEMAND">On Demand</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Unit Type</label>
+                                    <div className="relative">
+                                        <Layers className="absolute left-3 top-3 text-slate-400" size={18} />
+                                        <select className={`${inputClass} pl-10`} value={form.unit} onChange={e => handleChange('unit', e.target.value)}>
+                                            <option value="PIECE">Piece</option>
+                                            <option value="KG">Kg</option>
+                                            <option value="BOX">Box</option>
+                                            <option value="LITER">Liter</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Delivery & MOQ */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass}>Delivery Mode</label>
+                                    <div className="relative">
+                                        <Truck className="absolute left-3 top-3 text-slate-400" size={18} />
+                                        <select className={`${inputClass} pl-10`} value={form.deliveryType} onChange={e => handleChange('deliveryType', e.target.value)}>
+                                            <option value="DELIVERY">Delivery</option>
+                                            <option value="PICKUP">Pickup Only</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={labelClass}>MOQ</label>
+                                    <input
+                                        type="number"
+                                        className={inputClass}
+                                        placeholder="Min Qty"
+                                        value={form.moq}
+                                        onChange={e => handleChange('moq', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={() => setStep(2)} className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">Back</button>
+                                <button type="button" onClick={() => setStep(4)} className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition">Next <ChevronRight size={18} /></button>
+                            </div>
                         </div>
+                    )}
 
-                        <div className="grid grid-cols-2 gap-5">
-                            <div>
-                                <label className={labelClass}>Price (₹)</label>
-                                <input required type="number" value={form.price} className={inputClass} placeholder="0.00" onChange={e => setForm({ ...form, price: e.target.value })} />
+                    {/* --- STEP 4: PRICING --- */}
+                    {step === 4 && (
+                        <div className="space-y-6 animate-in slide-in-from-right duration-300">
+
+                            {/* Price */}
+                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 flex flex-col items-center justify-center text-center">
+                                <label className={labelClass}>Selling Price per {form.unit.toLowerCase()}</label>
+                                <div className="relative w-full max-w-[200px] mt-2">
+                                    <BadgeIndianRupee className="absolute left-4 top-4 text-slate-400" size={24} />
+                                    <input
+                                        type="number"
+                                        className="w-full pl-12 pr-4 py-3 text-2xl font-bold text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-center"
+                                        placeholder="0.00"
+                                        value={form.price}
+                                        onChange={e => handleChange('price', e.target.value)}
+                                    />
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">Enter the final price including taxes if applicable.</p>
                             </div>
 
-                            <div>
-                                <label className={labelClass}>Unit Type</label>
-                                <select value={form.unit} className={inputClass} onChange={e => setForm({ ...form, unit: e.target.value })}>
-                                    <option value="PIECE">Per Piece</option>
-                                    <option value="KG">Per KG</option>
-                                    <option value="BOX">Per Box</option>
-                                    <option value="LITER">Per Liter</option>
-                                </select>
+                            {/* Action Buttons */}
+                            <div className="flex gap-3 pt-4 border-t border-slate-100">
+                                <button type="button" onClick={() => setStep(3)} className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">Back</button>
+                                <button type="submit" disabled={saving} className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200">
+                                    {saving ? <Loader2 className="animate-spin" /> : <Save size={18} />}
+                                    {editingProduct ? "Update Product" : "Save Product"}
+                                </button>
                             </div>
 
-                            <div>
-                                <label className={labelClass}>Minimum Order Qty (MOQ)</label>
-                                <input required type="number" value={form.moq} className={inputClass} placeholder="e.g. 1" onChange={e => setForm({ ...form, moq: e.target.value })} />
-                            </div>
-
-                            <div>
-                                <label className={labelClass}>Delivery Mode</label>
-                                <select value={form.deliveryType} className={inputClass} onChange={e => setForm({ ...form, deliveryType: e.target.value })}>
-                                    <option value="DELIVERY">Delivery</option>
-                                    <option value="PICKUP">Pickup Only</option>
-                                </select>
-                            </div>
+                            <button type="button" onClick={closeForm} className="w-full text-xs font-bold text-slate-400 hover:text-red-500 transition mt-2">Cancel and Exit</button>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Footer Actions */}
-                    <div className="flex gap-4 sticky bottom-6 z-20">
-                        <button type="button" onClick={() => setActiveView('products')} className="flex-1 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition">
-                            Cancel
-                        </button>
-                        <button type="submit" disabled={saving || uploading} className="flex-[2] bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition flex items-center justify-center gap-2 shadow-xl">
-                            {saving ? <Loader2 className="animate-spin" /> : <Check size={20} />}
-                            {editingProduct ? "Update Product" : "Save Product"}
-                        </button>
-                    </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     );
 }

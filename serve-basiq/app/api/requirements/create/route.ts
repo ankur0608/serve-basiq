@@ -2,20 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// Validation Schema
+// Updated Validation Schema
 const RequirementSchema = z.object({
     userId: z.string().min(1, "User ID is required"),
     type: z.enum(['PRODUCT', 'SERVICE']),
-    category: z.string().min(1, "Category is required"),
-    title: z.string().min(3, "Title/Product Name is required"),
+    title: z.string().min(3, "Title is required"),
     description: z.string().min(10, "Description must be at least 10 chars"),
-
-    quantity: z.number().optional(),
-    unit: z.enum(['PIECE', 'KG', 'BOX', 'LITER']).optional(),
-    budget: z.string().optional(),
-
     addressId: z.string().min(1, "Address is required"),
-    paymentMode: z.enum(['ONLINE', 'CASH']),
 });
 
 export async function POST(req: Request) {
@@ -36,14 +29,9 @@ export async function POST(req: Request) {
             data: {
                 userId: data.userId,
                 type: data.type,
-                category: data.category,
                 title: data.title,
                 description: data.description,
-                quantity: data.quantity || null,
-                unit: data.unit || null,
-                budget: data.budget || null,
                 addressId: data.addressId,
-                paymentMode: data.paymentMode,
                 status: "OPEN"
             }
         });

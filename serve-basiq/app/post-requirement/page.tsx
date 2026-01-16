@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useUIStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import {
-    Box, Wrench, MapPin, CreditCard, Banknote, Loader2,
-    CheckCircle2, ChevronRight, User, Phone, Mail, ArrowLeft
+    Loader2, CheckCircle2, ChevronRight, ArrowLeft,
+    PenLine, FileText, Box, Wrench
 } from 'lucide-react';
+import clsx from 'clsx';
 
 export default function PostRequirementPage() {
     const { currentUser } = useUIStore();
@@ -17,20 +18,14 @@ export default function PostRequirementPage() {
 
     // Form State
     const [form, setForm] = useState({
-        type: 'PRODUCT', // PRODUCT or SERVICE
-        category: 'General',
-        title: '',
-        quantity: '',
-        unit: 'PIECE',
-        budget: '',
-        description: '',
-        addressId: '',
-        paymentMode: 'CASH'
+        type: 'SERVICE',       // Selectable (Product/Service)
+        title: '',             // Input
+        description: '',       // Input
+        addressId: ''          // Hidden & Auto-filled
     });
 
-    // Load user address by default (Fixed TS Errors here)
+    // Auto-select the user's first address (Hidden from UI)
     useEffect(() => {
-        // safely check if addresses exist and have items
         if (currentUser?.addresses && currentUser.addresses.length > 0) {
             setForm(prev => ({ ...prev, addressId: currentUser.addresses![0].id }));
         }
@@ -40,14 +35,16 @@ export default function PostRequirementPage() {
         e.preventDefault();
         if (!currentUser) return alert("Please login first");
 
+        // Safety check for address
+        if (!form.addressId) {
+            return alert("Please add an address to your profile before posting.");
+        }
+
         setLoading(true);
         try {
             const payload = {
                 userId: currentUser.id,
-                ...form,
-                // Convert quantity to number only if type is product
-                quantity: form.type === 'PRODUCT' ? Number(form.quantity) : undefined,
-                unit: form.type === 'PRODUCT' ? form.unit : undefined,
+                ...form
             };
 
             const res = await fetch('/api/orders/create', {
@@ -69,9 +66,9 @@ export default function PostRequirementPage() {
         }
     };
 
-    // --- REUSED STYLES ---
-    const inputClass = "w-full border border-slate-200 rounded-xl px-4 py-3 bg-white outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition text-sm font-medium";
-    const labelClass = "text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2";
+    // --- STYLES ---
+    const inputClass = "w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 outline-none focus:bg-white focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all text-sm font-medium text-slate-900 placeholder:text-slate-400";
+    const labelClass = "text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2.5 ml-1";
 
     // --- SUCCESS VIEW ---
     if (step === 3) {
@@ -83,7 +80,7 @@ export default function PostRequirementPage() {
                     </div>
                     <h2 className="text-2xl font-bold text-slate-900">Request Posted!</h2>
                     <p className="text-slate-500 mt-2 mb-8 text-sm">
-                        We have sent your request to verified suppliers. You will receive quotes or calls shortly.
+                        We have received your requirement. Providers will contact you shortly.
                     </p>
                     <div className="space-y-3">
                         <button onClick={() => router.push('/dashboard')} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition">
@@ -99,219 +96,118 @@ export default function PostRequirementPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#F8F9FC] py-8 px-4">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-[#F8F9FC] py-8 px-4 flex items-center justify-center">
+            <div className="max-w-xl w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
 
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-8">
-                    <button onClick={() => router.back()} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-sm">
-                        <ArrowLeft size={20} />
+                <div className="flex items-center gap-4 mb-6">
+                    <button onClick={() => router.back()} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-sm group">
+                        <ArrowLeft size={20} className="text-slate-600 group-hover:-translate-x-1 transition-transform" />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900">Post New Requirement</h1>
-                        <p className="text-slate-500 text-sm">Get the best quotes from verified sellers & providers.</p>
+                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Post Requirement</h1>
+                        <p className="text-slate-500 text-sm font-medium">Tell us what you need.</p>
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 space-y-8">
 
-                    {/* LEFT COLUMN - MAIN FORM */}
-                    <div className="lg:col-span-2 space-y-6">
-
-                        {/* 1. TYPE SELECTION */}
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                            <label className={labelClass}>I am looking for...</label>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div
-                                    onClick={() => setForm({ ...form, type: 'PRODUCT' })}
-                                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col items-center gap-3 ${form.type === 'PRODUCT' ? 'border-blue-600 bg-blue-50' : 'border-slate-100 hover:border-slate-200'}`}
-                                >
-                                    <div className={`p-3 rounded-full ${form.type === 'PRODUCT' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                        <Box size={24} />
-                                    </div>
-                                    <span className={`font-bold ${form.type === 'PRODUCT' ? 'text-blue-700' : 'text-slate-500'}`}>Product / Material</span>
-                                </div>
-
-                                <div
-                                    onClick={() => setForm({ ...form, type: 'SERVICE' })}
-                                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col items-center gap-3 ${form.type === 'SERVICE' ? 'border-purple-600 bg-purple-50' : 'border-slate-100 hover:border-slate-200'}`}
-                                >
-                                    <div className={`p-3 rounded-full ${form.type === 'SERVICE' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                        <Wrench size={24} />
-                                    </div>
-                                    <span className={`font-bold ${form.type === 'SERVICE' ? 'text-purple-700' : 'text-slate-500'}`}>Service / Repair</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 2. DETAILS FORM */}
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-5">
-                            <div className="flex items-center gap-2 border-b border-slate-100 pb-4 mb-4">
-                                <Box className="text-blue-600" size={20} />
-                                <h3 className="font-bold text-lg text-slate-900">Requirement Details</h3>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="col-span-2">
-                                    <label className={labelClass}>Title / Name</label>
-                                    <input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className={inputClass} placeholder={form.type === 'PRODUCT' ? "e.g. 50 Bags of Cement" : "e.g. Full Home Plumbing"} />
-                                </div>
-
-                                <div>
-                                    <label className={labelClass}>Category</label>
-                                    <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className={inputClass}>
-                                        <option>General</option>
-                                        <option>Construction</option>
-                                        <option>Electronics</option>
-                                        <option>Furniture</option>
-                                        <option>Plumbing</option>
-                                        <option>Electrical</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className={labelClass}>Budget Range (Optional)</label>
-                                    <input value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} className={inputClass} placeholder="e.g. ₹500 - ₹2000" />
-                                </div>
-
-                                {/* PRODUCT ONLY FIELDS */}
-                                {form.type === 'PRODUCT' && (
-                                    <>
-                                        <div>
-                                            <label className={labelClass}>Quantity</label>
-                                            <input type="number" required value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} className={inputClass} placeholder="0" />
-                                        </div>
-                                        <div>
-                                            <label className={labelClass}>Unit</label>
-                                            <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} className={inputClass}>
-                                                <option value="PIECE">Pieces</option>
-                                                <option value="KG">Kilograms (KG)</option>
-                                                <option value="BOX">Boxes</option>
-                                                <option value="LITER">Liters</option>
-                                            </select>
-                                        </div>
-                                    </>
+                    {/* 1. TYPE SELECTION (Visual Cards) */}
+                    <div>
+                        <label className={labelClass}>I am looking for...</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div
+                                onClick={() => setForm({ ...form, type: 'PRODUCT' })}
+                                className={clsx(
+                                    "relative overflow-hidden p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 flex flex-col items-center gap-3 group",
+                                    form.type === 'PRODUCT'
+                                        ? "border-blue-600 bg-blue-50/50"
+                                        : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
                                 )}
-
-                                <div className="col-span-2">
-                                    <label className={labelClass}>Description</label>
-                                    <textarea required rows={4} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className={inputClass} placeholder="Describe your requirement in detail..." />
+                            >
+                                <div className={clsx(
+                                    "p-3.5 rounded-full transition-colors",
+                                    form.type === 'PRODUCT' ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-white text-slate-400 border border-slate-100"
+                                )}>
+                                    <Box size={24} />
                                 </div>
+                                <span className={clsx("font-bold text-sm", form.type === 'PRODUCT' ? "text-blue-700" : "text-slate-500")}>Product / Material</span>
+                                {form.type === 'PRODUCT' && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
+                            </div>
+
+                            <div
+                                onClick={() => setForm({ ...form, type: 'SERVICE' })}
+                                className={clsx(
+                                    "relative overflow-hidden p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 flex flex-col items-center gap-3 group",
+                                    form.type === 'SERVICE'
+                                        ? "border-purple-600 bg-purple-50/50"
+                                        : "border-slate-100 hover:border-purple-200 hover:bg-slate-50"
+                                )}
+                            >
+                                <div className={clsx(
+                                    "p-3.5 rounded-full transition-colors",
+                                    form.type === 'SERVICE' ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : "bg-white text-slate-400 border border-slate-100"
+                                )}>
+                                    <Wrench size={24} />
+                                </div>
+                                <span className={clsx("font-bold text-sm", form.type === 'SERVICE' ? "text-purple-700" : "text-slate-500")}>Service / Repair</span>
+                                {form.type === 'SERVICE' && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-purple-500 animate-pulse" />}
                             </div>
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN - USER & LOCATION */}
+                    {/* 2. TITLE & DESCRIPTION */}
                     <div className="space-y-6">
-
-                        {/* 3. USER DETAILS (Read Only) */}
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                            <div className="flex items-center gap-2 border-b border-slate-100 pb-4 mb-4">
-                                <User className="text-blue-600" size={20} />
-                                <h3 className="font-bold text-lg text-slate-900">Contact Details</h3>
-                            </div>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                                        <User size={18} className="text-slate-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase">Name</p>
-                                        <p className="font-medium text-slate-900">{currentUser?.name || "Guest"}</p>
-                                    </div>
+                        <div>
+                            <label className={labelClass}>
+                                <div className="flex items-center gap-2">
+                                    <PenLine size={14} /> Title
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                                        <Phone size={18} className="text-slate-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase">Phone</p>
-                                        <p className="font-medium text-slate-900">{currentUser?.phone || "N/A"}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                                        <Mail size={18} className="text-slate-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase">Email</p>
-                                        <p className="font-medium text-slate-900 truncate max-w-[180px]">{currentUser?.email || "N/A"}</p>
-                                    </div>
-                                </div>
-                            </div>
+                            </label>
+                            <input
+                                required
+                                value={form.title}
+                                onChange={e => setForm({ ...form, title: e.target.value })}
+                                className={inputClass}
+                                placeholder={form.type === 'PRODUCT' ? "e.g. 50 Bags of Cement" : "e.g. Kitchen Sink Repair"}
+                            />
                         </div>
 
-                        {/* 4. LOCATION SELECTION */}
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                            <div className="flex items-center gap-2 border-b border-slate-100 pb-4 mb-4">
-                                <MapPin className="text-blue-600" size={20} />
-                                <h3 className="font-bold text-lg text-slate-900">Delivery Location</h3>
-                            </div>
-
-                            {/* ✅ Safe Check: (currentUser?.addresses?.length ?? 0) > 0 */}
-                            {(currentUser?.addresses?.length ?? 0) > 0 ? (
-                                <div className="space-y-3">
-                                    {/* ✅ Safe Access: currentUser?.addresses?.map */}
-                                    {currentUser?.addresses?.map((addr: any) => (
-                                        <div
-                                            key={addr.id}
-                                            onClick={() => setForm({ ...form, addressId: addr.id })}
-                                            className={`p-3 rounded-xl border cursor-pointer flex items-start gap-3 transition-all ${form.addressId === addr.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-100 hover:border-slate-300'}`}
-                                        >
-                                            <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${form.addressId === addr.id ? 'border-blue-500' : 'border-slate-300'}`}>
-                                                {form.addressId === addr.id && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-slate-900">{addr.type}</p>
-                                                <p className="text-xs text-slate-500 line-clamp-1">{addr.line1}, {addr.city}</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                        <div>
+                            <label className={labelClass}>
+                                <div className="flex items-center gap-2">
+                                    <FileText size={14} /> Details
                                 </div>
-                            ) : (
-                                <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl">
-                                    <p className="text-sm text-slate-500 mb-2">No saved addresses.</p>
-                                    <button onClick={() => router.push('/profile')} className="text-blue-600 font-bold text-sm hover:underline">Add Address</button>
-                                </div>
-                            )}
+                            </label>
+                            <textarea
+                                required
+                                rows={5}
+                                value={form.description}
+                                onChange={e => setForm({ ...form, description: e.target.value })}
+                                className={clsx(inputClass, "resize-none")}
+                                placeholder="Describe exactly what you need..."
+                            />
                         </div>
+                    </div>
 
-                        {/* 5. PAYMENT MODE */}
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                            <div className="flex items-center gap-2 border-b border-slate-100 pb-4 mb-4">
-                                <CreditCard className="text-blue-600" size={20} />
-                                <h3 className="font-bold text-lg text-slate-900">Payment Preference</h3>
-                            </div>
-                            <div className="space-y-3">
-                                <div onClick={() => setForm({ ...form, paymentMode: 'CASH' })} className={`p-4 rounded-xl border cursor-pointer flex items-center gap-3 transition-all ${form.paymentMode === 'CASH' ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' : 'border-slate-100 hover:border-slate-300'}`}>
-                                    <Banknote size={24} className="text-emerald-600" />
-                                    <div className="flex-1">
-                                        <p className="font-bold text-sm text-slate-900">Cash / Pay Later</p>
-                                        <p className="text-xs text-slate-500">Pay directly to vendor</p>
-                                    </div>
-                                    {form.paymentMode === 'CASH' && <CheckCircle2 size={18} className="text-emerald-600" />}
-                                </div>
-                                <div onClick={() => setForm({ ...form, paymentMode: 'ONLINE' })} className={`p-4 rounded-xl border cursor-pointer flex items-center gap-3 transition-all ${form.paymentMode === 'ONLINE' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-100 hover:border-slate-300'}`}>
-                                    <CreditCard size={24} className="text-blue-600" />
-                                    <div className="flex-1">
-                                        <p className="font-bold text-sm text-slate-900">Online Payment</p>
-                                        <p className="text-xs text-slate-500">UPI, Card, Netbanking</p>
-                                    </div>
-                                    {form.paymentMode === 'ONLINE' && <CheckCircle2 size={18} className="text-blue-600" />}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* SUBMIT BUTTON */}
+                    {/* SUBMIT BUTTON */}
+                    <div className="pt-2">
                         <button
-                            onClick={handleSubmit}
+                            type="submit"
                             disabled={loading || !form.addressId}
-                            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
+                            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-slate-200 hover:bg-black hover:shadow-2xl hover:shadow-slate-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]"
                         >
                             {loading ? <Loader2 className="animate-spin" /> : <>Post Requirement <ChevronRight className="group-hover:translate-x-1 transition" /></>}
                         </button>
 
+                        {/* Hidden Address Warning */}
+                        {!form.addressId && currentUser && (
+                            <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center justify-center gap-2 text-red-600 text-xs font-bold animate-pulse">
+                                <CheckCircle2 size={14} /> Please add an address to your profile first
+                            </div>
+                        )}
                     </div>
+
                 </form>
             </div>
         </div>

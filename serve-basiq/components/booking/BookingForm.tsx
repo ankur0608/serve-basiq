@@ -1,32 +1,137 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Clock, MapPin, Home, CreditCard, ChevronRight, Loader2 } from 'lucide-react';
-import { useUIStore } from '@/lib/store'; // Assuming you have a store for user data
+import { MapPin, ChevronRight, Loader2, Clock, AlignLeft, Plus, Pencil } from 'lucide-react';
+import ProfileEditModal from '@/components/profile/ProfileEditModal'; // Reuse your existing modal
+import { useRouter } from 'next/navigation';
 
 interface BookingFormProps {
   serviceId: string;
   serviceName: string;
   price: number;
   userId: string;
-  userAddresses: any[]; // Pass user's saved addresses
+  userAddresses: any[];
   onRequestClose: () => void;
 }
 
-export default function BookingForm({ serviceId, serviceName, price, userId, userAddresses, onRequestClose }: BookingFormProps) {
-  const [step, setStep] = useState(1);
+// Enum values for the API
+const TIMELINE_OPTIONS = [
+  { label: 'Immediate', value: 'IMMEDIATE' },
+  { label: 'In 2 Days', value: 'IN_2_DAYS' },
+  { label: '2 to 5 Days', value: 'TWO_TO_FIVE_DAYS' }
+];
+
+export default function BookingForm({
+  serviceId,
+  serviceName,
+  price,
+  userId,
+  userAddresses: initialAddresses, // Rename prop to initialAddresses
+  onRequestClose
+}: BookingFormProps) {
   const [loading, setLoading] = useState(false);
-  
-  // Form State
-  const [date, setDate] = useState('');
-  const [timeSlot, setTimeSlot] = useState('');
-  const [addressId, setAddressId] = useState(userAddresses[0]?.id || '');
-  const [propertyType, setPropertyType] = useState('FLAT');
+  const router = useRouter();
+
+  // --- Local State for Addresses ---
+  // We manage addresses locally so the list updates immediately after adding/editing
+  const [addresses, setAddresses] = useState(initialAddresses);
+
+  // Default to the first address if available
+  const [addressId, setAddressId] = useState(addresses[0]?.id || '');
+  const [timeline, setTimeline] = useState('IMMEDIATE');
   const [instructions, setInstructions] = useState('');
-  const [paymentMode, setPaymentMode] = useState('CASH');
+
+  // --- Modal State for Add/Edit Address ---
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<any>(null); // Null = Add Mode, Object = Edit Mode
+
+  // --- Handlers ---
+
+  const handleAddAddress = () => {
+    setEditingAddress(null); // Clear editing state for "Add" mode
+    setIsAddressModalOpen(true);
+  };
+
+  const handleEditAddress = (e: React.MouseEvent, addr: any) => {
+    e.stopPropagation(); // Prevent selecting the address when clicking edit
+    setEditingAddress(addr);
+    setIsAddressModalOpen(true);
+  };
+
+  const handleSaveAddress = async (data: any) => {
+    // 1. Optimistic Update (Update UI immediately)
+    const newAddress = {
+      id: editingAddress?.id || `temp-${Date.now()}`, // Temp ID until refresh or proper API response usage
+      userId,
+      line1: data.addressLine1,
+      line2: data.addressLine2,
+      landmark: data.landmark,
+      city: data.city,
+      state: data.state,
+      pincode: data.pincode,
+      type: "Home", // Default
+      country: "India"
+    };
+
+    let updatedList;
+    if (editingAddress) {
+      // Edit Mode: Replace existing
+      updatedList = addresses.map(a => a.id === editingAddress.id ? newAddress : a);
+    } else {
+      // Add Mode: Append new
+      updatedList = [...addresses, newAddress];
+      setAddressId(newAddress.id); // Auto-select the new address
+    }
+
+    setAddresses(updatedList);
+    setIsAddressModalOpen(false);
+
+    // 2. Persist to Backend
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          // Map the form data to your API expected format
+          addressLine1: data.addressLine1,
+          addressLine2: data.addressLine2,
+          landmark: data.landmark,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
+        })
+      });
+
+      if (res.ok) {
+        const serverData = await res.json();
+        // Update with real data from server (including real IDs)
+        if (serverData.addresses) {
+          setAddresses(serverData.addresses);
+          // If we just added one, select the last one (or find the one matching our temp)
+          if (!editingAddress && serverData.addresses.length > 0) {
+            // Simple logic: Select the one created last or just the first one
+            // Ideally, API returns the created object ID.
+            // For now, refreshing the router ensures data consistency next time.
+            router.refresh();
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to save address", error);
+      alert("Failed to save address. Please try again.");
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!addressId) {
+      alert("Please select an address");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -37,246 +142,208 @@ export default function BookingForm({ serviceId, serviceName, price, userId, use
           userId,
           serviceId,
           addressId,
-          bookingDate: date,
-          timeSlot,
-          propertyType,
+          timeline,
           specialInstructions: instructions,
-          paymentMode
         }),
       });
 
       const data = await res.json();
-      
+
       if (data.success) {
         alert('Booking Request Sent Successfully!');
-        onRequestClose(); // Close modal or redirect
+        onRequestClose();
       } else {
         alert(data.message || 'Booking failed');
       }
     } catch (error) {
+      console.error(error);
       alert('Something went wrong');
     } finally {
       setLoading(false);
     }
   };
 
+  // Helper to prepopulate modal data
+  const getModalInitialData = () => {
+    if (editingAddress) {
+      return {
+        name: "", // Not editing name here
+        email: "", // Not editing email here
+        phone: "", // Not editing phone here
+        addressLine1: editingAddress.line1 || "",
+        addressLine2: editingAddress.line2 || "",
+        landmark: editingAddress.landmark || "",
+        city: editingAddress.city || "",
+        state: editingAddress.state || "",
+        pincode: editingAddress.pincode || ""
+      };
+    }
+    return {
+      name: "", email: "", phone: "",
+      addressLine1: "", addressLine2: "", landmark: "", city: "", state: "", pincode: ""
+    };
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full mx-auto animate-in fade-in zoom-in-95 duration-200">
-      
+
       {/* Header */}
       <div className="bg-slate-900 p-6 text-white">
         <h2 className="text-xl font-bold">Book Service</h2>
-        <p className="text-slate-400 text-sm mt-1">Requesting: <span className="text-white font-medium">{serviceName}</span></p>
+        <p className="text-slate-400 text-sm mt-1">
+          Requesting: <span className="text-white font-medium">{serviceName}</span>
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        
-        {/* Step 1: Schedule */}
-        {step === 1 && (
-          <div className="space-y-4 animate-in slide-in-from-right duration-300">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Select Date</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-3 text-slate-400" size={18} />
-                <input 
-                  type="date" 
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Select Time</label>
-              <div className="grid grid-cols-3 gap-2">
-                {['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM', '06:00 PM'].map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setTimeSlot(slot)}
-                    className={`py-2 text-sm font-medium rounded-lg border transition-all ${
-                      timeSlot === slot 
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
-                        : 'border-slate-200 text-slate-600 hover:border-blue-300'
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button 
-              type="button" 
-              disabled={!date || !timeSlot}
-              onClick={() => setStep(2)}
-              className="w-full mt-4 bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+        {/* 1. Timeline Dropdown */}
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+            When do you need this?
+          </label>
+          <div className="relative">
+            <Clock className="absolute left-3 top-3.5 text-slate-400" size={18} />
+            <select
+              value={timeline}
+              onChange={(e) => setTimeline(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 appearance-none cursor-pointer"
             >
-              Next Step <ChevronRight size={18} />
+              {TIMELINE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <div className="absolute right-4 top-4 pointer-events-none">
+              <ChevronRight className="rotate-90 text-slate-400" size={14} />
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Address Selection */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-xs font-bold text-slate-500 uppercase">
+              Service Location
+            </label>
+            {/* Show "Add New" button if addresses exist, so user can add a 2nd one */}
+            {addresses.length > 0 && (
+              <button
+                type="button"
+                onClick={handleAddAddress}
+                className="text-[10px] font-bold text-blue-600 flex items-center gap-1 hover:underline"
+              >
+                <Plus size={12} /> Add New
+              </button>
+            )}
+          </div>
+
+          {addresses.length > 0 ? (
+            <div className="space-y-3 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+              {addresses.map((addr: any) => (
+                <div
+                  key={addr.id}
+                  onClick={() => setAddressId(addr.id)}
+                  className={`relative p-3 rounded-xl border cursor-pointer flex items-start gap-3 transition-all group ${addressId === addr.id
+                      ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                      : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                >
+                  <MapPin className={`mt-0.5 flex-shrink-0 ${addressId === addr.id ? 'text-blue-600' : 'text-slate-400'}`} size={18} />
+                  <div className="flex-1 pr-6"> {/* Added padding right for edit button space */}
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-bold text-slate-900">{addr.type || "Home"}</p>
+                      {addressId === addr.id && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Selected</span>}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                      {addr.line1}, {addr.line2 ? addr.line2 + ', ' : ''}{addr.city} - {addr.pincode}
+                    </p>
+                    {addr.landmark && <p className="text-[10px] text-slate-400 mt-1">Landmark: {addr.landmark}</p>}
+                  </div>
+
+                  {/* Edit Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => handleEditAddress(e, addr)}
+                    className="absolute right-2 top-2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+                    title="Edit Address"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAddAddress}
+              className="w-full p-6 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all group"
+            >
+              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-blue-100 transition">
+                <Plus size={20} />
+              </div>
+              <span className="text-sm font-bold">Add Address</span>
+            </button>
+          )}
+        </div>
+
+        {/* 3. Special Instructions */}
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+            Special Instructions
+          </label>
+          <div className="relative">
+            <AlignLeft className="absolute left-3 top-3 text-slate-400" size={18} />
+            <textarea
+              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="Gate code, specific issue, or things to bring..."
+              rows={3}
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Footer / Submit */}
+        <div className="pt-2 border-t border-slate-100">
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-slate-500 text-sm font-medium">Estimated Price</span>
+            <span className="text-xl font-black text-slate-900">₹{price}</span>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onRequestClose}
+              className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !addressId}
+              className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : 'Confirm Booking'}
             </button>
           </div>
-        )}
-
-        {/* Step 2: Location & Details */}
-        {step === 2 && (
-          <div className="space-y-4 animate-in slide-in-from-right duration-300">
-            
-            {/* Address Selection */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Service Location</label>
-              {userAddresses.length > 0 ? (
-                <div className="space-y-2">
-                  {userAddresses.map((addr) => (
-                    <div 
-                      key={addr.id}
-                      onClick={() => setAddressId(addr.id)}
-                      className={`p-3 rounded-xl border cursor-pointer flex items-start gap-3 transition-all ${
-                        addressId === addr.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <MapPin className={`mt-0.5 ${addressId === addr.id ? 'text-blue-600' : 'text-slate-400'}`} size={18} />
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{addr.type}</p>
-                        <p className="text-xs text-slate-500 line-clamp-1">{addr.line1}, {addr.city}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 border border-dashed border-slate-300 rounded-xl text-center text-sm text-slate-500">
-                  No saved addresses. Please add one in your profile.
-                </div>
-              )}
-            </div>
-
-            {/* Property Type */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Property Type</label>
-              <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
-                {['FLAT', 'VILLA', 'OFFICE'].map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setPropertyType(type)}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                      propertyType === type ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Instructions */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Special Instructions</label>
-              <textarea 
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Gate code, specific issue, etc."
-                rows={2}
-                onChange={(e) => setInstructions(e.target.value)}
-              />
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button 
-                type="button"
-                onClick={() => setStep(1)}
-                className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition"
-              >
-                Back
-              </button>
-              <button 
-                type="button" 
-                onClick={() => setStep(3)}
-                disabled={!addressId}
-                className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition disabled:opacity-50"
-              >
-                Proceed <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Payment & Confirm */}
-        {step === 3 && (
-          <div className="space-y-6 animate-in slide-in-from-right duration-300">
-            
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Date</span>
-                <span className="font-bold text-slate-900">{date}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Time</span>
-                <span className="font-bold text-slate-900">{timeSlot}</span>
-              </div>
-              <div className="flex justify-between text-sm border-t border-slate-200 pt-2 mt-2">
-                <span className="text-slate-900 font-bold">Total Estimate</span>
-                <span className="font-bold text-blue-600 text-lg">₹{price}</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Payment Method</label>
-              <div className="space-y-3">
-                <div 
-                  onClick={() => setPaymentMode('CASH')}
-                  className={`p-4 border rounded-xl flex items-center gap-4 cursor-pointer transition-all ${
-                    paymentMode === 'CASH' ? 'border-green-500 bg-green-50 ring-1 ring-green-500' : 'border-slate-200'
-                  }`}
-                >
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                    <span className="font-bold text-lg">₹</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-slate-900">Cash after Service</p>
-                    <p className="text-xs text-slate-500">Pay directly to the provider</p>
-                  </div>
-                  {paymentMode === 'CASH' && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
-                </div>
-
-                <div 
-                  onClick={() => setPaymentMode('ONLINE')}
-                  className={`p-4 border rounded-xl flex items-center gap-4 cursor-pointer transition-all ${
-                    paymentMode === 'ONLINE' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200'
-                  }`}
-                >
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                    <CreditCard size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-slate-900">Online Payment</p>
-                    <p className="text-xs text-slate-500">UPI, Card, Netbanking</p>
-                  </div>
-                  {paymentMode === 'ONLINE' && <div className="w-4 h-4 rounded-full bg-blue-500"></div>}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button 
-                type="button"
-                onClick={() => setStep(2)}
-                className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition"
-              >
-                Back
-              </button>
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : 'Confirm Booking'}
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
 
       </form>
+
+      {/* Address Edit/Add Modal */}
+      {isAddressModalOpen && (
+        <ProfileEditModal
+          isOpen={isAddressModalOpen}
+          onClose={() => setIsAddressModalOpen(false)}
+          initialData={getModalInitialData()}
+          onSave={handleSaveAddress}
+          isEmailLocked={true} // Lock these as we are only editing address
+          isPhoneLocked={true}
+        />
+      )}
+
     </div>
   );
 }

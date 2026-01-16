@@ -6,59 +6,54 @@ import { useRouter } from 'next/navigation';
 import { useProviderDashboard } from '@/app/hook/useProviderDashboard';
 import {
     LayoutGrid, ClipboardList, Package, Wallet, UserCircle,
-    BellRing, ArrowLeft, Loader2, AlertTriangle, Hexagon, LogOut, Plus, ShieldCheck, CheckCircle2, X
+    BellRing, ArrowLeft, Loader2, AlertTriangle, Hexagon, LogOut
 } from 'lucide-react';
 import clsx from 'clsx';
 
+// --- IMPORTS ---
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
 import {
     DashboardHomeView, LeadsView, EarningsView, ProfileView
 } from '@/components/providers/GeneralViews';
-import { ProductsView, AddProductView } from '@/components/providers/ProductViews';
-import { ServiceSettingsView } from '@/components/providers/ServiceSettingsView';
-import ProviderServiceList from '@/components/providers/ProviderServiceList';
+import { AddProductView } from '@/components/providers/ProductViews';
+import { ManagementView } from '@/components/providers/Management';
 import { VerificationView } from '@/components/providers/VerificationView';
 import RequestsView from '@/components/providers/RequestsView';
+import { RestrictionModal } from '@/components/providers/RestrictionModal';
+import { ProductsView } from '@/components/providers/ProductsView';
 
 export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
     const router = useRouter();
 
+    // Ensure we have a valid ID for the hook, or pass undefined to skip fetching
     const { data: dashboardData, isLoading: loading, refetch, isError } = useProviderDashboard(currentUser?.id);
 
     const [activeView, setActiveView] = useState('dashboard');
-    const [selectedServiceToEdit, setSelectedServiceToEdit] = useState<any>(null);
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
-    const [isEditingService, setIsEditingService] = useState(false);
-    const [isCreatingService, setIsCreatingService] = useState(false);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
 
     // State for the Welcome/Restriction Modal
     const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
-    // ✅ EXTRACT BOOKINGS AND ORDERS
+    // EXTRACT BOOKINGS AND ORDERS
     const bookings = dashboardData?.bookings || [];
-    const orders = dashboardData?.orders || []; // <--- ✅ ADDED THIS LINE
-
-    // ✅ RE-ESTABLISH userData from dashboardData
+    const orders = dashboardData?.orders || [];
     const userData = dashboardData?.user;
 
     // Derived State
     const services = useMemo(() => {
         const rawServices = dashboardData?.user?.services || dashboardData?.services || [];
-
         return rawServices.map((svc: any) => ({
             ...svc,
             img: svc.serviceimg || svc.mainimg || svc.img || ""
         }));
     }, [dashboardData]);
 
-    // ✅ CONSOLIDATED DATA for VerificationView
     const extendedUserData = useMemo(() => {
         if (!dashboardData?.user) return null;
         return dashboardData.user;
     }, [dashboardData]);
-
 
     const isVerified = dashboardData?.isSetupComplete || false;
 
@@ -101,9 +96,6 @@ export default function ProviderDashboard() {
     const handleViewChange = (view: string) => {
         if (view === 'dashboard' || view === 'profile' || view === 'edit-profile') {
             setActiveView(view);
-            setIsEditingService(false);
-            setIsCreatingService(false);
-            setSelectedServiceToEdit(null);
             return;
         }
 
@@ -113,11 +105,6 @@ export default function ProviderDashboard() {
         }
 
         setActiveView(view);
-        if (view !== 'settings') {
-            setIsEditingService(false);
-            setIsCreatingService(false);
-            setSelectedServiceToEdit(null);
-        }
     };
 
     if (loading) return (
@@ -138,34 +125,15 @@ export default function ProviderDashboard() {
     return (
         <div className="flex h-screen overflow-hidden bg-[#F8F9FC] font-sans text-slate-800 selection:bg-[#0f172a] selection:text-white relative">
 
-            {/* --- "COMPLETE PROFILE" POPUP MODAL --- */}
-            {showRestrictionModal && (
-                <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden relative animate-in zoom-in-95 duration-300">
-                        <button onClick={() => setShowRestrictionModal(false)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors text-slate-500">
-                            <X size={20} />
-                        </button>
-                        <div className="p-8 text-center">
-                            <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-blue-50/50">
-                                <ShieldCheck className="w-12 h-12 text-blue-600" />
-                            </div>
-                            <h3 className="text-2xl font-extrabold text-slate-900 mb-3">Setup Your Profile</h3>
-                            <p className="text-slate-500 mb-8 leading-relaxed text-sm">
-                                To start receiving orders and managing your services, we need you to complete a quick verification. It only takes a minute!
-                            </p>
-                            <div className="flex flex-col gap-3">
-                                <button onClick={() => { setShowRestrictionModal(false); setActiveView('edit-profile'); }} className="w-full py-4 bg-[#0f172a] hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
-                                    Complete Setup Now <CheckCircle2 size={18} />
-                                </button>
-                                <button onClick={() => setShowRestrictionModal(false)} className="w-full py-3.5 bg-white border border-slate-200 text-slate-500 font-bold rounded-xl hover:bg-slate-50 hover:text-slate-700 transition-colors text-sm">
-                                    I'll do this later
-                                </button>
-                            </div>
-                        </div>
-                        <div className="h-1.5 w-full bg-linear-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-                    </div>
-                </div>
-            )}
+            {/* ✅ Restriction Modal */}
+            <RestrictionModal
+                isOpen={showRestrictionModal}
+                onClose={() => setShowRestrictionModal(false)}
+                onSetup={() => {
+                    setShowRestrictionModal(false);
+                    setActiveView('edit-profile');
+                }}
+            />
 
             {toast && (
                 <div className={clsx("fixed top-5 right-5 z-100 animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-75 bg-white", toast.type === 'success' ? "border-emerald-500 text-emerald-700" : toast.type === 'error' ? "border-red-500 text-red-700" : "border-blue-500 text-blue-700")}>
@@ -231,11 +199,10 @@ export default function ProviderDashboard() {
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {activeView === 'dashboard' && <DashboardHomeView stats={safeStats} setActiveView={handleViewChange} onBackToHome={handleBackToHome} isVerified={isVerified} />}
 
-                        {/* 📋 REQUESTS VIEW (UPDATED) */}
                         {activeView === 'requests' && (
                             <RequestsView
                                 bookings={bookings}
-                                orders={orders} // <--- ✅ ADDED THIS PROP
+                                orders={orders}
                                 showToast={showToast}
                                 onRefresh={refetch}
                             />
@@ -246,46 +213,14 @@ export default function ProviderDashboard() {
                         {activeView === 'profile' && <ProfileView stats={safeStats} user={userData} onEdit={() => setActiveView('edit-profile')} />}
 
                         {activeView === 'settings' && (
-                            <div className="space-y-6">
-                                <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm">
-                                    <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-[#0f172a] text-white shadow-md transition-all">Services</button>
-                                    <button onClick={() => setActiveView('products')} className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all">Products</button>
-                                </div>
-                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                                    <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
-                                        <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2"><Package size={20} className="text-pink-500" /> My Services</h3>
-                                        {!isEditingService && !isCreatingService && (
-                                            <button onClick={() => setIsCreatingService(true)} className="flex items-center gap-2 bg-[#0f172a] text-white px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all shadow-lg text-sm font-bold"><Plus size={16} /> Add Service</button>
-                                        )}
-                                    </div>
-                                    <div className="p-6">
-                                        {isEditingService || isCreatingService ? (
-                                            <ServiceSettingsView
-                                                userId={currentUser?.id || ""}
-                                                serviceData={isCreatingService ? null : selectedServiceToEdit}
-                                                userData={userData}
-                                                userAddress={userData?.addresses?.[0]}
-                                                showToast={showToast}
-                                                onComplete={() => { setIsEditingService(false); setIsCreatingService(false); setSelectedServiceToEdit(null); refetch(); }}
-                                            />
-                                        ) : (
-                                            <div className="space-y-4">
-                                                <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-50 pb-2 mb-2">
-                                                    <div className="col-span-1">ID</div>
-                                                    <div className="col-span-4">Service Name</div>
-                                                    <div className="col-span-2">Category</div>
-                                                    <div className="col-span-2">Rate (INR)</div>
-                                                    <div className="col-span-3 text-right">Status</div>
-                                                </div>
-                                                {services.map((svc: any) => (
-                                                    <ProviderServiceList key={svc.id} service={svc} userId={currentUser?.id || ""} onEdit={() => { setSelectedServiceToEdit(svc); setIsEditingService(true); }} onCreate={() => setIsCreatingService(true)} />
-                                                ))}
-                                                {services.length === 0 && <div className="text-center py-10 text-slate-400">No services found. Click "Add Service" to create one.</div>}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                            <ManagementView
+                                currentUser={currentUser}
+                                userData={userData}
+                                services={services}
+                                refetch={refetch}
+                                showToast={showToast}
+                                setActiveView={handleViewChange}
+                            />
                         )}
 
                         {activeView === 'products' && (
@@ -294,7 +229,15 @@ export default function ProviderDashboard() {
                                     <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all">Services</button>
                                     <button onClick={() => setActiveView('products')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-[#0f172a] text-white shadow-md transition-all">Products</button>
                                 </div>
-                                <ProductsView setActiveView={handleViewChange} userId={currentUser?.id} setSelectedProduct={setSelectedProduct} showToast={showToast} />
+                                {/* 🔴 FIX: Check currentUser?.id before rendering */}
+                                {currentUser?.id && (
+                                    <ProductsView
+                                        setActiveView={handleViewChange}
+                                        userId={currentUser.id}
+                                        setSelectedProduct={setSelectedProduct}
+                                        showToast={showToast}
+                                    />
+                                )}
                             </div>
                         )}
 
@@ -309,7 +252,16 @@ export default function ProviderDashboard() {
                                 }}
                             />
                         )}
-                        {activeView === 'add-product' && <AddProductView setActiveView={handleViewChange} userId={currentUser?.id} showToast={showToast} editingProduct={selectedProduct} />}
+
+                        {/* 🔴 FIX: Check currentUser?.id before rendering */}
+                        {activeView === 'add-product' && currentUser?.id && (
+                            <AddProductView
+                                setActiveView={handleViewChange}
+                                userId={currentUser.id}
+                                showToast={showToast}
+                                editingProduct={selectedProduct}
+                            />
+                        )}
                     </div>
                 </main>
             </div>

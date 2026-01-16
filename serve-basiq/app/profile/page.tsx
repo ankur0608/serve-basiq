@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useUIStore } from '@/lib/store';
 import {
     FaUser, FaCalendarCheck, FaGear, FaPencil,
@@ -22,27 +22,22 @@ export default function ProfilePage() {
     // UI State
     const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'profile' | 'settings'>('overview');
     const [showEditModal, setShowEditModal] = useState(false);
-
-    // Local Address State
     const [addresses, setAddresses] = useState<any[]>([]);
 
     // --- 1. DETERMINE LOGIN METHOD ---
     const isGoogleLogin = !!session?.user?.email;
     const isMobileLogin = !isGoogleLogin && !!currentUser?.phone;
 
-    // --- 2. FETCH DATA ON LOAD/REFRESH ---
+    // --- 2. FETCH DATA ---
     useEffect(() => {
         const fetchProfile = async () => {
             const identifier = currentUser?.id || session?.user?.email || currentUser?.phone;
-
             if (!identifier) return;
 
             try {
                 const res = await fetch(`/api/user/profile?identifier=${identifier}`);
-
                 if (res.ok) {
                     const dbData = await res.json();
-
                     const finalImage = dbData.img || session?.user?.image || null;
                     setCurrentUser({
                         ...currentUser,
@@ -50,7 +45,6 @@ export default function ProfilePage() {
                         img: finalImage,
                         addresses: dbData.addresses || []
                     });
-
                     setAddresses(dbData.addresses || []);
                 }
             } catch (error) {
@@ -63,33 +57,48 @@ export default function ProfilePage() {
         }
     }, [status, session?.user, currentUser?.id, setCurrentUser]);
 
-    // --- 3. PREPARE DATA FOR MODAL ---
+    // --- 3. UNIFIED LOGOUT LOGIC ---
+    const handleLogout = async () => {
+        try {
+            logout();
+            await fetch('/api/auth/logout', { method: 'POST' });
+            await signOut({ redirect: false });
+            router.push('/');
+        } catch (error) {
+            console.error("Logout error", error);
+            router.push('/');
+        }
+    };
+
+    // --- PREPARE DATA FOR MODAL ---
     const primaryAddress = addresses && addresses.length > 0 ? addresses[0] : {};
 
-    const displayName = currentUser?.name || session?.user?.name || (currentUser?.phone ? `User ${currentUser.phone.slice(-4)}` : 'Valued Customer');
+    // ✅ FIX: Removed the logic that adds phone number to name
+    // If name is null/undefined, fallback to session name, then "Guest" (or just blank string if you prefer)
+    const displayName = currentUser?.name || session?.user?.name || "Welcome";
+
     const displayImage = currentUser?.img || session?.user?.image || '';
 
-    // ✅ FIXED: Added 'landmark' to match ProfileEditModal interface
     const modalInitialData = {
-        name: displayName,
+        name: currentUser?.name || '', // Don't pre-fill fake names in edit modal either
         email: currentUser?.email || session?.user?.email || '',
         phone: currentUser?.phone || '',
         addressLine1: primaryAddress.line1 || '',
         addressLine2: primaryAddress.line2 || '',
-        landmark: primaryAddress.landmark || '', // ✅ Added this
+        landmark: primaryAddress.landmark || '',
         city: primaryAddress.city || '',
         state: primaryAddress.state || '',
         pincode: primaryAddress.pincode || '',
     };
 
-    // --- 4. HANDLE SAVE ---
+    // --- SAVE DATA ---
     const handleSaveData = async (data: typeof modalInitialData) => {
-        // A. Optimistic Update
+        // Optimistic Update
         const optimisticAddress = {
             ...primaryAddress,
             line1: data.addressLine1,
             line2: data.addressLine2,
-            landmark: data.landmark, // ✅ Added this
+            landmark: data.landmark,
             city: data.city,
             state: data.state,
             pincode: data.pincode,
@@ -97,7 +106,8 @@ export default function ProfilePage() {
             country: "India"
         };
 
-        setAddresses([optimisticAddress]);
+        // Temporarily set state (will be overwritten by server response)
+        const previousUser = { ...currentUser }; // Backup in case of error
 
         setCurrentUser({
             ...currentUser!,
@@ -106,29 +116,32 @@ export default function ProfilePage() {
             phone: data.phone,
             addresses: [optimisticAddress]
         });
-
+        setAddresses([optimisticAddress]);
         setShowEditModal(false);
 
-        // B. API Call
         try {
             const res = await fetch('/api/user/profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUser?.id,
-                    ...data
-                })
+                body: JSON.stringify({ userId: currentUser?.id, ...data })
             });
 
-            if (!res.ok) throw new Error("Failed to save");
-
             const serverData = await res.json();
+
+            if (!res.ok) {
+                // ✅ If error (like email exists), revert and show alert
+                setCurrentUser(previousUser as any);
+                alert(serverData.message || "Failed to save profile.");
+                return;
+            }
+
             setAddresses(serverData.addresses || []);
             setCurrentUser({ ...currentUser!, ...serverData });
 
         } catch (error) {
             console.error("Failed to save profile:", error);
-            alert("Failed to save changes. Please check your connection.");
+            alert("Something went wrong.");
+            setCurrentUser(previousUser as any);
         }
     };
 
@@ -136,10 +149,7 @@ export default function ProfilePage() {
     if (status === 'loading') {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="flex flex-col items-center gap-4">
-                    <FaSpinner className="animate-spin text-4xl text-slate-300" />
-                    <p className="text-slate-400 text-sm font-bold animate-pulse">Loading Profile...</p>
-                </div>
+                <FaSpinner className="animate-spin text-4xl text-slate-300" />
             </div>
         );
     }
@@ -164,6 +174,7 @@ export default function ProfilePage() {
             <ProfileHeader
                 onEditClick={() => setShowEditModal(true)}
                 userImage={displayImage}
+                onLogout={handleLogout}
             />
 
             <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20 space-y-6">
@@ -194,72 +205,33 @@ export default function ProfilePage() {
 
                     {activeTab === 'profile' && (
                         <div className="space-y-8 animate-fade-in">
-                            <div>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="font-bold text-lg text-slate-900">Personal Information</h3>
-                                    <button onClick={() => setShowEditModal(true)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition shadow-sm">
-                                        <FaPencil className="text-sm" />
-                                    </button>
-                                </div>
-                                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                                    {/* Name */}
-                                    <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-                                        <span className="text-xs font-bold text-gray-400 uppercase">Name</span>
-                                        <span className="text-sm font-bold text-slate-900 flex items-center gap-2"><FaUser className="text-gray-400 text-xs" /> {displayName}</span>
-                                    </div>
-                                    {/* Phone */}
-                                    <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-                                        <span className="text-xs font-bold text-gray-400 uppercase">Phone</span>
-                                        <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                                            <FaPhone className="text-gray-400 text-xs" />
-                                            {currentUser?.phone ? (
-                                                <>{currentUser.phone} {isMobileLogin && <span className="text-[10px] bg-green-100 text-green-700 px-2 rounded">Verified</span>}</>
-                                            ) : (
-                                                <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition">+ Add Phone</button>
-                                            )}
-                                        </span>
-                                    </div>
-                                    {/* Email */}
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-gray-400 uppercase">Email</span>
-                                        <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                                            <FaEnvelope className="text-gray-400 text-xs" />
-                                            {currentUser?.email ? (
-                                                <>{currentUser.email} {isGoogleLogin && <span className="text-[10px] bg-green-100 text-green-700 px-2 rounded">Verified</span>}</>
-                                            ) : (
-                                                <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition">+ Add Email</button>
-                                            )}
-                                        </span>
-                                    </div>
-                                </div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-lg text-slate-900">Personal Information</h3>
+                                <button onClick={() => setShowEditModal(true)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition shadow-sm"><FaPencil className="text-sm" /></button>
                             </div>
-
-                            {/* Address Section */}
-                            <div>
-                                <h3 className="font-bold text-lg text-slate-900 mb-4">Saved Address</h3>
-                                {primaryAddress.line1 ? (
-                                    <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
-                                        <div className="flex items-start gap-3">
-                                            <div className="mt-1 text-blue-600"><FaUser /></div>
-                                            <div>
-                                                <p className="text-sm font-bold text-slate-900 mb-1">Home Address</p>
-                                                <p className="text-xs text-gray-500 leading-relaxed">
-                                                    {primaryAddress.line1}
-                                                    {primaryAddress.line2 && <>, {primaryAddress.line2}</>}
-                                                    {primaryAddress.landmark && <><br /><span className="text-blue-500 font-medium">Landmark: {primaryAddress.landmark}</span></>}
-                                                    <br />
-                                                    {primaryAddress.city}, {primaryAddress.state} - {primaryAddress.pincode}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div onClick={() => setShowEditModal(true)} className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition group">
-                                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2 group-hover:scale-110 transition"><FaUser /></div>
-                                        <p className="text-sm font-bold text-gray-400">No address added yet</p>
-                                        <span className="text-xs text-blue-600 font-bold mt-1">Click to add address</span>
-                                    </div>
-                                )}
+                            <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
+                                <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                                    <span className="text-xs font-bold text-gray-400 uppercase">Name</span>
+                                    <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                        <FaUser className="text-gray-400 text-xs" />
+                                        {/* ✅ Display logic updated */}
+                                        {currentUser?.name ? currentUser.name : <span className="text-gray-400 italic font-normal">No name added</span>}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                                    <span className="text-xs font-bold text-gray-400 uppercase">Phone</span>
+                                    <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                        <FaPhone className="text-gray-400 text-xs" />
+                                        {currentUser?.phone ? <>{currentUser.phone}</> : <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs">+ Add</button>}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-gray-400 uppercase">Email</span>
+                                    <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                        <FaEnvelope className="text-gray-400 text-xs" />
+                                        {currentUser?.email ? <>{currentUser.email}</> : <button onClick={() => setShowEditModal(true)} className="text-blue-600 font-bold text-xs">+ Add</button>}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -267,7 +239,7 @@ export default function ProfilePage() {
                     {activeTab === 'settings' && (
                         <div className="space-y-4 animate-fade-in">
                             <h3 className="font-bold text-lg text-slate-900 mb-4">App Settings</h3>
-                            <div onClick={() => { logout(); router.push('/'); }} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition group">
+                            <div onClick={handleLogout} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition group">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><FaGoogle /></div>
                                     <div><div className="font-bold text-red-600 text-sm">Logout</div><div className="text-xs text-red-400/70">Sign out of account</div></div>

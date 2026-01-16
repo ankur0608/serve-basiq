@@ -46,18 +46,16 @@
 //     pages: { signIn: '/', error: '/' },
 //     secret: process.env.AUTH_SECRET,
 // };
-
-
-import { NextAuthOptions, User, Account } from "next-auth";
+import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import CredentialsProvider from "next-auth/providers/credentials"; // ✅ Import this
+import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/neon";
+import { prisma } from "@/lib/prisma"; // Ensure this path matches your project
 import { JWT } from "next-auth/jwt";
 
 export const authOptions: NextAuthOptions = {
     adapter: PrismaAdapter(prisma) as any,
-    session: { strategy: "jwt" }, // Required for Credentials provider to work
+    session: { strategy: "jwt" },
     providers: [
         // 1. Google Provider
         GoogleProvider({
@@ -66,82 +64,86 @@ export const authOptions: NextAuthOptions = {
             allowDangerousEmailAccountLinking: true,
         }),
 
-        // 2. ✅ NEW: Mobile/OTP Login Provider
+        // 2. Mobile/OTP Login Provider
         CredentialsProvider({
             name: "Mobile Login",
             credentials: {
                 phone: { label: "Phone", type: "text" },
-                // You can add 'otp' here if you want to verify it inside authorize(),
-                // otherwise we assume the OTP was verified on the client before calling signIn()
                 otp: { label: "OTP", type: "text" }
             },
             async authorize(credentials) {
-                // 1. Validate input
+                console.log("🔥 [Auth] Credentials Authorize Start:", credentials);
+
                 if (!credentials?.phone) {
                     throw new Error("Phone number is required");
                 }
 
-                console.log("🟡 [Credentials Authorize] Looking up user:", credentials.phone);
-
-                // 2. Find user in DB
+                // Find user
                 const user = await prisma.user.findUnique({
                     where: { phone: credentials.phone }
                 });
 
-                // 3. Return user if found (NextAuth will create the session)
+                console.log("🔍 [Auth] Database User Found:", user ? "Yes" : "No", user?.id);
+
                 if (user) {
-                    console.log("✅ [Credentials Authorize] User found:", user.id);
-                    // Return the object that matches the 'User' type
-                    return {
+                    // ✅ Return extended user object
+                    const returnedUser = {
                         id: user.id,
                         name: user.name,
                         email: user.email,
-                        image: user.image || user.profileImage // Handle both field names if necessary
+                        image: user.image || user.profileImage,
+                        phone: user.phone,
+                        isPhoneVerified: user.isPhoneVerified
                     };
+                    console.log("✅ [Auth] Authorize Success, returning:", returnedUser);
+                    return returnedUser;
                 }
 
-                // Return null if user not found (client will see error)
+                console.log("❌ [Auth] Authorize Failed: User not found");
                 return null;
             }
         })
     ],
     callbacks: {
-        async signIn({ user, account }: { user: User; account: Account | null }) {
-            console.log("🟡 [SignIn Callback] Triggered");
-            console.log("   - User Email/Phone:", user.email || "Phone User");
-            console.log("   - Provider:", account?.provider);
+        async signIn({ user, account }) {
+            console.log("🚪 [Auth] SignIn Callback:", { userId: user.id, provider: account?.provider });
             return true;
         },
-        async jwt({ token, user, trigger, session }: { token: JWT; user?: User; trigger?: string; session?: any }) {
-            console.log("🔵 [JWT Callback] Triggered");
-
-            // Initial Sign In
+        async jwt({ token, user, trigger, session }) {
+            // 🔵 Initial Sign In
             if (user) {
-                console.log("   - Initial Sign In. Adding User ID to token.");
+                console.log("🎟️ [Auth] JWT Initializing for User:", user.id);
                 token.id = user.id;
+                token.phone = (user as any).phone;
+                token.isPhoneVerified = (user as any).isPhoneVerified;
             }
 
-            // ✅ Support for Updating Session (e.g. after Profile Edit)
-            if (trigger === "update" && session) {
+            // ✅ Handle Session Update (Triggered from Client)
+            if (trigger === "update" && session?.user) {
+                console.log("🔄 [Auth] JWT Update Triggered. Merging session data:", session.user);
                 return { ...token, ...session.user };
             }
 
             return token;
         },
-        async session({ session, token }: { session: any; token: JWT }) {
-            console.log("🟢 [Session Callback] Triggered");
-
-            // ✅ Ensure User ID is always available in the session
+        async session({ session, token }) {
             if (session.user && token.id) {
                 session.user.id = token.id as string;
-                // console.log("   - Attached ID to session user:", session.user.id);
+                session.user.phone = token.phone as string | null;
+                session.user.isPhoneVerified = token.isPhoneVerified as boolean;
+
+                // console.log("📦 [Auth] Session Callback Returning:", { 
+                //     id: session.user.id, 
+                //     phone: session.user.phone, 
+                //     verified: session.user.isPhoneVerified 
+                // });
             }
             return session;
         },
     },
     pages: {
-        signIn: '/login', // Ensure this matches your login route
-        error: '/login'   // Redirect errors back to login
+        signIn: '/login',
+        error: '/login'
     },
     secret: process.env.AUTH_SECRET,
 };

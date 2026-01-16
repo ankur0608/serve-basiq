@@ -2,29 +2,25 @@
 
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/lib/store';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react'; // ✅ Import signOut
 import { FaPhone, FaRightFromBracket, FaPencil, FaBriefcase, FaGaugeHigh } from 'react-icons/fa6';
 import clsx from 'clsx';
 import Image from 'next/image';
 
-// ✅ 1. Update the Interface
 interface ProfileHeaderProps {
     onEditClick: () => void;
-    userImage?: string | null; // Added this prop (optional)
+    userImage?: string | null;
+    onLogout?: () => void; // ✅ New optional prop
 }
 
-// ✅ 2. Destructure the prop
-export default function ProfileHeader({ onEditClick, userImage }: ProfileHeaderProps) {
+export default function ProfileHeader({ onEditClick, userImage, onLogout }: ProfileHeaderProps) {
     const router = useRouter();
-    const { currentUser, logout } = useUIStore();
+    const { currentUser, logout: storeLogout } = useUIStore();
     const { data: session } = useSession();
 
     if (!currentUser) return null;
 
     const isWorker = currentUser.isWorker;
-
-    // ✅ 3. Fallback logic: Prop -> Store -> Session -> Initials
-    // Note: We prefer the prop 'userImage' passed from the parent if available
     const displayImage = userImage || currentUser?.img || session?.user?.image;
 
     const getInitials = () => {
@@ -40,6 +36,19 @@ export default function ProfileHeader({ onEditClick, userImage }: ProfileHeaderP
         }
     };
 
+    // ✅ Fallback internal logout if prop isn't passed
+    const handleInternalLogout = async () => {
+        if (onLogout) {
+            onLogout();
+            return;
+        }
+
+        storeLogout(); // UI Store clear
+        await fetch('/api/user/logout', { method: 'POST' }); // API Clear
+        await signOut({ redirect: false }); // NextAuth Clear
+        router.push('/');
+    };
+
     return (
         <div className={clsx("pt-12 pb-24 px-4 relative overflow-hidden transition-colors duration-500", isWorker ? "bg-slate-900 text-white" : "bg-blue-600 text-white")}>
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
@@ -48,14 +57,13 @@ export default function ProfileHeader({ onEditClick, userImage }: ProfileHeaderP
                 {/* Avatar Section */}
                 <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl font-bold text-white shadow-2xl border-4 border-white/10 overflow-hidden relative">
                     {displayImage ? (
-                        // ✅ 4. Use Next/Image correctly
                         <Image
                             src={displayImage}
                             alt="Profile"
                             fill
                             className="object-cover"
                             sizes="(max-width: 768px) 100vw, 96px"
-                            priority // Load this image fast
+                            priority
                         />
                     ) : (
                         <span>{getInitials()}</span>
@@ -66,11 +74,7 @@ export default function ProfileHeader({ onEditClick, userImage }: ProfileHeaderP
                 <div className="flex-1 mb-2">
                     <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
                         <h1 className="text-3xl font-extrabold">{currentUser.name || session?.user?.name || "Hello, User"}</h1>
-                        <button
-                            onClick={onEditClick}
-                            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition backdrop-blur-sm cursor-pointer"
-                            title="Edit Profile"
-                        >
+                        <button onClick={onEditClick} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition backdrop-blur-sm cursor-pointer" title="Edit Profile">
                             <FaPencil className="text-sm" />
                         </button>
                     </div>
@@ -101,8 +105,9 @@ export default function ProfileHeader({ onEditClick, userImage }: ProfileHeaderP
                         {isWorker ? <><FaGaugeHigh /> Dashboard</> : <><FaBriefcase /> Become a Pro</>}
                     </button>
 
+                    {/* ✅ Uses unified logout logic */}
                     <button
-                        onClick={() => { logout(); router.push('/'); }}
+                        onClick={handleInternalLogout}
                         className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm"
                     >
                         <FaRightFromBracket />
@@ -111,4 +116,4 @@ export default function ProfileHeader({ onEditClick, userImage }: ProfileHeaderP
             </div>
         </div>
     );
-}
+}   

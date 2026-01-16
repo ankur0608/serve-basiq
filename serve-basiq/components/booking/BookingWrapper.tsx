@@ -73,77 +73,113 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom'; // ✅ Import Portal
+import { createPortal } from 'react-dom';
 import { FaArrowRight, FaXmark } from 'react-icons/fa6';
-import BookingForm from './BookingForm'; 
 import { useRouter } from 'next/navigation';
+import { useUIStore } from "@/lib/store"; // Assuming you have this
+
+// Import the forms
+import BookingForm from './BookingForm';
+import MobileVerificationModal from './MobileVerificationModal';
 
 interface Props {
     serviceId: string;
     serviceName: string;
     price: number;
-    currentUserId?: string; 
-    userAddresses: any[];    
+    currentUser: any; // Contains: id, phone, isPhoneVerified
+    userAddresses: any[];
 }
 
 export default function BookingWrapper({
     serviceId,
     serviceName,
     price,
-    currentUserId,
+    currentUser,
     userAddresses
 }: Props) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [mounted, setMounted] = useState(false); // ✅ Prevent Hydration Errors
-    const router = useRouter();
+    const [isBookingOpen, setIsBookingOpen] = useState(false);
+    const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
-    // ✅ Ensure Portal only runs on client
+    const router = useRouter();
+    const onOpenLogin = useUIStore((state) => state.onOpenLogin); // Open your global login modal
+
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    const handleOpen = () => {
-        if (!currentUserId) {
-            router.push('/login?callbackUrl=' + window.location.pathname);
+    // 🚦 THE LOGIC
+    const handleProceedClick = () => {
+        // 1. Not Logged In? -> Open Login Modal (or redirect)
+        if (!currentUser) {
+            // Option A: Redirect
+            // router.push('/login?callbackUrl=' + window.location.pathname);
+
+            // Option B: Open Global Login Modal (Better UX)
+            if (onOpenLogin) onOpenLogin();
+            else router.push('/login');
+
             return;
         }
-        setIsOpen(true);
+
+        // 2. Logged in (Google) but Phone NOT Verified? -> Open Verification
+        // We use the 'isPhoneVerified' key from your schema
+        if (!currentUser.isPhoneVerified) {
+            console.log("User logged in but phone not verified. Opening Mobile Modal.");
+            setIsMobileModalOpen(true);
+            return;
+        }
+
+        // 3. All Good? -> Open Booking Form
+        setIsBookingOpen(true);
     };
 
     return (
         <>
-            {/* THE BUTTON (Stays in place) */}
-            <button 
-                onClick={handleOpen}
+            {/* --- 1. THE BUTTON --- */}
+            <button
+                onClick={handleProceedClick}
                 className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-slate-200"
             >
                 Proceed to Booking <FaArrowRight className="group-hover:translate-x-1 transition" />
             </button>
 
-            {/* THE MODAL (Teleported to Body) */}
-            {isOpen && mounted && createPortal(
+            {/* --- 2. MOBILE VERIFICATION MODAL (For Google Users) --- */}
+            {mounted && isMobileModalOpen && (
+                <MobileVerificationModal
+                    userId={currentUser.id}
+                    isOpen={isMobileModalOpen}
+                    onClose={() => setIsMobileModalOpen(false)}
+                    onSuccess={() => {
+                        setIsMobileModalOpen(false); // Close verify modal
+                        setIsBookingOpen(true);      // Open booking modal immediately
+                        router.refresh();            // Update server data to reflect verified status
+                    }}
+                />
+            )}
+
+            {/* --- 3. BOOKING FORM MODAL --- */}
+            {mounted && isBookingOpen && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="relative w-full max-w-md">
-                        {/* Close Button */}
                         <button
-                            onClick={() => setIsOpen(false)}
+                            onClick={() => setIsBookingOpen(false)}
                             className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white transition"
                         >
                             <FaXmark size={24} />
                         </button>
 
-                        {/* The Form Component */}
                         <BookingForm
                             serviceId={serviceId}
                             serviceName={serviceName}
                             price={price}
-                            userId={currentUserId!}
+                            userId={currentUser?.id}
                             userAddresses={userAddresses}
-                            onRequestClose={() => setIsOpen(false)}
+                            onRequestClose={() => setIsBookingOpen(false)}
                         />
                     </div>
                 </div>,
-                document.body // 👈 Attaches modal directly to body
+                document.body
             )}
         </>
     );

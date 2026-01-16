@@ -88,6 +88,12 @@ enum PayoutMethod {
     UPI
 }
 
+enum Timeline {
+    IMMEDIATE
+    IN_2_DAYS
+    TWO_TO_FIVE_DAYS
+}
+
 model Admin {
     id        String   @id @default(uuid())
     email     String   @unique
@@ -100,7 +106,6 @@ model Admin {
 model Booking {
     id String @id @default(cuid())
 
-    // 1. RELATIONS: Who, What, Where
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
@@ -110,16 +115,9 @@ model Booking {
     addressId String
     address   Address @relation(fields: [addressId], references: [id])
 
-    bookingDate DateTime
-    timeSlot    String
-
-    propertyType PropertyType
+    timeline Timeline @default(IMMEDIATE)
 
     specialInstructions String?
-
-    paymentMode PaymentMode
-
-    couponCode String?
 
     status BookingStatus @default(PENDING)
 
@@ -127,7 +125,6 @@ model Booking {
     updatedAt DateTime @updatedAt
 }
 
-// ✅ UPDATED ORDER MODEL
 model Order {
     id String @id @default(cuid())
 
@@ -212,7 +209,6 @@ model User {
     orders    Order[]
 }
 
-// ✅ NEW MODEL: Separated KYC Logic
 model KycDetails {
     id String @id @default(cuid())
 
@@ -287,20 +283,12 @@ model Requirement {
     user   User   @relation(fields: [userId], references: [id])
 
     type        RequestType // PRODUCT or SERVICE
-    category    String // e.g. "Electronics", "Plumbing"
-    title       String // Product Name or Service Title
-    description String // Detailed requirement
+    title       String // Requirement Title
+    description String // Detailed description
 
-    // specific to products
-    quantity Int?
-    unit     UnitType? // PIECE, KG, etc.
-    budget   String? // e.g. "500-1000"
-
-    // Location & Payment
+    // Location
     addressId String
     address   Address @relation(fields: [addressId], references: [id])
-
-    paymentMode PaymentMode // ONLINE or CASH
 
     status RequestStatus @default(OPEN)
 

@@ -1,63 +1,90 @@
-export const runtime = "nodejs";
-
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    const { phone, otp, code } = await req.json();
+    const { phone, otp, userId } = await req.json();
 
-    const submittedCode = otp || code;
+    // 🔍 1. Log Entrance
+    console.log("📲 [API] Verify-Update Request Received:", { phone, otp, userId });
 
-    if (!phone || !submittedCode) {
-      return NextResponse.json(
-        { message: "Phone and OTP are required" },
-        { status: 400 }
-      );
+    if (!phone || !otp || !userId) {
+      console.log("❌ [API] Validation Failed: Missing required fields");
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // 1. Find OTP
+    // 🔍 2. Log OTP Lookup
+    console.log("🔍 [API] Looking up OTP record for:", phone);
     const record = await prisma.otp.findFirst({
-      where: { phone, code: submittedCode },
+      where: { phone, code: otp },
     });
 
     if (!record) {
-      return NextResponse.json({ message: "Invalid OTP" }, { status: 400 });
+      console.log("❌ [API] OTP Validation Failed: No matching record found");
+      return NextResponse.json({ error: "Invalid OTP" }, { status: 400 });
     }
 
-    if (new Date() > new Date(record.expiresAt)) {
-      return NextResponse.json({ message: "OTP Expired" }, { status: 400 });
-    }
-
-    // 3. Login/Register
-    const user = await prisma.user.upsert({
-      where: { phone },
-      update: {
-        isPhoneVerified: true,
-        isWebsite: true, // ✅ Force Website Mode on Login
-      },
-      create: {
-        phone,
-        isPhoneVerified: true,
-        isWorker: false,
-        isVerified: false,
-        isWebsite: true, // ✅ Default to Website Mode
-        profileImage: "",
-      },
+    // 🔍 3. Log Expiry Check
+    const isExpired = new Date() > new Date(record.expiresAt);
+    console.log("⏱️ [API] OTP Expiry Check:", {
+      now: new Date(),
+      expiresAt: record.expiresAt,
+      isExpired
     });
 
-    // 4. Cleanup
-    await prisma.otp.deleteMany({
+    if (isExpired) {
+      console.log("❌ [API] OTP Validation Failed: Code expired");
+      return NextResponse.json({ error: "OTP Expired" }, { status: 400 });
+    }
+
+    // 🔍 4. Log Conflict Check
+    console.log("🕵️ [API] Checking if phone is already claimed by another user...");
+    const existingUserWithPhone = await prisma.user.findUnique({
       where: { phone },
     });
 
-    return NextResponse.json(user);
+    if (existingUserWithPhone) {
+      console.log("⚠️ [API] Phone exists in DB. Owned by User ID:", existingUserWithPhone.id);
+
+      if (existingUserWithPhone.id !== userId) {
+        console.log("⛔ [API] Conflict Detected: Phone owned by DIFFERENT user. Aborting.");
+        return NextResponse.json(
+          { error: "This phone number is already registered with another account." },
+          { status: 409 }
+        );
+      } else {
+        console.log("ℹ️ [API] Phone owned by SAME user. Proceeding with re-verification.");
+      }
+    } else {
+      console.log("✅ [API] Phone is fresh (not in DB). Proceeding.");
+    }
+
+    // 🔍 5. Log Update Attempt
+    console.log("🔄 [API] Updating User ID:", userId, "with new phone and verified status.");
+
+    // We search by 'id' (userId), NOT by phone.
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        phone: phone,
+        isPhoneVerified: true,
+      },
+    });
+
+    console.log("✅ [API] User Update Successful:", {
+      id: updatedUser.id,
+      phone: updatedUser.phone,
+      verified: updatedUser.isPhoneVerified
+    });
+
+    // 🔍 6. Log Cleanup
+    console.log("🧹 [API] Deleting used OTPs for:", phone);
+    await prisma.otp.deleteMany({ where: { phone } });
+
+    return NextResponse.json({ success: true, user: updatedUser });
 
   } catch (error) {
-    console.error("Verify Error:", error);
-    return NextResponse.json(
-      { message: "Internal Server Error" },
-      { status: 500 }
-    );
+    console.error("🔥 [API] Update Phone Critical Error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -239,8 +239,8 @@ import {
   FaInstagram, FaFacebook, FaYoutube, FaGlobe
 } from 'react-icons/fa6';
 import Link from 'next/link';
-import { getServerSession } from "next-auth"; // ✅ Import Session Handling
-import { authOptions } from "@/lib/auth";     // ✅ Import Auth Options
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import BookingWrapper from '@/components/booking/BookingWrapper';
 
 // ✅ Force Next.js to not cache this page (ensure session is always fresh)
@@ -273,23 +273,18 @@ export default async function ServiceDetail({ params }: Props) {
 
   if (!service) return notFound();
 
-  // 2. ✅ Fetch Current Logged In User (Works for Google & Mobile)
+  // 2. ✅ Fetch Current Logged In User
   const session = await getServerSession(authOptions);
-  let currentUserAddresses: any[] = [];
-  const currentUserId = session?.user?.id; // This is now safe to use
-  // 🔍 DEBUG LOGS (Check your VS Code Terminal when you refresh the page)
-  console.log("-----------------------------------------");
-  console.log("👤 Session User:", session?.user);
-  console.log("🆔 Current User ID:", currentUserId);
-  console.log("-----------------------------------------");
+  const currentUserId = session?.user?.id;
+
+  // 🔴 FIX: Define variable OUTSIDE the if block so it's available in the JSX
+  let loggedInUser = null;
+
   if (currentUserId) {
-    // If logged in, fetch their saved addresses
-    const user = await prisma.user.findUnique({
+    loggedInUser = await prisma.user.findUnique({
       where: { id: currentUserId },
-      include: { addresses: true }
+      include: { addresses: true } // Fetch addresses here
     });
-    console.log("🏠 Found Addresses:", user?.addresses); // 🔍 Log addresses
-    if (user) currentUserAddresses = user.addresses;
   }
 
   // Model-Driven Constants
@@ -394,7 +389,7 @@ export default async function ServiceDetail({ params }: Props) {
 
           {/* SIDEBAR (Right Col) */}
           <div className="space-y-6">
-            <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 top-8 sticky">
+            <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 top-8 ">
               <div className="mb-6">
                 <p className="text-slate-400 text-sm font-medium">Starting at</p>
                 <div className="flex items-baseline gap-1">
@@ -426,13 +421,13 @@ export default async function ServiceDetail({ params }: Props) {
                 </div>
               </div>
 
-              {/* ✅ INTERACTIVE BOOKING BUTTON (Now works for all users) */}
+              {/* ✅ UPDATED BOOKING WRAPPER PROP PASSING */}
               <BookingWrapper
                 serviceId={service.id}
                 serviceName={displayName!}
                 price={service.price}
-                currentUserId={currentUserId} // Passed from Session
-                userAddresses={currentUserAddresses}
+                currentUser={loggedInUser} // 👈 Passes null or the full user object (with isPhoneVerified)
+                userAddresses={loggedInUser?.addresses || []} // 👈 Safely access addresses
               />
 
             </div>
