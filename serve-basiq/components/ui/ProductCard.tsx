@@ -22,7 +22,7 @@ export default function ProductCard({ product }: { product: ProductProps }) {
             <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition flex flex-col h-full group">
 
                 {/* Image */}
-                <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 mb-3 flex items-center justify-center">
+                <div className="relative w-full h-36 aspect-square rounded-xl overflow-hidden bg-gray-100 mb-3 flex items-center justify-center">
                     {product.image ? (
                         <img
                             src={product.image}

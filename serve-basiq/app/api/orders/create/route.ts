@@ -12,23 +12,16 @@ export async function POST(req: Request) {
             productId,
             quantity,
             addressId,
-            deliveryType,
-            paymentMode,
+            // deliveryType, // ❌ REMOVED
+            
             notes,
-            timeline // ✅ Extract timeline
+            timeline
         } = body;
 
         // 1. Validation
-        if (!userId || !productId || !quantity || !deliveryType) {
+        if (!userId || !productId || !quantity || !addressId) {
             return NextResponse.json(
-                { success: false, message: 'Missing required fields' },
-                { status: 400 }
-            );
-        }
-
-        if (deliveryType === 'DELIVERY' && !addressId) {
-            return NextResponse.json(
-                { success: false, message: 'Address is required for delivery' },
+                { success: false, message: 'Missing required fields (User, Product, Quantity, or Address)' },
                 { status: 400 }
             );
         }
@@ -55,16 +48,14 @@ export async function POST(req: Request) {
             data: {
                 userId,
                 productId,
-                addressId: deliveryType === 'DELIVERY' ? addressId : null,
+                addressId: addressId, // ✅ Directly use addressId
                 quantity: finalQuantity,
                 unit: product.unit,
                 totalPrice: totalPrice,
-                deliveryType: deliveryType,
-                paymentMode: paymentMode,
+                // deliveryType: "DELIVERY", // ❌ REMOVED (Ensure your Prisma schema default handles this or remove the field from schema too)
                 specialInstructions: notes,
                 status: 'PENDING',
                 paymentStatus: 'PENDING',
-                // ✅ Save Timeline (Default to IMMEDIATE if missing)
                 timeline: timeline || 'IMMEDIATE',
             },
         });

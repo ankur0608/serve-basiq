@@ -1,179 +1,225 @@
 // app/page.tsx
 import Link from 'next/link';
-import FeaturedProviders from '@/components/sections/FeaturedProviders'; // Import New Component
-import TrendingProducts from '@/components/sections/TrendingProducts'; // Import New Component
+import FeaturedProviders from '@/components/sections/FeaturedProviders';
+import TrendingProducts from '@/components/sections/TrendingProducts';
 
 // Icons
 import {
   FaMagnifyingGlass,
-  FaCartShopping,
-  FaBullhorn,
-  FaShop,
-  FaStar,
-  FaUserPlus,
-  FaStore
+  FaWrench,
+  FaBoxesStacked,
+  FaPenFancy,
+  FaStore,
+  FaScrewdriverWrench,
+  FaBoxOpen,
+  FaArrowRight,
+  FaShieldHalved,
+  FaWallet,
+  FaHeadset,
+  FaShop
 } from 'react-icons/fa6';
-// import CategorySection from '@/components/CategorySection';
-// import PromoBanner from '@/components/PromoBanner';
-// import TrustFeatures from '@/components/TrustFeatures';
 
 export default function Home() {
   return (
-    <div className="pb-12">
+    <div className="pb-12 bg-gray-50/50">
 
       {/* ================= HERO SECTION ================= */}
-      <div className="bg-gradient-to-br from-brand-50 via-white to-commerce-50 pb-16 pt-12 md:py-24 px-4 text-center rounded-b-[3rem] shadow-sm relative overflow-hidden">
-        {/* ... (Hero content same as before) ... */}
+      <div className="bg-gradient-to-br from-brand-50 via-white to-commerce-50 pb-16 pt-12 md:py-20 px-4 text-center rounded-b-[3rem] shadow-sm relative overflow-hidden">
+        {/* Background Pattern */}
         <div className="absolute inset-0 opacity-40 pointer-events-none"
           style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '32px 32px' }}>
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-blue-100 text-brand-700 px-4 py-1.5 rounded-full text-xs font-bold mb-6 shadow-sm animate-fade-in">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            Trusted by 50,000+ Businesses & Homes
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-blue-100 text-brand-700 px-3 py-1.5 rounded-full text-[11px] font-bold mb-6 shadow-sm animate-fade-in cursor-default uppercase tracking-wider">
+            <FaShieldHalved /> 100% Verified Providers
           </div>
 
-          <h1 className="text-4xl md:text-7xl font-extrabold mb-6 leading-tight text-slate-900 tracking-tight">
-            Hire Experts. <span className="text-gray-300 mx-2 hidden md:inline">|</span> Source Wholesale.<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-commerce-600">
-              The Global Marketplace.
+          {/* Headline - Made Smaller as requested */}
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight text-slate-900 tracking-tight">
+            Find Local Experts.<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">
+              Source Factory Direct.
             </span>
           </h1>
 
-          <p className="text-slate-500 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
-            Book verified local professionals for any service or source bulk products directly from top-rated manufacturers.
+          {/* Subheadline - Made Smaller */}
+          <p className="text-slate-600 text-base md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
+            The safest marketplace to book services and buy wholesale products nearby. Secure payments, verified identities.
           </p>
+
+          {/* HERO BUTTONS (Added) */}
+          <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in px-4">
+            <Link
+              href="/services"
+              className="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-base shadow-xl shadow-slate-900/20 hover:bg-black hover:scale-[1.02] active:scale-95 transition flex items-center justify-center gap-3 w-full sm:w-auto"
+            >
+              <FaMagnifyingGlass /> Find a Service
+            </Link>
+            <Link
+              href="/products"
+              className="bg-white text-slate-900 border border-gray-200 px-8 py-4 rounded-xl font-bold text-base hover:bg-gray-50 hover:border-gray-300 hover:scale-[1.02] active:scale-95 transition flex items-center justify-center gap-3 shadow-sm w-full sm:w-auto"
+            >
+              <FaShop className="text-commerce-600" /> Wholesale Market
+            </Link>
+          </div>
         </div>
       </div>
+      {/* ================= END HERO SECTION ================= */}
 
-      <div className="max-w-7xl mx-auto px-4 -mt-12 relative z-20 space-y-20">
 
-        {/* ================= 4 MAIN TILES ================= */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/services" className="bg-white p-6 rounded-2xl shadow-card hover:-translate-y-1 transition text-center border border-gray-100 group">
-            <div className="w-14 h-14 mx-auto bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition shadow-sm">
-              <FaMagnifyingGlass />
+      {/* ================= MAIN CONTENT ================= */}
+      <div className="max-w-7xl mx-auto px-4 -mt-8 relative z-20 space-y-16 pb-16">
+
+        {/* 1. QUICK NAVIGATION CARDS */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+          <Link href="/services" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
+            <div className="w-12 h-12 mx-auto bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
+              <FaWrench />
             </div>
-            <h3 className="font-bold text-slate-900">Find Services</h3>
+            <h3 className="font-bold text-slate-900">Book Services</h3>
             <p className="text-xs text-gray-500 mt-1">Plumbers, Cleaners...</p>
           </Link>
 
-          <Link href="/products" className="bg-white p-6 rounded-2xl shadow-card hover:-translate-y-1 transition text-center border border-gray-100 group">
-            <div className="w-14 h-14 mx-auto bg-green-50 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition shadow-sm">
-              <FaCartShopping />
+          <Link href="/products" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
+            <div className="w-12 h-12 mx-auto bg-green-50 text-green-600 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
+              <FaBoxesStacked />
             </div>
-            <h3 className="font-bold text-slate-900">Buy Products</h3>
-            <p className="text-xs text-gray-500 mt-1">Wholesale Sourcing</p>
+            <h3 className="font-bold text-slate-900">Wholesale</h3>
+            <p className="text-xs text-gray-500 mt-1">Bulk Products</p>
           </Link>
 
-          <Link href="/post-requirement" className="bg-white p-6 rounded-2xl shadow-card hover:-translate-y-1 transition text-center border border-gray-100 group">
-            <div className="w-14 h-14 mx-auto bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition shadow-sm">
-              <FaBullhorn />
+          <Link href="/post-requirement" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
+            <div className="w-12 h-12 mx-auto bg-purple-50 text-purple-600 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
+              <FaPenFancy />
             </div>
-            <h3 className="font-bold text-slate-900">Post Your Need</h3>
-            <p className="text-xs text-gray-500 mt-1">We&apos;ll find options</p>
+            <h3 className="font-bold text-slate-900">Post Request</h3>
+            <p className="text-xs text-gray-500 mt-1">Get Custom Quotes</p>
           </Link>
 
-          <Link href="/auth/register" className="bg-white p-6 rounded-2xl shadow-card hover:-translate-y-1 transition text-center border border-gray-100 group">
-            <div className="w-14 h-14 mx-auto bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition shadow-sm">
-              <FaShop />
+          <Link href="/auth/register" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
+            <div className="w-12 h-12 mx-auto bg-orange-50 text-orange-500 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
+              <FaStore />
             </div>
-            <h3 className="font-bold text-slate-900">Sell on ServeMate</h3>
+            <h3 className="font-bold text-slate-900">Start Selling</h3>
             <p className="text-xs text-gray-500 mt-1">Join as Partner</p>
           </Link>
         </div>
 
-        {/* ================= HOW IT WORKS ================= */}
-        <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-slate-900 mb-4">How It Works</h2>
-          <p className="text-gray-500 mb-12 max-w-lg mx-auto">Simple, fast, and transparent. Get your job done in 3 easy steps.</p>
+        {/* 2. CATEGORIES SECTION */}
+        <div className="space-y-12">
 
-          <div className="grid md:grid-cols-3 gap-8 relative">
-            <div className="hidden md:block absolute top-12 left-[20%] right-[20%] h-0.5 bg-gray-200 -z-10"></div>
-
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm relative hover:-translate-y-2 transition duration-300">
-              <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-sm">1</div>
-              <h3 className="font-bold text-lg mb-2">Search or Post</h3>
-              <p className="text-sm text-gray-500">Browse verified listings or post your specific requirement for free.</p>
+          {/* Service Categories */}
+          <div>
+            <div className="flex justify-between items-end mb-6 px-1">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <FaScrewdriverWrench className="text-brand-500" /> Popular Services
+              </h2>
+              <Link href="/services" className="text-xs font-bold text-slate-500 hover:text-brand-600 uppercase tracking-wide">
+                View All
+              </Link>
             </div>
-
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm relative hover:-translate-y-2 transition duration-300">
-              <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-sm">2</div>
-              <h3 className="font-bold text-lg mb-2">Compare Quotes</h3>
-              <p className="text-sm text-gray-500">Chat with professionals/suppliers, compare prices, and check reviews.</p>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+              {[
+                { emoji: "🏠", label: "Home" },
+                { emoji: "💅", label: "Beauty" },
+                { emoji: "🔌", label: "Appliances" },
+                { emoji: "🚗", label: "Auto" },
+                { emoji: "💻", label: "Tech" },
+                { emoji: "🎉", label: "Events" },
+              ].map((cat, i) => (
+                <Link href={`/services?category=${cat.label}`} key={i} className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition">{cat.emoji}</div>
+                  <div className="text-xs font-bold text-slate-700">{cat.label}</div>
+                </Link>
+              ))}
             </div>
+          </div>
 
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm relative hover:-translate-y-2 transition duration-300">
-              <div className="w-16 h-16 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-sm">3</div>
-              <h3 className="font-bold text-lg mb-2">Hire & Pay</h3>
-              <p className="text-sm text-gray-500">Book the service or order products. Pay securely only when satisfied.</p>
+          {/* 3. SPONSORED BANNER */}
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between shadow-lg relative overflow-hidden">
+            <div className="relative z-10 text-center md:text-left mb-4 md:mb-0">
+              <span className="bg-white/20 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest mb-2 inline-block">Featured Partner</span>
+              <h3 className="text-2xl font-extrabold mb-1">Urban Company Services</h3>
+              <p className="text-purple-100 text-sm">Get 20% off your first deep cleaning service.</p>
+            </div>
+            <Link href="/services" className="relative z-10 bg-white text-purple-700 px-6 py-3 rounded-xl font-bold text-sm hover:bg-purple-50 transition shadow-md active:scale-95">
+              Book Now
+            </Link>
+            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+            <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+          </div>
+
+          {/* Product Categories */}
+          <div>
+            <div className="flex justify-between items-end mb-6 px-1">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <FaBoxOpen className="text-commerce-500" /> Wholesale Products
+              </h2>
+              <Link href="/products" className="text-xs font-bold text-slate-500 hover:text-commerce-600 uppercase tracking-wide">
+                View All
+              </Link>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+              {[
+                { emoji: "🏗️", label: "Industrial" },
+                { emoji: "📱", label: "Electronics" },
+                { emoji: "📎", label: "Office" },
+                { emoji: "🧱", label: "Construction" },
+                { emoji: "🪑", label: "Furniture" },
+                { emoji: "👕", label: "Fashion" },
+              ].map((cat, i) => (
+                <Link href={`/products?category=${cat.label}`} key={i} className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition">{cat.emoji}</div>
+                  <div className="text-xs font-bold text-slate-700">{cat.label}</div>
+                </Link>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* ================= FEATURED SECTIONS (Using New Components) ================= */}
+        {/* 4. DYNAMIC LISTINGS */}
         <FeaturedProviders />
         <TrendingProducts />
 
-        {/* ================= CUSTOMER STORIES ================= */}
-        <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 mb-8 text-center">Customer Stories</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition">
-              <div className="flex gap-1 text-amber-400 mb-4 text-sm">
-                <FaStar /><FaStar /><FaStar /><FaStar /><FaStar />
-              </div>
-              <p className="text-lg font-medium leading-relaxed text-slate-700 italic mb-6">
-                &quot;ServeMate transformed how we source raw materials. The B2B market is incredibly efficient and secure.&quot;
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center font-bold">R</div>
-                <div>
-                  <div className="font-bold text-sm text-slate-900">Rajesh Kumar</div>
-                  <div className="text-xs text-gray-500">Factory Owner, Delhi</div>
-                </div>
-              </div>
+        {/* 5. WHY CHOOSE US */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center hover:-translate-y-1 transition duration-300">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl mb-4 mx-auto">
+              <FaShieldHalved />
             </div>
-
-            <div className="bg-brand-600 text-white rounded-3xl p-8 shadow-lg shadow-brand-500/30 hover:shadow-xl transition">
-              <div className="flex gap-1 text-brand-300 mb-4 text-sm">
-                <FaStar /><FaStar /><FaStar /><FaStar /><FaStar />
-              </div>
-              <p className="text-lg font-medium leading-relaxed italic mb-6">
-                &quot;Found a plumber in 5 minutes for an emergency leak. He arrived within the hour. Absolute lifesaver app!&quot;
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white text-brand-600 rounded-full flex items-center justify-center font-bold">S</div>
-                <div>
-                  <div className="font-bold text-sm">Sarah Jenkins</div>
-                  <div className="text-xs text-brand-200">Homeowner, Mumbai</div>
-                </div>
-              </div>
+            <h4 className="font-bold text-slate-900 mb-2">Verified Identity</h4>
+            <p className="text-xs text-gray-500 leading-relaxed">We strictly check IDs and licenses of every provider.</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center hover:-translate-y-1 transition duration-300">
+            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center text-xl mb-4 mx-auto">
+              <FaWallet />
             </div>
+            <h4 className="font-bold text-slate-900 mb-2">Secure Payments</h4>
+            <p className="text-xs text-gray-500 leading-relaxed">Your money is held safely until the job is done.</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center hover:-translate-y-1 transition duration-300">
+            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center text-xl mb-4 mx-auto">
+              <FaHeadset />
+            </div>
+            <h4 className="font-bold text-slate-900 mb-2">24/7 Support</h4>
+            <p className="text-xs text-gray-500 leading-relaxed">Dedicated help center for any questions or issues.</p>
           </div>
         </div>
 
-        {/* ================= JOIN SECTION ================= */}
-        <div className="bg-slate-900 rounded-3xl p-8 md:p-16 text-center text-white relative overflow-hidden">
-          <div className="absolute -top-24 -left-24 w-64 h-64 bg-brand-600 rounded-full blur-[80px] opacity-40"></div>
-          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-commerce-600 rounded-full blur-[80px] opacity-40"></div>
-
+        {/* 6. CTA BANNER */}
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 md:p-12 text-white text-center relative overflow-hidden shadow-xl">
           <div className="relative z-10 max-w-2xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Grow Your Business</h2>
-            <p className="text-slate-300 text-lg mb-8">
-              Join thousands of service providers and suppliers finding new customers every day.
-            </p>
-
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button className="bg-white text-slate-900 px-8 py-3.5 rounded-xl font-bold hover:bg-gray-100 transition flex items-center justify-center gap-2">
-                <FaUserPlus className="text-brand-600" /> Join as Professional
-              </button>
-              <button className="bg-white/10 border border-white/20 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-white/20 transition flex items-center justify-center gap-2">
-                <FaStore className="text-commerce-400" /> Join as Supplier
-              </button>
-            </div>
+            <h2 className="text-2xl md:text-4xl font-extrabold mb-4">Ready to simplify your life?</h2>
+            <p className="text-slate-300 mb-8">Join thousands of users who trust Servebasiq.</p>
+            <Link href="/auth/register" className="bg-brand-600 hover:bg-brand-500 text-white px-8 py-3.5 rounded-xl font-bold text-lg transition shadow-lg inline-flex items-center gap-2 active:scale-95">
+              Get Started for Free <FaArrowRight />
+            </Link>
           </div>
+          <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-brand-500/20 rounded-full blur-3xl pointer-events-none"></div>
         </div>
 
       </div>
