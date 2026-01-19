@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useUIStore } from '@/lib/store';
 import {
@@ -15,11 +14,9 @@ import ProfileStats from '@/components/profile/ProfileStats';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 
 export default function ProfilePage() {
-    const router = useRouter();
     const { data: session, status } = useSession();
     const { currentUser, logout, onOpenLogin, setCurrentUser } = useUIStore();
 
-    // UI State
     const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'profile' | 'settings'>('overview');
     const [showEditModal, setShowEditModal] = useState(false);
     const [addresses, setAddresses] = useState<any[]>([]);
@@ -57,30 +54,47 @@ export default function ProfilePage() {
         }
     }, [status, session?.user, currentUser?.id, setCurrentUser]);
 
-    // --- 3. UNIFIED LOGOUT LOGIC ---
+    // --- 3. NUCLEAR LOGOUT LOGIC (THE FIX) ---
     const handleLogout = async () => {
         try {
+            // 1. CRITICAL FIX: Manually wipe the Local Storage Key
+            // This kills the persistent data seen in your screenshot
+            if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('servemate-storage');
+                window.localStorage.removeItem('nextauth.message');
+                window.sessionStorage.clear();
+            }
+
+            // 2. Clear Zustand Store State
             logout();
+
+            // 3. Clear Server Cookies (API)
             await fetch('/api/auth/logout', { method: 'POST' });
+
+            // 4. NextAuth SignOut (No redirect, we handle it)
             await signOut({ redirect: false });
-            router.push('/');
+
+            // 5. Hard Browser Refresh to Home
+            // This ensures all memory caches are dumped
+            window.location.href = '/';
+
         } catch (error) {
             console.error("Logout error", error);
-            router.push('/');
+            // Fallback: If anything fails, force clear and reload
+            if (typeof window !== 'undefined') {
+                window.localStorage.clear();
+                window.sessionStorage.clear();
+            }
+            window.location.href = '/';
         }
     };
 
     // --- PREPARE DATA FOR MODAL ---
     const primaryAddress = addresses && addresses.length > 0 ? addresses[0] : {};
-
-    // ✅ FIX: Removed the logic that adds phone number to name
-    // If name is null/undefined, fallback to session name, then "Guest" (or just blank string if you prefer)
-    const displayName = currentUser?.name || session?.user?.name || "Welcome";
-
     const displayImage = currentUser?.img || session?.user?.image || '';
 
     const modalInitialData = {
-        name: currentUser?.name || '', // Don't pre-fill fake names in edit modal either
+        name: currentUser?.name || '',
         email: currentUser?.email || session?.user?.email || '',
         phone: currentUser?.phone || '',
         addressLine1: primaryAddress.line1 || '',
@@ -106,8 +120,7 @@ export default function ProfilePage() {
             country: "India"
         };
 
-        // Temporarily set state (will be overwritten by server response)
-        const previousUser = { ...currentUser }; // Backup in case of error
+        const previousUser = { ...currentUser };
 
         setCurrentUser({
             ...currentUser!,
@@ -129,7 +142,6 @@ export default function ProfilePage() {
             const serverData = await res.json();
 
             if (!res.ok) {
-                // ✅ If error (like email exists), revert and show alert
                 setCurrentUser(previousUser as any);
                 alert(serverData.message || "Failed to save profile.");
                 return;
@@ -214,7 +226,6 @@ export default function ProfilePage() {
                                     <span className="text-xs font-bold text-gray-400 uppercase">Name</span>
                                     <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
                                         <FaUser className="text-gray-400 text-xs" />
-                                        {/* ✅ Display logic updated */}
                                         {currentUser?.name ? currentUser.name : <span className="text-gray-400 italic font-normal">No name added</span>}
                                     </span>
                                 </div>
@@ -239,6 +250,7 @@ export default function ProfilePage() {
                     {activeTab === 'settings' && (
                         <div className="space-y-4 animate-fade-in">
                             <h3 className="font-bold text-lg text-slate-900 mb-4">App Settings</h3>
+                            {/* Uses the nuclear handleLogout function */}
                             <div onClick={handleLogout} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition group">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><FaGoogle /></div>

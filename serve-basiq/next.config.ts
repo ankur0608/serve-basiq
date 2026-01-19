@@ -18,6 +18,13 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**', // Allow all paths under this domain
       },
+      // ✅ NEW: Whitelist Cloudflare R2 (Fixes your logo error)
+      {
+        protocol: 'https',
+        hostname: 'pub-d807c3325590438da8f5daa866be338b.r2.dev',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   // reactCompiler: true, // Uncomment if you are using the experimental React Compiler

@@ -10,10 +10,7 @@ export default async function TrendingProducts() {
       take: 4,
       orderBy: { createdAt: 'desc' },
       where: {
-        // ✅ 1. Product must be verified
         isVerified: true,
-
-        // ✅ 2. Seller must be verified
         user: {
           isVerified: true
         }
@@ -25,8 +22,10 @@ export default async function TrendingProducts() {
       }
     });
 
+    // ✅ FIX: Map 'productImage' (DB) to 'image' (UI)
     trendingProducts = data.map((product) => ({
       ...product,
+      image: product.productImage || "", // <--- THIS LINE FIXES IT
       supplier: product.user?.name || "Verified Seller",
     }));
 

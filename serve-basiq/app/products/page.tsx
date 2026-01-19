@@ -1,115 +1,75 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import ProductCard, { ProductProps } from '@/components/ui/ProductCard';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import ProductCard from '@/components/ui/ProductCard';
 import { FaMagnifyingGlass } from 'react-icons/fa6';
 import clsx from 'clsx';
+import { useProducts } from '@/app/hook/useProducts';
+import { PackageOpen } from 'lucide-react';
 
 export default function B2BMarketplace() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCat, setActiveCat] = useState('All');
 
-  const [products, setProducts] = useState<ProductProps[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ 1. Fetch Data
+  const { products, loading, fetchProducts } = useProducts();
 
-  // ✅ Fetch & Map Data
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        console.log("🚀 Starting Product Fetch..."); // Debug log
-
-        const res = await fetch('/api/products/all', { cache: 'no-store' });
-
-        if (!res.ok) {
-          throw new Error(`HTTP Status: ${res.status}`);
-        }
-
-        const rawData = await res.json();
-        console.log("📦 Raw API Data:", rawData); // Check this in your browser console
-
-        // Handle various response structures: 
-        // 1. Direct Array: [...]
-        // 2. Wrapped Object: { data: [...] }
-        // 3. Success Wrapper: { success: true, data: [...] }
-        let items = [];
-        if (Array.isArray(rawData)) {
-          items = rawData;
-        } else if (Array.isArray(rawData.data)) {
-          items = rawData.data;
-        } else if (rawData.products && Array.isArray(rawData.products)) {
-          items = rawData.products;
-        }
-
-        console.log("✅ Extracted Items Array:", items);
-
-        if (items.length === 0) {
-          console.warn("⚠️ No items found in response.");
-        }
-
-        // Map Database Schema to UI Interface safely
-        const formattedProducts: ProductProps[] = items.map((item: any) => ({
-          id: String(item.id), // Ensure string for UUIDs
-          name: item.name || "Untitled Product",
-          // Handle Category relation OR simple string field
-          category: typeof item.category === 'object' ? item.category?.name : (item.category || "General"),
-          price: Number(item.price) || 0,
-          moq: Number(item.moq) || 1,
-          unit: item.unit || 'Units',
-          // Prioritize different image fields
-          image: item?.productImage || item.image || item.img || "https://via.placeholder.com/300?text=No+Image",
-          // Handle User relation safely
-          supplier: item.user?.shopName || item.user?.name || "Verified Supplier",
-          isVerified: Boolean(item.isVerified) || Boolean(item.user?.isVerified)
-        }));
-
-        console.log("✨ Formatted Products:", formattedProducts);
-        setProducts(formattedProducts);
-
-      } catch (error) {
-        console.error("❌ Failed to fetch products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProducts();
+  }, [fetchProducts]);
+
+  // ✅ 2. Optimize Category Extraction (Memoized)
+  // Only recalculates when the 'products' array actually changes
+  const productCategories = useMemo(() => {
+    const cats = new Set(products.map(p => p.category));
+    return Array.from(cats).sort();
+  }, [products]);
+
+  // ✅ 3. Optimize Filter Logic (Memoized)
+  // Prevents re-running this loop on unrelated renders
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCat = activeCat === 'All' || product.category === activeCat;
+      return matchesSearch && matchesCat;
+    });
+  }, [products, searchTerm, activeCat]);
+
+  // ✅ 4. Stable Handler for clearing
+  const clearFilters = useCallback(() => {
+    setSearchTerm('');
+    setActiveCat('All');
   }, []);
 
-  // Filter Logic
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCat = activeCat === 'All' || product.category === activeCat;
-    return matchesSearch && matchesCat;
-  });
-
-  // Extract Categories dynamically
-  const productCategories = Array.from(new Set(products.map(p => p.category))).sort();
-
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 pb-32">
+    <div className="max-w-7xl mx-auto px-4 py-8 pb-32 animate-in fade-in duration-500">
+
+      {/* --- HEADER --- */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Wholesale Marketplace</h1>
         <p className="text-slate-500">Direct factory prices for bulk orders.</p>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative mb-8 max-w-2xl">
-        <FaMagnifyingGlass className="absolute left-4 top-3.5 text-gray-400 text-lg" />
+      {/* --- SEARCH BAR --- */}
+      <div className="relative mb-8 max-w-2xl group">
+        <FaMagnifyingGlass className="absolute left-4 top-3.5 text-gray-400 text-lg group-focus-within:text-blue-500 transition-colors" />
         <input
           type="text"
           placeholder="Search machines, tools, bulk items..."
-          className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm transition"
+          className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm transition-all"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      {/* Category Pills */}
+      {/* --- CATEGORY PILLS --- */}
       <div className="mb-8 overflow-x-auto no-scrollbar pb-2">
         <div className="flex gap-2">
+          {/* 'All' Button */}
           <button
             onClick={() => setActiveCat('All')}
             className={clsx(
-              "px-5 py-2.5 rounded-full text-sm font-bold transition whitespace-nowrap shadow-sm",
+              "px-5 py-2.5 rounded-full text-sm font-bold transition whitespace-nowrap shadow-sm active:scale-95",
               activeCat === 'All'
                 ? "bg-slate-900 text-white"
                 : "bg-white border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600"
@@ -119,12 +79,12 @@ export default function B2BMarketplace() {
           </button>
 
           {/* Dynamic Categories */}
-          {productCategories.map((cat) => (
+          {!loading && productCategories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCat(cat)}
               className={clsx(
-                "px-5 py-2.5 rounded-full text-sm font-bold transition whitespace-nowrap shadow-sm flex items-center gap-2",
+                "px-5 py-2.5 rounded-full text-sm font-bold transition whitespace-nowrap shadow-sm active:scale-95 flex items-center gap-2",
                 activeCat === cat
                   ? "bg-blue-600 text-white"
                   : "bg-white border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600"
@@ -133,14 +93,19 @@ export default function B2BMarketplace() {
               {cat}
             </button>
           ))}
+
+          {/* Category Skeleton */}
+          {loading && [1, 2, 3, 4].map(i => (
+            <div key={i} className="h-10 w-24 bg-gray-100 rounded-full animate-pulse shrink-0"></div>
+          ))}
         </div>
       </div>
 
-      {/* Product Grid */}
+      {/* --- PRODUCT GRID --- */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-pulse">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-64 bg-gray-200 rounded-2xl"></div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+            <div key={i} className="aspect-[3/4] bg-gray-100 rounded-2xl animate-pulse"></div>
           ))}
         </div>
       ) : filteredProducts.length > 0 ? (
@@ -150,13 +115,20 @@ export default function B2BMarketplace() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-          <p className="text-gray-500 font-medium">No products found matching your search.</p>
-          <p className="text-sm text-gray-400 mt-2">
-            (Debug: Loaded {products.length} total items from API)
+        /* Empty State */
+        <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
+            <PackageOpen className="text-gray-400" size={32} />
+          </div>
+          <p className="text-gray-900 font-bold text-lg">No products found</p>
+          <p className="text-gray-500 text-sm mt-1 max-w-xs mx-auto">
+            We couldn't find any items matching "{searchTerm}" in {activeCat === 'All' ? 'any category' : activeCat}.
           </p>
-          <button onClick={() => { setSearchTerm(''); setActiveCat('All'); }} className="mt-4 text-blue-600 font-bold hover:underline">
-            Clear Filters
+          <button
+            onClick={clearFilters}
+            className="mt-6 px-6 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition shadow-sm"
+          >
+            Clear Search & Filters
           </button>
         </div>
       )}

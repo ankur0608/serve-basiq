@@ -15,7 +15,7 @@ import { NavButton, MobileNavBtn } from '@/components/providers/DashboardCompone
 import {
     DashboardHomeView, LeadsView, EarningsView, ProfileView
 } from '@/components/providers/GeneralViews';
-import { AddProductView } from '@/components/providers/ProductViews';
+import { AddProductView } from '@/components/providers/AddProductView';
 import { ManagementView } from '@/components/providers/Management';
 import { VerificationView } from '@/components/providers/VerificationView';
 import RequestsView from '@/components/providers/RequestsView';

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/lib/store';
-import { useSession, signOut } from 'next-auth/react'; // ✅ Import signOut
+import { useSession, signOut } from 'next-auth/react';
 import { FaPhone, FaRightFromBracket, FaPencil, FaBriefcase, FaGaugeHigh } from 'react-icons/fa6';
 import clsx from 'clsx';
 import Image from 'next/image';
@@ -10,7 +10,7 @@ import Image from 'next/image';
 interface ProfileHeaderProps {
     onEditClick: () => void;
     userImage?: string | null;
-    onLogout?: () => void; // ✅ New optional prop
+    onLogout?: () => void;
 }
 
 export default function ProfileHeader({ onEditClick, userImage, onLogout }: ProfileHeaderProps) {
@@ -36,17 +36,19 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
         }
     };
 
-    // ✅ Fallback internal logout if prop isn't passed
+    // ✅ Fallback internal logout (Nuclear version)
     const handleInternalLogout = async () => {
         if (onLogout) {
             onLogout();
             return;
         }
 
-        storeLogout(); // UI Store clear
-        await fetch('/api/user/logout', { method: 'POST' }); // API Clear
-        await signOut({ redirect: false }); // NextAuth Clear
-        router.push('/');
+        storeLogout();
+        await fetch('/api/auth/logout', { method: 'POST' });
+        await signOut({ redirect: false });
+
+        // FORCE RELOAD
+        window.location.href = '/';
     };
 
     return (
@@ -54,7 +56,7 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
             <div className="max-w-4xl mx-auto relative z-10 flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
-                {/* Avatar Section */}
+                {/* Avatar */}
                 <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl font-bold text-white shadow-2xl border-4 border-white/10 overflow-hidden relative">
                     {displayImage ? (
                         <Image
@@ -105,7 +107,6 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
                         {isWorker ? <><FaGaugeHigh /> Dashboard</> : <><FaBriefcase /> Become a Pro</>}
                     </button>
 
-                    {/* ✅ Uses unified logout logic */}
                     <button
                         onClick={handleInternalLogout}
                         className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm"
@@ -116,4 +117,4 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
             </div>
         </div>
     );
-}   
+}

@@ -144,13 +144,9 @@ model Order {
     unit       UnitType // Uses your existing UnitType enum
     totalPrice Float // Price * Quantity (calculated at creation)
 
-    deliveryType DeliveryType // Uses your existing DeliveryType enum
-
     // --- 3. STATUS & PAYMENT ---
-    status OrderStatus @default(PENDING) // ✅ Uses new Enum
-
-    paymentMode PaymentMode @default(CASH) // ✅ Uses existing Enum
-
+    status        OrderStatus   @default(PENDING) // ✅ Uses new Enum
+    timeline      Timeline      @default(IMMEDIATE)
     paymentStatus PaymentStatus @default(PENDING) // ✅ Uses new Enum
 
     // --- 4. EXTRAS ---

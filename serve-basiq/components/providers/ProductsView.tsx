@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback, memo } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
 import {
-    Plus, Package, Loader2, Pencil, Trash2, Search,
-    Filter, AlertCircle, Box, MoreVertical
+    Plus, Package, Loader2, Pencil, Trash2, Search
 } from 'lucide-react';
 
 interface ProductsViewProps {
@@ -14,6 +13,85 @@ interface ProductsViewProps {
     showToast: (msg: string, type: 'success' | 'error') => void;
 }
 
+// --- OPTIMIZATION: Extract & Memoize Product Item ---
+// This prevents every product card from re-rendering if the parent state changes (e.g., search input)
+const ProductItem = memo(({ p, onEdit, onDelete }: { p: any, onEdit: (p: any) => void, onDelete: (id: string) => void }) => {
+    return (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 group flex flex-col overflow-hidden relative">
+            {/* IMAGE AREA */}
+            <div className="aspect-[4/3] bg-slate-100 relative overflow-hidden">
+                {/* Stock Badge */}
+                <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide z-10 backdrop-blur-md shadow-sm ${p.stockStatus === 'IN_STOCK' ? 'bg-emerald-500/90 text-white' : 'bg-amber-500/90 text-white'}`}>
+                    {p.stockStatus?.replace('_', ' ') || 'IN STOCK'}
+                </div>
+
+                {p.image ? (
+                    <img
+                        src={p.image}
+                        alt={p.name}
+                        loading="lazy" // Performance: Lazy load off-screen images
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/300?text=No+Image";
+                        }}
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <Package size={40} />
+                    </div>
+                )}
+
+                {/* Hover Overlay Actions */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
+                    <button
+                        onClick={() => onEdit(p)}
+                        className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-700 hover:text-blue-600 hover:scale-110 transition-all"
+                        title="Edit Product"
+                    >
+                        <Pencil size={16} />
+                    </button>
+                    <button
+                        onClick={() => onDelete(p.id)}
+                        className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-700 hover:text-red-600 hover:scale-110 transition-all"
+                        title="Delete Product"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {/* DETAILS AREA */}
+            <div className="p-5 flex-1 flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                    <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{p.category}</span>
+                        <h4 className="font-bold text-slate-900 text-lg leading-tight line-clamp-1" title={p.name}>{p.name}</h4>
+                    </div>
+                </div>
+
+                <p className="text-xs text-slate-500 line-clamp-2 mb-4 h-8">{p.desc || "No description available"}</p>
+
+                <div className="mt-auto pt-4 border-t border-slate-50 flex items-end justify-between">
+                    <div>
+                        <span className="text-xs text-slate-400 font-medium">Price</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-lg font-bold text-slate-900">₹{p.price}</span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">/ {p.unit}</span>
+                        </div>
+                    </div>
+
+                    <div className="text-right">
+                        <span className="text-xs text-slate-400 font-medium">MOQ</span>
+                        <p className="text-sm font-bold text-slate-700">{p.moq || 1} {p.unit?.toLowerCase() || 'units'}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+ProductItem.displayName = "ProductItem";
+
 export function ProductsView({ setActiveView, userId, setSelectedProduct, showToast }: ProductsViewProps) {
     const { products, loading, fetchProducts, deleteProduct } = useProducts(userId);
 
@@ -21,22 +99,23 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
         fetchProducts();
     }, [fetchProducts]);
 
-    const handleEdit = (product: any) => {
+    // Use Callback to ensure these functions don't change identity
+    const handleEdit = useCallback((product: any) => {
         setSelectedProduct(product);
         setActiveView('add-product');
-    };
+    }, [setSelectedProduct, setActiveView]);
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = useCallback(async (id: string) => {
         if (!confirm("Are you sure you want to delete this product?")) return;
         const success = await deleteProduct(id);
         if (success) showToast("Product deleted successfully", "success");
         else showToast("Failed to delete", "error");
-    };
+    }, [deleteProduct, showToast]);
 
-    const handleCreateNew = () => {
-        setSelectedProduct(null); // Clear selection for new entry
+    const handleCreateNew = useCallback(() => {
+        setSelectedProduct(null);
         setActiveView('add-product');
-    };
+    }, [setSelectedProduct, setActiveView]);
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20">
@@ -49,7 +128,6 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                 </div>
 
                 <div className="flex gap-3">
-                    {/* Search/Filter placeholder (Visual only for now) */}
                     <div className="hidden md:flex items-center bg-white border border-slate-200 rounded-xl px-3 py-2.5 shadow-sm">
                         <Search className="text-slate-400" size={18} />
                         <input placeholder="Search products..." className="bg-transparent border-none outline-none text-sm ml-2 w-48" />
@@ -87,79 +165,12 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {products.map((p: any) => (
-                        <div
+                        <ProductItem
                             key={p.id}
-                            className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 group flex flex-col overflow-hidden relative"
-                        >
-
-                            {/* IMAGE AREA */}
-                            <div className="aspect-[4/3] bg-slate-100 relative overflow-hidden">
-                                {/* Stock Badge */}
-                                <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide z-10 backdrop-blur-md shadow-sm ${p.stockStatus === 'IN_STOCK'
-                                        ? 'bg-emerald-500/90 text-white'
-                                        : 'bg-amber-500/90 text-white'
-                                    }`}>
-                                    {p.stockStatus?.replace('_', ' ') || 'IN STOCK'}
-                                </div>
-
-                                {p.productImage ? (
-                                    <img
-                                        src={p.productImage}
-                                        alt={p.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                        <Package size={40} />
-                                    </div>
-                                )}
-
-                                {/* Hover Overlay Actions */}
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
-                                    <button
-                                        onClick={() => handleEdit(p)}
-                                        className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-700 hover:text-blue-600 hover:scale-110 transition-all"
-                                        title="Edit Product"
-                                    >
-                                        <Pencil size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(p.id)}
-                                        className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-700 hover:text-red-600 hover:scale-110 transition-all"
-                                        title="Delete Product"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* DETAILS AREA */}
-                            <div className="p-5 flex-1 flex flex-col">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{p.category}</span>
-                                        <h4 className="font-bold text-slate-900 text-lg leading-tight line-clamp-1" title={p.name}>{p.name}</h4>
-                                    </div>
-                                </div>
-
-                                <p className="text-xs text-slate-500 line-clamp-2 mb-4 h-8">{p.desc}</p>
-
-                                <div className="mt-auto pt-4 border-t border-slate-50 flex items-end justify-between">
-                                    <div>
-                                        <span className="text-xs text-slate-400 font-medium">Price</span>
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-lg font-bold text-slate-900">₹{p.price}</span>
-                                            <span className="text-[10px] text-slate-400 font-bold uppercase">/ {p.unit}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="text-right">
-                                        <span className="text-xs text-slate-400 font-medium">MOQ</span>
-                                        <p className="text-sm font-bold text-slate-700">{p.moq || 1} {p.unit.toLowerCase()}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            p={p}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                        />
                     ))}
                 </div>
             )}

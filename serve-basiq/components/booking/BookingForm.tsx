@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { MapPin, ChevronRight, Loader2, Clock, AlignLeft, Plus, Pencil } from 'lucide-react';
-import ProfileEditModal from '@/components/profile/ProfileEditModal'; // Reuse your existing modal
+import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import { useRouter } from 'next/navigation';
 
 interface BookingFormProps {
@@ -26,14 +26,13 @@ export default function BookingForm({
   serviceName,
   price,
   userId,
-  userAddresses: initialAddresses, // Rename prop to initialAddresses
+  userAddresses: initialAddresses,
   onRequestClose
 }: BookingFormProps) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   // --- Local State for Addresses ---
-  // We manage addresses locally so the list updates immediately after adding/editing
   const [addresses, setAddresses] = useState(initialAddresses);
 
   // Default to the first address if available
@@ -43,17 +42,17 @@ export default function BookingForm({
 
   // --- Modal State for Add/Edit Address ---
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [editingAddress, setEditingAddress] = useState<any>(null); // Null = Add Mode, Object = Edit Mode
+  const [editingAddress, setEditingAddress] = useState<any>(null); // Null = Add Mode
 
   // --- Handlers ---
 
   const handleAddAddress = () => {
-    setEditingAddress(null); // Clear editing state for "Add" mode
+    setEditingAddress(null);
     setIsAddressModalOpen(true);
   };
 
   const handleEditAddress = (e: React.MouseEvent, addr: any) => {
-    e.stopPropagation(); // Prevent selecting the address when clicking edit
+    e.stopPropagation();
     setEditingAddress(addr);
     setIsAddressModalOpen(true);
   };
@@ -61,7 +60,7 @@ export default function BookingForm({
   const handleSaveAddress = async (data: any) => {
     // 1. Optimistic Update (Update UI immediately)
     const newAddress = {
-      id: editingAddress?.id || `temp-${Date.now()}`, // Temp ID until refresh or proper API response usage
+      id: editingAddress?.id || `temp-${Date.now()}`, // Temp ID used here
       userId,
       line1: data.addressLine1,
       line2: data.addressLine2,
@@ -75,10 +74,8 @@ export default function BookingForm({
 
     let updatedList;
     if (editingAddress) {
-      // Edit Mode: Replace existing
       updatedList = addresses.map(a => a.id === editingAddress.id ? newAddress : a);
     } else {
-      // Add Mode: Append new
       updatedList = [...addresses, newAddress];
       setAddressId(newAddress.id); // Auto-select the new address
     }
@@ -86,43 +83,9 @@ export default function BookingForm({
     setAddresses(updatedList);
     setIsAddressModalOpen(false);
 
-    // 2. Persist to Backend
-    try {
-      const res = await fetch('/api/user/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          // Map the form data to your API expected format
-          addressLine1: data.addressLine1,
-          addressLine2: data.addressLine2,
-          landmark: data.landmark,
-          city: data.city,
-          state: data.state,
-          pincode: data.pincode,
-        })
-      });
-
-      if (res.ok) {
-        const serverData = await res.json();
-        // Update with real data from server (including real IDs)
-        if (serverData.addresses) {
-          setAddresses(serverData.addresses);
-          // If we just added one, select the last one (or find the one matching our temp)
-          if (!editingAddress && serverData.addresses.length > 0) {
-            // Simple logic: Select the one created last or just the first one
-            // Ideally, API returns the created object ID.
-            // For now, refreshing the router ensures data consistency next time.
-            router.refresh();
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Failed to save address", error);
-      alert("Failed to save address. Please try again.");
-    }
+    // Note: We don't save to backend immediately here. 
+    // We let the Booking API handle the creation if it's a new address.
   };
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,22 +98,42 @@ export default function BookingForm({
     setLoading(true);
 
     try {
+      // ✅ 1. Find the selected address object
+      const selectedAddressObj = addresses.find(a => a.id === addressId);
+
+      // ✅ 2. Prepare Payload
+      const payload: any = {
+        userId,
+        serviceId,
+        addressId,
+        timeline,
+        specialInstructions: instructions,
+      };
+
+      // ✅ 3. CHECK: If ID is temporary (starts with "temp-"), append full details
+      if (addressId.toString().startsWith('temp-') && selectedAddressObj) {
+        payload.newAddress = {
+          line1: selectedAddressObj.line1,
+          line2: selectedAddressObj.line2,
+          landmark: selectedAddressObj.landmark,
+          city: selectedAddressObj.city,
+          state: selectedAddressObj.state,
+          pincode: selectedAddressObj.pincode,
+          type: (selectedAddressObj.type || "HOME").toUpperCase(), // Ensure enum match
+        };
+      }
+
       const res = await fetch('/api/bookings/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          serviceId,
-          addressId,
-          timeline,
-          specialInstructions: instructions,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
 
       if (data.success) {
         alert('Booking Request Sent Successfully!');
+        router.refresh(); // Refresh to get real IDs back
         onRequestClose();
       } else {
         alert(data.message || 'Booking failed');
@@ -167,9 +150,9 @@ export default function BookingForm({
   const getModalInitialData = () => {
     if (editingAddress) {
       return {
-        name: "", // Not editing name here
-        email: "", // Not editing email here
-        phone: "", // Not editing phone here
+        name: "",
+        email: "",
+        phone: "",
         addressLine1: editingAddress.line1 || "",
         addressLine2: editingAddress.line2 || "",
         landmark: editingAddress.landmark || "",
@@ -227,7 +210,6 @@ export default function BookingForm({
             <label className="block text-xs font-bold text-slate-500 uppercase">
               Service Location
             </label>
-            {/* Show "Add New" button if addresses exist, so user can add a 2nd one */}
             {addresses.length > 0 && (
               <button
                 type="button"
@@ -246,12 +228,12 @@ export default function BookingForm({
                   key={addr.id}
                   onClick={() => setAddressId(addr.id)}
                   className={`relative p-3 rounded-xl border cursor-pointer flex items-start gap-3 transition-all group ${addressId === addr.id
-                      ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                      : 'border-slate-200 hover:border-slate-300'
+                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                    : 'border-slate-200 hover:border-slate-300'
                     }`}
                 >
                   <MapPin className={`mt-0.5 flex-shrink-0 ${addressId === addr.id ? 'text-blue-600' : 'text-slate-400'}`} size={18} />
-                  <div className="flex-1 pr-6"> {/* Added padding right for edit button space */}
+                  <div className="flex-1 pr-6">
                     <div className="flex justify-between items-center">
                       <p className="text-sm font-bold text-slate-900">{addr.type || "Home"}</p>
                       {addressId === addr.id && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Selected</span>}
@@ -339,7 +321,7 @@ export default function BookingForm({
           onClose={() => setIsAddressModalOpen(false)}
           initialData={getModalInitialData()}
           onSave={handleSaveAddress}
-          isEmailLocked={true} // Lock these as we are only editing address
+          isEmailLocked={true}
           isPhoneLocked={true}
         />
       )}

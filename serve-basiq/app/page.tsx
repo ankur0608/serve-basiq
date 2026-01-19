@@ -13,6 +13,9 @@ import {
   FaUserPlus,
   FaStore
 } from 'react-icons/fa6';
+// import CategorySection from '@/components/CategorySection';
+// import PromoBanner from '@/components/PromoBanner';
+// import TrustFeatures from '@/components/TrustFeatures';
 
 export default function Home() {
   return (

@@ -3,88 +3,100 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
+    // userId is now OPTIONAL
     const { phone, otp, userId } = await req.json();
 
-    // 🔍 1. Log Entrance
-    console.log("📲 [API] Verify-Update Request Received:", { phone, otp, userId });
+    console.log("📲 [API] Verify Request:", { phone, otp, userId: userId || "N/A (Login Mode)" });
 
-    if (!phone || !otp || !userId) {
-      console.log("❌ [API] Validation Failed: Missing required fields");
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    if (!phone || !otp) {
+      return NextResponse.json({ error: "Missing phone or OTP" }, { status: 400 });
     }
 
-    // 🔍 2. Log OTP Lookup
-    console.log("🔍 [API] Looking up OTP record for:", phone);
+    // 1. Verify OTP
     const record = await prisma.otp.findFirst({
       where: { phone, code: otp },
     });
 
     if (!record) {
-      console.log("❌ [API] OTP Validation Failed: No matching record found");
       return NextResponse.json({ error: "Invalid OTP" }, { status: 400 });
     }
 
-    // 🔍 3. Log Expiry Check
-    const isExpired = new Date() > new Date(record.expiresAt);
-    console.log("⏱️ [API] OTP Expiry Check:", {
-      now: new Date(),
-      expiresAt: record.expiresAt,
-      isExpired
-    });
-
-    if (isExpired) {
-      console.log("❌ [API] OTP Validation Failed: Code expired");
+    if (new Date() > new Date(record.expiresAt)) {
       return NextResponse.json({ error: "OTP Expired" }, { status: 400 });
     }
 
-    // 🔍 4. Log Conflict Check
-    console.log("🕵️ [API] Checking if phone is already claimed by another user...");
-    const existingUserWithPhone = await prisma.user.findUnique({
-      where: { phone },
-    });
+    let user;
 
-    if (existingUserWithPhone) {
-      console.log("⚠️ [API] Phone exists in DB. Owned by User ID:", existingUserWithPhone.id);
+    // ============================================================
+    // SCENARIO A: Account Linking (userId provided)
+    // The user is already logged in and wants to verify/link a phone
+    // ============================================================
+    if (userId) {
+      // Check collision: Is this phone already claimed by ANOTHER user?
+      const existingPhoneUser = await prisma.user.findUnique({
+        where: { phone },
+      });
 
-      if (existingUserWithPhone.id !== userId) {
-        console.log("⛔ [API] Conflict Detected: Phone owned by DIFFERENT user. Aborting.");
+      if (existingPhoneUser && existingPhoneUser.id !== userId) {
         return NextResponse.json(
-          { error: "This phone number is already registered with another account." },
+          { error: "Phone number already in use by another account." },
           { status: 409 }
         );
-      } else {
-        console.log("ℹ️ [API] Phone owned by SAME user. Proceeding with re-verification.");
       }
-    } else {
-      console.log("✅ [API] Phone is fresh (not in DB). Proceeding.");
+
+      // Update the requested user
+      user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          phone: phone,
+          isPhoneVerified: true,
+        },
+      });
     }
 
-    // 🔍 5. Log Update Attempt
-    console.log("🔄 [API] Updating User ID:", userId, "with new phone and verified status.");
+    // ============================================================
+    // SCENARIO B: Login / Register (No userId provided)
+    // The user is trying to log in via phone. We find or create them.
+    // ============================================================
+    else {
+      // Find existing user by phone
+      const existingUser = await prisma.user.findUnique({
+        where: { phone },
+      });
 
-    // We search by 'id' (userId), NOT by phone.
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        phone: phone,
-        isPhoneVerified: true,
-      },
-    });
+      if (existingUser) {
+        // LOGIN: User exists
+        console.log("✅ [API] User found for login:", existingUser.id);
+        user = existingUser;
 
-    console.log("✅ [API] User Update Successful:", {
-      id: updatedUser.id,
-      phone: updatedUser.phone,
-      verified: updatedUser.isPhoneVerified
-    });
+        // Ensure verified flag is true if it wasn't before
+        if (!existingUser.isPhoneVerified) {
+          await prisma.user.update({
+            where: { id: existingUser.id },
+            data: { isPhoneVerified: true }
+          });
+        }
 
-    // 🔍 6. Log Cleanup
-    console.log("🧹 [API] Deleting used OTPs for:", phone);
+      } else {
+        // REGISTER: User does not exist, create new one
+        console.log("🆕 [API] Creating new user for phone:", phone);
+        user = await prisma.user.create({
+          data: {
+            phone: phone,
+            isPhoneVerified: true,
+            // Add any default fields here (e.g., name: "User", role: "USER")
+          },
+        });
+      }
+    }
+
+    // 3. Cleanup OTP
     await prisma.otp.deleteMany({ where: { phone } });
 
-    return NextResponse.json({ success: true, user: updatedUser });
+    return NextResponse.json(user);
 
   } catch (error) {
-    console.error("🔥 [API] Update Phone Critical Error:", error);
+    console.error("🔥 [API] Verify Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -2,12 +2,23 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+// ✅ Updated Schema: Accepts optional address details for new addresses
 const BookingSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
   serviceId: z.string().min(1, "Service ID is required"),
   addressId: z.string().min(1, "Address is required"),
   timeline: z.enum(['IMMEDIATE', 'IN_2_DAYS', 'TWO_TO_FIVE_DAYS']),
   specialInstructions: z.string().optional(),
+  // Optional: Only needed if addressId is temporary
+  newAddress: z.object({
+    line1: z.string(),
+    line2: z.string(),
+    landmark: z.string().optional(),
+    city: z.string(),
+    state: z.string(),
+    pincode: z.string(),
+    type: z.enum(["HOME", "WORK", "OTHER"]).default("HOME"),
+  }).optional(),
 });
 
 export async function POST(req: Request) {
@@ -18,27 +29,60 @@ export async function POST(req: Request) {
     const validation = BookingSchema.safeParse(body);
 
     if (!validation.success) {
+      console.error("❌ Validation Failed:", validation.error.format());
       return NextResponse.json({ success: false, message: "Invalid data" }, { status: 400 });
     }
 
     const data = validation.data;
+    let finalAddressId = data.addressId;
 
-    // ✅ Clean Create Call (No dummy data needed anymore)
+    // 🚩 CHECK: Is this a temporary address?
+    if (data.addressId.startsWith("temp-")) {
+      console.log("🆕 Detected New Address. Creating...");
+
+      if (!data.newAddress) {
+        return NextResponse.json({
+          success: false,
+          message: "New address selected but details missing."
+        }, { status: 400 });
+      }
+
+      // 1. Create the Address First
+      const createdAddress = await prisma.address.create({
+        data: {
+          userId: data.userId,
+          line1: data.newAddress.line1,
+          line2: data.newAddress.line2,
+          landmark: data.newAddress.landmark,
+          city: data.newAddress.city,
+          state: data.newAddress.state,
+          pincode: data.newAddress.pincode,
+          type: data.newAddress.type as any, // Ensure Enum match
+          country: "India", // Default or add to schema
+        },
+      });
+
+      console.log("✅ Address Created with ID:", createdAddress.id);
+      finalAddressId = createdAddress.id; // Use the REAL ID
+    }
+
+    // 2. Create the Booking with the REAL Address ID
     const booking = await prisma.booking.create({
       data: {
         userId: data.userId,
         serviceId: data.serviceId,
-        addressId: data.addressId,
+        addressId: finalAddressId, // <--- Now guaranteed to be real
         timeline: data.timeline,
         specialInstructions: data.specialInstructions,
         status: 'PENDING',
       },
     });
 
+    console.log("🎉 Booking Created ID:", booking.id);
     return NextResponse.json({ success: true, booking });
 
   } catch (error) {
-    console.error("🔥 [API] Error:", error);
+    console.error("🔥 Server Error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }

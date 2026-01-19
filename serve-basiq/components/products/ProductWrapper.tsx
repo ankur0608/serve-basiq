@@ -1,93 +1,14 @@
-// 'use client';
-
-// import { useState, useEffect } from 'react';
-// import { createPortal } from 'react-dom'; // ✅ Import this
-// import { FaPaperPlane, FaXmark } from 'react-icons/fa6';
-// import ProductRequestForm from './ProductRequestForm';
-// import { useRouter } from 'next/navigation';
-
-// interface Props {
-//     productId: string;
-//     productName: string;
-//     productPrice: number;
-//     productUnit: string;
-//     moq: number;
-//     currentUserId?: string;
-//     userAddresses: any[];
-// }
-
-// export default function ProductWrapper({
-//     productId,
-//     productName,
-//     productPrice,
-//     productUnit,
-//     moq,
-//     currentUserId,
-//     userAddresses
-// }: Props) {
-//     const [isOpen, setIsOpen] = useState(false);
-//     const [mounted, setMounted] = useState(false); // ✅ Prevent hydration mismatch
-//     const router = useRouter();
-
-//     // ✅ Ensure we only run portal logic on the client
-//     useEffect(() => {
-//         setMounted(true);
-//     }, []);
-
-//     const handleOpen = () => {
-//         if (!currentUserId) {
-//             router.push('/login?callbackUrl=' + window.location.pathname);
-//             return;
-//         }
-//         setIsOpen(true);
-//     };
-
-//     return (
-//         <>
-//             {/* 1. THE TRIGGER BUTTON (Stays inside the Bottom Bar) */}
-//             <button
-//                 onClick={handleOpen}
-//                 className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-black transition transform active:scale-95 flex items-center justify-center gap-2"
-//             >
-//                 Request Quote <FaPaperPlane />
-//             </button>
-
-//             {/* 2. THE MODAL (Teleported to document.body) */}
-//             {isOpen && mounted && createPortal(
-//                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-//                     <div className="relative w-full max-w-md">
-//                         <button
-//                             onClick={() => setIsOpen(false)}
-//                             className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white transition"
-//                         >
-//                             <FaXmark size={24} />
-//                         </button>
-
-//                         <ProductRequestForm
-//                             productId={productId}
-//                             productName={productName}
-//                             price={productPrice}
-//                             unit={productUnit}
-//                             moq={moq}
-//                             userId={currentUserId!}
-//                             userAddresses={userAddresses}
-//                             onRequestClose={() => setIsOpen(false)}
-//                         />
-//                     </div>
-//                 </div>,
-//                 document.body // 👈 This forces it to attach to the main body, ignoring parent styles
-//             )}
-//         </>
-//     );
-// }
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom'; // ✅ Import Portal for overlay
+import { createPortal } from 'react-dom';
 import { FaPaperPlane, FaXmark } from 'react-icons/fa6';
-import ProductRequestForm from './ProductRequestForm';
 import { useRouter } from 'next/navigation';
+import { useUIStore } from "@/lib/store"; // Ensure you have this or remove if not using global store
+
+// Components
+import ProductRequestForm from './ProductRequestForm';
+import MobileVerificationModal from '@/components/booking/MobileVerificationModal'; // Adjust path if needed
 
 interface Props {
     productId: string;
@@ -95,7 +16,7 @@ interface Props {
     productPrice: number;
     productUnit: string;
     moq: number;
-    currentUserId?: string;
+    currentUser: any; // ✅ Now accepts the full user object (id, phone, isPhoneVerified)
     userAddresses: any[];
 }
 
@@ -105,42 +26,70 @@ export default function ProductWrapper({
     productPrice,
     productUnit,
     moq,
-    currentUserId,
+    currentUser,
     userAddresses
 }: Props) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [mounted, setMounted] = useState(false); // ✅ Prevent hydration mismatch
-    const router = useRouter();
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
-    // ✅ Ensure we only run portal logic on the client
+    const router = useRouter();
+    const onOpenLogin = useUIStore((state) => state.onOpenLogin); // Optional global login
+
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    const handleOpen = () => {
-        if (!currentUserId) {
-            router.push('/login?callbackUrl=' + window.location.pathname);
+    // 🚦 THE LOGIC
+    const handleRequestClick = () => {
+        // 1. Not Logged In? -> Redirect
+        if (!currentUser) {
+            if (onOpenLogin) onOpenLogin();
+            else router.push('/login?callbackUrl=' + window.location.pathname);
             return;
         }
-        setIsOpen(true);
+
+        // 2. Logged in but Phone NOT Verified? -> Open Verification
+        if (!currentUser.isPhoneVerified) {
+            console.log("User logged in but phone not verified. Opening Mobile Modal.");
+            setIsMobileModalOpen(true);
+            return;
+        }
+
+        // 3. All Good? -> Open Request Form
+        setIsFormOpen(true);
     };
 
     return (
         <>
-            {/* 1. THE TRIGGER BUTTON (Stays inside the Bottom Bar) */}
+            {/* 1. THE TRIGGER BUTTON */}
             <button
-                onClick={handleOpen}
+                onClick={handleRequestClick}
                 className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-black transition transform active:scale-95 flex items-center justify-center gap-2"
             >
                 Request Quote <FaPaperPlane />
             </button>
 
-            {/* 2. THE MODAL (Teleported to document.body) */}
-            {isOpen && mounted && createPortal(
+            {/* 2. MOBILE VERIFICATION MODAL */}
+            {mounted && isMobileModalOpen && (
+                <MobileVerificationModal
+                    userId={currentUser.id}
+                    isOpen={isMobileModalOpen}
+                    onClose={() => setIsMobileModalOpen(false)}
+                    onSuccess={() => {
+                        setIsMobileModalOpen(false); // Close verify modal
+                        setIsFormOpen(true);         // Open form immediately
+                        router.refresh();            // Refresh server data
+                    }}
+                />
+            )}
+
+            {/* 3. PRODUCT REQUEST FORM MODAL */}
+            {mounted && isFormOpen && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="relative w-full max-w-md">
                         <button
-                            onClick={() => setIsOpen(false)}
+                            onClick={() => setIsFormOpen(false)}
                             className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white transition"
                         >
                             <FaXmark size={24} />
@@ -152,13 +101,13 @@ export default function ProductWrapper({
                             price={productPrice}
                             unit={productUnit}
                             moq={moq}
-                            userId={currentUserId!}
+                            userId={currentUser?.id}
                             userAddresses={userAddresses}
-                            onRequestClose={() => setIsOpen(false)}
+                            onRequestClose={() => setIsFormOpen(false)}
                         />
                     </div>
                 </div>,
-                document.body // 👈 This forces it to attach to the main body, ignoring parent styles
+                document.body
             )}
         </>
     );

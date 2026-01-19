@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FaXmark, FaMobileScreen, FaLock } from 'react-icons/fa6';
-import { Loader2 } from 'lucide-react';
+import { FaXmark, FaMobileScreen, FaSpinner, FaArrowLeft } from 'react-icons/fa6';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react'; // Import useSession to update client session
+import { useSession } from 'next-auth/react';
 
 interface Props {
   userId: string;
@@ -17,12 +16,47 @@ interface Props {
 export default function MobileVerificationModal({ userId, isOpen, onClose, onSuccess }: Props) {
   const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
+
+  // ✅ CHANGED: OTP is now an array of 4 strings
+  const [otp, setOtp] = useState(["", "", "", ""]);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { update } = useSession(); // Hook to update session on client side
+  const { update } = useSession();
+
+  // Focus first input when switching to OTP step
+  useEffect(() => {
+    if (step === 'OTP') {
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
+    }
+  }, [step]);
 
   if (!isOpen) return null;
+
+  /* ---------------- Input Handlers (Split Inputs) ---------------- */
+  const handleOtpChange = (index: number, value: string) => {
+    if (isNaN(Number(value))) return;
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Move focus to next input
+    if (value && index < 3) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    // Move focus to previous input on Backspace
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  /* ---------------- Logic ---------------- */
 
   // 1. Send OTP
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -33,11 +67,20 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
       const res = await fetch('/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }), // We just need phone to send OTP
+        body: JSON.stringify({ phone }),
       });
 
       const data = await res.json();
+
       if (res.ok) {
+        // ✅ 1. Log OTP
+        console.log("🔔 DEV OTP:", data.otp);
+
+        // ✅ 2. Auto-fill the inputs visually
+        if (data.otp) {
+          setOtp(data.otp.toString().split(""));
+        }
+
         setStep('OTP');
       } else {
         alert(data.error || 'Failed to send OTP');
@@ -49,28 +92,28 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
     }
   };
 
-  // 2. Verify OTP & Link to Existing User
+  // 2. Verify OTP
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Join array back to string
+    const code = otp.join("");
+    if (code.length !== 4) return;
+
     setLoading(true);
 
     try {
-      // ✅ CHANGE: Use the specific "Update Phone" API endpoint
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // ✅ We pass userId so the backend knows EXACTLY who to update
-        body: JSON.stringify({ phone, otp, userId }),
+        body: JSON.stringify({ phone, otp: code, userId }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
         alert('Phone linked successfully!');
-
-        // ✅ Update the NextAuth session on the client without reloading
         await update({ isPhoneVerified: true, phone: phone });
-
         router.refresh();
         onSuccess();
       } else {
@@ -83,83 +126,99 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
     }
   };
 
-  // Render Portal
+  if (typeof document === 'undefined') return null;
+
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
+
+        {/* Close Button */}
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition">
+          <FaXmark size={20} />
+        </button>
 
         {/* Header */}
-        <div className="bg-slate-900 p-6 text-center relative">
-          <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white">
-            <FaXmark size={20} />
-          </button>
-          <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-3 text-white">
-            <FaMobileScreen size={24} />
+        <div className="pt-8 px-8 text-center">
+          <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-900">
+            <FaMobileScreen size={26} />
           </div>
-          <h2 className="text-white text-lg font-bold">Mobile Verification</h2>
-          <p className="text-slate-400 text-sm">Required to book services</p>
+          <h2 className="text-2xl font-extrabold text-slate-900">
+            {step === 'PHONE' ? 'Add Phone Number' : 'Verify OTP'}
+          </h2>
+          <p className="text-slate-500 text-sm mt-2">
+            {step === 'PHONE'
+              ? 'We need your phone number to update your profile.'
+              : <>Code sent to <span className="font-bold text-slate-900">+91 {phone}</span></>
+            }
+          </p>
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="p-8">
           {step === 'PHONE' ? (
-            <form onSubmit={handleSendOtp} className="space-y-4">
+            <form onSubmit={handleSendOtp} className="space-y-6">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Phone Number</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Phone Number</label>
                 <div className="flex gap-2">
-                  <span className="flex items-center justify-center bg-slate-100 border border-slate-200 rounded-xl px-3 font-bold text-slate-600">+91</span>
+                  <span className="flex items-center justify-center bg-slate-50 border border-slate-200 rounded-xl px-4 font-bold text-slate-600">+91</span>
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    pattern="[0-9]*"
                     required
-                    pattern="[0-9]{10}"
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-lg tracking-widest"
+                    className="w-full px-4 py-3.5 border border-slate-200 rounded-xl focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-lg tracking-widest text-slate-900 placeholder-slate-300 transition-all"
                     placeholder="XXXXXXXXXX"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                   />
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={loading || phone.length < 10}
-                className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition disabled:opacity-50"
+                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:bg-slate-900 flex items-center justify-center gap-2"
               >
-                {loading ? <Loader2 className="animate-spin" /> : 'Send OTP'}
+                {loading ? <FaSpinner className="animate-spin" /> : 'Get OTP'}
               </button>
             </form>
           ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-4 animate-in slide-in-from-right">
-              <div className="text-center mb-2">
-                <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">OTP Sent to {phone}</span>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Enter OTP</label>
-                <div className="relative">
-                  <FaLock className="absolute left-4 top-3.5 text-slate-400" />
+            <form onSubmit={handleVerifyOtp} className="space-y-8 animate-in slide-in-from-right">
+
+              {/* ✅ 4-DIGIT SPLIT INPUTS */}
+              <div className="flex justify-center gap-3">
+                {otp.map((digit, index) => (
                   <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-lg tracking-widest"
-                    placeholder="123456"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
+                    key={index}
+                    ref={(el) => { inputRefs.current[index] = el; }}
+                    type="tel"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                    className="w-14 h-16 rounded-xl border-2 border-gray-200 text-center text-2xl font-bold text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all"
+                    disabled={loading}
                   />
-                </div>
+                ))}
               </div>
+
               <button
                 type="submit"
-                disabled={loading || otp.length < 4}
-                className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition disabled:opacity-50"
+                disabled={loading || otp.join("").length < 4}
+                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
               >
-                {loading ? <Loader2 className="animate-spin" /> : 'Verify & Proceed'}
+                {loading ? <FaSpinner className="animate-spin" /> : 'Verify & Link'}
               </button>
+
               <button
                 type="button"
-                onClick={() => setStep('PHONE')}
-                className="w-full py-2 text-sm text-slate-500 font-bold hover:text-slate-800"
+                onClick={() => {
+                  setStep('PHONE');
+                  setOtp(["", "", "", ""]);
+                }}
+                className="w-full flex items-center justify-center gap-2 text-sm text-slate-500 font-bold hover:text-slate-900 transition"
               >
-                Change Number
+                <FaArrowLeft /> Change Number
               </button>
             </form>
           )}
