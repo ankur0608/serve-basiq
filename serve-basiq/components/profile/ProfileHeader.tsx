@@ -6,6 +6,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { FaPhone, FaRightFromBracket, FaPencil, FaBriefcase, FaGaugeHigh } from 'react-icons/fa6';
 import clsx from 'clsx';
 import Image from 'next/image';
+import { fullLogout } from '@/lib/logout';
 
 interface ProfileHeaderProps {
     onEditClick: () => void;
@@ -36,20 +37,11 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
         }
     };
 
-    // ✅ Fallback internal logout (Nuclear version)
+
     const handleInternalLogout = async () => {
-        if (onLogout) {
-            onLogout();
-            return;
-        }
-
-        storeLogout();
-        await fetch('/api/auth/logout', { method: 'POST' });
-        await signOut({ redirect: false });
-
-        // FORCE RELOAD
-        window.location.href = '/';
+        await fullLogout();
     };
+
 
     return (
         <div className={clsx("pt-12 pb-24 px-4 relative overflow-hidden transition-colors duration-500", isWorker ? "bg-slate-900 text-white" : "bg-blue-600 text-white")}>

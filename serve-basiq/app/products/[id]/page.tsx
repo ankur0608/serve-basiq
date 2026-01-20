@@ -27,6 +27,10 @@ export default async function ProductDetail({ params }: Props) {
   const product = await prisma.product.findUnique({
     where: { id: productId },
     include: {
+      // ✅ FIX: Include the Category relation to get the name
+      category: {
+        select: { name: true }
+      },
       user: {
         select: {
           name: true,
@@ -55,7 +59,8 @@ export default async function ProductDetail({ params }: Props) {
   // Helper Data
   const specs = [
     { label: "MOQ", value: `${product.moq} ${product.unit}` },
-    { label: "Category", value: product.category },
+    // ✅ FIX: Access nested category name safely
+    { label: "Category", value: product.category?.name || "General" },
     { label: "Warranty", value: "Standard Manufacturer" },
     { label: "Condition", value: "New" },
   ];

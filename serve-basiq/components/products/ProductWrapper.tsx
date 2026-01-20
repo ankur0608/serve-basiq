@@ -8,7 +8,7 @@ import { useUIStore } from "@/lib/store"; // Ensure you have this or remove if n
 
 // Components
 import ProductRequestForm from './ProductRequestForm';
-import MobileVerificationModal from '@/components/booking/MobileVerificationModal'; // Adjust path if needed
+import MobileVerificationModal from '@/components/auth/MobileVerificationModal'; // Adjust path if needed
 
 interface Props {
     productId: string;

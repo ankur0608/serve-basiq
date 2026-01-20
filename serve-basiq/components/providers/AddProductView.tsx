@@ -7,8 +7,6 @@ import {
     Trash2, X, Tag, Layers, Truck, Box, Plus
 } from 'lucide-react';
 
-// --- HELPER: Upload to Backend ---
-// Keep this outside to prevent recreation on render
 async function uploadToBackend(file: File): Promise<string> {
     const formData = new FormData();
     formData.append("file", file);
@@ -28,15 +26,17 @@ interface AddProductProps {
 export function AddProductView({ setActiveView, userId, showToast, editingProduct }: AddProductProps) {
     const { saveProduct, loading: saving } = useProducts(userId);
 
-    // UI State
     const [step, setStep] = useState(1);
     const [uploading, setUploading] = useState(false);
     const [activeUploadField, setActiveUploadField] = useState<'main' | 'gallery' | null>(null);
 
-    // Form State
+    // ✅ Store Fetched Product Categories
+    const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
+    const [loadingCats, setLoadingCats] = useState(true);
+
     const [form, setForm] = useState({
         name: '',
-        category: 'Spare Parts',
+        category: '',
         desc: '',
         productImage: '',
         gallery: [] as string[],
@@ -47,12 +47,35 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         deliveryType: 'DELIVERY'
     });
 
-    // Effect: Load data if editing
+    // ✅ 1. Fetch Categories (Type = PRODUCT)
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch('/api/categories?type=PRODUCT');
+                const data = await res.json();
+
+                if (Array.isArray(data)) {
+                    setCategories(data);
+                    // Default to first category if creating new
+                    if (!editingProduct && data.length > 0) {
+                        setForm(prev => ({ ...prev, category: data[0].name }));
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to load categories");
+            } finally {
+                setLoadingCats(false);
+            }
+        };
+        fetchCategories();
+    }, [editingProduct]);
+
+    // Load data if editing
     useEffect(() => {
         if (editingProduct) {
             setForm({
                 name: editingProduct.name || '',
-                category: editingProduct.category || 'Spare Parts',
+                category: editingProduct.category || '',
                 desc: editingProduct.desc || '',
                 productImage: editingProduct.productImage || editingProduct.image || '',
                 gallery: editingProduct.gallery || [],
@@ -65,9 +88,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         }
     }, [editingProduct]);
 
-    // --- Optimized Handlers ---
-
-    // Wrapped in useCallback to maintain stable reference
     const handleChange = useCallback((field: string, value: any) => {
         setForm(prev => ({ ...prev, [field]: value }));
     }, []);
@@ -126,7 +146,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
     const closeForm = useCallback(() => setActiveView('products'), [setActiveView]);
 
-    // Styles (Static)
     const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
     const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
 
@@ -134,12 +153,10 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-lg w-full mx-auto relative flex flex-col max-h-[90vh]">
 
-                {/* Close Button */}
                 <button onClick={closeForm} className="absolute top-4 right-4 z-10 text-white/70 hover:text-white transition">
                     <X size={24} />
                 </button>
 
-                {/* --- HEADER --- */}
                 <div className="bg-slate-900 p-6 text-white relative shrink-0">
                     <div className="flex justify-between items-center mb-1">
                         <h2 className="text-xl font-bold">
@@ -160,10 +177,9 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                     </div>
                 </div>
 
-                {/* SCROLLABLE FORM AREA */}
                 <form onSubmit={handleSubmit} className="p-6 overflow-y-auto">
 
-                    {/* --- STEP 1: BASIC INFO --- */}
+                    {/* --- STEP 1 --- */}
                     {step === 1 && (
                         <div className="space-y-5 animate-in slide-in-from-right duration-300">
                             <div>
@@ -177,19 +193,26 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                                 <label className={labelClass}>Category</label>
                                 <div className="relative">
                                     <Tag className="absolute left-3 top-3 text-slate-400" size={18} />
-                                    <select className={`${inputClass} pl-10`} value={form.category} onChange={e => handleChange('category', e.target.value)}>
-                                        <option>Spare Parts</option>
-                                        <option>Tools</option>
-                                        <option>Materials</option>
-                                        <option>Safety Gear</option>
-                                        <option>Electronics</option>
-                                        <option>Plumbing</option>
+                                    {/* ✅ Dynamic Category Select */}
+                                    <select
+                                        className={`${inputClass} pl-10`}
+                                        value={form.category}
+                                        onChange={e => handleChange('category', e.target.value)}
+                                        disabled={loadingCats}
+                                    >
+                                        <option value="" disabled>Select Category</option>
+                                        {loadingCats ? <option>Loading...</option> :
+                                            categories.map(c => (
+                                                <option key={c.id} value={c.name}>{c.name}</option>
+                                            ))
+                                        }
+                                        {!loadingCats && categories.length === 0 && <option>General</option>}
                                     </select>
                                 </div>
                             </div>
                             <div>
                                 <label className={labelClass}>Description</label>
-                                <textarea className={inputClass} rows={4} placeholder="Describe your product features..." value={form.desc} onChange={e => handleChange('desc', e.target.value)} />
+                                <textarea className={inputClass} rows={4} placeholder="Describe product features..." value={form.desc} onChange={e => handleChange('desc', e.target.value)} />
                             </div>
                             <button type="button" onClick={() => setStep(2)} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-4">
                                 Next Step <ChevronRight size={18} />
@@ -197,7 +220,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                         </div>
                     )}
 
-                    {/* --- STEP 2: VISUALS --- */}
+                    {/* --- STEP 2 --- */}
                     {step === 2 && (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300">
                             <div>
@@ -237,7 +260,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                         </div>
                     )}
 
-                    {/* --- STEP 3: INVENTORY & LOGISTICS --- */}
+                    {/* --- STEP 3 --- */}
                     {step === 3 && (
                         <div className="space-y-5 animate-in slide-in-from-right duration-300">
                             <div className="grid grid-cols-2 gap-4">
@@ -287,7 +310,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                         </div>
                     )}
 
-                    {/* --- STEP 4: PRICING --- */}
+                    {/* --- STEP 4 --- */}
                     {step === 4 && (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300">
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 flex flex-col items-center justify-center text-center">

@@ -1,5 +1,6 @@
 // app/page.tsx
 import Link from 'next/link';
+import { prisma } from "@/lib/prisma"; // ✅ Import Prisma
 import FeaturedProviders from '@/components/sections/FeaturedProviders';
 import TrendingProducts from '@/components/sections/TrendingProducts';
 
@@ -19,7 +20,28 @@ import {
   FaShop
 } from 'react-icons/fa6';
 
-export default function Home() {
+// ✅ 1. Re-use the Style Map for consistency (Since DB only has ID/Name)
+const STYLE_MAP: Record<string, { emoji: string; color: string }> = {
+  cleaning: { emoji: "🧹", color: "blue" },
+  repair: { emoji: "🛠️", color: "orange" },
+  plumbing: { emoji: "💧", color: "cyan" },
+  electrical: { emoji: "⚡", color: "yellow" },
+  beauty: { emoji: "💅", color: "pink" },
+  painting: { emoji: "🎨", color: "purple" },
+  moving: { emoji: "📦", color: "indigo" },
+  default: { emoji: "📌", color: "gray" }
+};
+
+// ✅ 2. Make the component async to fetch data
+export default async function Home() {
+
+  // ✅ 3. Fetch Categories directly from DB (Server Side)
+  // We take 6 to fit the grid layout perfectly
+  const serviceCategories = await prisma.category.findMany({
+    take: 6,
+    select: { id: true, name: true }
+  });
+
   return (
     <div className="pb-12 bg-gray-50/50">
 
@@ -36,7 +58,7 @@ export default function Home() {
             <FaShieldHalved /> 100% Verified Providers
           </div>
 
-          {/* Headline - Made Smaller as requested */}
+          {/* Headline */}
           <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight text-slate-900 tracking-tight">
             Find Local Experts.<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">
@@ -44,12 +66,12 @@ export default function Home() {
             </span>
           </h1>
 
-          {/* Subheadline - Made Smaller */}
+          {/* Subheadline */}
           <p className="text-slate-600 text-base md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
             The safest marketplace to book services and buy wholesale products nearby. Secure payments, verified identities.
           </p>
 
-          {/* HERO BUTTONS (Added) */}
+          {/* HERO BUTTONS */}
           <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in px-4">
             <Link
               href="/services"
@@ -111,7 +133,7 @@ export default function Home() {
         {/* 2. CATEGORIES SECTION */}
         <div className="space-y-12">
 
-          {/* Service Categories */}
+          {/* ✅ Service Categories (Dynamic from DB) */}
           <div>
             <div className="flex justify-between items-end mb-6 px-1">
               <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -121,20 +143,29 @@ export default function Home() {
                 View All
               </Link>
             </div>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-              {[
-                { emoji: "🏠", label: "Home" },
-                { emoji: "💅", label: "Beauty" },
-                { emoji: "🔌", label: "Appliances" },
-                { emoji: "🚗", label: "Auto" },
-                { emoji: "💻", label: "Tech" },
-                { emoji: "🎉", label: "Events" },
-              ].map((cat, i) => (
-                <Link href={`/services?category=${cat.label}`} key={i} className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group">
-                  <div className="text-3xl mb-2 group-hover:scale-110 transition">{cat.emoji}</div>
-                  <div className="text-xs font-bold text-slate-700">{cat.label}</div>
-                </Link>
-              ))}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              {serviceCategories.length > 0 ? (
+                serviceCategories.map((cat) => {
+                  // Apply Styling Map
+                  const style = STYLE_MAP[cat.id] || STYLE_MAP.default;
+
+                  return (
+                    <Link
+                      href={`/services/category/${cat.id}`} // ✅ Updated to correct dynamic route
+                      key={cat.id}
+                      className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group"
+                    >
+                      <div className={`text-3xl mb-2 group-hover:scale-110 transition w-12 h-12 mx-auto flex items-center justify-center rounded-lg bg-${style.color}-50 text-${style.color}-600`}>
+                        {style.emoji}
+                      </div>
+                      <div className="text-xs font-bold text-slate-700 uppercase tracking-wide">{cat.name}</div>
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-center text-gray-400 text-sm py-4">No categories found.</div>
+              )}
             </div>
           </div>
 
@@ -152,7 +183,7 @@ export default function Home() {
             <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
           </div>
 
-          {/* Product Categories */}
+          {/* Product Categories (Static for now) */}
           <div>
             <div className="flex justify-between items-end mb-6 px-1">
               <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">

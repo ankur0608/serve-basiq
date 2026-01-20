@@ -2,13 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serviceSettingsSchema } from "@/lib/validators";
 
-// Helper to ensure URLs are valid (fixes your previous error too)
-const ensureProtocol = (url: string | undefined | null) => {
-  if (!url) return undefined;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  return `https://${url}`;
-};
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -21,21 +14,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // 1. Auto-fix URLs before validation
-    formData.instagramUrl = ensureProtocol(formData.instagramUrl);
-    formData.facebookUrl = ensureProtocol(formData.facebookUrl);
-    formData.websiteUrl = ensureProtocol(formData.websiteUrl);
-    formData.youtubeUrl = ensureProtocol(formData.youtubeUrl);
-
-    // 2. Validate data
+    // 1. Validate data (Socials removed from validation logic if they are in schema, otherwise ignored)
     const data = serviceSettingsSchema.parse(formData);
 
-    // 3. Prepare Payload (FIXED MAPPING HERE)
+    // 2. Prepare Payload
+    // We REMOVED social links from here because they are now part of the User Profile / Verification
     const payload = {
       name: data.name,
       desc: data.desc,
 
-      // ⚠️ CRITICAL FIX: Mapping 'serviceimg' correctly for Prisma
+      // ⚠️ Mapping 'serviceimg' correctly
       serviceimg: formData.serviceimg || data.mainimg || "",
       mainimg: data.mainimg,
       coverImg: data.coverImg,
@@ -50,7 +38,7 @@ export async function POST(req: Request) {
       categoryId: data.categoryId === "" ? null : data.categoryId,
       subCategoryIds: data.subCategoryIds,
 
-      // Address
+      // Address (Service Location)
       addressLine1: data.addressLine1,
       addressLine2: data.addressLine2,
       city: data.city,
@@ -67,13 +55,7 @@ export async function POST(req: Request) {
       openTime: data.openTime,
       closeTime: data.closeTime,
 
-      // Socials
-      instagramUrl: formData.instagramUrl,
-      facebookUrl: formData.facebookUrl,
-      websiteUrl: formData.websiteUrl,
-      youtubeUrl: formData.youtubeUrl,
-
-      // Gallery (Optional, depending on schema)
+      // Gallery
       gallery: formData.gallery || [],
     };
 
@@ -82,14 +64,14 @@ export async function POST(req: Request) {
     let result;
 
     if (serviceId) {
-      // Update
+      // Update Existing Service
       console.log(`🔄 [API] Updating Service ID: ${serviceId}`);
       result = await prisma.service.update({
-        where: { id: serviceId }, // Ensure ID is string/number based on schema
+        where: { id: serviceId },
         data: payload,
       });
     } else {
-      // Create
+      // Create New Service
       console.log(`✨ [API] Creating NEW Service for User: ${userId}`);
       result = await prisma.service.create({
         data: {
@@ -106,6 +88,9 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("🔥 [API] Error:", error);
-    return NextResponse.json({ success: false, message: error.message || "Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: error.message || "Server Error" },
+      { status: 500 }
+    );
   }
 }

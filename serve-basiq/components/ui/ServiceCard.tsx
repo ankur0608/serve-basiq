@@ -1,12 +1,12 @@
+// components/services/ServiceCard.tsx
 'use client';
 
 import Link from 'next/link';
 import { FaHeart, FaRegHeart, FaStar, FaCircleCheck, FaLocationDot } from 'react-icons/fa6';
-import { useState } from 'react';
 
-// ✅ Updated Interface matching the mapped data from ServicesPage
+// 1. Define the shape of the Service data
 export interface ServiceProps {
-  id: string; // UUID is a string
+  id: string;
   name: string;
   category: string;
   price: number;
@@ -19,17 +19,37 @@ export interface ServiceProps {
   providerImage?: string;
 }
 
-export default function ServiceCard({ service }: { service: ServiceProps }) {
-  const [isFav, setIsFav] = useState(false);
+// 2. Define the Props the Component accepts (Service + State controls)
+interface ServiceCardComponentProps {
+  service: ServiceProps;
+  isFav?: boolean;                                            // Passed from parent
+  toggleFav?: (e: React.MouseEvent<any>, id: string) => void; // Passed from parent
+  index?: number;                                             // Passed for animation
+}
+
+export default function ServiceCard({
+  service,
+  isFav = false,
+  toggleFav,
+  index = 0
+}: ServiceCardComponentProps) {
+
+  // ❌ Removed internal useState. We now use the 'isFav' prop from the parent.
 
   return (
-    <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex gap-4 group h-full relative overflow-hidden">
+    <div
+      className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex gap-4 group h-full relative overflow-hidden animate-in fade-in slide-in-from-bottom-4"
+      // Use index for a staggered loading effect
+      style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
+    >
 
       {/* Favorite Button */}
       <button
         onClick={(e) => {
-          e.preventDefault();
-          setIsFav(!isFav);
+          // If a toggle function is provided, use it. 
+          if (toggleFav) {
+            toggleFav(e, service.id);
+          }
         }}
         className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-sm z-20 transition-all hover:scale-110"
       >

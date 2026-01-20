@@ -24,6 +24,10 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         addressLine1: '', addressLine2: '', landmark: '', city: '', state: '', pincode: '',
         shopName: '', bizAddressLine1: '', bizAddressLine2: '', bizCity: '', bizState: '', bizPincode: '',
         sameAsPersonal: false,
+
+        // Socials (New)
+        instagramUrl: '', facebookUrl: '', youtubeUrl: '', websiteUrl: '',
+
         bankAccountHolder: '', bankAccountNumber: '', bankIfsc: '', bankName: '', upiId: '', preferredPayoutMethod: 'BANK',
         idProofType: 'Aadhaar', idProofNumber: '', idProofFrontImg: '', idProofBackImg: '', businessProofImg: '',
         gstRegistered: false, gstNumber: '',
@@ -35,7 +39,7 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         const userData = existingData;
         const home = userData.addresses?.find((a: any) => a.type === 'Home');
         const work = userData.addresses?.find((a: any) => a.type === 'Work');
-        const kyc = userData.kycDetails;     // 🔥 ONLY correct source
+        const kyc = userData.kycDetails;
 
         console.log("🧾 Loaded KYC:", kyc);
 
@@ -50,6 +54,12 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
             dob: userData.dob ? new Date(userData.dob).toISOString().split('T')[0] : '',
             preferredLanguage: userData.preferredLanguage || 'English',
             shopName: userData.shopName || '',
+
+            // Socials (New Mappings)
+            instagramUrl: userData.instagramUrl || '',
+            facebookUrl: userData.facebookUrl || '',
+            youtubeUrl: userData.youtubeUrl || '',
+            websiteUrl: userData.websiteUrl || '',
 
             // Home
             addressLine1: home?.line1 || '',
@@ -74,7 +84,7 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
             upiId: userData.upiId || '',
             preferredPayoutMethod: userData.preferredPayoutMethod || 'BANK',
 
-            // 🔥 Step-3 (THIS WAS MISSING)
+            // Step 3
             idProofType: kyc?.idProofType || 'Aadhaar',
             idProofNumber: kyc?.idProofNumber || '',
             idProofFrontImg: kyc?.idProofFrontImg || '',

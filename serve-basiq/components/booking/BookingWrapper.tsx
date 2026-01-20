@@ -9,7 +9,7 @@ import { useUIStore } from "@/lib/store"; // Assuming you have this
 
 // Import the forms
 import BookingForm from './BookingForm';
-import MobileVerificationModal from './MobileVerificationModal';
+import MobileVerificationModal from '../auth/MobileVerificationModal';
 
 interface Props {
     serviceId: string;

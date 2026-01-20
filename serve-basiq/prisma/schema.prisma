@@ -94,6 +94,25 @@ enum Timeline {
     TWO_TO_FIVE_DAYS
 }
 
+// 1. Create the Enum
+enum CategoryType {
+    SERVICE
+    PRODUCT
+    BOTH
+}
+
+// 2. Update the Category Model
+model Category {
+    id   String @id @default(uuid())
+    name String @unique
+
+    // ✅ Add this field to distinguish them
+    type CategoryType @default(BOTH)
+
+    services Service[]
+    products Product[]
+}
+
 model Admin {
     id        String   @id @default(uuid())
     email     String   @unique
@@ -178,8 +197,12 @@ model User {
     isWebsite       Boolean @default(true)
     rejectionReason String?
 
+    instagramUrl String?
+    facebookUrl  String?
+    websiteUrl   String?
+    youtubeUrl   String?
     // ✅ UPDATED: Kept the fast status flag here, but details are moved
-    isVerified Boolean @default(false)
+    isVerified   Boolean @default(false)
 
     // Banking (Can stay here or move to its own model too, but fine here for now)
     bankAccountHolder     String?
@@ -334,11 +357,6 @@ model Service {
     openTime    String?
     closeTime   String?
 
-    instagramUrl String?
-    facebookUrl  String?
-    websiteUrl   String?
-    youtubeUrl   String?
-
     // Details
     rating     Float    @default(5.0)
     loc        String?
@@ -350,12 +368,6 @@ model Service {
     createdAt DateTime  @default(now())
     updatedAt DateTime  @updatedAt
     bookings  Booking[]
-}
-
-model Category {
-    id       String    @id @default(uuid())
-    name     String
-    services Service[]
 }
 
 model Review {
@@ -373,20 +385,21 @@ model Review {
 }
 
 model Product {
-    id String @id @default(uuid())
-
+    id     String @id @default(uuid())
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
-    name     String
-    category String
-    desc     String
+    name String
+    desc String
+
+    // ✅ Linked to the single Category model above
+    categoryId String?
+    category   Category? @relation(fields: [categoryId], references: [id])
 
     productImage String
     gallery      String[]
-
-    price Float
-    moq   Int
+    price        Float
+    moq          Int
 
     stockStatus  StockStatus  @default(IN_STOCK)
     unit         UnitType     @default(PIECE)

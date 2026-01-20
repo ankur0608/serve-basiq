@@ -1,4 +1,4 @@
-import { UserCircle, MapPin, Building2, Copy, Check } from 'lucide-react';
+import { UserCircle, MapPin, Building2, Copy, Check, Instagram, Facebook, Youtube, Globe } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function StepOneProfile({ form, updateField, setForm, errors, getInputClass }: any) {
@@ -68,7 +68,66 @@ export default function StepOneProfile({ form, updateField, setForm, errors, get
                 </div>
             </section>
 
-            {/* 2. Home Address Section */}
+            {/* 2. Social Presence (New Section) */}
+            <section className="bg-white rounded-2xl shadow-sm border-l-4 border-pink-500 p-6 md:p-8">
+                <div className="flex items-center gap-3 mb-6 border-b border-slate-50 pb-4">
+                    <div className="w-10 h-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center">
+                        <Instagram size={24} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-slate-900 text-lg">Social Presence <span className="text-xs font-normal text-slate-400 ml-1">(Optional)</span></h3>
+                        <p className="text-xs text-slate-500">Link your social media profiles</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                            <Instagram size={14} className="text-pink-500" /> Instagram
+                        </label>
+                        <input
+                            className={getInputClass('instagramUrl')}
+                            value={form.instagramUrl}
+                            onChange={e => updateField('instagramUrl', e.target.value)}
+                            placeholder="https://instagram.com/username"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                            <Facebook size={14} className="text-blue-600" /> Facebook
+                        </label>
+                        <input
+                            className={getInputClass('facebookUrl')}
+                            value={form.facebookUrl}
+                            onChange={e => updateField('facebookUrl', e.target.value)}
+                            placeholder="https://facebook.com/username"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                            <Youtube size={14} className="text-red-600" /> YouTube
+                        </label>
+                        <input
+                            className={getInputClass('youtubeUrl')}
+                            value={form.youtubeUrl}
+                            onChange={e => updateField('youtubeUrl', e.target.value)}
+                            placeholder="https://youtube.com/@channel"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                            <Globe size={14} className="text-blue-400" /> Website
+                        </label>
+                        <input
+                            className={getInputClass('websiteUrl')}
+                            value={form.websiteUrl}
+                            onChange={e => updateField('websiteUrl', e.target.value)}
+                            placeholder="https://yourwebsite.com"
+                        />
+                    </div>
+                </div>
+            </section>
+
+            {/* 3. Home Address Section */}
             <section className="bg-white rounded-2xl shadow-sm border-l-4 border-slate-500 p-6 md:p-8">
                 <div className="flex items-center gap-3 mb-6 border-b border-slate-50 pb-4">
                     <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
@@ -105,7 +164,7 @@ export default function StepOneProfile({ form, updateField, setForm, errors, get
                 </div>
             </section>
 
-            {/* 3. Business Details Section */}
+            {/* 4. Business Details Section */}
             <section className="bg-white rounded-2xl shadow-sm border-l-4 border-orange-500 p-6 md:p-8">
                 <div className="flex justify-between items-center mb-6 border-b border-slate-50 pb-4">
                     <div className="flex items-center gap-3">

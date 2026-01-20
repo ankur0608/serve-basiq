@@ -1,53 +1,55 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic"; // Ensure it doesn't cache stale data
+export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const products = await prisma.product.findMany({
-      where: {
-        // ✅ 1. The Product itself must be verified by Admin
-        isVerified: true,
+    // ✅ 1. Get Category Filter from URL
+    const { searchParams } = new URL(request.url);
+    const catFilter = searchParams.get('cat');
 
-        // ✅ 2. The Seller (User) must also be verified
-        user: {
-          isVerified: true
-        }
-      },
-      orderBy: { createdAt: 'desc' }, // Newest first
+    // ✅ 2. Build Where Clause
+    const whereClause: any = {
+      isVerified: true,
+      user: { isVerified: true }
+    };
+
+    // If a specific category is requested, filter by Category Name
+    if (catFilter && catFilter !== 'All') {
+      whereClause.category = {
+        name: catFilter
+      };
+    }
+
+    const products = await prisma.product.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
       include: {
         user: {
           select: {
             name: true,
-            shopName: true, // ✅ Useful for products/B2B context
+            shopName: true,
             isVerified: true,
-            profileImage: true // ✅ Correct field name from User Model
+            profileImage: true,
+            image: true
           }
+        },
+        category: {
+          select: { name: true }
         }
       }
     });
 
-    // Transform data for frontend
+    // Transform data
     const formattedProducts = products.map(product => ({
       ...product,
-
-      // ✅ Map DB 'productImage' to 'img' for easier frontend usage if needed
       img: product.productImage,
-
-      // ✅ Ensure new fields are explicitly passed (though ...product does this, explicit is safer)
-      category: product.category,
-      moq: product.moq,
-      unit: product.unit,
-      stockStatus: product.stockStatus,
-      deliveryType: product.deliveryType,
-
-      // ✅ Supplier Details
+      category: product.category?.name || "General",
       supplier: product.user?.shopName || product.user?.name || "Verified Seller",
-      supplierImg: product.user?.profileImage || "",
+      supplierImg: product.user?.profileImage || product.user?.image || "",
     }));
 
-    // ✅ Return standardized response format
     return NextResponse.json({
       success: true,
       products: formattedProducts

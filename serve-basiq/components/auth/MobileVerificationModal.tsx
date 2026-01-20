@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 interface Props {
-  userId: string;
+  userId: string; // This is crucial for linking
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -16,16 +16,24 @@ interface Props {
 export default function MobileVerificationModal({ userId, isOpen, onClose, onSuccess }: Props) {
   const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [phone, setPhone] = useState('');
-
-  // ✅ CHANGED: OTP is now an array of 4 strings
   const [otp, setOtp] = useState(["", "", "", ""]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(''); // ✅ Handle errors visually
+
   const router = useRouter();
   const { update } = useSession();
 
-  // Focus first input when switching to OTP step
+  // Reset state when opening/closing
+  useEffect(() => {
+    if (!isOpen) {
+      setStep('PHONE');
+      setPhone('');
+      setOtp(["", "", "", ""]);
+      setErrorMessage('');
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (step === 'OTP') {
       setTimeout(() => {
@@ -36,21 +44,18 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
 
   if (!isOpen) return null;
 
-  /* ---------------- Input Handlers (Split Inputs) ---------------- */
+  /* ---------------- Input Handlers ---------------- */
   const handleOtpChange = (index: number, value: string) => {
     if (isNaN(Number(value))) return;
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-
-    // Move focus to next input
     if (value && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    // Move focus to previous input on Backspace
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -62,6 +67,7 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage('');
 
     try {
       const res = await fetch('/api/auth/send-otp', {
@@ -73,54 +79,56 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
       const data = await res.json();
 
       if (res.ok) {
-        // ✅ 1. Log OTP
         console.log("🔔 DEV OTP:", data.otp);
-
-        // ✅ 2. Auto-fill the inputs visually
         if (data.otp) {
           setOtp(data.otp.toString().split(""));
         }
-
         setStep('OTP');
       } else {
-        alert(data.error || 'Failed to send OTP');
+        setErrorMessage(data.error || 'Failed to send OTP');
       }
     } catch (error) {
-      alert('Something went wrong');
+      setErrorMessage('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 2. Verify OTP
+  // 2. Verify OTP & Link Account
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Join array back to string
     const code = otp.join("");
     if (code.length !== 4) return;
 
     setLoading(true);
+    setErrorMessage('');
 
     try {
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // ✅ PASS userId HERE (This triggers Scenario A in your API)
         body: JSON.stringify({ phone, otp: code, userId }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        alert('Phone linked successfully!');
+        // ✅ 1. Update NextAuth Session Client-Side
         await update({ isPhoneVerified: true, phone: phone });
+
+        // ✅ 2. Refresh Page Data
         router.refresh();
+
+        // ✅ 3. Close Modal & Trigger Parent Success
         onSuccess();
+        onClose();
       } else {
-        alert(data.error || 'Invalid OTP');
+        // Handle specific API errors (like "Phone already in use")
+        setErrorMessage(data.error || 'Invalid OTP');
       }
     } catch (error) {
-      alert('Verification failed');
+      setErrorMessage('Verification failed. Try again.');
     } finally {
       setLoading(false);
     }
@@ -132,29 +140,33 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
       <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
 
-        {/* Close Button */}
         <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition">
           <FaXmark size={20} />
         </button>
 
-        {/* Header */}
         <div className="pt-8 px-8 text-center">
           <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-900">
             <FaMobileScreen size={26} />
           </div>
           <h2 className="text-2xl font-extrabold text-slate-900">
-            {step === 'PHONE' ? 'Add Phone Number' : 'Verify OTP'}
+            {step === 'PHONE' ? 'Link Phone Number' : 'Verify Code'}
           </h2>
           <p className="text-slate-500 text-sm mt-2">
             {step === 'PHONE'
-              ? 'We need your phone number to update your profile.'
+              ? 'Add a phone number to verify your account.'
               : <>Code sent to <span className="font-bold text-slate-900">+91 {phone}</span></>
             }
           </p>
         </div>
 
-        {/* Body */}
         <div className="p-8">
+          {/* ✅ Error Message Display */}
+          {errorMessage && (
+            <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl text-center">
+              {errorMessage}
+            </div>
+          )}
+
           {step === 'PHONE' ? (
             <form onSubmit={handleSendOtp} className="space-y-6">
               <div>
@@ -177,15 +189,13 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
               <button
                 type="submit"
                 disabled={loading || phone.length < 10}
-                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:bg-slate-900 flex items-center justify-center gap-2"
+                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? <FaSpinner className="animate-spin" /> : 'Get OTP'}
               </button>
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-8 animate-in slide-in-from-right">
-
-              {/* ✅ 4-DIGIT SPLIT INPUTS */}
               <div className="flex justify-center gap-3">
                 {otp.map((digit, index) => (
                   <input
@@ -196,25 +206,24 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
                     value={digit}
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                    className="w-14 h-16 rounded-xl border-2 border-gray-200 text-center text-2xl font-bold text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all"
+                    className="w-14 h-16 rounded-xl border-2 border-gray-200 text-center text-2xl font-bold text-slate-900 focus:border-blue-600 outline-none transition-all"
                     disabled={loading}
                   />
                 ))}
               </div>
-
               <button
                 type="submit"
                 disabled={loading || otp.join("").length < 4}
-                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
+                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? <FaSpinner className="animate-spin" /> : 'Verify & Link'}
               </button>
-
               <button
                 type="button"
                 onClick={() => {
                   setStep('PHONE');
                   setOtp(["", "", "", ""]);
+                  setErrorMessage('');
                 }}
                 className="w-full flex items-center justify-center gap-2 text-sm text-slate-500 font-bold hover:text-slate-900 transition"
               >
@@ -223,7 +232,6 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
             </form>
           )}
         </div>
-
       </div>
     </div>,
     document.body
