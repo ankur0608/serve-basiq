@@ -18,14 +18,20 @@ export default async function TrendingProducts() {
       include: {
         user: {
           select: { name: true }
+        },
+        // ✅ FIX: Include Category Relation to get the name
+        category: {
+          select: { name: true }
         }
       }
     });
 
-    // ✅ FIX: Map 'productImage' (DB) to 'image' (UI)
+    // ✅ Map Data
     trendingProducts = data.map((product) => ({
       ...product,
-      image: product.productImage || "", // <--- THIS LINE FIXES IT
+      image: product.productImage || "", 
+      // ✅ FIX: Safely access category name
+      category: product.category?.name || "General",
       supplier: product.user?.name || "Verified Seller",
     }));
 
