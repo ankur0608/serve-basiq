@@ -65,11 +65,9 @@ export async function POST(req: Request) {
       });
 
       if (existingUser) {
-        // LOGIN: User exists
         console.log("✅ [API] User found for login:", existingUser.id);
         user = existingUser;
 
-        // Ensure verified flag is true if it wasn't before
         if (!existingUser.isPhoneVerified) {
           await prisma.user.update({
             where: { id: existingUser.id },
@@ -78,7 +76,6 @@ export async function POST(req: Request) {
         }
 
       } else {
-        // REGISTER: User does not exist, create new one
         console.log("🆕 [API] Creating new user for phone:", phone);
         user = await prisma.user.create({
           data: {
