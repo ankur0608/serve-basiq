@@ -4,7 +4,7 @@ import "./globals.css";
 import ClientLayout from "@/components/layout/ClientLayout";
 import ModalProvider from "@/components/providers/ModalProvider";
 import QueryProvider from "@/components/providers/QueryProvider";
-import AuthProvider from "@/components/providers/AuthProvider"; // <--- 1. Import this
+import AuthProvider from "@/components/providers/AuthProvider";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -14,7 +14,14 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "ServeMate | Global Marketplace",
   description: "Connect with verified professionals and wholesale suppliers.",
+
+  icons: {
+    icon: "/logo.svg",
+    shortcut: "/logo.svg",
+    apple: "/logo.svg",
+  },
 };
+
 
 export default function RootLayout({
   children,

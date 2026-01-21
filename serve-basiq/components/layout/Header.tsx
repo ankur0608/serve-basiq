@@ -12,6 +12,7 @@ import {
     FaUser,
 } from "react-icons/fa6";
 import { useUIStore } from "@/lib/store";
+import Image from "next/image";
 
 const Navbar = () => {
     const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -31,14 +32,17 @@ const Navbar = () => {
             <nav className="mx-auto max-w-7xl px-4">
                 {/* ================= MOBILE TOP BAR ================= */}
                 <div className="flex md:hidden items-center justify-between h-14">
-                    <Link href="/" className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
-                            <FaHandshakeSimple className="text-white text-lg" />
-                        </div>
-                        <span className="text-lg font-extrabold text-slate-900">
-                            Serve<span className="text-blue-600">Mate</span>
-                        </span>
+                    <Link href="/" className="flex items-center">
+                        <Image
+                            src="/navbar.svg"
+                            alt="ServeMate Logo"
+                            width={160}
+                            height={40}
+                            priority
+                            className="h-14 w-auto"
+                        />
                     </Link>
+
 
                     <div className="flex items-center gap-3">
                         <button
@@ -95,14 +99,17 @@ const Navbar = () => {
 
                 {/* ================= DESKTOP NAV ================= */}
                 <div className="hidden md:flex items-center justify-between h-16 gap-4">
-                    <Link href="/" className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
-                            <FaHandshakeSimple className="text-white text-lg" />
-                        </div>
-                        <span className="text-xl font-extrabold text-slate-900">
-                            Serve<span className="text-blue-600">Mate</span>
-                        </span>
+                    <Link href="/" className="flex items-center">
+                        <Image
+                            src="/navbar.svg"
+                            alt="ServeMate Logo"
+                            width={160}
+                            height={40}
+                            priority
+                            className="h-16 w-auto"
+                        />
                     </Link>
+
 
                     <div className="flex-1 max-w-lg">
                         <div className="relative">
