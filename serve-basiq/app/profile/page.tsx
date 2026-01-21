@@ -24,6 +24,9 @@ export default function ProfilePage() {
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [addresses, setAddresses] = useState<any[]>([]);
 
+    // Loading state for saving
+    const [isSaving, setIsSaving] = useState(false);
+
     const isGoogleLogin = !!session?.user?.email;
 
     // --- FETCH PROFILE ---
@@ -42,7 +45,6 @@ export default function ProfilePage() {
             const data = await res.json();
             console.log("🔄 Fetched Profile Data:", data);
 
-            // Force update global store
             setCurrentUser(data);
             setAddresses(data.addresses || []);
         } catch (error) {
@@ -55,37 +57,56 @@ export default function ProfilePage() {
         if (status === "authenticated" || currentUser) {
             fetchProfile();
         }
-    }, [status, fetchProfile, currentUser?.id]); // Added ID to dep to re-run on user change
+    }, [status, fetchProfile, currentUser?.id]);
 
     // --- HANDLERS ---
     const handleLogout = async () => {
         await fullLogout();
     };
 
+    // Inside ProfilePage.tsx
+
     const handleSaveData = async (data: any) => {
-        setShowEditModal(false);
+        setIsSaving(true);
         try {
+            // Log what we are sending
+            console.log("📤 [Frontend] Sending Data:", data);
+
             const res = await fetch('/api/user/profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: currentUser?.id, ...data })
             });
 
-            if (res.ok) {
-                const updatedUser = await res.json();
-                setCurrentUser(updatedUser);
-                setAddresses(updatedUser.addresses || []);
-                console.log("✅ Profile Saved & Updated");
+            const result = await res.json();
+
+            // 🛑 Catch API Errors (like Duplicate Email)
+            if (!res.ok) {
+                alert(result.error || "Failed to update profile.");
+                setIsSaving(false);
+                return;
             }
+
+            // Success
+            setCurrentUser(result);
+            setAddresses(result.addresses || []);
+            setShowEditModal(false);
+
+            // Visual Confirmation
+            alert("Profile Updated Successfully!");
+
         } catch (error) {
             console.error("Failed to save profile:", error);
+            alert("An unexpected error occurred.");
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const onVerificationSuccess = async () => {
         console.log("🎉 Verification Success! Refreshing Profile...");
         setShowVerifyModal(false);
-        await fetchProfile(); // Fetch fresh data immediately
+        await fetchProfile();
     };
 
     // --- RENDER HELPERS ---
@@ -96,7 +117,6 @@ export default function ProfilePage() {
     const displayImage = currentUser?.img || session?.user?.image || '';
     const isWorker = currentUser?.isWorker || false;
 
-    // Prepare data for Modal (Always derived from latest currentUser)
     const modalInitialData = {
         name: currentUser?.name || '',
         email: currentUser?.email || session?.user?.email || '',
@@ -170,8 +190,8 @@ export default function ProfilePage() {
                 isEmailLocked={isGoogleLogin}
                 isPhoneLocked={true}
                 onAddPhoneClick={() => {
-                    setShowEditModal(false); // Close edit modal first
-                    setTimeout(() => setShowVerifyModal(true), 200); // Open verify modal
+                    setShowEditModal(false);
+                    setTimeout(() => setShowVerifyModal(true), 200);
                 }}
             />
 

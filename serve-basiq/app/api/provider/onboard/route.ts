@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { onboardSchema } from "@/lib/validators";
 
+// 1. Ensure you define this enum if you haven't imported it, 
+// or TypeScript might complain if it doesn't match the Prisma generated type.
+// Usually, Prisma exports this, but we can pass the string directly if it matches.
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -10,8 +14,10 @@ export async function POST(req: Request) {
         console.log("📦 Onboard Payload:", body);
 
         // 1. Validate Data using Zod
+        // NOTE: Ensure you have updated 'onboardSchema' in validators.ts to include providerType if you want strict validation.
+        // If not, we extract it from 'body' directly below.
         const validData = onboardSchema.parse(body);
-        const { userId } = body;
+        const { userId, providerType } = body; // Extract providerType directly from body
 
         if (!userId) {
             return NextResponse.json({ success: false, message: "User ID required" }, { status: 400 });
@@ -24,15 +30,17 @@ export async function POST(req: Request) {
                 data: {
                     name: validData.fullName,
                     email: validData.email,
-                    phone: validData.phone, // ✅ Mapped correctly
-
-                    // ✅ Updated to match new Schema field
+                    phone: validData.phone,
                     profileImage: validData.profileImage,
 
                     // ✅ New Personal Fields
                     gender: validData.gender,
                     dob: validData.dob ? new Date(validData.dob) : null,
                     preferredLanguage: validData.preferredLanguage,
+
+                    // ✅ SAVE PROVIDER TYPE (Default to BOTH if missing)
+                    // Make sure your Prisma Schema has this field added to the User model!
+                    providerType: providerType || "BOTH",
 
                     // Flags
                     isWorker: true,
@@ -41,7 +49,6 @@ export async function POST(req: Request) {
             });
 
             // 3. Create or Update Home Address
-            // Check if a Home address already exists to prevent duplicates
             const existingAddress = await tx.address.findFirst({
                 where: { userId, type: "Home" }
             });
@@ -49,7 +56,7 @@ export async function POST(req: Request) {
             const addressData = {
                 line1: validData.addressLine1,
                 line2: validData.addressLine2 || "",
-                landmark: validData.landmark || "", // ✅ Added Landmark
+                landmark: validData.landmark || "",
                 city: validData.city,
                 state: validData.state,
                 pincode: validData.pincode,
@@ -76,7 +83,6 @@ export async function POST(req: Request) {
     } catch (error: any) {
         console.error("❌ Onboard Error:", error);
 
-        // Return Zod validation errors clearly
         if (error.issues) {
             return NextResponse.json({ success: false, error: "Validation Failed", details: error.issues }, { status: 400 });
         }

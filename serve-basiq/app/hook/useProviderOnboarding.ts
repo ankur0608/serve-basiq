@@ -46,6 +46,8 @@ export function useProviderOnboarding() {
         pincode: "",
         latitude: 0,
         longitude: 0,
+        // ✅ ADDED: Provider Type State
+        providerType: "BOTH",
     });
 
     // --- FETCH EXISTING DATA ---
@@ -63,6 +65,8 @@ export function useProviderOnboarding() {
                         fullName: data.name || prev.fullName,
                         email: data.email || prev.email,
                         altPhone: data.phone || prev.altPhone,
+                        // ✅ Pre-fill provider type if exists
+                        providerType: data.providerType || prev.providerType,
                         addressLine1: addr?.line1 || prev.addressLine1,
                         addressLine2: addr?.line2 || prev.addressLine2,
                         landmark: addr?.landmark || prev.landmark,
@@ -156,21 +160,35 @@ export function useProviderOnboarding() {
             const payload = {
                 ...form,
                 profileImage: imgPreview || "",
-                phone: form.altPhone
+                phone: form.altPhone,
+                // providerType is already in 'form'
             };
 
+            // NOTE: If onboardSchema doesn't accept providerType, parse might strip it 
+            // or throw an error depending on Zod configuration. 
+            // Ensure Validators are updated, or we rely on the backend extracting it manually.
             onboardSchema.parse(payload);
 
             const res = await fetch("/api/provider/onboard", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: currentUser.id, ...payload }),
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    ...payload // Payload includes providerType
+                }),
             });
 
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Registration failed");
 
-            setCurrentUser({ ...currentUser, isWorker: true, isWebsite: false });
+            // Update local user state
+            setCurrentUser({
+                ...currentUser,
+                isWorker: true,
+                isWebsite: false,
+                providerType: form.providerType // Update local state too
+            });
+
             router.push("/provider/dashboard?new=true");
 
         } catch (error: any) {

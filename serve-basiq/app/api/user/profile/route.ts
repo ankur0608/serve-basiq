@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
-/* ================= GET PROFILE ================= */
+/* ================= 1. GET PROFILE (Fetches Data) ================= */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -34,10 +35,14 @@ export async function GET(request: Request) {
   }
 }
 
-/* ================= UPDATE PROFILE ================= */
+/* ================= 2. UPDATE PROFILE (Saves Data) ================= */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+
+    // 🔍 DEBUG LOGS
+    console.log("📥 [API] Profile Update Body:", body);
+
     const {
       userId,
       name,
@@ -45,7 +50,7 @@ export async function POST(request: Request) {
       phone,
       addressLine1,
       addressLine2,
-      landmark, // ✅ NEW: Extract landmark
+      landmark,
       city,
       state,
       pincode,
@@ -56,26 +61,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Update User Details
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        name,
-        email,
-        phone,
-      },
-    });
+    // Prepare User Update Data
+    const userUpdateData: any = { name };
 
-    // 2. Handle Address (Check if exists, then update or create)
+    // Only update email/phone if they are not empty
+    if (email && email.trim() !== "") userUpdateData.email = email;
+    if (phone && phone.trim() !== "") userUpdateData.phone = phone;
+
+    console.log("⚙️ [API] Prisma User Update Data:", userUpdateData);
+
+    // 1. Update User Details
+    try {
+      await prisma.user.update({
+        where: { id: userId },
+        data: userUpdateData,
+      });
+    } catch (error) {
+      console.error("❌ [API] Prisma Update Error:", error);
+
+      // Handle Unique Constraint Violation (Duplicate Email/Phone)
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          const target = error.meta?.target;
+          if (Array.isArray(target) && target.includes('email')) {
+            return NextResponse.json({ error: 'This email is already taken by another user.' }, { status: 409 });
+          }
+          if (Array.isArray(target) && target.includes('phone')) {
+            return NextResponse.json({ error: 'This phone number is already linked to another account.' }, { status: 409 });
+          }
+          return NextResponse.json({ error: 'Email or Phone already in use.' }, { status: 409 });
+        }
+      }
+      throw error;
+    }
+
+    // 2. Handle Address 
     const existingAddress = await prisma.address.findFirst({
       where: { userId },
     });
 
-    // ✅ Added landmark to addressData
     const addressData = {
       line1: addressLine1 || '',
       line2: addressLine2 || '',
-      landmark: landmark || '', // ✅ Save landmark
+      landmark: landmark || '',
       city: city || '',
       state: state || '',
       pincode: pincode || '',
@@ -105,9 +133,11 @@ export async function POST(request: Request) {
       include: { addresses: true },
     });
 
+    console.log("✅ [API] Update Successful.");
     return NextResponse.json(finalUser);
-  } catch (error) {
-    console.error("Profile Update Error:", error);
-    return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+
+  } catch (error: any) {
+    console.error("🔥 [API] Critical Error:", error);
+    return NextResponse.json({ error: error.message || 'Update failed' }, { status: 500 });
   }
 }

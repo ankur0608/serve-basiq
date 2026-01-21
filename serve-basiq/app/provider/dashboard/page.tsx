@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useProviderDashboard } from '@/app/hook/useProviderDashboard';
 import {
     LayoutGrid, ClipboardList, Package, Wallet, UserCircle,
-    BellRing, ArrowLeft, Loader2, AlertTriangle, Hexagon, LogOut
+    BellRing, ArrowLeft, Loader2, AlertTriangle, Hexagon, LogOut, Settings
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -33,13 +33,18 @@ export default function ProviderDashboard() {
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
 
-    // State for the Welcome/Restriction Modal
+    // State for Modals
     const [showRestrictionModal, setShowRestrictionModal] = useState(false);
+    const [showTypeModal, setShowTypeModal] = useState(false); // ✅ New Modal State
+    const [updatingType, setUpdatingType] = useState(false);
 
     // EXTRACT BOOKINGS AND ORDERS
     const bookings = dashboardData?.bookings || [];
     const orders = dashboardData?.orders || [];
     const userData = dashboardData?.user;
+
+    // ✅ EXTRACT PROVIDER TYPE (Default to BOTH if undefined)
+    const providerType = dashboardData?.user?.providerType || 'BOTH';
 
     // Derived State
     const services = useMemo(() => {
@@ -68,6 +73,8 @@ export default function ProviderDashboard() {
         }
     }, [dashboardData]);
 
+    // --- HANDLERS ---
+
     const handleBackToHome = async () => {
         if (!currentUser) return;
         try {
@@ -80,6 +87,35 @@ export default function ProviderDashboard() {
             router.push('/');
         } catch (error) {
             showToast("Failed to switch mode", "error");
+        }
+    };
+
+    // ✅ Function to Update Provider Type
+    const handleUpdateType = async (newType: string) => {
+        if (!currentUser?.id) return;
+        setUpdatingType(true);
+        try {
+            const res = await fetch('/api/user/profile', {
+                method: 'POST', // Assuming your profile update endpoint handles partial updates
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    providerType: newType
+                })
+            });
+
+            if (res.ok) {
+                showToast(`Switched to ${newType} mode`, 'success');
+                setShowTypeModal(false);
+                refetch(); // Reload dashboard to reflect changes
+            } else {
+                showToast("Failed to update type", "error");
+            }
+        } catch (error) {
+            console.error(error);
+            showToast("Error updating type", "error");
+        } finally {
+            setUpdatingType(false);
         }
     };
 
@@ -98,12 +134,10 @@ export default function ProviderDashboard() {
             setActiveView(view);
             return;
         }
-
         if (!isVerified) {
             setShowRestrictionModal(true);
             return;
         }
-
         setActiveView(view);
     };
 
@@ -135,8 +169,41 @@ export default function ProviderDashboard() {
                 }}
             />
 
+            {/* ✅ Provider Type Change Modal */}
+            {showTypeModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-lg">Change Account Type</h3>
+                            <button onClick={() => setShowTypeModal(false)} className="text-slate-400 hover:text-slate-600"><LogOut size={20} className="rotate-180" /></button>
+                        </div>
+                        <p className="text-sm text-slate-500">Select what you want to offer to customers.</p>
+
+                        <div className="space-y-2">
+                            {['SERVICE', 'PRODUCT', 'BOTH'].map((type) => (
+                                <button
+                                    key={type}
+                                    disabled={updatingType}
+                                    onClick={() => handleUpdateType(type)}
+                                    className={clsx(
+                                        "w-full p-3 rounded-xl text-left font-bold text-sm border transition-all flex justify-between items-center",
+                                        providerType === type
+                                            ? "bg-slate-900 text-white border-slate-900"
+                                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                                    )}
+                                >
+                                    <span>{type === 'BOTH' ? 'Both (Services & Products)' : type === 'SERVICE' ? 'Services Only' : 'Products Only'}</span>
+                                    {providerType === type && <Hexagon size={16} fill="currentColor" />}
+                                </button>
+                            ))}
+                        </div>
+                        {updatingType && <p className="text-xs text-center text-blue-600 animate-pulse">Updating profile...</p>}
+                    </div>
+                </div>
+            )}
+
             {toast && (
-                <div className={clsx("fixed top-5 right-5 z-100 animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-75 bg-white", toast.type === 'success' ? "border-emerald-500 text-emerald-700" : toast.type === 'error' ? "border-red-500 text-red-700" : "border-blue-500 text-blue-700")}>
+                <div className={clsx("fixed top-5 right-5 z-[110] animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-75 bg-white", toast.type === 'success' ? "border-emerald-500 text-emerald-700" : toast.type === 'error' ? "border-red-500 text-red-700" : "border-blue-500 text-blue-700")}>
                     <span className="font-bold text-sm">{toast.msg}</span>
                 </div>
             )}
@@ -177,14 +244,30 @@ export default function ProviderDashboard() {
                     <div className="flex items-center gap-4">
                         <div className="md:hidden"><span className="font-extrabold text-blue-900">ServeBasiq</span></div>
                         <div className="hidden md:block">
-                            <h2 className="text-xl font-bold text-slate-900 tracking-tight capitalize">{activeView === 'settings' ? 'Management' : activeView.replace('-', ' ')}</h2>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-xl font-bold text-slate-900 tracking-tight capitalize">{activeView === 'settings' ? 'Management' : activeView.replace('-', ' ')}</h2>
+
+                                {/* ✅ PROVIDER TYPE CONFIG BUTTON */}
+                                <button
+                                    onClick={() => setShowTypeModal(true)}
+                                    className="ml-2 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-bold text-slate-600 border border-slate-200 transition flex items-center gap-1"
+                                >
+                                    <Settings size={12} /> {providerType}
+                                </button>
+                            </div>
                             <p className="text-xs text-slate-500 font-bold hidden sm:block">{currentDate}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3 sm:gap-4">
-                        <button onClick={handleBackToHome} className="hidden md:flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-white px-4 py-2.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all group">
-                            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Back to Website
+                        {/* ✅ UPDATED: Back to Website (Visible on Mobile as Icon) */}
+                        <button
+                            onClick={handleBackToHome}
+                            className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-white px-3 sm:px-4 py-2.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all group"
+                        >
+                            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+                            <span className="hidden sm:inline">Back to Website</span>
                         </button>
+
                         <button className="relative p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all">
                             <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white animate-pulse"></span>
                             <BellRing size={20} />
@@ -212,24 +295,46 @@ export default function ProviderDashboard() {
                         {activeView === 'earnings' && <EarningsView />}
                         {activeView === 'profile' && <ProfileView stats={safeStats} user={userData} onEdit={() => setActiveView('edit-profile')} />}
 
+                        {/* ✅ UPDATED MANAGEMENT VIEW LOGIC */}
                         {activeView === 'settings' && (
-                            <ManagementView
-                                currentUser={currentUser}
-                                userData={userData}
-                                services={services}
-                                refetch={refetch}
-                                showToast={showToast}
-                                setActiveView={handleViewChange}
-                            />
+                            providerType === 'PRODUCT' ? (
+                                // 1. IF PRODUCT ONLY: SHOW PRODUCT VIEW DIRECTLY
+                                <div className="space-y-6">
+                                    <h2 className="text-xl font-bold text-slate-900">My Products</h2>
+                                    {currentUser?.id && (
+                                        <ProductsView
+                                            setActiveView={handleViewChange}
+                                            userId={currentUser.id}
+                                            setSelectedProduct={setSelectedProduct}
+                                            showToast={showToast}
+                                        />
+                                    )}
+                                </div>
+                            ) : (
+                                // 2. IF SERVICE OR BOTH: SHOW MANAGEMENT VIEW (SERVICES)
+                                <ManagementView
+                                    currentUser={currentUser}
+                                    userData={userData}
+                                    services={services}
+                                    refetch={refetch}
+                                    showToast={showToast}
+                                    setActiveView={handleViewChange}
+                                    providerType={providerType} // Pass providerType prop
+                                />
+                            )
                         )}
 
+                        {/* ✅ UPDATED PRODUCTS VIEW LOGIC */}
                         {activeView === 'products' && (
                             <div className="space-y-6">
-                                <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm">
-                                    <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all">Services</button>
-                                    <button onClick={() => setActiveView('products')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-[#0f172a] text-white shadow-md transition-all">Products</button>
-                                </div>
-                                {/* 🔴 FIX: Check currentUser?.id before rendering */}
+                                {/* Only show toggle tabs if BOTH */}
+                                {providerType === 'BOTH' && (
+                                    <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm">
+                                        <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all">Services</button>
+                                        <button onClick={() => setActiveView('products')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-[#0f172a] text-white shadow-md transition-all">Products</button>
+                                    </div>
+                                )}
+
                                 {currentUser?.id && (
                                     <ProductsView
                                         setActiveView={handleViewChange}
@@ -253,7 +358,6 @@ export default function ProviderDashboard() {
                             />
                         )}
 
-                        {/* 🔴 FIX: Check currentUser?.id before rendering */}
                         {activeView === 'add-product' && currentUser?.id && (
                             <AddProductView
                                 setActiveView={handleViewChange}

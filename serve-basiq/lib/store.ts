@@ -27,6 +27,9 @@ export interface User {
   img: string | null; // Changed from 'image' to 'img' to match Prisma
   role: string;       // "USER" | "ADMIN"
 
+  // ✅ ADD THIS: Provider Type
+  providerType?: "SERVICE" | "PRODUCT" | "BOTH" | string;
+
   // Status Flags
   isPhoneVerified: boolean;
   isWorker: boolean;

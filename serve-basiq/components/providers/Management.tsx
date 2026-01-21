@@ -12,6 +12,7 @@ interface ServicesViewProps {
     refetch: () => void;
     showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
     setActiveView: (view: string) => void;
+    providerType: string; // ✅ Added this prop
 }
 
 export const ManagementView = ({
@@ -20,9 +21,9 @@ export const ManagementView = ({
     services,
     refetch,
     showToast,
-    setActiveView
+    setActiveView,
+    providerType // ✅ Destructured here
 }: ServicesViewProps) => {
-    // Local state for service management moved here
     const [selectedServiceToEdit, setSelectedServiceToEdit] = useState<any>(null);
     const [isEditingService, setIsEditingService] = useState(false);
     const [isCreatingService, setIsCreatingService] = useState(false);
@@ -36,21 +37,24 @@ export const ManagementView = ({
 
     return (
         <div className="space-y-6">
-            {/* Tab Navigation */}
-            <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm">
-                <button
-                    onClick={() => setActiveView('settings')}
-                    className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-[#0f172a] text-white shadow-md transition-all"
-                >
-                    Services
-                </button>
-                <button
-                    onClick={() => setActiveView('products')}
-                    className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all"
-                >
-                    Products
-                </button>
-            </div>
+
+            {/* ✅ LOGIC: Only show tabs if providerType is BOTH */}
+            {providerType === 'BOTH' && (
+                <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm">
+                    <button
+                        onClick={() => setActiveView('settings')}
+                        className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-[#0f172a] text-white shadow-md transition-all"
+                    >
+                        Services
+                    </button>
+                    <button
+                        onClick={() => setActiveView('products')}
+                        className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                    >
+                        Products
+                    </button>
+                </div>
+            )}
 
             {/* Main Content Area */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">

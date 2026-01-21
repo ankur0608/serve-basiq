@@ -17,11 +17,9 @@ import Image from "next/image";
 const Navbar = () => {
     const [showMobileSearch, setShowMobileSearch] = useState(false);
 
-    // ✅ Get Auth State
     const openLogin = useUIStore((state) => state.onOpenLogin);
     const currentUser = useUIStore((state) => state.currentUser);
 
-    // Helper to get initials (e.g., "Mike" -> "M")
     const getInitials = () => {
         if (currentUser?.name) return currentUser.name[0].toUpperCase();
         return "U";
@@ -30,7 +28,6 @@ const Navbar = () => {
     return (
         <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
             <nav className="mx-auto max-w-7xl px-4">
-                {/* ================= MOBILE TOP BAR ================= */}
                 <div className="flex md:hidden items-center justify-between h-14">
                     <Link href="/" className="flex items-center">
                         <Image
@@ -42,7 +39,6 @@ const Navbar = () => {
                             className="h-14 w-auto"
                         />
                     </Link>
-
 
                     <div className="flex items-center gap-3">
                         <button
@@ -57,7 +53,6 @@ const Navbar = () => {
                             <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border border-white" />
                         </button>
 
-                        {/* ✅ LOGIC: Show Avatar if Logged In, else Login Button */}
                         {currentUser ? (
                             <Link href="/profile">
                                 <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-gray-100">
@@ -75,7 +70,6 @@ const Navbar = () => {
                     </div>
                 </div>
 
-                {/* ================= MOBILE SEARCH ================= */}
                 {showMobileSearch && (
                     <div className="md:hidden pb-3">
                         <div className="relative">
@@ -97,7 +91,6 @@ const Navbar = () => {
                     </div>
                 )}
 
-                {/* ================= DESKTOP NAV ================= */}
                 <div className="hidden md:flex items-center justify-between h-16 gap-4">
                     <Link href="/" className="flex items-center">
                         <Image
@@ -124,7 +117,6 @@ const Navbar = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        {/* Actions */}
                         <div className="flex items-center gap-2 md:gap-4">
                             <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
                                 <Link href="/services" className="hover:text-blue-600 transition">
@@ -158,7 +150,6 @@ const Navbar = () => {
                             Post Request
                         </Link>
 
-                        {/* ✅ LOGIC: Desktop Profile View */}
                         {currentUser ? (
                             <Link
                                 href="/profile"

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { memo } from "react";
 import {
     ArrowLeft, Camera, User, Mail, Phone, MapPin,
-    Check, Loader2, AlertTriangle, Navigation
+    Check, Loader2, AlertTriangle, Navigation, Briefcase // ✅ Added Briefcase Icon
 } from 'lucide-react';
 import { useProviderOnboarding } from "@/app/hook/useProviderOnboarding";
 
@@ -38,7 +38,7 @@ const ProfileSection = memo(({
 ));
 ProfileSection.displayName = "ProfileSection";
 
-// --- SUB-COMPONENT 2: Personal Details ---
+// --- SUB-COMPONENT 2: Personal Details (UPDATED WITH DROPDOWN) ---
 const PersonalDetails = memo(({ form, errors, onChange }: { form: any, errors: any, onChange: (field: string, val: any) => void }) => {
     const getInputClass = (fieldName: string) => `w-full bg-slate-50 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition ${errors[fieldName] ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`;
     const ErrorMsg = ({ field }: { field: string }) => errors[field] ? <p className="text-red-500 text-xs mt-1 font-medium">{errors[field]}</p> : null;
@@ -59,6 +59,30 @@ const PersonalDetails = memo(({ form, errors, onChange }: { form: any, errors: a
                     />
                     <ErrorMsg field="fullName" />
                 </div>
+
+                {/* ✅ NEW: Provider Type Dropdown */}
+                <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">What do you want to offer?</label>
+                    <div className="relative">
+                        <Briefcase size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                        <select
+                            value={form.providerType || 'BOTH'} // Default to BOTH
+                            onChange={e => onChange('providerType', e.target.value)}
+                            className={`${getInputClass('providerType')} pl-9 cursor-pointer appearance-none`}
+                        >
+                            <option value="BOTH">Both Services & Products</option>
+                            <option value="SERVICE">Services Only (e.g. Plumber, Cleaner)</option>
+                            <option value="PRODUCT">Products Only (e.g. Selling Goods)</option>
+                        </select>
+                        {/* Custom Arrow for styling (optional, relies on appearance-none) */}
+                        <div className="absolute right-3 top-3 pointer-events-none text-slate-400">
+                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Email</label>
                     <div className="relative">

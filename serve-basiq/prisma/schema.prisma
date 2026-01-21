@@ -185,12 +185,12 @@ model User {
     emailVerified DateTime?
     image         String?
 
-    role         String  @default("USER")
-    profileImage String?
-
+    role              String       @default("USER")
+    profileImage      String?
+    providerType      CategoryType @default(BOTH)
     gender            Gender?
     dob               DateTime?
-    preferredLanguage String?   @default("English")
+    preferredLanguage String?      @default("English")
 
     isPhoneVerified Boolean @default(false)
     isWorker        Boolean @default(false)
