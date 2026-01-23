@@ -1,9 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Plus, Loader2, Pencil, Clock, ChevronRight } from 'lucide-react';
+import {
+    MapPin, Plus, Loader2, Pencil, Clock, ChevronRight,
+    Package, Calculator, Coins, ArrowRight, ArrowLeft, CheckCircle2,
+    StickyNote
+} from 'lucide-react';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import { useRouter } from 'next/navigation';
+import clsx from 'clsx';
 
 interface Props {
     productId: string;
@@ -16,11 +21,27 @@ interface Props {
     onRequestClose: () => void;
 }
 
-// ✅ Timeline Options Constant
+// --- CONSTANTS ---
 const TIMELINE_OPTIONS = [
     { label: 'Immediate', value: 'IMMEDIATE' },
     { label: 'In 2 Days', value: 'IN_2_DAYS' },
     { label: '2 to 5 Days', value: 'TWO_TO_FIVE_DAYS' }
+];
+
+const UNIT_OPTIONS = [
+    { label: 'Piece', value: 'PIECE' },
+    { label: 'Kg', value: 'KG' },
+    { label: 'Box', value: 'BOX' },
+    { label: 'Liter', value: 'LITER' }
+];
+
+const BUDGET_OPTIONS = [
+    { label: 'Select Budget (Optional)', value: '' },
+    { label: 'Under ₹1,000', value: 'Under 1000' },
+    { label: '₹1,000 - ₹5,000', value: '1000 - 5000' },
+    { label: '₹5,000 - ₹10,000', value: '5000 - 10000' },
+    { label: '₹10,000 - ₹50,000', value: '10000 - 50000' },
+    { label: 'Above ₹50,000', value: 'Above 50000' }
 ];
 
 export default function ProductRequestForm({
@@ -28,18 +49,22 @@ export default function ProductRequestForm({
 }: Props) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [step, setStep] = useState<1 | 2>(1);
 
     // --- Local State for Addresses ---
     const [addresses, setAddresses] = useState(initialAddresses);
 
     // --- Form State ---
-    const quantity = 1;
-    const deliveryType = 'DELIVERY';
-    const paymentMode = 'CASH';
+    const [quantity, setQuantity] = useState<number>(moq || 1);
+    const [selectedUnit, setSelectedUnit] = useState(unit || 'PIECE');
+    const [budget, setBudget] = useState('');
 
     const [addressId, setAddressId] = useState(addresses[0]?.id || '');
     const [notes, setNotes] = useState('');
-    const [timeline, setTimeline] = useState('IMMEDIATE'); // ✅ Added Timeline State
+    const [timeline, setTimeline] = useState('IMMEDIATE');
+
+    const deliveryType = 'DELIVERY';
+    const paymentMode = 'CASH';
 
     // --- Modal State ---
     const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -83,6 +108,18 @@ export default function ProductRequestForm({
         setIsAddressModalOpen(false);
     };
 
+    const handleNext = () => {
+        if (quantity < 1) {
+            alert("Please enter a valid quantity.");
+            return;
+        }
+        setStep(2);
+    };
+
+    const handleBack = () => {
+        setStep(1);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -96,15 +133,21 @@ export default function ProductRequestForm({
         try {
             const selectedAddressObj = addresses.find(a => a.id === addressId);
 
+            let finalNotes = notes;
+            if (budget) {
+                finalNotes = `[Budget: ${budget}]\n${notes}`;
+            }
+
             const payload: any = {
                 userId,
                 productId,
-                quantity,
+                quantity: Number(quantity),
+                unit: selectedUnit,
                 deliveryType,
                 paymentMode,
                 addressId,
-                notes,
-                timeline, // ✅ Sending Timeline to API
+                notes: finalNotes,
+                timeline,
             };
 
             if (addressId.toString().startsWith('temp-') && selectedAddressObj) {
@@ -132,7 +175,6 @@ export default function ProductRequestForm({
                 router.refresh();
                 onRequestClose();
             } else {
-                console.error("Server Error:", data);
                 alert(data.message || 'Request failed.');
             }
         } catch (error) {
@@ -143,10 +185,15 @@ export default function ProductRequestForm({
         }
     };
 
+    // ✅ FIX: Added missing dateOfBirth and preferredLanguage
     const getModalInitialData = () => {
         if (editingAddress) {
             return {
-                name: "", email: "", phone: "",
+                name: "",
+                email: "",
+                phone: "",
+                dateOfBirth: "",         // Added
+                preferredLanguage: "English", // Added
                 addressLine1: editingAddress.line1 || "",
                 addressLine2: editingAddress.line2 || "",
                 landmark: editingAddress.landmark || "",
@@ -156,133 +203,265 @@ export default function ProductRequestForm({
             };
         }
         return {
-            name: "", email: "", phone: "",
-            addressLine1: "", addressLine2: "", landmark: "", city: "", state: "", pincode: ""
+            name: "",
+            email: "",
+            phone: "",
+            dateOfBirth: "",         // Added
+            preferredLanguage: "English", // Added
+            addressLine1: "",
+            addressLine2: "",
+            landmark: "",
+            city: "",
+            state: "",
+            pincode: ""
         };
     };
 
     return (
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-full mx-auto animate-in fade-in zoom-in-95 duration-200">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-full mx-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
 
-            <div className="bg-slate-900 p-6 text-white">
-                <h2 className="text-xl font-bold">Request Product</h2>
-                <p className="text-slate-400 text-sm mt-1">Item: <span className="text-white font-medium">{productName}</span></p>
+            {/* HEADER */}
+            <div className="bg-slate-900 p-6 pb-8 text-white relative overflow-hidden shrink-0">
+                <div className="relative z-10">
+                    <h2 className="text-xl font-bold">{step === 1 ? 'Configure Request' : 'Delivery Details'}</h2>
+                    <p className="text-slate-400 text-sm mt-1">Item: <span className="text-white font-medium">{productName}</span></p>
+                </div>
+
+                {/* Decorative Circles */}
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="absolute top-10 -left-10 w-24 h-24 bg-blue-500/10 rounded-full blur-xl pointer-events-none"></div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* PROGRESS BAR */}
+            <div className="flex w-full h-1 bg-gray-100">
+                <div className={clsx("h-full transition-all duration-300 ease-out bg-blue-600", step === 1 ? "w-1/2" : "w-full")}></div>
+            </div>
 
-                {/* ✅ 1. TIMELINE DROPDOWN */}
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-                        When do you need this?
-                    </label>
-                    <div className="relative">
-                        <Clock className="absolute left-3 top-3.5 text-slate-400" size={18} />
-                        <select
-                            value={timeline}
-                            onChange={(e) => setTimeline(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 appearance-none cursor-pointer"
-                        >
-                            {TIMELINE_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute right-4 top-4 pointer-events-none">
-                            <ChevronRight className="rotate-90 text-slate-400" size={14} />
-                        </div>
-                    </div>
-                </div>
+            {/* FORM BODY */}
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto custom-scrollbar flex-1 pb-8">
 
-                {/* 2. ADDRESS SECTION */}
-                <div>
-                    <div className="flex justify-between items-center mb-2">
-                        <label className="block text-xs font-bold text-slate-500 uppercase">Delivery Address</label>
-                        {addresses.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={handleAddAddress}
-                                className="text-[10px] font-bold text-blue-600 flex items-center gap-1 hover:underline"
-                            >
-                                <Plus size={12} /> Add New
-                            </button>
-                        )}
-                    </div>
-
-                    {addresses.length > 0 ? (
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                            {addresses.map((addr) => (
-                                <div
-                                    key={addr.id}
-                                    onClick={() => setAddressId(addr.id)}
-                                    className={`relative p-3 rounded-xl border cursor-pointer flex items-start gap-3 transition-all group ${addressId === addr.id
-                                        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                                        : 'border-slate-200 hover:border-slate-300'
-                                        }`}
-                                >
-                                    <MapPin className={`mt-0.5 flex-shrink-0 ${addressId === addr.id ? 'text-blue-600' : 'text-slate-400'}`} size={16} />
-                                    <div className="flex-1 pr-6">
-                                        <p className="text-sm font-bold text-slate-900">{addr.type || "Home"}</p>
-                                        <p className="text-xs text-slate-500 line-clamp-1">{addr.line1}, {addr.city}</p>
-                                        {addr.landmark && <p className="text-[10px] text-slate-400 mt-0.5">LM: {addr.landmark}</p>}
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        onClick={(e) => handleEditAddress(e, addr)}
-                                        className="absolute right-2 top-2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
-                                        title="Edit Address"
-                                    >
-                                        <Pencil size={14} />
-                                    </button>
+                {/* ================= STEP 1: ORDER DETAILS ================= */}
+                {step === 1 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        {/* 1. QUANTITY & UNIT */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Quantity</label>
+                                <div className="relative">
+                                    <Calculator className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                                    <input
+                                        type="number"
+                                        min={moq || 1}
+                                        value={quantity}
+                                        onChange={(e) => setQuantity(Number(e.target.value))}
+                                        className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-900"
+                                    />
                                 </div>
-                            ))}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Unit</label>
+                                <div className="relative">
+                                    <Package className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                                    <select
+                                        value={selectedUnit}
+                                        onChange={(e) => setSelectedUnit(e.target.value)}
+                                        className="w-full pl-10 pr-8 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 appearance-none cursor-pointer"
+                                    >
+                                        {UNIT_OPTIONS.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronRight className="absolute right-3 top-4 rotate-90 text-slate-400 pointer-events-none" size={14} />
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={handleAddAddress}
-                            className="w-full p-4 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                        >
-                            <Plus size={20} />
-                            <span className="text-sm font-bold">Add Address</span>
-                        </button>
-                    )}
-                </div>
 
-                {/* 3. DESCRIPTION / NOTES */}
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Description / Notes</label>
-                    <textarea
-                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        placeholder="Add details about your request..."
-                        rows={3}
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                    />
-                </div>
+                        {/* 2. BUDGET */}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Budget Range</label>
+                            <div className="relative">
+                                <Coins className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                                <select
+                                    value={budget}
+                                    onChange={(e) => setBudget(e.target.value)}
+                                    className="w-full pl-10 pr-8 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 appearance-none cursor-pointer"
+                                >
+                                    {BUDGET_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                                <ChevronRight className="absolute right-3 top-4 rotate-90 text-slate-400 pointer-events-none" size={14} />
+                            </div>
+                        </div>
 
-                {/* ACTIONS */}
-                <div className="flex gap-3 pt-2">
-                    <button
-                        type="button"
-                        onClick={onRequestClose}
-                        className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={loading || !addressId}
-                        className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? <Loader2 className="animate-spin" /> : 'Confirm Request'}
-                    </button>
-                </div>
+                        {/* 3. TIMELINE */}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">When do you need this?</label>
+                            <div className="relative">
+                                <Clock className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                                <select
+                                    value={timeline}
+                                    onChange={(e) => setTimeline(e.target.value)}
+                                    className="w-full pl-10 pr-8 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 appearance-none cursor-pointer"
+                                >
+                                    {TIMELINE_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                                <ChevronRight className="absolute right-3 top-4 rotate-90 text-slate-400 pointer-events-none" size={14} />
+                            </div>
+                        </div>
+
+                        {/* 4. NOTES (IMPROVED LAYOUT) */}
+                        <div className="pt-2">
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-3">
+                                <StickyNote size={14} /> Additional Notes / Requirements
+                            </label>
+                            <div className="relative">
+                                <textarea
+                                    className="w-full border border-slate-200 bg-slate-50/50 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none transition-all placeholder:text-slate-400"
+                                    placeholder="Describe your requirement in detail (e.g., specific brand, packaging preference, delivery constraints)..."
+                                    rows={5}
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    maxLength={500}
+                                />
+                                <div className="absolute bottom-3 right-3 text-[10px] text-slate-400 bg-white/50 px-1 rounded">
+                                    {notes.length}/500
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ================= STEP 2: ADDRESS & CONFIRM ================= */}
+                {step === 2 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+
+                        {/* Summary Card */}
+                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex flex-col gap-2">
+                            <div className="flex items-start gap-3">
+                                <CheckCircle2 className="text-blue-600 mt-0.5 shrink-0" size={18} />
+                                <div className="flex-1">
+                                    <p className="text-sm font-bold text-slate-900">Requesting {quantity} {selectedUnit.toLowerCase()}(s)</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Timeline: {timeline.replace(/_/g, ' ').toLowerCase()}</p>
+                                </div>
+                                <button type="button" onClick={handleBack} className="text-xs font-bold text-blue-600 underline">Edit</button>
+                            </div>
+
+                            {/* Note Preview in Step 2 */}
+                            {notes && (
+                                <div className="mt-1 pt-2 border-t border-blue-200/60 flex gap-2">
+                                    <StickyNote size={12} className="text-blue-400 mt-0.5 shrink-0" />
+                                    <p className="text-xs text-slate-600 italic line-clamp-2">
+                                        "{notes}"
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-3">
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Select Delivery Address</label>
+                                <button
+                                    type="button"
+                                    onClick={handleAddAddress}
+                                    className="text-[10px] font-bold text-blue-600 flex items-center gap-1 hover:underline"
+                                >
+                                    <Plus size={12} /> Add New
+                                </button>
+                            </div>
+
+                            {addresses.length > 0 ? (
+                                <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                                    {addresses.map((addr) => (
+                                        <div
+                                            key={addr.id}
+                                            onClick={() => setAddressId(addr.id)}
+                                            className={clsx(
+                                                "relative p-3 rounded-xl border cursor-pointer flex items-start gap-3 transition-all",
+                                                addressId === addr.id
+                                                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 shadow-sm'
+                                                    : 'border-slate-200 hover:border-slate-300'
+                                            )}
+                                        >
+                                            {/* ✅ Fixed: Changed flex-shrink-0 to shrink-0 */}
+                                            <MapPin className={clsx("mt-0.5 shrink-0", addressId === addr.id ? 'text-blue-600' : 'text-slate-400')} size={16} />
+                                            <div className="flex-1 pr-6">
+                                                <p className="text-sm font-bold text-slate-900">{addr.type || "Home"}</p>
+                                                <p className="text-xs text-slate-500 line-clamp-1">{addr.line1}, {addr.city}</p>
+                                                {addr.landmark && <p className="text-[10px] text-slate-400 mt-0.5">LM: {addr.landmark}</p>}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleEditAddress(e, addr)}
+                                                className="absolute right-2 top-2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+                                            >
+                                                <Pencil size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={handleAddAddress}
+                                    className="w-full p-6 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                >
+                                    <Plus size={24} />
+                                    <span className="text-sm font-bold">Add Address</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
 
             </form>
 
+            {/* FOOTER ACTIONS */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-3 shrink-0">
+                {step === 1 ? (
+                    <>
+                        <button
+                            type="button"
+                            onClick={onRequestClose}
+                            className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-white transition"
+                        >
+                            Cancel
+                        </button>
+                        {/* ✅ Fixed: Changed flex-[2] to flex-2 (if Tailwind configured) or kept flex-[2] if arbitrary. 
+                            Keeping flex-[2] as it is standard arbitrary value unless you have a plugin. 
+                        */}
+                        <button
+                            type="button"
+                            onClick={handleNext}
+                            className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg"
+                        >
+                            Next Step <ArrowRight size={16} />
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button
+                            type="button"
+                            onClick={handleBack}
+                            className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-white transition flex items-center justify-center gap-2"
+                        >
+                            <ArrowLeft size={16} /> Back
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={loading || !addressId}
+                            className="flex-[2] bg-blue-600 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? <Loader2 className="animate-spin" /> : 'Confirm Request'}
+                        </button>
+                    </>
+                )}
+            </div>
+
+            {/* NESTED ADDRESS MODAL */}
             {isAddressModalOpen && (
                 <ProfileEditModal
                     isOpen={isAddressModalOpen}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     Loader2, CalendarClock, CheckCircle2, XCircle, Clock, Filter,
     Package, Truck, BoxSelect, Briefcase, ShoppingBag, ArrowRight,
@@ -14,15 +14,33 @@ interface RequestsViewProps {
     orders?: any[];
     showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
     onRefresh?: () => void;
+    providerType: string; // ✅ Added prop
 }
 
 type TabType = 'ALL' | 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 type ViewMode = 'SERVICES' | 'PRODUCTS';
 
-export default function RequestsView({ bookings = [], orders = [], showToast, onRefresh }: RequestsViewProps) {
-    const [viewMode, setViewMode] = useState<ViewMode>('SERVICES');
+export default function RequestsView({
+    bookings = [],
+    orders = [],
+    showToast,
+    onRefresh,
+    providerType // ✅ Destructured
+}: RequestsViewProps) {
+
+    // ✅ Initialize based on providerType
+    const [viewMode, setViewMode] = useState<ViewMode>(
+        providerType === 'PRODUCT' ? 'PRODUCTS' : 'SERVICES'
+    );
+
     const [activeTab, setActiveTab] = useState<TabType>('PENDING');
     const [processingId, setProcessingId] = useState<string | null>(null);
+
+    // ✅ Sync viewMode if providerType changes dynamically
+    useEffect(() => {
+        if (providerType === 'PRODUCT') setViewMode('PRODUCTS');
+        if (providerType === 'SERVICE') setViewMode('SERVICES');
+    }, [providerType]);
 
     // --- 1. SELECT & NORMALIZE DATA BASED ON VIEW MODE ---
     const currentData = useMemo(() => {
@@ -105,31 +123,44 @@ export default function RequestsView({ bookings = [], orders = [], showToast, on
     return (
         <div className="space-y-6">
 
-            {/* --- TOP TOGGLE: SERVICES vs PRODUCTS --- */}
+            {/* --- TOP HEADER --- */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-                <div className="w-full md:w-auto">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block pl-1">Operation Type</label>
-                    <div className="flex p-1.5 bg-white rounded-xl max-w-md border border-slate-200 shadow-sm w-full md:min-w-[300px]">
-                        <button
-                            onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }}
-                            className={clsx(
-                                "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2",
-                                viewMode === 'SERVICES' ? "bg-[#0f172a] text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                            )}
-                        >
-                            <Briefcase size={16} /> Services
-                        </button>
-                        <button
-                            onClick={() => { setViewMode('PRODUCTS'); setActiveTab('PENDING'); }}
-                            className={clsx(
-                                "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2",
-                                viewMode === 'PRODUCTS' ? "bg-[#0f172a] text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                            )}
-                        >
-                            <ShoppingBag size={16} /> Products
-                        </button>
+
+                {/* ✅ LOGIC: Only show Switcher Buttons if providerType is BOTH */}
+                {providerType === 'BOTH' ? (
+                    <div className="w-full md:w-auto">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block pl-1">Operation Type</label>
+                        <div className="flex p-1.5 bg-white rounded-xl max-w-md border border-slate-200 shadow-sm w-full md:min-w-[300px]">
+                            <button
+                                onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }}
+                                className={clsx(
+                                    "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2",
+                                    viewMode === 'SERVICES' ? "bg-[#0f172a] text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                                )}
+                            >
+                                <Briefcase size={16} /> Services
+                            </button>
+                            <button
+                                onClick={() => { setViewMode('PRODUCTS'); setActiveTab('PENDING'); }}
+                                className={clsx(
+                                    "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2",
+                                    viewMode === 'PRODUCTS' ? "bg-[#0f172a] text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                                )}
+                            >
+                                <ShoppingBag size={16} /> Products
+                            </button>
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    /* ✅ If restricted to one type, show a simple title instead */
+                    <div className="pb-2">
+                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                            {viewMode === 'SERVICES' ? <Briefcase className="text-blue-600" /> : <ShoppingBag className="text-purple-600" />}
+                            {viewMode === 'SERVICES' ? 'Service Bookings' : 'Product Orders'}
+                        </h2>
+                        <p className="text-slate-500 text-sm font-medium">Manage your incoming {viewMode === 'SERVICES' ? 'appointments' : 'orders'}</p>
+                    </div>
+                )}
 
                 {/* Stats Badge */}
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl border border-slate-200 shadow-sm text-xs font-bold text-slate-600">

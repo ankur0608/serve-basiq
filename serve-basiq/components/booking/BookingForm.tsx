@@ -153,6 +153,8 @@ export default function BookingForm({
         name: "",
         email: "",
         phone: "",
+        dateOfBirth: "",         // Added
+        preferredLanguage: "English", // Added
         addressLine1: editingAddress.line1 || "",
         addressLine2: editingAddress.line2 || "",
         landmark: editingAddress.landmark || "",
@@ -162,7 +164,8 @@ export default function BookingForm({
       };
     }
     return {
-      name: "", email: "", phone: "",
+      name: "", email: "", phone: "", dateOfBirth: "",         // Added
+      preferredLanguage: "English", // Added  
       addressLine1: "", addressLine2: "", landmark: "", city: "", state: "", pincode: ""
     };
   };

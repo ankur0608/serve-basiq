@@ -288,9 +288,9 @@ export default function ProviderDashboard() {
                                 orders={orders}
                                 showToast={showToast}
                                 onRefresh={refetch}
+                                providerType={providerType} // 👈 Add this line
                             />
                         )}
-
                         {activeView === 'leads' && <LeadsView />}
                         {activeView === 'earnings' && <EarningsView />}
                         {activeView === 'profile' && <ProfileView stats={safeStats} user={userData} onEdit={() => setActiveView('edit-profile')} />}

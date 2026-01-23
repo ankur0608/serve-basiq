@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
-/* ================= 1. GET PROFILE (Fetches Data) ================= */
+export const dynamic = 'force-dynamic'; // Ensure data is always fresh
+
+/* ================= 1. GET PROFILE (User + Address + Activity) ================= */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -21,7 +23,37 @@ export async function GET(request: Request) {
           { phone: identifier }
         ]
       },
-      include: { addresses: true },
+      include: {
+        addresses: true,
+        // ✅ 1. Fetch Orders (Products)
+        orders: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                productImage: true,
+                user: { select: { shopName: true, name: true } } // Seller Name
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        },
+        // ✅ 2. Fetch Bookings (Services)
+        bookings: {
+          include: {
+            service: {
+              select: {
+                name: true,
+                mainimg: true,
+                user: { select: { name: true, shopName: true } }, // Provider Name
+                price: true,
+                priceType: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
+      },
     });
 
     if (!user) {
@@ -40,14 +72,13 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // 🔍 DEBUG LOGS
-    console.log("📥 [API] Profile Update Body:", body);
-
     const {
       userId,
       name,
       email,
       phone,
+      dateOfBirth,
+      preferredLanguage,
       addressLine1,
       addressLine2,
       landmark,
@@ -61,44 +92,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Prepare User Update Data
     const userUpdateData: any = { name };
 
-    // Only update email/phone if they are not empty
     if (email && email.trim() !== "") userUpdateData.email = email;
     if (phone && phone.trim() !== "") userUpdateData.phone = phone;
 
-    console.log("⚙️ [API] Prisma User Update Data:", userUpdateData);
+    if (dateOfBirth) userUpdateData.dob = new Date(dateOfBirth);
+    if (preferredLanguage) userUpdateData.preferredLanguage = preferredLanguage;
 
-    // 1. Update User Details
-    try {
-      await prisma.user.update({
-        where: { id: userId },
-        data: userUpdateData,
-      });
-    } catch (error) {
-      console.error("❌ [API] Prisma Update Error:", error);
-
-      // Handle Unique Constraint Violation (Duplicate Email/Phone)
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          const target = error.meta?.target;
-          if (Array.isArray(target) && target.includes('email')) {
-            return NextResponse.json({ error: 'This email is already taken by another user.' }, { status: 409 });
-          }
-          if (Array.isArray(target) && target.includes('phone')) {
-            return NextResponse.json({ error: 'This phone number is already linked to another account.' }, { status: 409 });
-          }
-          return NextResponse.json({ error: 'Email or Phone already in use.' }, { status: 409 });
-        }
-      }
-      throw error;
-    }
-
-    // 2. Handle Address 
-    const existingAddress = await prisma.address.findFirst({
-      where: { userId },
+    // 1. Update User
+    await prisma.user.update({
+      where: { id: userId },
+      data: userUpdateData,
     });
+
+    // 2. Update Address
+    const existingAddress = await prisma.address.findFirst({ where: { userId } });
 
     const addressData = {
       line1: addressLine1 || '',
@@ -118,26 +127,27 @@ export async function POST(request: Request) {
     } else {
       if (addressLine1 || city || pincode) {
         await prisma.address.create({
-          data: {
-            userId,
-            type: 'Home',
-            ...addressData
-          },
+          data: { userId, type: 'Home', ...addressData },
         });
       }
     }
 
-    // 3. Return updated user data
+    // 3. Return Updated User (with relations to keep UI consistent)
     const finalUser = await prisma.user.findUnique({
       where: { id: userId },
-      include: { addresses: true },
+      include: {
+        addresses: true,
+        // We don't necessarily need to return full orders/bookings on profile update
+        // unless you want to refetch everything. Usually addresses is enough here.
+        orders: true,
+        bookings: true
+      },
     });
 
-    console.log("✅ [API] Update Successful.");
     return NextResponse.json(finalUser);
 
   } catch (error: any) {
-    console.error("🔥 [API] Critical Error:", error);
+    console.error("🔥 [API] Update Error:", error);
     return NextResponse.json({ error: error.message || 'Update failed' }, { status: 500 });
   }
 }

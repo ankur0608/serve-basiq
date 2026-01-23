@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-    FaUser, FaMapLocation, FaPhone, FaEnvelope, FaXmark, FaCheck, FaCity, FaLocationDot, FaPlus
+    FaUser, FaMapLocation, FaPhone, FaEnvelope, FaXmark, FaCheck, FaCity, FaLocationDot, FaPlus, FaCalendarDays, FaLanguage
 } from 'react-icons/fa6';
 import clsx from 'clsx';
 
@@ -10,6 +10,8 @@ interface ProfileData {
     name: string;
     email: string;
     phone: string;
+    dateOfBirth: string;        // Added
+    preferredLanguage: string;  // Added
     addressLine1: string;
     addressLine2: string;
     landmark: string;
@@ -29,7 +31,7 @@ interface ProfileEditModalProps {
 }
 
 const DEFAULT_DATA: ProfileData = {
-    name: '', email: '', phone: '', addressLine1: '', addressLine2: '', landmark: '', city: '', state: '', pincode: ''
+    name: '', email: '', phone: '', dateOfBirth: '', preferredLanguage: 'English', addressLine1: '', addressLine2: '', landmark: '', city: '', state: '', pincode: ''
 };
 
 export default function ProfileEditModal({
@@ -45,6 +47,8 @@ export default function ProfileEditModal({
                 name: initialData.name || '',
                 email: initialData.email || '',
                 phone: initialData.phone || '',
+                dateOfBirth: initialData.dateOfBirth || '',           // Sync DOB
+                preferredLanguage: initialData.preferredLanguage || 'English', // Sync Language
                 addressLine1: initialData.addressLine1 || '',
                 addressLine2: initialData.addressLine2 || '',
                 landmark: initialData.landmark || '',
@@ -70,7 +74,7 @@ export default function ProfileEditModal({
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                     <div>
                         <h2 className="text-xl font-extrabold text-slate-900">Edit Profile</h2>
-                        <p className="text-sm text-gray-500">Update your contact & address info</p>
+                        <p className="text-sm text-gray-500">Update your personal details & address</p>
                     </div>
                     <button onClick={onClose}><FaXmark className="text-xl" /></button>
                 </div>
@@ -83,6 +87,28 @@ export default function ProfileEditModal({
                                 <div className="md:col-span-2">
                                     <InputField label="Full Name" value={formData.name} onChange={(v) => setFormData({ ...formData, name: v })} placeholder="Enter your full name" />
                                 </div>
+
+                                {/* --- NEW FIELDS ADDED HERE --- */}
+                                <div>
+                                    <InputField
+                                        label="Date of Birth"
+                                        type="date"
+                                        value={formData.dateOfBirth}
+                                        onChange={(v) => setFormData({ ...formData, dateOfBirth: v })}
+                                        icon={<FaCalendarDays />}
+                                    />
+                                </div>
+                                <div>
+                                    <SelectField
+                                        label="Preferred Language"
+                                        value={formData.preferredLanguage}
+                                        onChange={(v) => setFormData({ ...formData, preferredLanguage: v })}
+                                        options={['English', 'Hindi', 'Local']}
+                                        icon={<FaLanguage />}
+                                    />
+                                </div>
+                                {/* ----------------------------- */}
+
                                 <div>
                                     <InputField label="Email Address" value={formData.email} onChange={(v) => setFormData({ ...formData, email: v })} type="email" locked={isEmailLocked} icon={<FaEnvelope />} lockedMessage="Verified via Google" />
                                 </div>
@@ -158,13 +184,41 @@ function InputField({ label, value, onChange, error, type = "text", placeholder,
                 />
                 {icon && <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>}
 
-                {/* Render Action Button (Add) */}
                 {actionButton}
-
-                {/* Show Checkmark ONLY if verified and NO action button */}
                 {locked && !actionButton && value && <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-green-500"><FaCheck size={12} /></div>}
             </div>
             {locked && lockedMessage && <p className="text-[10px] text-gray-400 mt-1 ml-1">{lockedMessage}</p>}
+        </div>
+    );
+}
+
+// --- NEW REUSABLE SELECT COMPONENT ---
+interface SelectFieldProps {
+    label: string; value: string; onChange: (value: string) => void; options: string[]; icon?: React.ReactNode;
+}
+
+function SelectField({ label, value, onChange, options, icon }: SelectFieldProps) {
+    return (
+        <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">{label}</label>
+            <div className="relative">
+                <select
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className={clsx(
+                        "w-full border border-gray-200 bg-white rounded-xl px-4 py-3 text-sm font-medium outline-none transition focus:border-blue-500 appearance-none",
+                        icon ? "pl-10" : ""
+                    )}
+                >
+                    {options.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                </select>
+                {icon && <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>}
+
+                {/* Custom Arrow Icon */}
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▼</div>
+            </div>
         </div>
     );
 }

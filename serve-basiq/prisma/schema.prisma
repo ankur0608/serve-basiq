@@ -94,19 +94,16 @@ enum Timeline {
     TWO_TO_FIVE_DAYS
 }
 
-// 1. Create the Enum
 enum CategoryType {
     SERVICE
     PRODUCT
     BOTH
 }
 
-// 2. Update the Category Model
 model Category {
     id   String @id @default(uuid())
     name String @unique
 
-    // ✅ Add this field to distinguish them
     type CategoryType @default(BOTH)
 
     services Service[]
@@ -116,7 +113,7 @@ model Category {
 model Admin {
     id        String   @id @default(uuid())
     email     String   @unique
-    password  String // Will be hashed
+    password  String 
     isOnline  Boolean  @default(false)
     lastLogin DateTime @default(now())
     createdAt DateTime @default(now())
@@ -147,30 +144,25 @@ model Booking {
 model Order {
     id String @id @default(cuid())
 
-    // --- 1. RELATIONS ---
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
     productId String
     product   Product @relation(fields: [productId], references: [id])
 
-    // Address is optional because DeliveryType could be 'PICKUP'
     addressId String?
     address   Address? @relation(fields: [addressId], references: [id])
 
-    // --- 2. ORDER DETAILS ---
     quantity   Int
-    unit       UnitType // Uses your existing UnitType enum
-    totalPrice Float // Price * Quantity (calculated at creation)
+    unit       UnitType
+    totalPrice Float
 
-    // --- 3. STATUS & PAYMENT ---
-    status        OrderStatus   @default(PENDING) // ✅ Uses new Enum
+    status        OrderStatus   @default(PENDING) 
     timeline      Timeline      @default(IMMEDIATE)
-    paymentStatus PaymentStatus @default(PENDING) // ✅ Uses new Enum
+    paymentStatus PaymentStatus @default(PENDING) 
 
-    // --- 4. EXTRAS ---
     specialInstructions String?
-    trackingId          String? // For courier tracking number
+    trackingId          String?
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -201,10 +193,8 @@ model User {
     facebookUrl  String?
     websiteUrl   String?
     youtubeUrl   String?
-    // ✅ UPDATED: Kept the fast status flag here, but details are moved
     isVerified   Boolean @default(false)
 
-    // Banking (Can stay here or move to its own model too, but fine here for now)
     bankAccountHolder     String?
     bankAccountNumber     String?
     bankIfsc              String?
@@ -212,7 +202,6 @@ model User {
     upiId                 String?
     preferredPayoutMethod PayoutMethod? @default(BANK)
 
-    // ✅ NEW: Relation to KYC Model
     kycDetails KycDetails?
 
     accounts     Account[]
@@ -221,7 +210,7 @@ model User {
     products     Product[]
     reviews      Review[]
     bookings     Booking[]
-    requirements Requirement[] // Add this relation
+    requirements Requirement[] 
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -231,25 +220,20 @@ model User {
 model KycDetails {
     id String @id @default(cuid())
 
-    // 1:1 Relation with User
     userId String @unique
     user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    // Document Details
     idProofType   String? @default("Aadhaar")
     idProofNumber String?
 
-    // Images
     idProofFrontImg  String?
     idProofBackImg   String?
     businessProofImg String?
 
-    // Tax Info
     gstRegistered Boolean @default(false)
     gstNumber     String?
 
-    // Status for the KYC specifically
-    status       String  @default("PENDING") // PENDING, APPROVED, REJECTED
+    status       String  @default("PENDING")
     rejectionMsg String?
 
     createdAt DateTime @default(now())
@@ -275,21 +259,19 @@ model Account {
     @@unique([provider, providerAccountId])
 }
 
-// --- ADDRESS MODEL (NEW) ---
 model Address {
     id           String        @id @default(cuid())
     userId       String
     user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-    landmark     String? // ✅ NEW: Added Landmark
-    type         String        @default("Home") // Home, Work, Other
-    line1        String // Flat, Building, Street
+    landmark     String? 
+    type         String        @default("Home") 
+    line1        String
     line2        String
     city         String
     state        String
     pincode      String
     country      String        @default("India")
-    requirements Requirement[] // Add this relation
-
+    requirements Requirement[] 
     createdAt DateTime  @default(now())
     bookings  Booking[]
     orders    Order[]
@@ -301,11 +283,10 @@ model Requirement {
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
-    type        RequestType // PRODUCT or SERVICE
-    title       String // Requirement Title
-    description String // Detailed description
+    type        RequestType 
+    title       String 
+    description String 
 
-    // Location
     addressId String
     address   Address @relation(fields: [addressId], references: [id])
 
@@ -315,7 +296,6 @@ model Requirement {
     updatedAt DateTime @updatedAt
 }
 
-// --- OTP MODEL ---
 model Otp {
     id        String   @id @default(cuid())
     phone     String
@@ -357,7 +337,6 @@ model Service {
     openTime    String?
     closeTime   String?
 
-    // Details
     rating     Float    @default(5.0)
     loc        String?
     isVerified Boolean  @default(false)
@@ -392,7 +371,6 @@ model Product {
     name String
     desc String
 
-    // ✅ Linked to the single Category model above
     categoryId String?
     category   Category? @relation(fields: [categoryId], references: [id])
 

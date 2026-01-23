@@ -3,8 +3,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-/* ================= TYPES ================= */
-
 export interface Address {
   id: string;
   userId: string;
@@ -21,37 +19,40 @@ export interface User {
   id: string;
   phone: string;
 
-  // Personal Info
   name: string | null;
   email: string | null;
-  img: string | null; // Changed from 'image' to 'img' to match Prisma
-  role: string;       // "USER" | "ADMIN"
+  img: string | null;
+  role: string;
 
-  // ✅ ADD THIS: Provider Type
+  // ✅ MATCH DATABASE NAMES
+  dob?: string | Date | null;
+  preferredLanguage?: string | null;
+
   providerType?: "SERVICE" | "PRODUCT" | "BOTH" | string;
 
-  // Status Flags
   isPhoneVerified: boolean;
   isWorker: boolean;
   isVerified: boolean;
   isWebsite: boolean;
 
-  // Relations
   addresses?: Address[];
 
-  // Timestamps
   createdAt?: string;
   updatedAt?: string;
 }
-
-/* ================= STORE ================= */
 
 export interface UIState {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
   logout: () => void;
 
-  // Auth Modal State
+  loginIntent: "user" | "provider";
+  setLoginIntent: (intent: "user" | "provider") => void;
+
+  // ✅ New Temporary Name State
+  tempName: string;
+  setTempName: (name: string) => void;
+
   mobileNumber: string;
   devOtp?: string;
   isLoginOpen: boolean;
@@ -69,6 +70,13 @@ export const useUIStore = create<UIState>()(
       currentUser: null,
       setCurrentUser: (user) => set({ currentUser: user }),
       logout: () => set({ currentUser: null }),
+
+      loginIntent: "user",
+      setLoginIntent: (intent) => set({ loginIntent: intent }),
+
+      // ✅ Initialize Temp Name
+      tempName: "",
+      setTempName: (name) => set({ tempName: name }),
 
       mobileNumber: "",
       devOtp: undefined,
@@ -88,6 +96,7 @@ export const useUIStore = create<UIState>()(
           mobileNumber: "",
           devOtp: undefined,
           isOtpOpen: false,
+          tempName: "", // Clear name on close
         }),
 
       onOpenLogin: () =>
@@ -101,13 +110,17 @@ export const useUIStore = create<UIState>()(
         set({
           isLoginOpen: false,
           devOtp: undefined,
+          tempName: "", // Clear name on close
         }),
     }),
     {
       name: "servemate-storage",
       storage: createJSONStorage(() => localStorage),
-      // Only persist the currentUser, not the UI state (modals)
-      partialize: (state) => ({ currentUser: state.currentUser }),
+
+      // Only persist currentUser (don't persist UI states like modals or tempName)
+      partialize: (state) => ({
+        currentUser: state.currentUser,
+      }),
     }
   )
 );

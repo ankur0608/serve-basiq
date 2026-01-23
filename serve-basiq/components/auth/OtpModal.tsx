@@ -17,8 +17,13 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
+    // Store Data
     const mobileNumber = useUIStore((state) => state.mobileNumber);
     const devOtp = useUIStore((state) => state.devOtp);
+    const loginIntent = useUIStore((state) => state.loginIntent);
+    const tempName = useUIStore((state) => state.tempName); // ✅ Get Name from Store
+
+    // Store Actions
     const onOpenLogin = useUIStore((state) => state.onOpenLogin);
     const onCloseOtp = useUIStore((state) => state.onCloseOtp);
     const setCurrentUser = useUIStore((state) => state.setCurrentUser);
@@ -27,34 +32,30 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     const [otp, setOtp] = useState(["", "", "", ""]);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-    /* ---------------- Modal animation & scroll lock ---------------- */
     useEffect(() => {
         if (isOpen) {
             setShowModal(true);
             document.body.style.overflow = "hidden";
-            if (!mobileNumber) {
-                console.error("❌ Mobile number is missing in OtpModal!");
-            }
-            setTimeout(() => {
-                inputRefs.current[0]?.focus();
-            }, 100);
+            setTimeout(() => inputRefs.current[0]?.focus(), 100);
         } else {
             const timer = setTimeout(() => setShowModal(false), 300);
             document.body.style.overflow = "unset";
             setOtp(["", "", "", ""]);
             return () => clearTimeout(timer);
         }
-    }, [isOpen, mobileNumber]);
+    }, [isOpen]);
 
-    /* ---------------- DEV: Auto-fill OTP ---------------- */
+    // Auto-fill Dev OTP
     useEffect(() => {
-        if (isOpen && devOtp && devOtp.length === 4) {
-            setOtp(devOtp.split(""));
-            setTimeout(() => inputRefs.current[3]?.focus(), 150);
+        if (isOpen && devOtp) {
+            const otpString = devOtp.toString();
+            if (otpString.length === 4) {
+                setOtp(otpString.split(""));
+                setTimeout(() => inputRefs.current[3]?.focus(), 150);
+            }
         }
     }, [devOtp, isOpen]);
 
-    /* ---------------- Input handlers ---------------- */
     const handleChange = (index: number, value: string) => {
         if (isNaN(Number(value))) return;
         const newOtp = [...otp];
@@ -71,15 +72,13 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         }
     };
 
-    /* ---------------- Verify OTP ---------------- */
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        // 1. Validation
         const code = otp.join("");
         if (code.length !== 4) return;
+
         if (!mobileNumber) {
-            alert("Error: Mobile number not found. Please try logging in again.");
+            alert("Error: Mobile number not found.");
             onClose();
             return;
         }
@@ -87,13 +86,14 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         setIsLoading(true);
 
         try {
-            // 2. ✅ UPDATED: Call the Login Verification API (No userId required)
+            // ✅ Send Name + Phone + OTP to Backend
             const res = await fetch("/api/auth/verify-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     phone: mobileNumber,
                     otp: code,
+                    name: tempName // Pass the name
                 }),
             });
 
@@ -104,21 +104,30 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
 
             const user = await res.json();
 
-            // 3. Create NextAuth Session
+            // NextAuth Login
             const signInResult = await signIn("credentials", {
                 phone: mobileNumber,
                 redirect: false,
             });
 
-            if (signInResult?.error) {
-                throw new Error(signInResult.error);
-            }
+            if (signInResult?.error) throw new Error(signInResult.error);
 
-            // 4. Success State
             console.log("✅ Login Successful:", user);
             setCurrentUser(user);
             onCloseOtp();
-            router.refresh();
+
+            // Redirect Logic
+            if (loginIntent === 'provider') {
+                // Check if provider setup is complete
+                if (user.role === 'PROVIDER' || (user.providerType && user.providerType !== 'BOTH')) {
+                    // Note: You may need to adjust the logic for 'BOTH' depending on your default
+                    router.push('/provider/dashboard');
+                } else {
+                    router.push('/become-pro');
+                }
+            } else {
+                router.refresh();
+            }
 
         } catch (error: any) {
             console.error("Verification failed", error);
@@ -133,57 +142,32 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     return (
         <div className="fixed inset-0 z-[100] overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4 text-center">
-                <div
-                    className={clsx("fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300", isOpen ? "opacity-100" : "opacity-0")}
-                    onClick={onClose}
-                />
-
+                <div className={clsx("fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300", isOpen ? "opacity-100" : "opacity-0")} onClick={onClose} />
                 <div className={clsx("relative w-full max-w-md bg-white rounded-3xl shadow-2xl text-left transform transition-all duration-300", isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4")}>
 
-                    <button onClick={onOpenLogin} className="absolute top-4 left-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10">
-                        <FaArrowLeft className="text-lg" />
-                    </button>
-
-                    <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10">
-                        <FaXmark className="text-lg" />
-                    </button>
+                    <button onClick={onOpenLogin} className="absolute top-4 left-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10"><FaArrowLeft className="text-lg" /></button>
+                    <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10"><FaXmark className="text-lg" /></button>
 
                     <div className="p-8">
                         <div className="text-center mb-8 mt-4">
                             <h2 className="text-2xl font-extrabold text-slate-900">Verify OTP</h2>
-                            <p className="text-sm text-gray-500 mt-2">
-                                Code sent to <span className="font-bold text-slate-900">+91 {mobileNumber}</span>
-                            </p>
+                            <p className="text-sm text-gray-500 mt-2">Code sent to <span className="font-bold text-slate-900">+91 {mobileNumber}</span></p>
                         </div>
 
                         <form onSubmit={handleVerify} className="space-y-8">
                             <div className="flex justify-center gap-3">
                                 {otp.map((digit, index) => (
-                                    <input
-                                        key={index}
-                                        ref={(el) => { inputRefs.current[index] = el; }}
-                                        type="tel"
-                                        maxLength={1}
-                                        value={digit}
-                                        onChange={(e) => handleChange(index, e.target.value)}
-                                        onKeyDown={(e) => handleKeyDown(index, e)}
-                                        className="w-14 h-16 rounded-xl border-2 border-gray-200 text-center text-2xl font-bold text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all"
-                                        disabled={isLoading}
-                                    />
+                                    <input key={index} ref={(el) => { inputRefs.current[index] = el; }} type="tel" maxLength={1} value={digit} onChange={(e) => handleChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-14 h-16 rounded-xl border-2 border-gray-200 text-center text-2xl font-bold text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all" disabled={isLoading} />
                                 ))}
                             </div>
-
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition flex items-center justify-center gap-2"
-                            >
+                            <button type="submit" disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition flex items-center justify-center gap-2">
                                 {isLoading ? <FaSpinner className="animate-spin" /> : "Verify & Continue"}
                             </button>
                         </form>
 
-                        <div className="mt-8 text-center text-sm font-medium">
-                            Didn’t receive code? <button className="text-slate-900 font-bold hover:underline">Resend in 30s</button>
+                        <div className="mt-8 text-center text-sm font-medium space-y-2">
+                            <div>Didn’t receive code? <button className="text-slate-900 font-bold hover:underline">Resend in 30s</button></div>
+                            {devOtp && <div className="text-xs text-green-600 bg-green-50 py-1 px-2 rounded inline-block border border-green-200">Dev Mode OTP: <b>{devOtp}</b></div>}
                         </div>
                     </div>
                 </div>
