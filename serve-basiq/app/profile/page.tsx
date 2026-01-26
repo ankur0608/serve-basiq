@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useUIStore } from '@/lib/store';
 import {
     FaUser, FaCalendarCheck, FaGear, FaPencil, FaIdCard, FaSpinner,
-    FaPhone, FaEnvelope, FaCircleCheck, FaRightFromBracket, FaBox
+    FaPhone, FaEnvelope, FaCircleCheck, FaRightFromBracket
 } from 'react-icons/fa6';
 import clsx from 'clsx';
 
@@ -14,15 +14,15 @@ import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileStats from '@/components/profile/ProfileStats';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
-import ActivityTabs from '@/components/profile/ActivityTabs'; // ✅ Import the new component
+import ActivityTabs from '@/components/profile/ActivityTabs';
 import { fullLogout } from '@/lib/logout';
 
 export default function ProfilePage() {
     const { data: session, status } = useSession();
     const { currentUser, onOpenLogin, setCurrentUser } = useUIStore();
 
-    // ✅ Updated Tabs to match your request
-    const [activeTab, setActiveTab] = useState<'bookings' | 'orders' | 'profile' | 'settings'>('bookings');
+    // ✅ Tabs state matching the Image
+    const [activeTab, setActiveTab] = useState<'bookings' | 'orders' | 'favourites' | 'settings'>('bookings');
 
     const [showEditModal, setShowEditModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
@@ -36,15 +36,13 @@ export default function ProfilePage() {
     const isGoogleLogin = !!session?.user?.email;
 
     /* =========================================================
-       ✅ 1. FETCH ALL DATA (Unified Call)
-       This gets Profile + Addresses + Orders + Bookings in one shot
+       FETCH DATA
     ========================================================= */
     const fetchProfileData = useCallback(async () => {
         const identifier = currentUser?.id || session?.user?.email || currentUser?.phone;
 
         if (!identifier) return;
 
-        // Only show spinner on first load if we don't have user data yet
         if (!currentUser) setIsLoadingData(true);
 
         try {
@@ -61,8 +59,8 @@ export default function ProfilePage() {
 
             // 2. Set Page State
             setAddresses(data.addresses || []);
-            setOrders(data.orders || []);     // ✅ Populates My Orders
-            setBookings(data.bookings || []); // ✅ Populates My Bookings
+            setOrders(data.orders || []);
+            setBookings(data.bookings || []);
 
         } catch (err) {
             console.error('Profile fetch failed:', err);
@@ -90,9 +88,6 @@ export default function ProfilePage() {
                 body: JSON.stringify({ userId: currentUser?.id, ...data }),
             });
             if (!res.ok) return;
-            const updated = await res.json();
-
-            // Refetch to get fresh data including relations
             await fetchProfileData();
             setShowEditModal(false);
         } catch (err) { console.error('Save failed:', err); }
@@ -104,24 +99,7 @@ export default function ProfilePage() {
     };
 
     /* =========================================================
-       LOADING / AUTH STATES
-    ========================================================= */
-    if (status === 'loading') return (
-        <div className="min-h-screen flex items-center justify-center">
-            <FaSpinner className="animate-spin text-4xl text-gray-300" />
-        </div>
-    );
-
-    if (status === 'unauthenticated' && !currentUser) return (
-        <div className="min-h-screen flex items-center justify-center">
-            <button onClick={onOpenLogin} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">
-                Login to View Profile
-            </button>
-        </div>
-    );
-
-    /* =========================================================
-       UI HELPERS
+       HELPERS
     ========================================================= */
     const formatDateForInput = (dateString: string | Date | null | undefined) => {
         if (!dateString) return '';
@@ -146,6 +124,25 @@ export default function ProfilePage() {
         pincode: primaryAddress.pincode || '',
     };
 
+    // Tabs Config (Matches Image)
+    const tabsList = [
+        { id: 'bookings', label: 'My Bookings' },
+        { id: 'orders', label: 'My Orders' },
+        { id: 'favourites', label: 'Favourites' },
+        { id: 'settings', label: 'Settings' },
+    ];
+
+    /* =========================================================
+       RENDER
+    ========================================================= */
+    if (status === 'loading') return <div className="min-h-screen flex items-center justify-center"><FaSpinner className="animate-spin text-4xl text-gray-300" /></div>;
+
+    if (status === 'unauthenticated' && !currentUser) return (
+        <div className="min-h-screen flex items-center justify-center">
+            <button onClick={onOpenLogin} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">Login to View Profile</button>
+        </div>
+    );
+
     return (
         <div className="min-h-screen pb-32 bg-slate-50">
             <ProfileHeader onEditClick={() => setShowEditModal(true)} userImage={displayImage} onLogout={handleLogout} />
@@ -154,28 +151,29 @@ export default function ProfilePage() {
 
                 <ProfileStats />
 
-                {/* TABS SELECTOR */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 flex overflow-x-auto no-scrollbar">
-                    {[
-                        { id: 'bookings', label: 'My Bookings', icon: FaCalendarCheck },
-                        { id: 'orders', label: 'My Orders', icon: FaBox },
-                        { id: 'profile', label: 'My Data', icon: FaIdCard },
-                        { id: 'settings', label: 'Settings', icon: FaGear },
-                    ].map(tab => (
+                {/* ============================================================
+                    ✅ TABS SELECTOR (Matches Image Style: Pills)
+                   ============================================================ */}
+                <div className="flex flex-wrap items-center gap-3">
+                    {tabsList.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
                             className={clsx(
-                                'flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all whitespace-nowrap px-4',
-                                activeTab === tab.id ? 'bg-slate-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+                                'px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-200 whitespace-nowrap shadow-sm',
+                                activeTab === tab.id
+                                    ? 'bg-slate-900 text-white transform scale-105'
+                                    : 'bg-white text-slate-600 hover:bg-gray-100'
                             )}
                         >
-                            <tab.icon /> {tab.label}
+                            {tab.label}
                         </button>
                     ))}
                 </div>
 
-                {/* MAIN CONTENT AREA */}
+                {/* ============================================================
+                    ✅ TAB CONTENT AREA
+                   ============================================================ */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[400px]">
 
                     {isLoadingData ? (
@@ -184,7 +182,7 @@ export default function ProfilePage() {
                         </div>
                     ) : (
                         <>
-                            {/* TAB 1: MY BOOKINGS */}
+                            {/* 1. BOOKINGS */}
                             {activeTab === 'bookings' && (
                                 <div className="animate-fade-in">
                                     <div className="flex items-center justify-between mb-6">
@@ -195,7 +193,7 @@ export default function ProfilePage() {
                                 </div>
                             )}
 
-                            {/* TAB 2: MY ORDERS */}
+                            {/* 2. ORDERS */}
                             {activeTab === 'orders' && (
                                 <div className="animate-fade-in">
                                     <div className="flex items-center justify-between mb-6">
@@ -206,32 +204,42 @@ export default function ProfilePage() {
                                 </div>
                             )}
 
-                            {/* TAB 3: PROFILE DATA (Existing) */}
-                            {activeTab === 'profile' && (
-                                <div className="space-y-8 animate-fade-in">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="font-bold text-lg text-slate-900">Personal Information</h3>
-                                        <button onClick={() => setShowEditModal(true)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition">
-                                            <FaPencil className="text-sm" />
-                                        </button>
-                                    </div>
-                                    <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                                        <InfoRow label="Full Name" value={currentUser?.name} icon={<FaUser />} />
-                                        <InfoRow label="Phone" value={currentUser?.phone} icon={<FaPhone />} isVerified={true} />
-                                        <InfoRow label="Email" value={currentUser?.email} icon={<FaEnvelope />} />
-                                        <InfoRow label="Date of Birth" value={currentUser?.dob ? formatDateForInput(currentUser.dob) : 'Not Set'} icon={<FaCalendarCheck />} />
-                                        <InfoRow label="Language" value={currentUser?.preferredLanguage} icon={<FaIdCard />} />
-                                    </div>
+                            {/* 3. FAVOURITES (BLANK) */}
+                            {activeTab === 'favourites' && (
+                                <div className="animate-fade-in py-10 text-center">
+                                    {/* Intentionally left blank or simple empty state */}
+                                    <p className="text-gray-400 text-sm">No favourites yet.</p>
                                 </div>
                             )}
 
-                            {/* TAB 4: SETTINGS (Existing) */}
+                            {/* 4. SETTINGS (Contains User Data + Logout) */}
                             {activeTab === 'settings' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <h3 className="font-bold text-lg text-slate-900 mb-4">Account Settings</h3>
-                                    <button onClick={handleLogout} className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition">
-                                        <FaRightFromBracket /> Logout
-                                    </button>
+                                <div className="space-y-8 animate-fade-in">
+
+                                    {/* Personal Information Section */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="font-bold text-lg text-slate-900">Personal Information</h3>
+                                            <button onClick={() => setShowEditModal(true)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition">
+                                                <FaPencil className="text-sm" />
+                                            </button>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
+                                            <InfoRow label="Full Name" value={currentUser?.name} icon={<FaUser />} />
+                                            <InfoRow label="Phone" value={currentUser?.phone} icon={<FaPhone />} isVerified={true} />
+                                            <InfoRow label="Email" value={currentUser?.email} icon={<FaEnvelope />} />
+                                            <InfoRow label="Date of Birth" value={currentUser?.dob ? formatDateForInput(currentUser.dob) : 'Not Set'} icon={<FaCalendarCheck />} />
+                                            <InfoRow label="Language" value={currentUser?.preferredLanguage} icon={<FaIdCard />} />
+                                        </div>
+                                    </div>
+
+                                    {/* Logout Button */}
+                                    <div>
+                                        <h3 className="font-bold text-lg text-slate-900 mb-4">Account</h3>
+                                        <button onClick={handleLogout} className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition">
+                                            <FaRightFromBracket /> Logout
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </>
@@ -254,7 +262,6 @@ export default function ProfilePage() {
     );
 }
 
-// Simple Helper Component for Profile Data Rows
 function InfoRow({ label, value, icon, isVerified }: any) {
     return (
         <div className="flex items-center justify-between border-b border-gray-200 last:border-0 pb-3 last:pb-0">

@@ -101,19 +101,31 @@ enum CategoryType {
 }
 
 model Category {
-    id   String @id @default(uuid())
-    name String @unique
+    id   String        @id @default(uuid())
+    name String        @unique
+    type CategoryType?
 
-    type CategoryType @default(BOTH)
+    // 1. Self-Relation (Parent/Child)
+    parentId String?
+    parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+    children Category[] @relation("CategoryHierarchy")
 
-    services Service[]
-    products Product[]
+    // 2. Relations to Services
+    services             Service[] @relation("MainCategory")
+    serviceSubcategories Service[] @relation("ServiceSubcategories")
+
+    // 3. Relations to Products
+    products             Product[] @relation("ProductMainCategory")
+    productSubcategories Product[] @relation("ProductSubcategories")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 model Admin {
     id        String   @id @default(uuid())
     email     String   @unique
-    password  String 
+    password  String
     isOnline  Boolean  @default(false)
     lastLogin DateTime @default(now())
     createdAt DateTime @default(now())
@@ -157,9 +169,9 @@ model Order {
     unit       UnitType
     totalPrice Float
 
-    status        OrderStatus   @default(PENDING) 
+    status        OrderStatus   @default(PENDING)
     timeline      Timeline      @default(IMMEDIATE)
-    paymentStatus PaymentStatus @default(PENDING) 
+    paymentStatus PaymentStatus @default(PENDING)
 
     specialInstructions String?
     trackingId          String?
@@ -177,12 +189,12 @@ model User {
     emailVerified DateTime?
     image         String?
 
-    role              String       @default("USER")
+    role              String        @default("USER")
     profileImage      String?
-    providerType      CategoryType @default(BOTH)
+    providerType      CategoryType?
     gender            Gender?
     dob               DateTime?
-    preferredLanguage String?      @default("English")
+    preferredLanguage String?       @default("English")
 
     isPhoneVerified Boolean @default(false)
     isWorker        Boolean @default(false)
@@ -210,7 +222,7 @@ model User {
     products     Product[]
     reviews      Review[]
     bookings     Booking[]
-    requirements Requirement[] 
+    requirements Requirement[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -263,18 +275,18 @@ model Address {
     id           String        @id @default(cuid())
     userId       String
     user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-    landmark     String? 
-    type         String        @default("Home") 
+    landmark     String?
+    type         String        @default("Home")
     line1        String
     line2        String
     city         String
     state        String
     pincode      String
     country      String        @default("India")
-    requirements Requirement[] 
-    createdAt DateTime  @default(now())
-    bookings  Booking[]
-    orders    Order[]
+    requirements Requirement[]
+    createdAt    DateTime      @default(now())
+    bookings     Booking[]
+    orders       Order[]
 }
 
 model Requirement {
@@ -283,9 +295,9 @@ model Requirement {
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
-    type        RequestType 
-    title       String 
-    description String 
+    type        RequestType
+    title       String
+    description String
 
     addressId String
     address   Address @relation(fields: [addressId], references: [id])
@@ -308,7 +320,7 @@ model Service {
     id String @id @default(uuid())
 
     userId     String
-    user       User      @relation(fields: [userId], references: [id])
+    user       User    @relation(fields: [userId], references: [id])
     name       String
     desc       String
     serviceimg String
@@ -316,12 +328,17 @@ model Service {
     altPhone   String?
     coverImg   String?
     mainimg    String?
-    category   Category? @relation(fields: [categoryId], references: [id])
-    categoryId String?
 
-    subCategoryIds String[]
-    priceType      PriceType @default(FIXED)
-    price          Float     @default(0)
+    // ✅ 1. Main Category Relation (matches "MainCategory" in Category model)
+    categoryId String?
+    category   Category? @relation("MainCategory", fields: [categoryId], references: [id])
+
+    // ✅ 2. Subcategories Relation (matches "ServiceSubcategories" in Category model)
+    // This replaces "subCategoryIds String[]"
+    subcategories Category[] @relation("ServiceSubcategories")
+
+    priceType PriceType @default(FIXED)
+    price     Float     @default(0)
 
     addressLine1 String?
     addressLine2 String?
@@ -364,7 +381,8 @@ model Review {
 }
 
 model Product {
-    id     String @id @default(uuid())
+    id String @id @default(uuid())
+
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
@@ -372,7 +390,9 @@ model Product {
     desc String
 
     categoryId String?
-    category   Category? @relation(fields: [categoryId], references: [id])
+    category   Category? @relation("ProductMainCategory", fields: [categoryId], references: [id])
+
+    subcategories Category[] @relation("ProductSubcategories")
 
     productImage String
     gallery      String[]

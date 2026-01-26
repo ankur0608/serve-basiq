@@ -21,7 +21,7 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     const mobileNumber = useUIStore((state) => state.mobileNumber);
     const devOtp = useUIStore((state) => state.devOtp);
     const loginIntent = useUIStore((state) => state.loginIntent);
-    const tempName = useUIStore((state) => state.tempName); // ✅ Get Name from Store
+    const tempName = useUIStore((state) => state.tempName);
 
     // Store Actions
     const onOpenLogin = useUIStore((state) => state.onOpenLogin);
@@ -86,14 +86,14 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         setIsLoading(true);
 
         try {
-            // ✅ Send Name + Phone + OTP to Backend
+            // 1. Verify OTP with Backend
             const res = await fetch("/api/auth/verify-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     phone: mobileNumber,
                     otp: code,
-                    name: tempName // Pass the name
+                    name: tempName
                 }),
             });
 
@@ -102,9 +102,10 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                 throw new Error(errorData.message || "Invalid OTP");
             }
 
+            // user object from DB
             const user = await res.json();
 
-            // NextAuth Login
+            // 2. Sign in with NextAuth
             const signInResult = await signIn("credentials", {
                 phone: mobileNumber,
                 redirect: false,
@@ -116,16 +117,22 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
             setCurrentUser(user);
             onCloseOtp();
 
-            // Redirect Logic
+            // ============================================================
+            // 🔄 UPDATED REDIRECTION LOGIC
+            // ============================================================
+
             if (loginIntent === 'provider') {
-                // Check if provider setup is complete
-                if (user.role === 'PROVIDER' || (user.providerType && user.providerType !== 'BOTH')) {
-                    // Note: You may need to adjust the logic for 'BOTH' depending on your default
+                // CASE 1: Existing Provider
+                // If providerType is NOT null (meaning it is SERVICE, PRODUCT, or BOTH)
+                if (user.providerType) {
                     router.push('/provider/dashboard');
-                } else {
+                }
+                // CASE 2: New User (providerType is null)
+                else {
                     router.push('/become-pro');
                 }
             } else {
+                // Intent is 'user' (Find Services)
                 router.refresh();
             }
 

@@ -5,6 +5,7 @@ import ClientLayout from "@/components/layout/ClientLayout";
 import ModalProvider from "@/components/providers/ModalProvider";
 import QueryProvider from "@/components/providers/QueryProvider";
 import AuthProvider from "@/components/providers/AuthProvider";
+import AuthListener from "@/components/auth/AuthListener";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -34,6 +35,7 @@ export default function RootLayout({
         <AuthProvider>
           <QueryProvider>
             <ClientLayout>
+              <AuthListener />
               {children}
             </ClientLayout>
 

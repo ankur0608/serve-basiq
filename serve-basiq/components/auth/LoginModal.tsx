@@ -100,7 +100,17 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const handleGoogleLogin = async () => {
     if (isLoading) return;
     setIsGoogleLoading(true);
-    const callbackUrl = loginIntent === 'provider' ? "/become-pro" : "/";
+
+    // ✅ STEP 1: Save the intent to memory before leaving
+    // This remembers if they wanted to "Find Services" or "Become a Provider"
+    if (typeof window !== "undefined") {
+      localStorage.setItem("loginIntent", loginIntent);
+    }
+
+    // We just redirect them back to the Home page (or wherever they were)
+    // The "AuthListener" (Step 2) will handle the rest when they return.
+    const callbackUrl = "/";
+
     try {
       await signIn("google", { callbackUrl });
     } catch (error) {
@@ -109,7 +119,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       setIsGoogleLoading(false);
     }
   };
-
   if (!isOpen && !showModal) return null;
 
   return (

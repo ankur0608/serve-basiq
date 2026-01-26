@@ -6,28 +6,39 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
     try {
-        // 1. Get the type param from URL (e.g., /api/categories?type=SERVICE)
         const { searchParams } = new URL(req.url);
         const typeParam = searchParams.get('type');
 
-        let whereClause = {};
+        // 1. Base filter: We only want PARENTS (Level 1)
+        let whereClause: any = {
+            parentId: null
+        };
 
         // 2. If a type is requested, filter by that Type OR 'BOTH'
         if (typeParam) {
-            // Ensure uppercase to match Enum
             const type = typeParam.toUpperCase() as CategoryType;
-            whereClause = {
-                OR: [
-                    { type: type },
-                    { type: 'BOTH' }
-                ]
-            };
+            whereClause.AND = [
+                {
+                    OR: [
+                        { type: type },
+                        { type: 'BOTH' }
+                    ]
+                }
+            ];
         }
 
         const categories = await prisma.category.findMany({
             where: whereClause,
-            select: { id: true, name: true }, // Fetch only what we need
-            orderBy: { name: 'asc' }          // Alphabetical order is better for dropdowns
+            select: {
+                id: true,
+                name: true,
+                // ⚠️ IMPORTANT: We fetch 'children' instead of 'subcategories'
+                children: {
+                    select: { id: true, name: true },
+                    orderBy: { name: 'asc' }
+                }
+            },
+            orderBy: { name: 'asc' }
         });
 
         return NextResponse.json(categories);
