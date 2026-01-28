@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { FaUser, FaMapLocation, FaPhone, FaEnvelope, FaXmark, FaCheck, FaCity, FaLocationDot, FaCamera, FaSpinner, FaCalendarDays, FaLanguage } from 'react-icons/fa6';
+import { FaUser, FaMapLocation, FaPhone, FaEnvelope, FaXmark, FaCheck, FaCity, FaLocationDot, FaSpinner, FaCalendarDays, FaLanguage } from 'react-icons/fa6';
 import clsx from 'clsx';
 import Image from 'next/image';
 
@@ -11,9 +11,15 @@ export interface ProfileData {
     addressLine1: string; addressLine2: string; landmark: string; city: string; state: string; pincode: string;
 }
 
+// 1. Updated Interface to include the new props
 interface ProfileEditModalProps {
-    isOpen: boolean; onClose: () => void; initialData: ProfileData;
+    isOpen: boolean;
+    onClose: () => void;
+    initialData: ProfileData;
     onSave: (data: ProfileData, file: File | null) => Promise<void>;
+    isEmailLocked?: boolean;        // Added
+    isPhoneLocked?: boolean;        // Added
+    onAddPhoneClick?: () => void;   // Added
 }
 
 const DEFAULT_DATA: ProfileData = {
@@ -21,7 +27,15 @@ const DEFAULT_DATA: ProfileData = {
     addressLine1: '', addressLine2: '', landmark: '', city: '', state: '', pincode: '', image: ''
 };
 
-export default function ProfileEditModal({ isOpen, onClose, initialData, onSave }: ProfileEditModalProps) {
+export default function ProfileEditModal({
+    isOpen,
+    onClose,
+    initialData,
+    onSave,
+    isEmailLocked,      // Destructure new props
+    isPhoneLocked,
+    onAddPhoneClick
+}: ProfileEditModalProps) {
     const [formData, setFormData] = useState<ProfileData>(DEFAULT_DATA);
     const [preview, setPreview] = useState<string | null>(null);
     const [file, setFile] = useState<File | null>(null);
@@ -78,8 +92,38 @@ export default function ProfileEditModal({ isOpen, onClose, initialData, onSave 
                                 <div className="md:col-span-2"><InputField label="Full Name" value={formData.name} onChange={(v: string) => setFormData({ ...formData, name: v })} /></div>
                                 <div><InputField label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={(v: string) => setFormData({ ...formData, dateOfBirth: v })} icon={<FaCalendarDays />} /></div>
                                 <div><SelectField label="Preferred Language" value={formData.preferredLanguage} onChange={(v: string) => setFormData({ ...formData, preferredLanguage: v })} options={['English', 'Hindi', 'Gujarati', 'Marathi']} icon={<FaLanguage />} /></div>
-                                <div><InputField label="Email Address" value={formData.email} onChange={(v: string) => setFormData({ ...formData, email: v })} type="email" icon={<FaEnvelope />} /></div>
-                                <div><InputField label="Mobile Number" value={formData.phone} onChange={(v: string) => setFormData({ ...formData, phone: v })} type="tel" icon={<FaPhone />} /></div>
+
+                                {/* 2. Updated Fields to support locking and actions */}
+                                <div>
+                                    <InputField
+                                        label="Email Address"
+                                        value={formData.email}
+                                        onChange={(v: string) => setFormData({ ...formData, email: v })}
+                                        type="email"
+                                        icon={<FaEnvelope />}
+                                        disabled={isEmailLocked} // Apply lock
+                                    />
+                                </div>
+                                <div>
+                                    <InputField
+                                        label="Mobile Number"
+                                        value={formData.phone}
+                                        onChange={(v: string) => setFormData({ ...formData, phone: v })}
+                                        type="tel"
+                                        icon={<FaPhone />}
+                                        disabled={isPhoneLocked} // Apply lock
+                                        // 3. Add "Change" button if locked and callback provided
+                                        rightElement={onAddPhoneClick && (
+                                            <button
+                                                type="button"
+                                                onClick={onAddPhoneClick}
+                                                className="text-xs font-bold text-blue-600 hover:text-blue-700 transition"
+                                            >
+                                                {formData.phone ? 'Change' : 'Add'}
+                                            </button>
+                                        )}
+                                    />
+                                </div>
                             </div>
                         </div>
                         <div className="border-t border-gray-100"></div>
@@ -87,10 +131,7 @@ export default function ProfileEditModal({ isOpen, onClose, initialData, onSave 
                             <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2"><FaMapLocation /> Address Details</h4>
                             <div className="grid grid-cols-2 gap-5">
                                 <div className="col-span-2"><InputField label="Address Line 1" value={formData.addressLine1} onChange={(v: string) => setFormData({ ...formData, addressLine1: v })} icon={<FaLocationDot />} /></div>
-
-                                {/* ✅ CORRECT BINDING FOR ADDRESS LINE 2 */}
                                 <div className="col-span-2"><InputField label="Address Line 2" value={formData.addressLine2} onChange={(v: string) => setFormData({ ...formData, addressLine2: v })} /></div>
-
                                 <div className="col-span-2"><InputField label="Landmark" value={formData.landmark} onChange={(v: string) => setFormData({ ...formData, landmark: v })} /></div>
                                 <InputField label="City" value={formData.city} onChange={(v: string) => setFormData({ ...formData, city: v })} icon={<FaCity />} />
                                 <InputField label="Pincode" value={formData.pincode} onChange={(v: string) => setFormData({ ...formData, pincode: v })} maxLength={6} />
@@ -110,17 +151,34 @@ export default function ProfileEditModal({ isOpen, onClose, initialData, onSave 
     );
 }
 
-function InputField({ label, value, onChange, type = "text", placeholder, icon, maxLength }: any) {
+// 4. Updated InputField to accept disabled and rightElement props
+function InputField({ label, value, onChange, type = "text", placeholder, icon, maxLength, disabled, rightElement }: any) {
     return (
         <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">{label}</label>
+            <div className="flex justify-between items-center mb-1.5 ml-1">
+                <label className="block text-xs font-bold text-slate-700">{label}</label>
+                {rightElement}
+            </div>
             <div className="relative">
-                <input type={type} value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} maxLength={maxLength} className={clsx("w-full border rounded-xl px-4 py-3 text-sm font-medium outline-none transition border-gray-200 bg-white focus:border-blue-500", icon ? "pl-10" : "")} />
+                <input
+                    type={type}
+                    value={value || ''}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    maxLength={maxLength}
+                    disabled={disabled}
+                    className={clsx(
+                        "w-full border rounded-xl px-4 py-3 text-sm font-medium outline-none transition border-gray-200 focus:border-blue-500",
+                        icon ? "pl-10" : "",
+                        disabled ? "bg-gray-50 text-gray-500 cursor-not-allowed" : "bg-white"
+                    )}
+                />
                 {icon && <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>}
             </div>
         </div>
     );
 }
+
 function SelectField({ label, value, onChange, options, icon }: any) {
     return (
         <div>
