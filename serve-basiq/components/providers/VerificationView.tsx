@@ -13,49 +13,66 @@ interface Props {
     onBack: () => void;
 }
 
-export function VerificationView({ userId, existingData, showToast, onBack }: Props) {
+export function VerificationView({
+    userId,
+    existingData,
+    showToast,
+    onBack
+}: Props) {
     const [step, setStep] = useState<1 | 2>(1);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [form, setForm] = useState({
-        // Step 1: Profile
-        fullName: '', email: '', phone: '', gender: 'MALE', dob: '', preferredLanguage: 'English',
-        addressLine1: '', addressLine2: '', landmark: '', city: '', state: '', pincode: '',
-        shopName: '', bizAddressLine1: '', bizAddressLine2: '', bizCity: '', bizState: '', bizPincode: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        gender: 'MALE',
+        dob: '',
+        preferredLanguage: 'English',
+        addressLine1: '',
+        addressLine2: '',
+        landmark: '',
+        city: '',
+        state: '',
+        pincode: '',
+        shopName: '',
+        bizAddressLine1: '',
+        bizAddressLine2: '',
+        bizCity: '',
+        bizState: '',
+        bizPincode: '',
         sameAsPersonal: false,
-        instagramUrl: '', facebookUrl: '', youtubeUrl: '', websiteUrl: '',
-
-        // Step 2: KYC
+        instagramUrl: '',
+        facebookUrl: '',
+        youtubeUrl: '',
+        websiteUrl: '',
         idProofType: 'Aadhaar',
         idProofNumber: '',
         idProofImg: '',
         gstRegistered: false,
-        gstNumber: ''
+        gstNumber: '',
     });
 
     useEffect(() => {
         if (!existingData) return;
-
-        const userData = existingData;
-        const kyc = userData.kycDetails || {};
-        const home = userData.addresses?.find((a: any) => a.type === 'Home');
-        const work = userData.addresses?.find((a: any) => a.type === 'Work');
+        const kyc = existingData.kycDetails || {};
+        const home = existingData.addresses?.find((a: any) => a.type === 'Home');
+        const work = existingData.addresses?.find((a: any) => a.type === 'Work');
 
         setForm(prev => ({
             ...prev,
-            // Step 1
-            fullName: userData.name || '',
-            email: userData.email || '',
-            phone: userData.phone || '',
-            gender: userData.gender || 'MALE',
-            dob: userData.dob ? new Date(userData.dob).toISOString().split('T')[0] : '',
-            preferredLanguage: userData.preferredLanguage || 'English',
-            shopName: userData.shopName || '',
-            instagramUrl: userData.instagramUrl || '',
-            facebookUrl: userData.facebookUrl || '',
-            youtubeUrl: userData.youtubeUrl || '',
-            websiteUrl: userData.websiteUrl || '',
+            fullName: existingData.name || '',
+            email: existingData.email || '',
+            phone: existingData.phone || '',
+            gender: existingData.gender || 'MALE',
+            dob: existingData.dob ? new Date(existingData.dob).toISOString().split('T')[0] : '',
+            preferredLanguage: existingData.preferredLanguage || 'English',
+            shopName: existingData.shopName || '',
+            instagramUrl: existingData.instagramUrl || '',
+            facebookUrl: existingData.facebookUrl || '',
+            youtubeUrl: existingData.youtubeUrl || '',
+            websiteUrl: existingData.websiteUrl || '',
             addressLine1: home?.line1 || '',
             addressLine2: home?.line2 || '',
             landmark: home?.landmark || '',
@@ -67,8 +84,6 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
             bizCity: work?.city || '',
             bizState: work?.state || '',
             bizPincode: work?.pincode || '',
-
-            // Step 2 (KYC)
             idProofType: kyc.idProofType || 'Aadhaar',
             idProofNumber: kyc.idProofNumber || '',
             idProofImg: kyc.idProofFrontImg || '',
@@ -77,16 +92,15 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         }));
     }, [existingData]);
 
-    // ✅ Defined inside the component scope
-    const getInputClass = (field: string) => clsx(
-        'w-full border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all',
-        errors[field] ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-white hover:border-slate-300'
-    );
+    const getInputClass = (field: string) =>
+        clsx(
+            'w-full border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all',
+            errors[field] ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-white hover:border-slate-300'
+        );
 
-    // ✅ Defined inside the component scope
     const updateField = useCallback((field: string, value: any) => {
-        setErrors((e) => ({ ...e, [field]: '' }));
-        setForm((prev) => {
+        setErrors(e => ({ ...e, [field]: '' }));
+        setForm(prev => {
             const next = { ...prev, [field]: value };
             if (prev.sameAsPersonal) {
                 if (field === 'addressLine1') next.bizAddressLine1 = value;
@@ -114,20 +128,23 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         return Object.keys(e).length === 0;
     };
 
-    const handleNext = () => {
+    // ✅ FIX 1: Ensure handleNext prevents default events
+    const handleNext = (e?: React.MouseEvent) => {
+        e?.preventDefault(); // Stop form submission triggers
+
         if (!validateStep()) {
             showToast('Please complete required fields', 'error');
             return;
         }
-        setStep((s) => (s + 1) as any);
+        setStep(2);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // ✅ FIX 2: Ensure handleSubmit ONLY runs API call on Step 2
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // 🛑 PREVENT AUTO-SUBMIT ON ENTER KEY
-        // If not on the final step (Step 2), just go to next step
+        // 🛑 CRITICAL CHECK: If we are not on the final step, treat 'Submit' (or Enter key) as 'Next'
         if (step !== 2) {
             handleNext();
             return;
@@ -139,13 +156,16 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         }
 
         setLoading(true);
+
         try {
             const res = await fetch('/api/provider/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, ...form }),
             });
+
             const data = await res.json();
+
             if (data.success) {
                 showToast('Profile submitted for verification', 'success');
                 onBack();
@@ -161,33 +181,48 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
 
     return (
         <div className="max-w-4xl mx-auto px-4 pb-20 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Stepper UI */}
+            {/* STEPPER */}
             <div className="flex flex-col items-center">
                 <div className="relative w-full max-w-xs mb-6 mt-4">
                     <div className="absolute top-1/2 w-full h-1 bg-slate-100 -translate-y-1/2 rounded-full" />
-                    <div className="absolute top-1/2 h-1 bg-slate-900 transition-all duration-500 ease-out rounded-full" style={{ width: `${(step - 1) * 100}%` }} />
+                    <div
+                        className="absolute top-1/2 h-1 bg-slate-900 transition-all duration-500 rounded-full"
+                        style={{ width: step === 1 ? '0%' : '100%' }}
+                    />
                     <div className="relative flex justify-between">
-                        {[1, 2].map((s) => (
-                            <div key={s} className={clsx(
-                                "w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-sm ring-4 ring-white z-10 transition-all duration-300",
-                                step >= s ? "bg-[#0f172a] text-white" : "bg-white border border-slate-200 text-slate-400"
-                            )}>
+                        {[1, 2].map(s => (
+                            <div
+                                key={s}
+                                className={clsx(
+                                    'w-10 h-10 rounded-full flex items-center justify-center font-bold ring-4 ring-white z-10',
+                                    step >= s ? 'bg-slate-900 text-white' : 'bg-white border text-slate-400'
+                                )}
+                            >
                                 {step > s ? <Check size={18} /> : s}
                             </div>
                         ))}
                     </div>
                 </div>
-                <div className="text-center">
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                        {step === 1 ? "Profile Details" : "KYC Documents"}
-                    </h2>
-                    <p className="text-slate-500 text-sm mt-1">
-                        {step === 1 ? "Verify your contact and business location" : "Upload identity proof to verify account"}
-                    </p>
-                </div>
+
+                <h2 className="text-2xl font-black text-slate-900">
+                    {step === 1 ? 'Profile Details' : 'KYC Documents'}
+                </h2>
+                <p className="text-slate-500 text-sm mt-1">
+                    {step === 1 ? 'Verify your contact and business location' : 'Upload identity proof to verify account'}
+                </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {/* FORM */}
+            <form
+                onSubmit={handleSubmit}
+                // Optional: Helper to prevent Enter key on Step 1, though the handleSubmit fix covers this
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && step !== 2) {
+                        e.preventDefault();
+                    }
+                }}
+                className="space-y-6"
+            >
                 {step === 1 && (
                     <StepOneProfile
                         form={form}
@@ -209,22 +244,28 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
                 )}
 
                 <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
-                    <button type="button" onClick={() => step > 1 ? setStep((step - 1) as any) : onBack()} className="px-6 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => (step === 1 ? onBack() : setStep(1))}
+                        className="px-6 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                    >
                         {step === 1 ? 'Cancel' : <><ArrowLeft size={18} /> Back</>}
                     </button>
 
-                    {/* Next Button (Type=button) */}
-                    {step < 2 ? (
+                    {step === 1 ? (
                         <button
                             type="button"
                             onClick={handleNext}
-                            className="px-8 py-3 bg-[#0f172a] text-white font-bold rounded-xl flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200"
+                            className="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl flex items-center gap-2 hover:bg-slate-800"
                         >
                             Next Step <ArrowRight size={18} />
                         </button>
                     ) : (
-                        // Submit Button (Type=submit) - Only on Final Step
-                        <button type="submit" disabled={loading} className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl flex items-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-100 disabled:opacity-60">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl flex items-center gap-2 hover:bg-emerald-700 disabled:opacity-60"
+                        >
                             {loading ? <Loader2 className="animate-spin" /> : <><Check size={18} /> Submit Verification</>}
                         </button>
                     )}

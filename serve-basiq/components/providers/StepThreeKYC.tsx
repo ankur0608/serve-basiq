@@ -19,6 +19,19 @@ export default function StepThreeKYC({
 }) {
     const [uploading, setUploading] = useState<Record<string, boolean>>({});
 
+    // ✅ Helper to determine the label text based on selection
+    const getUploadLabel = () => {
+        switch (form.idProofType) {
+            case 'PAN':
+                return 'Upload PAN Card';
+            case 'DL':
+                return 'Upload Driving License';
+            case 'Aadhaar':
+            default:
+                return 'Upload Aadhaar Card';
+        }
+    };
+
     const handleUpload = useCallback(async (file: File, field: string) => {
         setUploading((p) => ({ ...p, [field]: true }));
         try {
@@ -71,7 +84,8 @@ export default function StepThreeKYC({
                     )}
                     <div>
                         <p className="text-sm font-bold text-slate-700">
-                            {form[field] ? 'Document Uploaded' : uploading[field] ? 'Uploading...' : 'Click to Upload Document'}
+                            {/* Use the dynamic label here as well if the file isn't uploaded yet */}
+                            {form[field] ? 'Document Uploaded' : uploading[field] ? 'Uploading...' : `Click to ${label}`}
                         </p>
                         {!form[field] && !uploading[field] && (
                             <p className="text-xs text-slate-400 mt-1">Supports JPG, PNG (Max 5MB)</p>
@@ -122,8 +136,9 @@ export default function StepThreeKYC({
                     </div>
                 </div>
 
-                {/* Single Image Picker */}
-                <FileUploadBox field="idProofImg" label="Upload ID Document" />
+                {/* Single Image Picker with Dynamic Label */}
+                {/* ✅ Change: We call getUploadLabel() here */}
+                <FileUploadBox field="idProofImg" label={getUploadLabel()} />
 
                 {/* GST Section */}
                 <div className="space-y-4 pt-4 border-t border-slate-50">
