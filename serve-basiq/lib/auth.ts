@@ -5,69 +5,43 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
-    // @ts-ignore - PrismaAdapter type mismatch fix for NextAuth v4
+    // @ts-ignore
     adapter: PrismaAdapter(prisma),
-
-    session: {
-        strategy: "jwt",
-    },
-
+    session: { strategy: "jwt" },
     providers: [
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID!,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
             allowDangerousEmailAccountLinking: true,
         }),
-
         CredentialsProvider({
             name: "Mobile Login",
             credentials: {
                 phone: { label: "Phone", type: "text" },
                 otp: { label: "OTP", type: "text" },
             },
-
             async authorize(credentials) {
-                if (!credentials?.phone) {
-                    throw new Error("Phone number is required");
-                }
-
-                // ⚠️ SECURITY NOTE: You should verify the OTP here before finding the user.
-                // const isValidOtp = await verifyOtp(credentials.phone, credentials.otp);
-                // if (!isValidOtp) throw new Error("Invalid OTP");
-
+                if (!credentials?.phone) throw new Error("Phone number is required");
                 const user = await prisma.user.findUnique({
                     where: { phone: credentials.phone },
                 });
-
-                if (user) {
-                    // Ensure we return all the fields needed for the JWT callback
-                    return user as any;
-                }
-
+                if (user) return user as any;
                 return null;
             },
         }),
     ],
-
     events: {
         async signIn({ user, account }) {
             if (account?.provider === "google") {
-                // Determine logic for providerType (assuming "google" for google logins)
                 await prisma.user.update({
                     where: { id: user.id },
-                    data: {
-                        emailVerified: new Date(),
-
-                    },
+                    data: { emailVerified: new Date() },
                 });
             }
         },
     },
-
     callbacks: {
-        // 1. JWT Callback: Called whenever a token is created or updated
         async jwt({ token, user, trigger, session }) {
-            // Initial Sign In: Copy data from DB User to JWT Token
             if (user) {
                 token.id = user.id;
                 token.phone = user.phone;
@@ -76,34 +50,25 @@ export const authOptions: NextAuthOptions = {
                 token.isWorker = user.isWorker;
                 token.providerType = user.providerType;
             }
-
-            // Client-side Update: When you call update({ isPhoneVerified: true }) from the client
             if (trigger === "update" && session) {
                 return { ...token, ...session };
             }
-
             return token;
         },
-
-        // 2. Session Callback: Called whenever useSession() is used
         async session({ session, token }) {
             if (session.user && token) {
-                session.user.id = token.id;
-                session.user.phone = token.phone;
-                session.user.isPhoneVerified = token.isPhoneVerified;
-                session.user.role = token.role;
-                session.user.isWorker = token.isWorker;
-                session.user.providerType = token.providerType;
-            }
+                // ✅ FIX: Fallback to token.sub if token.id is missing
+                session.user.id = (token.id as string) || (token.sub as string);
 
+                session.user.phone = token.phone as string | null;
+                session.user.isPhoneVerified = token.isPhoneVerified as boolean;
+                session.user.role = token.role as string;
+                session.user.isWorker = token.isWorker as boolean;
+                session.user.providerType = token.providerType as string | null;
+            }
             return session;
         },
     },
-
-    pages: {
-        signIn: "/login",
-        error: "/login",
-    },
-
+    pages: { signIn: "/login", error: "/login" },
     secret: process.env.AUTH_SECRET,
 };
