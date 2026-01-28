@@ -207,15 +207,15 @@ export function ProfileView({ stats, user, onEdit }: any) {
                 </div>
 
                 {/* Banking */}
-                <div className="bg-white rounded-2xl shadow-sm border-l-4 border-emerald-500 p-6 relative overflow-hidden">
-                    <Landmark className="absolute top-4 right-4 text-emerald-100 -rotate-12" size={48} />
-                    <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2"><Landmark size={14} /> Banking</h3>
+                {/* <div className="bg-white rounded-2xl shadow-sm border-l-4 border-emerald-500 p-6 relative overflow-hidden"> */}
+                    {/* <Landmark className="absolute top-4 right-4 text-emerald-100 -rotate-12" size={48} /> */}
+                    {/* <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2"><Landmark size={14} /> Banking</h3>
                     <div className="space-y-3 text-sm">
                         <p className="text-slate-600 flex justify-between"><strong>Bank Name:</strong> <span className="text-slate-900">{user?.bankName || "N/A"}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Account No:</strong> <span className="text-slate-900 font-mono">•••• {user?.bankAccountNumber ? user.bankAccountNumber.slice(-4) : "0000"}</span></p>
-                        <p className="text-slate-600 flex justify-between"><strong>IFSC:</strong> <span className="text-slate-900 font-mono">{user?.bankIfsc || "N/A"}</span></p>
-                    </div>
-                </div>
+                        <p className="text-slate-600 flex justify-between"><strong>IFSC:</strong> <span className="text-slate-900 font-mono">{user?.bankIfsc || "N/A"}</span></p> */}
+                    {/* </div> */}
+                {/* </div> */}
 
                 {/* KYC - ✅ UPDATED TO USE kycDetails */}
                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-purple-500 p-6 relative overflow-hidden">

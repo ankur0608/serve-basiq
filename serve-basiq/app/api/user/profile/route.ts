@@ -1,51 +1,62 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export const dynamic = 'force-dynamic'; // Ensure data is always fresh
+export const dynamic = 'force-dynamic';
 
-/* ================= 1. GET PROFILE (User + Address + Activity) ================= */
+/* ================= 1. GET PROFILE (SECURE) ================= */
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const identifier = searchParams.get('identifier');
+    console.log("🚀 [API] GET Profile Started");
 
-    if (!identifier) {
-      return NextResponse.json({ error: 'Missing identifier' }, { status: 400 });
+    // 1. ✅ GET SESSION
+    const session = await getServerSession(authOptions);
+
+    // 🔴 FIX: Removed the check for ".email"
+    // We now just check if 'session.user' exists.
+    if (!session || !session.user) {
+      console.log("❌ [API] Unauthorized: No session found");
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Search for user by ID, Email, OR Phone
-    const user = await prisma.user.findFirst({
+    // 2. ✅ USE SESSION ID
+    // We cast to 'any' because TypeScript might complain about custom fields like 'id'
+    const userId = (session.user as any).id;
+
+    console.log("👤 [API] Fetching data for User ID:", userId);
+
+    if (!userId) {
+      console.log("❌ [API] Unauthorized: No User ID in session");
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Search for user by ID
+    const user = await prisma.user.findUnique({
       where: {
-        OR: [
-          { id: identifier },
-          { email: identifier },
-          { phone: identifier }
-        ]
+        id: userId
       },
       include: {
         addresses: true,
-        // ✅ 1. Fetch Orders (Products)
         orders: {
           include: {
             product: {
               select: {
                 name: true,
                 productImage: true,
-                user: { select: { shopName: true, name: true } } // Seller Name
+                user: { select: { shopName: true, name: true } }
               }
             }
           },
           orderBy: { createdAt: 'desc' }
         },
-        // ✅ 2. Fetch Bookings (Services)
         bookings: {
           include: {
             service: {
               select: {
                 name: true,
                 mainimg: true,
-                user: { select: { name: true, shopName: true } }, // Provider Name
+                user: { select: { name: true, shopName: true } },
                 price: true,
                 priceType: true
               }
@@ -57,20 +68,32 @@ export async function GET(request: Request) {
     });
 
     if (!user) {
+      console.log("❌ [API] User not found in DB");
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    console.log("✅ [API] Profile Fetched Successfully");
     return NextResponse.json(user);
+
   } catch (error) {
-    console.error("Profile Fetch Error:", error);
+    console.error("🔥 [API] Profile Fetch Error:", error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
-
-/* ================= 2. UPDATE PROFILE (Saves Data) ================= */
+/* ================= 2. UPDATE PROFILE (SECURE) ================= */
 export async function POST(request: Request) {
   try {
+    console.log("🚀 [API] POST Profile Update Started");
+
+    // 1. ✅ Check Session
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      console.log("❌ [API] Unauthorized: No session found");
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
+    console.log("📦 [API] Update Payload:", body);
 
     const {
       userId,
@@ -88,8 +111,11 @@ export async function POST(request: Request) {
       country,
     } = body;
 
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // 2. ✅ Security Check: Ensure User is updating THEIR OWN profile
+    const sessionUserId = (session.user as any).id;
+    if (!userId || userId !== sessionUserId) {
+      console.log("⚠️ [API] Forbidden: User ID mismatch", { requested: userId, session: sessionUserId });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const userUpdateData: any = { name };
@@ -100,13 +126,15 @@ export async function POST(request: Request) {
     if (dateOfBirth) userUpdateData.dob = new Date(dateOfBirth);
     if (preferredLanguage) userUpdateData.preferredLanguage = preferredLanguage;
 
-    // 1. Update User
+    // 3. Update User
+    console.log("🔄 [API] Updating User Info...");
     await prisma.user.update({
       where: { id: userId },
       data: userUpdateData,
     });
 
-    // 2. Update Address
+    // 4. Update Address
+    console.log("🔄 [API] Updating Address Info...");
     const existingAddress = await prisma.address.findFirst({ where: { userId } });
 
     const addressData = {
@@ -120,30 +148,32 @@ export async function POST(request: Request) {
     };
 
     if (existingAddress) {
+      console.log("📝 [API] Updating existing address:", existingAddress.id);
       await prisma.address.update({
         where: { id: existingAddress.id },
         data: addressData,
       });
     } else {
       if (addressLine1 || city || pincode) {
+        console.log("✨ [API] Creating new address record");
         await prisma.address.create({
           data: { userId, type: 'Home', ...addressData },
         });
       }
     }
 
-    // 3. Return Updated User (with relations to keep UI consistent)
+    // 5. Return Updated User
+    console.log("🔍 [API] Fetching updated profile to return...");
     const finalUser = await prisma.user.findUnique({
       where: { id: userId },
       include: {
         addresses: true,
-        // We don't necessarily need to return full orders/bookings on profile update
-        // unless you want to refetch everything. Usually addresses is enough here.
         orders: true,
         bookings: true
       },
     });
 
+    console.log("✅ [API] Profile Update Complete");
     return NextResponse.json(finalUser);
 
   } catch (error: any) {

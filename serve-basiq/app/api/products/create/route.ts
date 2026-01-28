@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { CategoryType } from "@prisma/client";
 
-// Zod Schema
+// 1. Updated Zod Schema to match Frontend Payload
 const ProductSchema = z.object({
-    userId: z.string(),
     name: z.string(),
-    desc: z.string(),
-    productImage: z.string().url(),
+    desc: z.string().optional().or(z.literal('')),
+    productImage: z.string().min(1, "Main image is required"),
     gallery: z.array(z.string()).optional(),
     price: z.number(),
     moq: z.number(),
 
-    category: z.string(),
+    // ✅ Changed from 'category' to 'categoryId'
+    categoryId: z.string().min(1, "Category is required"),
+    // ✅ Added subcategories array
+    subCategoryIds: z.array(z.string()).optional(),
 
     stockStatus: z.enum(['IN_STOCK', 'ON_DEMAND']).default('IN_STOCK'),
     unit: z.enum(['PIECE', 'KG', 'BOX', 'LITER']).default('PIECE'),
@@ -23,52 +24,86 @@ const ProductSchema = z.object({
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        console.log("📝 [API] Creating Product:", body.name);
+        console.log("📝 [API] Product Create/Update Body:", JSON.stringify(body, null, 2));
 
-        const payload = ProductSchema.parse(body);
+        const { userId, productId, ...formData } = body;
 
-        const product = await prisma.product.create({
-            data: {
-                // ✅ FIX: Use 'connect' instead of raw 'userId'
-                // This forces Prisma to use the correct input type that allows nested writes (like category)
-                user: {
-                    connect: { id: payload.userId }
+        if (!userId) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        }
+
+        // 2. Validate with Zod
+        const data = ProductSchema.parse(formData);
+
+        // 3. Prepare Relation Connections
+        const subCategoryConnect = data.subCategoryIds?.map((id) => ({ id })) || [];
+
+        const basePayload = {
+            name: data.name,
+            desc: data.desc || "",
+            productImage: data.productImage,
+            gallery: data.gallery || [],
+            price: data.price,
+            moq: data.moq,
+            stockStatus: data.stockStatus,
+            unit: data.unit,
+            deliveryType: data.deliveryType,
+            isVerified: false,
+        };
+
+        let product;
+
+        if (productId) {
+            // --- UPDATE EXISTING PRODUCT ---
+            console.log(`🔄 Updating Product: ${productId}`);
+            product = await prisma.product.update({
+                where: { id: productId },
+                data: {
+                    ...basePayload,
+                    // Update Category (Connect New / Disconnect Old)
+                    category: data.categoryId
+                        ? { connect: { id: data.categoryId } }
+                        : { disconnect: true },
+
+                    // Update Subcategories (Replace list using 'set')
+                    subcategories: {
+                        set: subCategoryConnect
+                    }
                 },
+            });
+        } else {
+            // --- CREATE NEW PRODUCT ---
+            console.log(`✨ Creating Product for User: ${userId}`);
+            product = await prisma.product.create({
+                data: {
+                    // Connect User
+                    user: { connect: { id: userId } },
 
-                name: payload.name,
-                desc: payload.desc,
-                price: payload.price,
-                moq: payload.moq,
-                productImage: payload.productImage,
-                gallery: payload.gallery || [],
-                stockStatus: payload.stockStatus,
-                unit: payload.unit,
-                deliveryType: payload.deliveryType,
-                isVerified: false,
+                    ...basePayload,
 
-                // ✅ Link to Category
-                category: {
-                    connectOrCreate: {
-                        where: { name: payload.category },
-                        create: {
-                            name: payload.category,
-                            type: CategoryType.PRODUCT
-                        },
+                    // Connect Category
+                    category: {
+                        connect: { id: data.categoryId }
                     },
-                },
-            },
-            include: {
-                category: true
-            }
-        });
 
+                    // Connect Subcategories (Use 'connect' for create)
+                    subcategories: {
+                        connect: subCategoryConnect
+                    }
+                },
+            });
+        }
+
+        console.log("✅ Success! Product ID:", product.id);
         return NextResponse.json({ success: true, product });
 
     } catch (error: any) {
         console.error("❌ Create Product Error:", error);
+
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ success: false }, { status: 400 });
+            return NextResponse.json({ success: false, message: "Validation Error" }, { status: 400 });
         }
-        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+
+        return NextResponse.json({ success: false, message: error.message || "Server Error" }, { status: 500 });
     }
 }

@@ -10,7 +10,15 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        services: true,
+        // ❌ WAS: services: true,
+        // ✅ CHANGE TO:
+        services: {
+          include: {
+            subcategories: {
+              select: { id: true, name: true } // Fetch the IDs needed for the edit form
+            }
+          }
+        },
         addresses: true,
         kycDetails: true,
       },
@@ -18,11 +26,12 @@ export async function POST(req: Request) {
 
     if (!user) return NextResponse.json({ success: false }, { status: 404 });
 
+    // ... rest of your existing code (Bookings, Orders, Stats) ...
+    // ... no changes needed below here ...
+
     // 1. Fetch Bookings
     const bookings = await prisma.booking.findMany({
-      where: {
-        service: { userId: userId }
-      },
+      where: { service: { userId: userId } },
       include: {
         user: { select: { name: true, phone: true, image: true } },
         service: { select: { name: true, price: true } },
@@ -31,11 +40,9 @@ export async function POST(req: Request) {
       orderBy: { createdAt: 'desc' }
     });
 
-    // 2. ✅ NEW: Fetch Orders
+    // 2. Fetch Orders
     const orders = await prisma.order.findMany({
-      where: {
-        product: { userId: userId } // Matches Provider's Products
-      },
+      where: { product: { userId: userId } },
       include: {
         user: { select: { name: true, phone: true, image: true } },
         product: { select: { name: true, price: true, unit: true } },
@@ -44,7 +51,7 @@ export async function POST(req: Request) {
       orderBy: { createdAt: 'desc' }
     });
 
-    // 3. Calculate Stats (Merged)
+    // 3. Calculate Stats
     const bookingRevenue = bookings
       .filter(b => b.status === 'COMPLETED')
       .reduce((acc, curr) => acc + (curr.service.price || 0), 0);
@@ -64,7 +71,7 @@ export async function POST(req: Request) {
       success: true,
       user,
       bookings,
-      orders, // ✅ Sending orders to frontend
+      orders,
       isSetupComplete: !!(user.kycDetails && user.kycDetails.status !== "NOT_STARTED"),
       stats,
     });

@@ -1,4 +1,3 @@
-/* StepThreeKYC.tsx */
 'use client';
 
 import { ShieldCheck, UploadCloud, Loader2, Check } from 'lucide-react';
@@ -37,16 +36,15 @@ export default function StepThreeKYC({
         }
     }, [updateField, showToast]);
 
-    const FileUploadBox = ({ field, label, optional = false }: { field: string; label: string; optional?: boolean }) => (
+    const FileUploadBox = ({ field, label }: { field: string; label: string }) => (
         <div className="space-y-2">
             <div className="flex justify-between items-center">
                 <label className="text-xs font-black text-slate-500 uppercase">{label}</label>
-                {optional && <span className="text-[10px] text-slate-400 italic">Optional</span>}
             </div>
 
             <div
                 className={clsx(
-                    'relative border-2 border-dashed rounded-xl p-6 text-center transition-all group cursor-pointer',
+                    'relative border-2 border-dashed rounded-xl p-8 text-center transition-all group cursor-pointer',
                     form[field] ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:bg-slate-50',
                     errors[field] && !form[field] && 'border-red-500 bg-red-50'
                 )}
@@ -63,17 +61,22 @@ export default function StepThreeKYC({
                     }}
                 />
 
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center gap-3">
                     {uploading[field] ? (
-                        <Loader2 className="animate-spin text-slate-400" size={20} />
+                        <Loader2 className="animate-spin text-slate-400" size={32} />
                     ) : form[field] ? (
-                        <Check className="text-emerald-600" size={20} />
+                        <Check className="text-emerald-600" size={32} />
                     ) : (
-                        <UploadCloud className="text-slate-400 group-hover:text-slate-600" size={20} />
+                        <UploadCloud className="text-slate-400 group-hover:text-slate-600" size={32} />
                     )}
-                    <p className="text-xs font-bold mt-2 text-slate-600">
-                        {form[field] ? 'Uploaded' : uploading[field] ? 'Uploading...' : 'Tap to Upload'}
-                    </p>
+                    <div>
+                        <p className="text-sm font-bold text-slate-700">
+                            {form[field] ? 'Document Uploaded' : uploading[field] ? 'Uploading...' : 'Click to Upload Document'}
+                        </p>
+                        {!form[field] && !uploading[field] && (
+                            <p className="text-xs text-slate-400 mt-1">Supports JPG, PNG (Max 5MB)</p>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -81,19 +84,19 @@ export default function StepThreeKYC({
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border-l-4 border-purple-500 p-6 md:p-8 animate-in fade-in slide-in-from-right-4 duration-500">
-            {/* Unified Header */}
+            {/* Header */}
             <div className="flex items-center gap-3 mb-6 border-b border-slate-50 pb-4">
                 <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                     <ShieldCheck size={20} />
                 </div>
                 <div>
-                    <h3 className="font-bold text-slate-900 text-lg">Identity & Legal</h3>
-                    <p className="text-xs text-slate-500">Government ID and tax details</p>
+                    <h3 className="font-bold text-slate-900 text-lg">Identity Verification</h3>
+                    <p className="text-xs text-slate-500">Upload proof of identity</p>
                 </div>
             </div>
 
-            <div className="space-y-8">
-                {/* ID Grid */}
+            <div className="space-y-6">
+                {/* ID Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">ID Proof Type</label>
@@ -119,14 +122,10 @@ export default function StepThreeKYC({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FileUploadBox field="idProofFrontImg" label="ID Front Side" />
-                    <FileUploadBox field="idProofBackImg" label="ID Back Side" />
-                </div>
+                {/* Single Image Picker */}
+                <FileUploadBox field="idProofImg" label="Upload ID Document" />
 
-                <FileUploadBox field="businessProofImg" label="Business Proof" optional />
-
-                {/* GST Toggle Section */}
+                {/* GST Section */}
                 <div className="space-y-4 pt-4 border-t border-slate-50">
                     <div className="bg-slate-50 p-4 rounded-xl flex items-center gap-3 border border-slate-100">
                         <input
@@ -137,7 +136,7 @@ export default function StepThreeKYC({
                             className="w-5 h-5 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
                         />
                         <label htmlFor="gst-check" className="text-sm font-bold text-slate-700 cursor-pointer">
-                            I have a GST Number
+                            I have a GST Number (Optional)
                         </label>
                     </div>
 

@@ -1,8 +1,8 @@
-// components/services/ServiceCard.tsx
 'use client';
 
 import Link from 'next/link';
 import { FaHeart, FaRegHeart, FaStar, FaCircleCheck, FaLocationDot } from 'react-icons/fa6';
+import AppImage from '@/components/ui/AppImage'; // ✅ Adjust path based on where you saved AppImage
 
 // 1. Define the shape of the Service data
 export interface ServiceProps {
@@ -22,9 +22,9 @@ export interface ServiceProps {
 // 2. Define the Props the Component accepts (Service + State controls)
 interface ServiceCardComponentProps {
   service: ServiceProps;
-  isFav?: boolean;                                            // Passed from parent
-  toggleFav?: (e: React.MouseEvent<any>, id: string) => void; // Passed from parent
-  index?: number;                                             // Passed for animation
+  isFav?: boolean;                                              // Passed from parent
+  toggleFav?: (e: React.MouseEvent<any>, id: string) => void;   // Passed from parent
+  index?: number;                                               // Passed for animation
 }
 
 export default function ServiceCard({
@@ -33,8 +33,6 @@ export default function ServiceCard({
   toggleFav,
   index = 0
 }: ServiceCardComponentProps) {
-
-  // ❌ Removed internal useState. We now use the 'isFav' prop from the parent.
 
   return (
     <div
@@ -46,7 +44,6 @@ export default function ServiceCard({
       {/* Favorite Button */}
       <button
         onClick={(e) => {
-          // If a toggle function is provided, use it. 
           if (toggleFav) {
             toggleFav(e, service.id);
           }
@@ -61,11 +58,12 @@ export default function ServiceCard({
 
         {/* Image Section */}
         <div className="relative w-28 h-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
-          <img
+          {/* ✅ Replaced standard img with AppImage */}
+          <AppImage
             src={service.image}
             alt={service.name}
+            type="thumbnail"
             className="w-full h-full object-cover group-hover:scale-110 transition duration-700 ease-out"
-            onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150?text=No+Image"}
           />
         </div>
 

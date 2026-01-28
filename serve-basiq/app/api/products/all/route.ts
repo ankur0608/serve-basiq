@@ -5,21 +5,24 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    // ✅ 1. Get Category Filter from URL
+    // 1. Get Category Filter from URL
     const { searchParams } = new URL(request.url);
     const catFilter = searchParams.get('cat');
 
-    // ✅ 2. Build Where Clause
+    // 2. Build Base Where Clause (Verified Only)
     const whereClause: any = {
       isVerified: true,
-      user: { isVerified: true }
+      // user: { isVerified: true } // Optional: Uncomment if strict seller verification is needed
     };
 
-    // If a specific category is requested, filter by Category Name
+    // 3. Handle Category Filtering (Parent OR Child logic)
     if (catFilter && catFilter !== 'All') {
-      whereClause.category = {
-        name: catFilter
-      };
+      whereClause.OR = [
+        // Case A: The product is directly in this category
+        { category: { name: catFilter } },
+        // Case B: The product is in a sub-category, and we are filtering by the Parent
+        { category: { parent: { name: catFilter } } }
+      ];
     }
 
     const products = await prisma.product.findMany({
@@ -36,16 +39,22 @@ export async function GET(request: Request) {
           }
         },
         category: {
-          select: { name: true }
+          select: {
+            name: true,
+            parent: { select: { name: true } } // Fetch parent name for context
+          }
         }
       }
     });
 
-    // Transform data
+    // 4. Transform data for frontend
     const formattedProducts = products.map(product => ({
       ...product,
       img: product.productImage,
-      category: product.category?.name || "General",
+      // If it's a subcategory, show "Parent > Child", otherwise just "Name"
+      category: product.category?.parent
+        ? `${product.category.parent.name} > ${product.category.name}`
+        : product.category?.name || "General",
       supplier: product.user?.shopName || product.user?.name || "Verified Seller",
       supplierImg: product.user?.profileImage || product.user?.image || "",
     }));

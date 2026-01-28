@@ -18,25 +18,18 @@ export interface Address {
 export interface User {
   id: string;
   phone: string;
-
   name: string | null;
   email: string | null;
   img: string | null;
   role: string;
-
-  // ✅ MATCH DATABASE NAMES
   dob?: string | Date | null;
   preferredLanguage?: string | null;
-
   providerType?: "SERVICE" | "PRODUCT" | "BOTH" | string;
-
   isPhoneVerified: boolean;
   isWorker: boolean;
   isVerified: boolean;
   isWebsite: boolean;
-
   addresses?: Address[];
-
   createdAt?: string;
   updatedAt?: string;
 }
@@ -49,19 +42,32 @@ export interface UIState {
   loginIntent: "user" | "provider";
   setLoginIntent: (intent: "user" | "provider") => void;
 
-  // ✅ New Temporary Name State
   tempName: string;
   setTempName: (name: string) => void;
 
   mobileNumber: string;
   devOtp?: string;
+  isNewUser: boolean;
+
+  // ✅ MODAL VISIBILITY STATES
   isLoginOpen: boolean;
   isOtpOpen: boolean;
+  isNameOpen: boolean;
+  isEditProfileOpen: boolean; // 🆕 ADDED THIS
 
-  onOpenOtp: (phone: string, otp?: string) => void;
+  // ✅ ACTIONS
+  onOpenOtp: (phone: string, otp?: string, isNewUser?: boolean) => void;
   onCloseOtp: () => void;
+
   onOpenLogin: () => void;
   onCloseLogin: () => void;
+
+  onOpenName: () => void;
+  onCloseName: () => void;
+
+  // 🆕 EDIT PROFILE ACTIONS
+  onOpenEditProfile: () => void;
+  onCloseEditProfile: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -74,21 +80,27 @@ export const useUIStore = create<UIState>()(
       loginIntent: "user",
       setLoginIntent: (intent) => set({ loginIntent: intent }),
 
-      // ✅ Initialize Temp Name
       tempName: "",
       setTempName: (name) => set({ tempName: name }),
 
       mobileNumber: "",
       devOtp: undefined,
+      isNewUser: false,
+
+      // Initial Modal States
       isLoginOpen: false,
       isOtpOpen: false,
+      isNameOpen: false,
+      isEditProfileOpen: false, // 🆕 Initialize as false
 
-      onOpenOtp: (phone, otp) =>
+      onOpenOtp: (phone, otp, isNewUser) =>
         set({
           mobileNumber: phone,
           devOtp: otp,
+          isNewUser: isNewUser || false,
           isLoginOpen: false,
           isOtpOpen: true,
+          isNameOpen: false,
         }),
 
       onCloseOtp: () =>
@@ -96,28 +108,47 @@ export const useUIStore = create<UIState>()(
           mobileNumber: "",
           devOtp: undefined,
           isOtpOpen: false,
-          tempName: "", // Clear name on close
         }),
 
       onOpenLogin: () =>
         set({
           isLoginOpen: true,
           isOtpOpen: false,
+          isNameOpen: false,
           devOtp: undefined,
+          isNewUser: false,
         }),
 
       onCloseLogin: () =>
         set({
           isLoginOpen: false,
           devOtp: undefined,
-          tempName: "", // Clear name on close
+          tempName: "",
+          isNewUser: false,
+          isNameOpen: false,
         }),
+
+      onOpenName: () =>
+        set({
+          isNameOpen: true,
+          isOtpOpen: false,
+          isLoginOpen: false,
+        }),
+
+      onCloseName: () =>
+        set({
+          isNameOpen: false,
+          isNewUser: false,
+          tempName: "",
+        }),
+
+      // 🆕 IMPLEMENTATION FOR EDIT PROFILE MODAL
+      onOpenEditProfile: () => set({ isEditProfileOpen: true }),
+      onCloseEditProfile: () => set({ isEditProfileOpen: false }),
     }),
     {
       name: "servemate-storage",
       storage: createJSONStorage(() => localStorage),
-
-      // Only persist currentUser (don't persist UI states like modals or tempName)
       partialize: (state) => ({
         currentUser: state.currentUser,
       }),

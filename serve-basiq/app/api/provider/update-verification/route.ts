@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
-    console.log("\n================= 🔐 VERIFICATION SUBMIT START =================");
+    console.log("\n================= 🔐 VERIFICATION SUBMIT START (2-STEP) =================");
 
     try {
         const body = await req.json();
@@ -10,16 +10,21 @@ export async function POST(req: Request) {
             userId, fullName, email, phone, gender, dob, preferredLanguage,
             addressLine1, addressLine2, landmark, city, state, pincode,
             shopName, bizAddressLine1, bizAddressLine2, bizCity, bizState, bizPincode,
-            bankAccountHolder, bankAccountNumber, bankIfsc, bankName, upiId, preferredPayoutMethod,
-            idProofType, idProofNumber, idProofFrontImg, idProofBackImg,
-            businessProofImg, gstRegistered, gstNumber
+            instagramUrl, facebookUrl, youtubeUrl, websiteUrl,
+            // Removed Banking Fields: bankAccountHolder, bankAccountNumber, bankIfsc, bankName, upiId, preferredPayoutMethod
+
+            // KYC Fields
+            idProofType,
+            idProofNumber,
+            idProofImg,
+            gstRegistered,
+            gstNumber
         } = body;
 
         if (!userId) {
             return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
         }
 
-        // ✅ Robust Transaction with increased timeouts (30s)
         await prisma.$transaction(async (tx) => {
             console.log("⛓️ 1. Updating Core User Profile...");
             await tx.user.update({
@@ -32,13 +37,12 @@ export async function POST(req: Request) {
                     gender,
                     dob: dob ? new Date(dob) : null,
                     preferredLanguage,
-                    bankAccountHolder,
-                    bankAccountNumber,
-                    bankIfsc,
-                    bankName,
-                    upiId,
-                    preferredPayoutMethod,
+                    instagramUrl,
+                    facebookUrl,
+                    youtubeUrl,
+                    websiteUrl,
                     isVerified: false,
+                    // Banking fields removed from update
                 },
             });
 
@@ -49,9 +53,9 @@ export async function POST(req: Request) {
                     userId,
                     idProofType: idProofType || "Aadhaar",
                     idProofNumber,
-                    idProofFrontImg,
-                    idProofBackImg,
-                    businessProofImg,
+                    idProofFrontImg: idProofImg,
+                    idProofBackImg: null,
+                    businessProofImg: null,
                     gstRegistered: Boolean(gstRegistered),
                     gstNumber: gstNumber || null,
                     status: "PENDING",
@@ -59,9 +63,9 @@ export async function POST(req: Request) {
                 update: {
                     idProofType: idProofType || "Aadhaar",
                     idProofNumber,
-                    idProofFrontImg,
-                    idProofBackImg,
-                    businessProofImg,
+                    idProofFrontImg: idProofImg,
+                    idProofBackImg: null,
+                    businessProofImg: null,
                     gstRegistered: Boolean(gstRegistered),
                     gstNumber: gstNumber || null,
                     status: "PENDING",
@@ -90,8 +94,8 @@ export async function POST(req: Request) {
 
             console.log("🧾 Transaction completed successfully");
         }, {
-            maxWait: 15000, // Wait 15s to acquire connection
-            timeout: 30000  // Total 30s allowed for transaction
+            maxWait: 15000,
+            timeout: 30000
         });
 
         return NextResponse.json({ success: true, message: "Verification profile updated successfully" });

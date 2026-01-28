@@ -6,6 +6,7 @@ import {
     FaInstagram, FaFacebook, FaYoutube, FaGlobe
 } from 'react-icons/fa6';
 import BookingWrapper from '@/components/booking/BookingWrapper';
+import AppImage from '@/components/ui/AppImage'; // ✅ Import AppImage
 
 // ✅ FIXED INTERFACE
 interface ServiceDetailViewProps {
@@ -70,10 +71,13 @@ export default function ServiceDetailView({ service, loggedInUser }: ServiceDeta
         <div className="pb-40 bg-slate-50 min-h-screen">
             {/* HERO SECTION */}
             <div className="h-[40vh] md:h-[50vh] bg-slate-900 relative overflow-hidden">
-                <img
+                {/* ✅ Replaced <img> with <AppImage> */}
+                <AppImage
                     src={heroImage}
                     alt={displayName}
+                    type="banner"
                     className="w-full h-full object-cover opacity-80"
+                    priority={true} // Priority loading for hero image
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-transparent"></div>
                 <Link href="/services" className="absolute top-8 left-8 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition">
@@ -141,12 +145,15 @@ export default function ServiceDetailView({ service, loggedInUser }: ServiceDeta
                                 <h3 className="text-xl font-bold text-slate-900 mb-6">Work Gallery</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     {service.gallery.map((img, i) => (
-                                        <img
-                                            key={i}
-                                            src={img}
-                                            alt={`Gallery ${i}`}
-                                            className="w-full h-48 object-cover rounded-2xl hover:opacity-90 transition cursor-pointer"
-                                        />
+                                        // ✅ Replaced <img> with <AppImage>
+                                        <div key={i} className="h-48 w-full">
+                                            <AppImage
+                                                src={img}
+                                                alt={`Gallery ${i}`}
+                                                type="gallery"
+                                                className="w-full h-full object-cover rounded-2xl hover:opacity-90 transition cursor-pointer"
+                                            />
+                                        </div>
                                     ))}
                                 </div>
                             </div>

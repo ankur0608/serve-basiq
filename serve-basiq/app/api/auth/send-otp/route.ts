@@ -13,28 +13,32 @@ export async function POST(req: Request) {
     );
   }
 
-  // 🔢 Generate random 4-digit OTP
-  const otp = Math.floor(1000 + Math.random() * 9000).toString();
-
-  // Remove previous OTPs
-  await prisma.otp.deleteMany({
+  // 1. Check if user exists
+  const existingUser = await prisma.user.findUnique({
     where: { phone },
   });
 
-  // Create new OTP
+  const isNewUser = !existingUser; // True if user is NOT in DB
+
+  // 2. Generate OTP
+  const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+  // 3. Save OTP
+  await prisma.otp.deleteMany({ where: { phone } });
+
   await prisma.otp.create({
     data: {
       phone,
       code: otp,
-      // purpose line is removed
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 min
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     },
   });
 
-  console.log("DEV OTP:", otp);
+  console.log("DEV OTP:", otp, "| New User:", isNewUser);
 
   return NextResponse.json({
     success: true,
-    otp, 
+    otp,
+    isNewUser, // ✅ Send this flag to frontend
   });
 }

@@ -7,24 +7,34 @@ import { useUIStore } from "@/lib/store";
 // Helper component to handle the sync logic inside the Provider
 function AuthSync({ children }: { children: React.ReactNode }) {
     const { data: session, status } = useSession();
-    const { setCurrentUser, currentUser } = useUIStore();
+    const { setCurrentUser } = useUIStore();
 
     useEffect(() => {
-        // If NextAuth has a user, but our global store doesn't, sync it.
-        if (status === 'authenticated' && session?.user && !currentUser) {
+        // Sync whenever the session exists (authenticated)
+        if (status === 'authenticated' && session?.user) {
 
-            // We map the Google session data to your app's user structure
+            // ✅ UPDATED: Explicitly map the new fields from NextAuth to your Store
             setCurrentUser({
-                id: session.user.id || session.user.email, // Use email as fallback ID if needed
+                id: session.user.id,
                 name: session.user.name || '',
                 email: session.user.email || '',
-                image: session.user.image || '',
-                phone: '', // Google doesn't provide phone usually, leave empty
-                isWorker: false, // Default to customer
-                ...session.user // Spread any other custom fields
+
+                // ✅ FIX: Map 'image' (NextAuth) to 'img' (Your Store)
+                img: session.user.image || '',
+
+                // Now these pull correctly from the database via the session
+                phone: session.user.phone || '',
+                isPhoneVerified: session.user.isPhoneVerified || false,
+                isWorker: session.user.isWorker || false,
+                role: session.user.role || 'USER',
+                providerType: session.user.providerType ?? undefined,
+
+                // Initialize required fields that might be missing from session
+                isVerified: false,
+                isWebsite: true
             });
         }
-    }, [session, status, currentUser, setCurrentUser]);
+    }, [session, status, setCurrentUser]);
 
     return <>{children}</>;
 }

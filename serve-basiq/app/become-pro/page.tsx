@@ -1,12 +1,16 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import { memo } from "react";
+import { memo, useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
     ArrowLeft, Camera, User, Mail, Phone, MapPin,
-    Check, Loader2, AlertTriangle, Navigation, Briefcase // ✅ Added Briefcase Icon
+    Check, Loader2, AlertTriangle, Navigation, Briefcase,
+    ShieldCheck, Smartphone
 } from 'lucide-react';
 import { useProviderOnboarding } from "@/app/hook/useProviderOnboarding";
+import AppImage from "@/components/ui/AppImage";
+import MobileVerificationModal from "@/components/auth/MobileVerificationModal";
 
 // --- SUB-COMPONENT 1: Profile Image ---
 const ProfileSection = memo(({
@@ -26,7 +30,12 @@ const ProfileSection = memo(({
             {uploading ? (
                 <Loader2 className="animate-spin text-blue-500" size={32} />
             ) : imgPreview ? (
-                <img src={imgPreview} className="w-full h-full object-cover" alt="Profile Preview" loading="lazy" />
+                <AppImage
+                    src={imgPreview}
+                    alt="Profile Preview"
+                    type="avatar"
+                    className="w-full h-full object-cover"
+                />
             ) : (
                 <Camera className="text-slate-400 group-hover:text-blue-500 transition" size={32} />
             )}
@@ -38,10 +47,19 @@ const ProfileSection = memo(({
 ));
 ProfileSection.displayName = "ProfileSection";
 
-// --- SUB-COMPONENT 2: Personal Details (UPDATED WITH DROPDOWN) ---
-const PersonalDetails = memo(({ form, errors, onChange }: { form: any, errors: any, onChange: (field: string, val: any) => void }) => {
+// --- SUB-COMPONENT 2: Personal Details (UPDATED) ---
+const PersonalDetails = memo(({
+    form, errors, onChange, session, onVerifyStart
+}: {
+    form: any, errors: any, onChange: (field: string, val: any) => void, session: any, onVerifyStart: () => void
+}) => {
     const getInputClass = (fieldName: string) => `w-full bg-slate-50 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition ${errors[fieldName] ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`;
     const ErrorMsg = ({ field }: { field: string }) => errors[field] ? <p className="text-red-500 text-xs mt-1 font-medium">{errors[field]}</p> : null;
+
+    // ✅ Safe Access to Session Data
+    // Note: These will be undefined if Step 1 (Auth Options) is not fixed.
+    const userPhone = session?.user?.phone;
+    const isPhoneVerified = session?.user?.isPhoneVerified;
 
     return (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
@@ -49,6 +67,7 @@ const PersonalDetails = memo(({ form, errors, onChange }: { form: any, errors: a
                 <User className="text-blue-600" size={20} /> <span className="font-bold text-slate-900">Personal Details</span>
             </div>
             <div className="space-y-4">
+                {/* Full Name */}
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Full Name</label>
                     <input
@@ -60,13 +79,13 @@ const PersonalDetails = memo(({ form, errors, onChange }: { form: any, errors: a
                     <ErrorMsg field="fullName" />
                 </div>
 
-                {/* ✅ NEW: Provider Type Dropdown */}
+                {/* Provider Type */}
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">What do you want to offer?</label>
                     <div className="relative">
                         <Briefcase size={16} className="absolute left-3 top-2.5 text-slate-400" />
                         <select
-                            value={form.providerType || 'BOTH'} // Default to BOTH
+                            value={form.providerType || 'BOTH'}
                             onChange={e => onChange('providerType', e.target.value)}
                             className={`${getInputClass('providerType')} pl-9 cursor-pointer appearance-none`}
                         >
@@ -74,15 +93,10 @@ const PersonalDetails = memo(({ form, errors, onChange }: { form: any, errors: a
                             <option value="SERVICE">Services Only (e.g. Plumber, Cleaner)</option>
                             <option value="PRODUCT">Products Only (e.g. Selling Goods)</option>
                         </select>
-                        {/* Custom Arrow for styling (optional, relies on appearance-none) */}
-                        <div className="absolute right-3 top-3 pointer-events-none text-slate-400">
-                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </div>
                     </div>
                 </div>
 
+                {/* Email (Read Only if from Session) */}
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Email</label>
                     <div className="relative">
@@ -91,14 +105,65 @@ const PersonalDetails = memo(({ form, errors, onChange }: { form: any, errors: a
                             type="email"
                             value={form.email}
                             onChange={e => onChange('email', e.target.value)}
-                            className={`${getInputClass('email')} pl-9`}
+                            className={`${getInputClass('email')} pl-9 ${session?.user?.email ? 'opacity-70 cursor-not-allowed bg-slate-100' : ''}`}
                             placeholder="john@example.com"
+                            readOnly={!!session?.user?.email}
                         />
                     </div>
                     <ErrorMsg field="email" />
                 </div>
+
+                {/* ✅ Primary Phone Number Section */}
                 <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Alternate Phone Number</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Primary Phone Number</label>
+
+                    {isPhoneVerified ? (
+                        // ✅ CASE A: VERIFIED (NO INPUT, NO BUTTON)
+                        <div className="w-full bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center gap-3 animate-in fade-in">
+                            <div className="bg-green-100 p-1.5 rounded-full text-green-600">
+                                <ShieldCheck size={18} />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs text-green-600 font-bold uppercase">Verified Number</p>
+                                <p className="text-slate-900 font-bold tracking-wider">
+                                    {userPhone ? `+91 ${userPhone}` : "Number Verified"}
+                                </p>
+                            </div>
+                            <Check size={20} className="text-green-600" />
+                        </div>
+                    ) : (
+                        // ❌ CASE B: NOT VERIFIED (SHOW INPUT PLACEHOLDER & BUTTON)
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <Smartphone size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                                <input
+                                    disabled
+                                    // If userPhone is missing from session, it shows "No number linked"
+                                    placeholder={userPhone ? `+91 ${userPhone} (Not Verified)` : "No number linked"}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 py-2 text-slate-500 cursor-not-allowed"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={onVerifyStart}
+                                className="bg-slate-900 text-white text-xs font-bold px-4 rounded-lg hover:bg-black transition whitespace-nowrap shadow-sm hover:shadow-md"
+                            >
+                                {userPhone ? "Verify Now" : "Link Number"}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Helper text only if NOT verified */}
+                    {!isPhoneVerified && (
+                        <p className="text-xs text-orange-500 mt-1.5 font-medium flex items-center gap-1">
+                            <AlertTriangle size={12} /> Mobile verification is required.
+                        </p>
+                    )}
+                </div>
+
+                {/* Alternate Phone */}
+                {/* <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Alternate Phone Number (Optional)</label>
                     <div className="relative">
                         <Phone size={16} className="absolute left-3 top-2.5 text-slate-400" />
                         <input
@@ -109,14 +174,14 @@ const PersonalDetails = memo(({ form, errors, onChange }: { form: any, errors: a
                         />
                     </div>
                     <ErrorMsg field="altPhone" />
-                </div>
+                </div> */}
             </div>
         </div>
     );
 });
 PersonalDetails.displayName = "PersonalDetails";
 
-// --- SUB-COMPONENT 3: Address Details ---
+// --- SUB-COMPONENT 3: Address Details (Same as before) ---
 const AddressDetails = memo(({
     form, errors, onChange, onGetLocation, gettingLoc
 }: {
@@ -214,12 +279,41 @@ AddressDetails.displayName = "AddressDetails";
 // --- MAIN PAGE COMPONENT ---
 export default function BecomeProPage() {
     const router = useRouter();
+    const { data: session, status } = useSession();
+    const [isPhoneModalOpen, setPhoneModalOpen] = useState(false);
 
-    // ✅ Using the Hook
     const {
         form, loading, uploading, gettingLoc, imgPreview, errors,
         handleChange, handleGetLocation, handleImageUpload, handleSubmit
     } = useProviderOnboarding();
+
+    // ✅ Prefill email/name
+    useEffect(() => {
+        if (session?.user?.email && !form.email) {
+            handleChange('email', session.user.email);
+        }
+        if (session?.user?.name && !form.fullName) {
+            handleChange('fullName', session.user.name);
+        }
+    }, [session, form.email, form.fullName]);
+
+
+    // ✅ Block submission if phone is not verified
+    const handleFinalSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // If phone not verified, force modal open
+        if (!session?.user?.isPhoneVerified) {
+            setPhoneModalOpen(true);
+            return;
+        }
+
+        handleSubmit(e);
+    };
+
+    if (status === "loading") {
+        return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-slate-400" size={32} /></div>;
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 py-10 px-4 animate-in fade-in duration-500">
@@ -236,7 +330,7 @@ export default function BecomeProPage() {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleFinalSubmit} className="space-y-6">
 
                     {/* 1. Profile Image Section */}
                     <ProfileSection
@@ -251,6 +345,8 @@ export default function BecomeProPage() {
                         form={form}
                         errors={errors}
                         onChange={handleChange}
+                        session={session}
+                        onVerifyStart={() => setPhoneModalOpen(true)}
                     />
 
                     {/* 3. Address & Location Section */}
@@ -270,6 +366,7 @@ export default function BecomeProPage() {
                         </div>
                     )}
 
+                    {/* Submit Button */}
                     <button
                         type="submit"
                         disabled={loading || uploading}
@@ -278,11 +375,29 @@ export default function BecomeProPage() {
                         {loading ? (
                             <Loader2 className="animate-spin" />
                         ) : (
-                            <>Complete Registration <Check /></>
+                            <>
+                                {session?.user?.isPhoneVerified ? (
+                                    <>Complete Registration <Check /></>
+                                ) : (
+                                    <>Verify Phone to Continue <Smartphone size={18} /></>
+                                )}
+                            </>
                         )}
                     </button>
                 </form>
             </div>
+
+            {/* ✅ Mobile Verification Modal */}
+            {session?.user?.id && (
+                <MobileVerificationModal
+                    userId={session.user.id}
+                    isOpen={isPhoneModalOpen}
+                    onClose={() => setPhoneModalOpen(false)}
+                    onSuccess={() => {
+                        setPhoneModalOpen(false);
+                    }}
+                />
+            )}
         </div>
     );
 }

@@ -21,14 +21,15 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     const mobileNumber = useUIStore((state) => state.mobileNumber);
     const devOtp = useUIStore((state) => state.devOtp);
     const loginIntent = useUIStore((state) => state.loginIntent);
-    const tempName = useUIStore((state) => state.tempName);
+    const isNewUser = useUIStore((state) => state.isNewUser);
 
     // Store Actions
     const onOpenLogin = useUIStore((state) => state.onOpenLogin);
     const onCloseOtp = useUIStore((state) => state.onCloseOtp);
+    const onOpenName = useUIStore((state) => state.onOpenName); // ✅ Action to open Name Modal
     const setCurrentUser = useUIStore((state) => state.setCurrentUser);
 
-    // OTP state
+    // OTP State
     const [otp, setOtp] = useState(["", "", "", ""]);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -51,7 +52,6 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
             const otpString = devOtp.toString();
             if (otpString.length === 4) {
                 setOtp(otpString.split(""));
-                setTimeout(() => inputRefs.current[3]?.focus(), 150);
             }
         }
     }, [devOtp, isOpen]);
@@ -77,23 +77,17 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         const code = otp.join("");
         if (code.length !== 4) return;
 
-        if (!mobileNumber) {
-            alert("Error: Mobile number not found.");
-            onClose();
-            return;
-        }
-
         setIsLoading(true);
 
         try {
-            // 1. Verify OTP with Backend
+            // 1. Verify OTP
             const res = await fetch("/api/auth/verify-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     phone: mobileNumber,
                     otp: code,
-                    name: tempName
+                    // No Name sent here anymore. User is created with default name.
                 }),
             });
 
@@ -102,10 +96,9 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                 throw new Error(errorData.message || "Invalid OTP");
             }
 
-            // user object from DB
             const user = await res.json();
 
-            // 2. Sign in with NextAuth
+            // 2. Sign In (Create Session)
             const signInResult = await signIn("credentials", {
                 phone: mobileNumber,
                 redirect: false,
@@ -113,26 +106,23 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
 
             if (signInResult?.error) throw new Error(signInResult.error);
 
-            console.log("✅ Login Successful:", user);
             setCurrentUser(user);
-            onCloseOtp();
+            onCloseOtp(); // Close OTP Modal
 
-            // ============================================================
-            // 🔄 UPDATED REDIRECTION LOGIC
-            // ============================================================
+            // 3. LOGIC: If New User -> Open Name Modal
+            if (isNewUser) {
+                onOpenName(); // ✅ OPEN THE NEXT MODAL
+                return;
+            }
 
+            // 4. If Old User -> Redirect Immediately
             if (loginIntent === 'provider') {
-                // CASE 1: Existing Provider
-                // If providerType is NOT null (meaning it is SERVICE, PRODUCT, or BOTH)
                 if (user.providerType) {
                     router.push('/provider/dashboard');
-                }
-                // CASE 2: New User (providerType is null)
-                else {
+                } else {
                     router.push('/become-pro');
                 }
             } else {
-                // Intent is 'user' (Find Services)
                 router.refresh();
             }
 
@@ -168,7 +158,7 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                                 ))}
                             </div>
                             <button type="submit" disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition flex items-center justify-center gap-2">
-                                {isLoading ? <FaSpinner className="animate-spin" /> : "Verify & Continue"}
+                                {isLoading ? <FaSpinner className="animate-spin" /> : "Verify & Login"}
                             </button>
                         </form>
 

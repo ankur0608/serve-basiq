@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FaTag, FaCircleCheck } from 'react-icons/fa6';
-import { Package } from 'lucide-react'; // Added generic icon for fallback
+import AppImage from '@/components/ui/AppImage'; // ✅ Adjust path based on where you saved AppImage
 
 export interface ProductProps {
     id: string;
@@ -10,7 +10,7 @@ export interface ProductProps {
     category: string;
     price: number;
     moq: number;
-    image: string; // This will now receive data correctly
+    image: string;
     supplier: string;
     isVerified: boolean;
     unit: string;
@@ -23,25 +23,14 @@ export default function ProductCard({ product }: { product: ProductProps }) {
 
                 {/* Image */}
                 <div className="relative w-full h-36 aspect-square rounded-xl overflow-hidden bg-gray-100 mb-3 flex items-center justify-center">
-                    {product.image ? (
-                        <img
-                            src={product.image}
-                            alt={product.name}
-                            loading="lazy"
-                            className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                            onError={(e) => {
-                                e.currentTarget.style.display = 'none'; // Hide broken image
-                                e.currentTarget.nextElementSibling?.classList.remove('hidden'); // Show fallback
-                            }}
-                        />
-                    ) : (
-                        <Package className="text-gray-300" size={32} />
-                    )}
 
-                    {/* Fallback Icon (Hidden by default, shown on error) */}
-                    <div className="hidden absolute inset-0 flex items-center justify-center bg-gray-50">
-                        <Package className="text-gray-300" size={32} />
-                    </div>
+                    {/* ✅ Replaced complex img/fallback logic with AppImage */}
+                    <AppImage
+                        src={product.image}
+                        alt={product.name}
+                        type="card"
+                        className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                    />
 
                     <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-sm z-10">
                         MOQ: {product.moq} {product.unit}

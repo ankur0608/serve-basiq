@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaXmark, FaGoogle, FaMobileScreen, FaUser, FaBriefcase, FaArrowLeft, FaRegUser } from "react-icons/fa6";
+import { FaXmark, FaGoogle, FaMobileScreen, FaUser, FaBriefcase, FaArrowLeft } from "react-icons/fa6";
 import clsx from "clsx";
 import { signIn } from "next-auth/react";
 import { useUIStore } from "@/lib/store";
@@ -18,8 +18,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [showModal, setShowModal] = useState(false);
   const [step, setStep] = useState<ModalStep>("SELECT_ROLE");
 
-  // Form Data
-  const [name, setName] = useState(""); // ✅ Capturing Name
+  // Form Data (Removed Name, Only Phone)
   const [phone, setPhone] = useState("");
 
   // States
@@ -31,7 +30,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const onOpenOtp = useUIStore((state) => state.onOpenOtp);
   const setLoginIntent = useUIStore((state) => state.setLoginIntent);
   const loginIntent = useUIStore((state) => state.loginIntent);
-  const setTempName = useUIStore((state) => state.setTempName); // ✅ Action to save name
+  
+  // Note: We don't need setTempName anymore in this file
 
   useEffect(() => {
     if (isOpen) {
@@ -40,7 +40,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       document.body.style.overflow = "hidden";
       setError("");
       setPhone("");
-      setName("");
     } else {
       const timer = setTimeout(() => setShowModal(false), 300);
       document.body.style.overflow = "unset";
@@ -57,11 +56,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     e.preventDefault();
     if (isGoogleLoading) return;
 
-    // ✅ Validation: Name is required for new signups
-    if (!name || name.trim().length < 2) {
-      setError("Please enter your full name");
-      return;
-    }
     if (!phone || phone.length < 10) {
       setError("Enter a valid 10-digit mobile number");
       return;
@@ -69,9 +63,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
     setIsLoading(true);
     setError("");
-
-    // ✅ Save Name to Global Store (to be used in OTP Modal)
-    setTempName(name);
 
     try {
       const res = await fetch("/api/auth/send-otp", {
@@ -87,8 +78,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         return;
       }
 
-      // Open OTP Modal (Name is already saved in store)
-      onOpenOtp(phone, data.otp);
+      // ✅ Pass the isNewUser flag to the store/OTP modal
+      onOpenOtp(phone, data.otp, data.isNewUser);
 
     } catch (err) {
       setError("Something went wrong");
@@ -101,14 +92,10 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     if (isLoading) return;
     setIsGoogleLoading(true);
 
-    // ✅ STEP 1: Save the intent to memory before leaving
-    // This remembers if they wanted to "Find Services" or "Become a Provider"
     if (typeof window !== "undefined") {
       localStorage.setItem("loginIntent", loginIntent);
     }
 
-    // We just redirect them back to the Home page (or wherever they were)
-    // The "AuthListener" (Step 2) will handle the rest when they return.
     const callbackUrl = "/";
 
     try {
@@ -119,6 +106,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       setIsGoogleLoading(false);
     }
   };
+
   if (!isOpen && !showModal) return null;
 
   return (
@@ -143,15 +131,12 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           )}
 
           <div className="p-8">
-
-            {/* STEP 1: ROLE SELECTION */}
             {step === "SELECT_ROLE" && (
               <div className="animate-fade-in">
                 <div className="text-center mb-8">
                   <h2 className="text-2xl font-extrabold text-slate-900">Welcome</h2>
                   <p className="text-sm text-gray-500 mt-2">How would you like to continue?</p>
                 </div>
-
                 <div className="space-y-4">
                   <button onClick={() => handleRoleSelect('user')} className="w-full flex items-center gap-4 p-4 border-2 border-gray-100 hover:border-slate-900 rounded-2xl transition-all group hover:bg-slate-50">
                     <div className="h-12 w-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl group-hover:bg-slate-900 group-hover:text-white transition-colors"><FaUser /></div>
@@ -172,7 +157,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               </div>
             )}
 
-            {/* STEP 2: INPUT DETAILS */}
             {step === "INPUT_DETAILS" && (
               <div className="animate-fade-in">
                 <div className="text-center mb-6">
@@ -183,24 +167,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-
-                  {/* ✅ NAME INPUT FIELD */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">Full Name</label>
-                    <div className="relative group">
-                      <FaRegUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Ex. John Doe"
-                        className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl outline-none font-bold text-slate-900 placeholder-gray-300 transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
-                        disabled={isLoading || isGoogleLoading}
-                      />
-                    </div>
-                  </div>
-
-                  {/* PHONE INPUT FIELD */}
+                  {/* PHONE INPUT FIELD ONLY */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">Mobile Number</label>
                     <div className="relative group flex items-center">
@@ -251,10 +218,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   {isGoogleLoading ? <span className="h-5 w-5 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin"></span> : <FaGoogle className="text-xl text-red-500" />}
                   <span>Google</span>
                 </button>
-
-                <div className="mt-8 text-center text-xs text-gray-400 px-4 leading-relaxed">
-                  By continuing, you agree to our <a href="#" className="underline hover:text-slate-600">Terms of Service</a> & <a href="#" className="underline hover:text-slate-600">Privacy Policy</a>.
-                </div>
               </div>
             )}
           </div>

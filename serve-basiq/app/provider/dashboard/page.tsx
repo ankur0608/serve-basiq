@@ -221,7 +221,7 @@ export default function ProviderDashboard() {
                     <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeView} set={handleViewChange} />
                     <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeView} set={handleViewChange} badge={safeStats.stats.pendingRequests} />
                     <NavButton id="settings" icon={Package} label="Management" active={activeView} set={handleViewChange} />
-                    <NavButton id="earnings" icon={Wallet} label="Earnings" active={activeView} set={handleViewChange} />
+                    {/* <NavButton id="earnings" icon={Wallet} label="Earnings" active={activeView} set={handleViewChange} /> */}
                     <NavButton id="profile" icon={UserCircle} label="Profile" active={activeView} set={handleViewChange} />
                 </nav>
                 <div className="p-4 border-t border-slate-100">
@@ -292,7 +292,7 @@ export default function ProviderDashboard() {
                             />
                         )}
                         {activeView === 'leads' && <LeadsView />}
-                        {activeView === 'earnings' && <EarningsView />}
+                        {/* {activeView === 'earnings' && <EarningsView />} */}
                         {activeView === 'profile' && <ProfileView stats={safeStats} user={userData} onEdit={() => setActiveView('edit-profile')} />}
 
                         {/* ✅ UPDATED MANAGEMENT VIEW LOGIC */}
@@ -375,7 +375,7 @@ export default function ProviderDashboard() {
                     <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeView} set={handleViewChange} />
                     <MobileNavBtn id="requests" icon={ClipboardList} label="Ops" active={activeView} set={handleViewChange} />
                     <MobileNavBtn id="settings" icon={Package} label="Manage" active={activeView} set={handleViewChange} />
-                    <MobileNavBtn id="earnings" icon={Wallet} label="Earn" active={activeView} set={handleViewChange} />
+                    {/* <MobileNavBtn id="earnings" icon={Wallet} label="Earn" active={activeView} set={handleViewChange} /> */}
                     <MobileNavBtn id="profile" icon={UserCircle} label="Profile" active={activeView} set={handleViewChange} />
                 </div>
             </nav>

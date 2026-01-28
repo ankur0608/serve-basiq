@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Package, Plus } from 'lucide-react';
-import { ServiceSettingsView } from '@/components/providers/ServiceSettingsView';
+import { ServiceSettingsView } from '@/components/providers/service/ServiceSettingsView';
 import ProviderServiceList from '@/components/providers/ProviderServiceList';
 
 interface ServicesViewProps {
