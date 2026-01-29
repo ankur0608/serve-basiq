@@ -11,17 +11,14 @@ export default async function FeaturedProviders() {
       take: 3,
       orderBy: { createdAt: 'desc' },
       where: {
-        // ✅ Match Schema: Service and Provider both must be verified
+        // During testing, if no data shows, make sure these match your DB
         isVerified: true,
-        categoryId: { not: null },
         user: {
           isVerified: true
         }
       },
       include: {
-        category: {
-          select: { name: true }
-        },
+        category: { select: { name: true } },
         user: {
           select: {
             name: true,
@@ -38,7 +35,6 @@ export default async function FeaturedProviders() {
 
   return (
     <section className="py-8">
-      {/* HEADER SECTION */}
       <div className="flex justify-between items-end mb-8 px-1">
         <div>
           <div className="flex items-center gap-2 text-blue-600 mb-1">
@@ -57,53 +53,36 @@ export default async function FeaturedProviders() {
         </Link>
       </div>
 
-      {/* SERVICES GRID */}
-      {services.length > 0 ? (
+      {services && services.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {services.map((service) => {
-
-            // ✅ Map DB data to UI Interface
             const formattedService: ServiceProps = {
               id: service.id,
-              name: service.name, // Service Title
+              name: service.name,
               category: service.category?.name || "General Service",
-
               price: Number(service.price) || 0,
               priceType: service.priceType || 'FIXED',
-
-              // Location Logic
               location: service.city
                 ? `${service.city}${service.state ? `, ${service.state}` : ''}`
                 : (service.loc || "India"),
-
-              // Image Priority: Main -> Service -> User -> Default
-              image: service.mainimg || service.serviceimg || service.user?.image || "https://via.placeholder.com/300x300?text=Service",
-
+              image: service.mainimg || service.serviceimg || service.user?.image || "https://images.unsplash.com/photo-1521791136064-7986c2923216?q=80&w=2069&auto=format&fit=crop",
               rating: Number(service.rating) || 5.0,
               isVerified: service.isVerified,
-
-              // Provider Details (Optional but good for UI)
-              providerName: service.user?.shopName || service.user?.name,
+              providerName: service.user?.shopName || service.user?.name || "Expert Provider",
               providerImage: service.user?.image
             };
 
-            return (
-              <ServiceCard
-                key={formattedService.id}
-                service={formattedService}
-              />
-            );
+            return <ServiceCard key={formattedService.id} service={formattedService} />;
           })}
         </div>
       ) : (
-        /* EMPTY STATE */
         <div className="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-[2rem] border-2 border-dashed border-slate-100 text-center">
           <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
             <FaShieldHalved className="text-slate-300" size={32} />
           </div>
-          <h3 className="text-lg font-bold text-slate-800">No Experts Featured Yet</h3>
+          <h3 className="text-lg font-bold text-slate-800">No Experts Found</h3>
           <p className="text-slate-500 text-sm text-center max-w-xs mt-1">
-            We are currently verifying our top professionals. Please check back soon!
+            Tip: Check if your Services and Users are marked as <b>isVerified: true</b> in the database.
           </p>
         </div>
       )}

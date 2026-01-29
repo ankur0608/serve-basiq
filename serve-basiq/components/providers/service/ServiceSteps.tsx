@@ -1,77 +1,182 @@
 // ServiceSteps.tsx
-import { Briefcase, ChevronRight, Loader2, Save, UploadCloud, Navigation, Trash2, Phone, Clock, Camera, Plus, Check, LayoutGrid, BadgeIndianRupee } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import {
+    Briefcase, ChevronRight, Loader2, Save, UploadCloud, Navigation,
+    Trash2, Phone, Clock, Camera, Plus, Check, ChevronDown, BadgeIndianRupee
+} from 'lucide-react';
 import { Category, SubCategory } from './service-logic';
 
 const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
 
-// --- STEP 1: Basic Info ---
-export const StepOneBasic = ({ form, handleChange, categories, loadingCats, activeSubCategories, toggleSubCategory, setStep }: any) => (
-    <div className="space-y-6 animate-in slide-in-from-right duration-300">
-        <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
-                <label className={labelClass}>Service Name</label>
-                <div className="relative">
-                    <Briefcase className="absolute left-3 top-3 text-slate-400" size={18} />
-                    <input className={`${inputClass} pl-10`} placeholder="e.g. AC Repair Expert" value={form.name} onChange={e => handleChange('name', e.target.value)} />
+// --- STEP 1: Basic Info (Updated Dropdowns) ---
+export const StepOneBasic = ({ form, handleChange, categories, loadingCats, activeSubCategories, toggleSubCategory, setStep }: any) => {
+
+    // Local state for the custom sub-category dropdown
+    const [isSubDropdownOpen, setIsSubDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown if clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: any) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsSubDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [dropdownRef]);
+
+    return (
+        <div className="space-y-6 animate-in slide-in-from-right duration-300">
+            {/* Name & Experience */}
+            <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
+                    <label className={labelClass}>Service Name</label>
+                    <div className="relative">
+                        <Briefcase className="absolute left-3 top-3 text-slate-400" size={18} />
+                        <input
+                            className={`${inputClass} pl-10`}
+                            placeholder="e.g. AC Repair Expert"
+                            value={form.name}
+                            onChange={e => handleChange('name', e.target.value)}
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className={labelClass}>Experience (Yrs)</label>
+                    <input
+                        type="number"
+                        className={inputClass}
+                        placeholder="e.g. 5"
+                        value={form.experience}
+                        onChange={e => handleChange('experience', e.target.value)}
+                    />
                 </div>
             </div>
+
+            {/* --- CATEGORY DROPDOWN --- */}
             <div>
-                <label className={labelClass}>Experience (Yrs)</label>
-                <input type="number" className={inputClass} placeholder="e.g. 5" value={form.experience} onChange={e => handleChange('experience', e.target.value)} />
-            </div>
-        </div>
-
-        {/* Categories Split View */}
-        <div>
-            <label className={labelClass}>Select Category & Sub-Services</label>
-            <div className="flex h-[320px] border border-slate-200 rounded-xl overflow-hidden bg-white">
-                {/* Categories List */}
-                <div className="w-1/3 border-r border-slate-100 bg-slate-50 flex flex-col">
-                    <div className="p-3 border-b border-slate-200 bg-slate-100 text-[10px] font-bold uppercase text-slate-500 tracking-wider">Categories</div>
-                    <div className="overflow-y-auto flex-1 p-2 space-y-1">
-                        {loadingCats ? <div className="p-4 text-center"><Loader2 className="animate-spin text-slate-400 mx-auto" /></div> :
-                            categories.map((c: Category) => (
-                                <button key={c.id} type="button" onClick={() => handleChange('categoryId', c.id)} className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold transition-all flex justify-between items-center ${form.categoryId === c.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-white hover:shadow-sm'}`}>
-                                    <span className="truncate">{c.name}</span>
-                                    {form.categoryId === c.id && <ChevronRight size={14} />}
-                                </button>
-                            ))}
+                <label className={labelClass}>Service Category</label>
+                <div className="relative">
+                    <select
+                        className={`${inputClass} appearance-none cursor-pointer`}
+                        value={form.categoryId}
+                        onChange={(e) => {
+                            handleChange('categoryId', e.target.value);
+                            setIsSubDropdownOpen(true); // Auto open sub-cats when cat changes
+                        }}
+                        disabled={loadingCats}
+                    >
+                        <option value="">Select a Category...</option>
+                        {categories.map((c: Category) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                    <div className="absolute right-4 top-3.5 pointer-events-none text-slate-500">
+                        {loadingCats ? <Loader2 className="animate-spin" size={16} /> : <ChevronDown size={16} />}
                     </div>
                 </div>
-                {/* Subcategories Grid */}
-                <div className="w-2/3 flex flex-col">
-                    <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white">
-                        <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Sub-Services</span>
-                        <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{form.subCategoryIds.length} Selected</span>
-                    </div>
-                    <div className="overflow-y-auto flex-1 p-4 bg-white">
-                        {!form.categoryId ? <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2"><LayoutGrid size={32} strokeWidth={1.5} /><span className="text-xs">Select a category on the left</span></div> :
-                            activeSubCategories.length === 0 ? <div className="text-center text-xs text-slate-400 py-10">No sub-services found.</div> :
-                                <div className="grid grid-cols-2 gap-2">
-                                    {activeSubCategories.map((sub: SubCategory) => {
-                                        const isSelected = form.subCategoryIds.includes(sub.id);
-                                        return (
-                                            <button key={sub.id} type="button" onClick={() => toggleSubCategory(sub.id)} className={`text-left px-3 py-2.5 rounded-lg border text-xs font-medium transition-all flex items-start gap-2 ${isSelected ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 bg-slate-50 text-slate-600 hover:border-blue-200'}`}>
-                                                <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 ${isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-slate-300 bg-white'}`}>{isSelected && <Check size={10} />}</div>
-                                                <span className="leading-tight">{sub.name}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+            </div>
+
+            {/* --- SUB-CATEGORY MULTI-SELECT DROPDOWN --- */}
+            <div className="relative" ref={dropdownRef}>
+                <label className={labelClass}>
+                    Sub-Services
+                    {form.subCategoryIds.length > 0 &&
+                        <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                            {form.subCategoryIds.length} Selected
+                        </span>
+                    }
+                </label>
+
+                {/* Dropdown Trigger Button */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (form.categoryId) setIsSubDropdownOpen(!isSubDropdownOpen);
+                    }}
+                    disabled={!form.categoryId}
+                    className={`w-full flex justify-between items-center text-left ${inputClass} ${!form.categoryId ? 'opacity-50 cursor-not-allowed bg-slate-100' : 'cursor-pointer hover:border-blue-300'}`}
+                >
+                    <span className={form.subCategoryIds.length === 0 ? "text-slate-400" : "text-slate-900 font-semibold"}>
+                        {!form.categoryId
+                            ? "Select a category above first"
+                            : form.subCategoryIds.length === 0
+                                ? "Select Sub-Services..."
+                                : `${form.subCategoryIds.length} services selected`
                         }
+                    </span>
+                    <ChevronDown size={16} className={`text-slate-500 transition-transform ${isSubDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Menu (Absolute Positioned) */}
+                {isSubDropdownOpen && form.categoryId && (
+                    <div className="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto p-2 animate-in fade-in zoom-in-95 duration-100">
+                        {activeSubCategories.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-slate-400">
+                                No sub-services found for this category.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                                {activeSubCategories.map((sub: SubCategory) => {
+                                    const isSelected = form.subCategoryIds.includes(sub.id);
+                                    return (
+                                        <div
+                                            key={sub.id}
+                                            onClick={() => toggleSubCategory(sub.id)}
+                                            className={`cursor-pointer px-3 py-2.5 rounded-lg border text-xs font-medium transition-all flex items-center gap-3 ${isSelected ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 hover:bg-slate-50 text-slate-600'}`}
+                                        >
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-slate-300 bg-white'}`}>
+                                                {isSelected && <Check size={10} />}
+                                            </div>
+                                            <span>{sub.name}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Description & Phone */}
+            <div className="space-y-4">
+                <div>
+                    <label className={labelClass}>Description</label>
+                    <textarea
+                        className={inputClass}
+                        rows={2}
+                        placeholder="Briefly describe your service..."
+                        value={form.desc}
+                        onChange={e => handleChange('desc', e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className={labelClass}>Contact Number</label>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-3 text-slate-400" size={18} />
+                        <input
+                            className={`${inputClass} pl-10`}
+                            placeholder="Public Phone Number"
+                            value={form.altPhone}
+                            onChange={e => handleChange('altPhone', e.target.value)}
+                        />
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div className="space-y-4">
-            <div><label className={labelClass}>Description</label><textarea className={inputClass} rows={2} placeholder="Briefly describe your service..." value={form.desc} onChange={e => handleChange('desc', e.target.value)} /></div>
-            <div><label className={labelClass}>Contact Number</label><div className="relative"><Phone className="absolute left-3 top-3 text-slate-400" size={18} /><input className={`${inputClass} pl-10`} placeholder="Public Phone Number" value={form.altPhone} onChange={e => handleChange('altPhone', e.target.value)} /></div></div>
+            <button
+                type="button"
+                onClick={() => setStep(2)}
+                disabled={!form.categoryId || form.subCategoryIds.length === 0}
+                className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                Next Step <ChevronRight size={18} />
+            </button>
         </div>
-        <button type="button" onClick={() => setStep(2)} disabled={!form.categoryId || form.subCategoryIds.length === 0} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-2 disabled:opacity-50 disabled:cursor-not-allowed">Next Step <ChevronRight size={18} /></button>
-    </div>
-);
+    );
+};
 
 // --- STEP 2: Visuals ---
 export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, removeGalleryImg, setStep }: any) => (
@@ -117,7 +222,6 @@ export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, rem
 // --- STEP 3: Range & Schedule ---
 export const StepThreeSchedule = ({ form, handleChange, handleGetLocation, gettingLoc, toggleDay, setStep, DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }: any) => (
     <div className="space-y-5 animate-in slide-in-from-right duration-300">
-
         {/* Radius & GPS */}
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
             <label className={labelClass}>Service Operation</label>

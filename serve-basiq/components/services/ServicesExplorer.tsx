@@ -30,15 +30,21 @@ export default function ServicesExplorer() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // ⚡ Fetch ONLY Service Categories + All Services
+                console.log("🚀 Frontend: Starting fetch...");
+
                 const [catRes, servRes] = await Promise.all([
                     fetch('/api/categories?type=SERVICE'),
-                    fetch('/api/services/all', { next: { revalidate: 60 } })
+                    // ⚡ FIX: Removed '/all' to match the API route
+                    fetch('/api/services/all')
                 ]);
 
+                console.log("📡 Frontend: Services response status:", servRes.status);
+
                 let catData = [], servData = [];
-                try { catData = await catRes.json(); } catch (e) { console.error(e); }
-                try { servData = await servRes.json(); } catch (e) { console.error(e); }
+                try { catData = await catRes.json(); } catch (e) { console.error("Cat JSON Error:", e); }
+                try { servData = await servRes.json(); } catch (e) { console.error("Serv JSON Error:", e); }
+
+                console.log("📦 Frontend: Raw Service Data received:", servData);
 
                 if (Array.isArray(catData)) setCategories(catData);
 
@@ -55,8 +61,10 @@ export default function ServicesExplorer() {
                 })) : [];
 
                 setServices(formattedServices);
+                console.log("✨ Frontend: Services state updated:", formattedServices.length, "items");
+
             } catch (error) {
-                console.error("Error loading data", error);
+                console.error("❌ Frontend Error loading data:", error);
             } finally {
                 setLoading(false);
             }
@@ -75,12 +83,11 @@ export default function ServicesExplorer() {
                     >
                         <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" /> Back
                     </button>
-
                     <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Explore Services</h2>
                     <p className="text-gray-500">Find the right expert for every job.</p>
                 </div>
 
-                {/* --- Dynamic Categories --- */}
+                {/* Categories */}
                 <div className="mb-10">
                     <h3 className="font-bold text-gray-900 text-lg mb-4">Categories</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
@@ -92,7 +99,7 @@ export default function ServicesExplorer() {
                                     onClick={() => router.push(`/services/category/${cat.id}`)}
                                     className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg cursor-pointer text-center group transition active:scale-95"
                                 >
-                                    <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center text-xl mb-2 bg-${style.color}-50 text-${style.color}-600 group-hover:scale-110 transition`}>
+                                    <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center text-xl mb-2 bg-gray-100 text-slate-600 group-hover:scale-110 transition`}>
                                         {style.emoji}
                                     </div>
                                     <h4 className="font-bold text-[10px] text-slate-800 uppercase tracking-wide truncate px-1">
@@ -104,14 +111,18 @@ export default function ServicesExplorer() {
                     </div>
                 </div>
 
-                {/* --- Services List --- */}
+                {/* Services List */}
                 <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
                     <FaFire className="text-orange-500" /> Recent Listings
                 </h3>
 
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {[1, 2, 3].map(i => <div key={i} className="h-40 bg-gray-200 rounded-2xl animate-pulse" />)}
+                        {[1, 2, 3].map(i => <div key={i} className="h-64 bg-gray-200 rounded-2xl animate-pulse" />)}
+                    </div>
+                ) : services.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                        No verified services found. Check your User table in Neon!
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

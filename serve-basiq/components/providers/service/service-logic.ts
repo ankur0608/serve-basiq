@@ -17,7 +17,7 @@ export interface ServiceSettingsProps {
     userId: string;
     serviceData: any;
     userData: any;
-    userAddress: any; // 👈 This data often loads async
+    userAddress: any;
     onComplete: () => void;
     showToast?: (msg: string, type: 'success' | 'error') => void;
 }
@@ -60,7 +60,7 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         priceType: serviceData?.priceType || 'FIXED',
         price: serviceData?.price || '',
 
-        // Initialize with what we have (might be empty initially)
+        // Address
         addressLine1: serviceData?.addressLine1 || userAddress?.addressLine1 || '',
         addressLine2: serviceData?.addressLine2 || userAddress?.addressLine2 || '',
         city: serviceData?.city || userAddress?.city || '',
@@ -75,8 +75,7 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         closeTime: serviceData?.closeTime || '18:00',
     });
 
-    // 🟢 CRITICAL FIX: Sync Address when Data Arrives
-    // This ensures that if 'userAddress' loads 0.5s later, the form updates.
+    // Sync Address when Data Arrives
     useEffect(() => {
         if (!serviceData && userAddress) {
             setForm(prev => ({
@@ -109,6 +108,7 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
     // Handlers
     const handleChange = (field: string, value: any) => {
         setForm(prev => {
+            // If category changes, clear selected subcategories
             if (field === 'categoryId') return { ...prev, [field]: value, subCategoryIds: [] };
             return { ...prev, [field]: value };
         });
@@ -117,7 +117,9 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
     const toggleSubCategory = (subId: string) => {
         setForm(prev => {
             const currentIds = prev.subCategoryIds || [];
-            const newIds = currentIds.includes(subId) ? [] : [subId];
+            const newIds = currentIds.includes(subId)
+                ? currentIds.filter((id: string) => id !== subId) // Remove
+                : [...currentIds, subId]; // Add
             return { ...prev, subCategoryIds: newIds };
         });
     };
@@ -166,7 +168,6 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
             },
             (err) => {
                 setGettingLoc(false);
-                // Better error handling for permission denied
                 if (err.code === 1) showToast?.("GPS Permission Denied", "error");
                 else showToast?.("GPS Error", "error");
             }
@@ -177,13 +178,12 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         e.preventDefault();
         setLoading(true);
         try {
-            // Ensure numbers are numbers
             const payload = {
                 ...form,
                 price: Number(form.price),
                 experience: Number(form.experience),
                 radiusKm: Number(form.radiusKm),
-                serviceimg: form.mainimg, // Map mainimg to serviceimg for backend
+                serviceimg: form.mainimg,
             };
 
             const res = await fetch('/api/services/create', {
@@ -203,9 +203,11 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         }
     };
 
+    // 🟢 SAFETY CHECK: Handles both 'children' and 'subcategories' key from API
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(c => c.id === form.categoryId);
-        return selectedCat ? selectedCat.children : [];
+        if (!selectedCat) return [];
+        return selectedCat.children || (selectedCat as any).subcategories || [];
     }, [categories, form.categoryId]);
 
     return {
