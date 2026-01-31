@@ -147,3 +147,49 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
   }
 }
+
+// ... existing imports
+
+/* =========================================================================
+   POST: Handle Specific Actions (like UPDATE_NAME)
+   ========================================================================= */
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { action, name, userId: bodyUserId } = body;
+
+    // Security check: Ensure the session user matches the requested update
+    // @ts-ignore
+    const sessionUserId = session.user.id;
+    if (sessionUserId !== bodyUserId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // ⚡ Handle the UPDATE_NAME action sent by your NameModal
+    if (action === "UPDATE_NAME") {
+      if (!name || name.trim().length < 2) {
+        return NextResponse.json({ error: 'Invalid name' }, { status: 400 });
+      }
+
+      await prisma.user.update({
+        where: { id: sessionUserId },
+        data: { name: name.trim() },
+      });
+
+      return NextResponse.json({ success: true, message: "Name updated" });
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+
+  } catch (error) {
+    console.error("🔥 [API] POST Error:", error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+// Keep your existing GET and PATCH methods below...

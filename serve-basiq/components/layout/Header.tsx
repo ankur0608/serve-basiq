@@ -2,28 +2,30 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { useSession } from "next-auth/react";
 import {
     FaMagnifyingGlass,
     FaRegBell,
     FaGlobe,
-    FaCartShopping,
     FaXmark,
 } from "react-icons/fa6";
 import { useUIStore } from "@/lib/store";
-import Image from "next/image";
-// 1. Import your custom AppImage component
 import AppImage from "@/components/ui/AppImage";
 
 const Navbar = () => {
+    const { status } = useSession();
     const [showMobileSearch, setShowMobileSearch] = useState(false);
 
     const openLogin = useUIStore((state) => state.onOpenLogin);
     const currentUser = useUIStore((state) => state.currentUser);
 
-    // Helper to get image source safely
+    // ✅ CRITICAL: Unified login check
+    // This prevents the "Please Login" text or stale images during logout transitions
+    const isLoggedIn = status === "authenticated" && !!currentUser;
+
     const getUserImage = () => {
         if (!currentUser) return null;
-        // Check store first (DB source), then session source (Google/Auth)
         return currentUser.img || currentUser.profileImage || null;
     };
 
@@ -37,6 +39,7 @@ const Navbar = () => {
     return (
         <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
             <nav className="mx-auto max-w-7xl px-4">
+
                 {/* MOBILE VIEW */}
                 <div className="flex md:hidden items-center justify-between h-14">
                     <Link href="/" className="flex items-center">
@@ -63,7 +66,8 @@ const Navbar = () => {
                             <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border border-white" />
                         </button>
 
-                        {currentUser ? (
+                        {/* ✅ Conditional User Logic */}
+                        {isLoggedIn ? (
                             <Link href="/profile">
                                 <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-gray-100 overflow-hidden relative">
                                     {userImageSrc ? (
@@ -96,7 +100,6 @@ const Navbar = () => {
                             <input
                                 autoFocus
                                 type="text"
-                                suppressHydrationWarning={true}
                                 placeholder="Search Services, Products or Suppliers..."
                                 className="w-full h-11 pl-11 pr-10 rounded-xl bg-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
@@ -128,7 +131,6 @@ const Navbar = () => {
                             <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
-                                suppressHydrationWarning={true}
                                 placeholder="Search Services, Products or Suppliers..."
                                 className="w-full h-11 pl-11 pr-4 rounded-full bg-slate-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
@@ -136,24 +138,12 @@ const Navbar = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 md:gap-4">
-                            <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-                                <Link href="/services" className="hover:text-blue-600 transition">
-                                    Services
-                                </Link>
-                                <Link href="/products" className="hover:text-blue-600 transition">
-                                    Products
-                                </Link>
-                            </div>
-
-                            {/* <Link
-                                href="/cart"
-                                className="p-2 hover:bg-gray-100 rounded-full text-gray-600"
-                            >
-                                <FaCartShopping />
-                            </Link> */}
+                        <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+                            <Link href="/services" className="hover:text-blue-600 transition">Services</Link>
+                            <Link href="/products" className="hover:text-blue-600 transition">Products</Link>
                         </div>
-                        <button className="flex items-center gap-1 text-sm text-gray-600 ">
+
+                        <button className="flex items-center gap-1 text-sm text-gray-600">
                             <FaGlobe /> EN
                         </button>
 
@@ -169,7 +159,8 @@ const Navbar = () => {
                             Post Request
                         </Link>
 
-                        {currentUser ? (
+                        {/* ✅ Conditional User Logic */}
+                        {isLoggedIn ? (
                             <Link
                                 href="/profile"
                                 className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-100 transition border border-transparent hover:border-gray-200"
@@ -184,22 +175,13 @@ const Navbar = () => {
                                 </div>
 
                                 <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm overflow-hidden relative border border-gray-100">
-                                    {currentUser ? (
-                                        <Link href="/profile">
-                                            <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-gray-100 overflow-hidden relative">
-                                                {userImageSrc ? (
-                                                    <AppImage
-                                                        src={userImageSrc}
-                                                        alt={currentUser.name || "User"}
-                                                        type="avatar"
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                ) : (
-                                                    // Fallback if userImageSrc is null/undefined
-                                                    <span>{getInitials()}</span>
-                                                )}
-                                            </div>
-                                        </Link>
+                                    {userImageSrc ? (
+                                        <AppImage
+                                            src={userImageSrc}
+                                            alt={currentUser.name || "User"}
+                                            type="avatar"
+                                            className="w-full h-full object-cover"
+                                        />
                                     ) : (
                                         <span>{getInitials()}</span>
                                     )}
