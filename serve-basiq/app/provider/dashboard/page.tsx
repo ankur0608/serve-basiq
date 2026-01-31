@@ -5,15 +5,17 @@ import { useUIStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import { useProviderDashboard } from '@/app/hook/useProviderDashboard';
 import {
-    LayoutGrid, ClipboardList, Package, Wallet, UserCircle,
-    BellRing, ArrowLeft, Loader2, AlertTriangle, Hexagon, LogOut, Settings
+    LayoutGrid, ClipboardList, Package, UserCircle,
+    BellRing, ArrowLeft, Loader2, AlertTriangle, Hexagon, LogOut, Settings, TrendingUp
 } from 'lucide-react';
 import clsx from 'clsx';
 
 // --- IMPORTS ---
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
 import {
-    DashboardHomeView, LeadsView, EarningsView, ProfileView
+    DashboardHomeView,
+    LeadsView,
+    ProfileView
 } from '@/components/providers/GeneralViews';
 import { AddProductView } from '@/components/providers/AddProductView';
 import { ManagementView } from '@/components/providers/Management';
@@ -26,47 +28,42 @@ export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
     const router = useRouter();
 
-    // Ensure we have a valid ID for the hook, or pass undefined to skip fetching
-    const { data: dashboardData, isLoading: loading, refetch, isError } = useProviderDashboard(currentUser?.id);
+    // 1. Fetch General Dashboard Data
+    const { data: dashboardData, isLoading: loading, refetch: refetchDashboard, isError } = useProviderDashboard(currentUser?.id);
 
+    // Local State
     const [activeView, setActiveView] = useState('dashboard');
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
 
-    // State for Modals
+    // Modal State
     const [showRestrictionModal, setShowRestrictionModal] = useState(false);
-    const [showTypeModal, setShowTypeModal] = useState(false); // ✅ New Modal State
+    const [showTypeModal, setShowTypeModal] = useState(false);
     const [updatingType, setUpdatingType] = useState(false);
 
-    // EXTRACT BOOKINGS AND ORDERS
+    // ✅ SAFE DATA EXTRACTION (Prevents Crash)
     const bookings = dashboardData?.bookings || [];
     const orders = dashboardData?.orders || [];
     const userData = dashboardData?.user;
-
-    // ✅ EXTRACT PROVIDER TYPE (Default to BOTH if undefined)
     const providerType = dashboardData?.user?.providerType || 'BOTH';
-
-    // Derived State
-    const services = useMemo(() => {
-        const rawServices = dashboardData?.user?.services || dashboardData?.services || [];
-        return rawServices.map((svc: any) => ({
-            ...svc,
-            img: svc.serviceimg || svc.mainimg || svc.img || ""
-        }));
-    }, [dashboardData]);
-
-    const extendedUserData = useMemo(() => {
-        if (!dashboardData?.user) return null;
-        return dashboardData.user;
-    }, [dashboardData]);
-
     const isVerified = dashboardData?.isSetupComplete || false;
+
+    // ✅ FIX: Default Stats Object to prevent 'undefined' error
+    const safeStats = useMemo(() => {
+        return dashboardData?.stats || {
+            revenue: 0,
+            jobsCompleted: 0,
+            pendingRequests: 0,
+            rating: 0
+        };
+    }, [dashboardData]);
 
     const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3000);
     };
 
+    // Auto-show restriction modal if setup is incomplete
     useEffect(() => {
         if (dashboardData && !dashboardData.isSetupComplete) {
             setShowRestrictionModal(true);
@@ -90,29 +87,21 @@ export default function ProviderDashboard() {
         }
     };
 
-    // ✅ Function to Update Provider Type
     const handleUpdateType = async (newType: string) => {
         if (!currentUser?.id) return;
         setUpdatingType(true);
         try {
             const res = await fetch('/api/user/profile', {
-                method: 'POST', // Assuming your profile update endpoint handles partial updates
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: currentUser.id,
-                    providerType: newType
-                })
+                body: JSON.stringify({ userId: currentUser.id, providerType: newType })
             });
-
             if (res.ok) {
                 showToast(`Switched to ${newType} mode`, 'success');
                 setShowTypeModal(false);
-                refetch(); // Reload dashboard to reflect changes
-            } else {
-                showToast("Failed to update type", "error");
+                refetchDashboard();
             }
         } catch (error) {
-            console.error(error);
             showToast("Error updating type", "error");
         } finally {
             setUpdatingType(false);
@@ -121,20 +110,12 @@ export default function ProviderDashboard() {
 
     const displayName = userData?.name || currentUser?.name || "Provider";
     const displayImg = userData?.profileImage || userData?.img || "https://i.pravatar.cc/150";
-
     const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    const safeStats = {
-        stats: dashboardData?.stats || { revenue: 0, jobsCompleted: 0, rating: 5.0, pendingRequests: 0 },
-        service: services.length > 0 ? services[0] : { name: displayName, img: displayImg }
-    };
-
+    // Handle protected view navigation
     const handleViewChange = (view: string) => {
-        if (view === 'dashboard' || view === 'profile' || view === 'edit-profile') {
-            setActiveView(view);
-            return;
-        }
-        if (!isVerified) {
+        const publicViews = ['dashboard', 'profile', 'edit-profile'];
+        if (!publicViews.includes(view) && !isVerified) {
             setShowRestrictionModal(true);
             return;
         }
@@ -142,43 +123,37 @@ export default function ProviderDashboard() {
     };
 
     if (loading) return (
-        <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FC] text-[#0f172a] gap-3">
-            <Loader2 className="animate-spin h-10 w-10" />
-            <p className="font-bold text-sm animate-pulse">Loading ServeBasiq...</p>
+        <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FC] gap-3">
+            <Loader2 className="animate-spin h-10 w-10 text-blue-600" />
+            <p className="font-bold text-sm text-slate-600 animate-pulse">Loading ServeBasiq Dashboard...</p>
         </div>
     );
 
     if (isError) return (
         <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FC] text-red-600 gap-3">
             <AlertTriangle className="h-10 w-10" />
-            <p className="font-bold text-sm">Failed to load dashboard data.</p>
-            <button onClick={() => refetch()} className="text-[#0f172a] underline">Retry</button>
+            <p className="font-bold">Failed to load provider data.</p>
+            <button onClick={() => refetchDashboard()} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm">Retry Connection</button>
         </div>
     );
 
     return (
-        <div className="flex h-screen overflow-hidden bg-[#F8F9FC] font-sans text-slate-800 selection:bg-[#0f172a] selection:text-white relative">
+        <div className="flex h-screen overflow-hidden bg-[#F8F9FC] font-sans text-slate-800 relative">
 
-            {/* ✅ Restriction Modal */}
+            {/* --- MODALS & OVERLAYS --- */}
             <RestrictionModal
                 isOpen={showRestrictionModal}
                 onClose={() => setShowRestrictionModal(false)}
-                onSetup={() => {
-                    setShowRestrictionModal(false);
-                    setActiveView('edit-profile');
-                }}
+                onSetup={() => { setShowRestrictionModal(false); handleViewChange('edit-profile'); }}
             />
 
-            {/* ✅ Provider Type Change Modal */}
             {showTypeModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
                     <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4">
                         <div className="flex justify-between items-center">
-                            <h3 className="font-bold text-lg">Change Account Type</h3>
+                            <h3 className="font-bold text-lg">Account Mode</h3>
                             <button onClick={() => setShowTypeModal(false)} className="text-slate-400 hover:text-slate-600"><LogOut size={20} className="rotate-180" /></button>
                         </div>
-                        <p className="text-sm text-slate-500">Select what you want to offer to customers.</p>
-
                         <div className="space-y-2">
                             {['SERVICE', 'PRODUCT', 'BOTH'].map((type) => (
                                 <button
@@ -187,120 +162,126 @@ export default function ProviderDashboard() {
                                     onClick={() => handleUpdateType(type)}
                                     className={clsx(
                                         "w-full p-3 rounded-xl text-left font-bold text-sm border transition-all flex justify-between items-center",
-                                        providerType === type
-                                            ? "bg-slate-900 text-white border-slate-900"
-                                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                                        providerType === type ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
                                     )}
                                 >
-                                    <span>{type === 'BOTH' ? 'Both (Services & Products)' : type === 'SERVICE' ? 'Services Only' : 'Products Only'}</span>
+                                    <span>{type === 'BOTH' ? 'Hybrid (Both)' : type + ' Only'}</span>
                                     {providerType === type && <Hexagon size={16} fill="currentColor" />}
                                 </button>
                             ))}
                         </div>
-                        {updatingType && <p className="text-xs text-center text-blue-600 animate-pulse">Updating profile...</p>}
                     </div>
                 </div>
             )}
 
             {toast && (
-                <div className={clsx("fixed top-5 right-5 z-[110] animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-75 bg-white", toast.type === 'success' ? "border-emerald-500 text-emerald-700" : toast.type === 'error' ? "border-red-500 text-red-700" : "border-blue-500 text-blue-700")}>
+                <div className={clsx("fixed top-5 right-5 z-[110] animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-75 bg-white",
+                    toast.type === 'success' ? "border-emerald-500 text-emerald-700" : "border-red-500 text-red-700")}>
                     <span className="font-bold text-sm">{toast.msg}</span>
                 </div>
             )}
 
-            {/* --- SIDEBAR --- */}
-            <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.03)]">
+            {/* --- SIDEBAR (Desktop) --- */}
+            <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-sm">
                 <div className="flex items-center gap-3 h-20 px-8 border-b border-slate-100">
-                    <div className="bg-blue-600 text-white p-2.5 rounded-xl"><Hexagon size={24} fill="currentColor" /></div>
+                    <div className="bg-blue-600 text-white p-2 rounded-xl"><Hexagon size={24} fill="currentColor" /></div>
                     <div>
-                        <h1 className="text-black font-extrabold tracking-tight text-xl leading-tight">ServeBasiq</h1>
-                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Admin Panel</p>
+                        <h1 className="text-slate-900 font-black text-xl leading-none">ServeBasiq</h1>
+                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter mt-1">Provider Admin</p>
                     </div>
                 </div>
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
                     <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeView} set={handleViewChange} />
-                    <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeView} set={handleViewChange} badge={safeStats.stats.pendingRequests} />
+                    <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeView} set={handleViewChange} badge={dashboardData?.stats?.pendingRequests} />
+                    <NavButton id="leads" icon={TrendingUp} label="Market Leads" active={activeView} set={handleViewChange} />
                     <NavButton id="settings" icon={Package} label="Management" active={activeView} set={handleViewChange} />
-                    {/* <NavButton id="earnings" icon={Wallet} label="Earnings" active={activeView} set={handleViewChange} /> */}
-                    <NavButton id="profile" icon={UserCircle} label="Profile" active={activeView} set={handleViewChange} />
+                    <NavButton id="profile" icon={UserCircle} label="Account" active={activeView} set={handleViewChange} />
                 </nav>
                 <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group border border-transparent hover:border-slate-200" onClick={() => setActiveView('profile')}>
-                        <div className="relative">
-                            <img src={displayImg} className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm" alt="Profile" />
-                            <div className={clsx("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white", isVerified ? "bg-emerald-500" : "bg-orange-500")}></div>
-                        </div>
+                    <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleViewChange('profile')}>
+                        <img src={displayImg} className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm" alt="User" />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-slate-900 truncate">{displayName}</p>
-                            <p className="text-xs text-slate-500 truncate">{isVerified ? "Verified Provider" : "Pending Verification"}</p>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase">{providerType}</p>
                         </div>
-                        <button className="text-slate-400 hover:text-red-500 transition-colors"><LogOut size={18} /></button>
                     </div>
                 </div>
             </aside>
 
+            {/* --- MAIN CONTENT AREA --- */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200/60 h-20 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20 shadow-sm">
+                <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 h-20 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20">
                     <div className="flex items-center gap-4">
-                        <div className="md:hidden"><span className="font-extrabold text-blue-900">ServeBasiq</span></div>
+                        <div className="md:hidden font-black text-blue-600 text-lg">SB</div>
                         <div className="hidden md:block">
                             <div className="flex items-center gap-2">
-                                <h2 className="text-xl font-bold text-slate-900 tracking-tight capitalize">{activeView === 'settings' ? 'Management' : activeView.replace('-', ' ')}</h2>
-
-                                {/* ✅ PROVIDER TYPE CONFIG BUTTON */}
-                                <button
-                                    onClick={() => setShowTypeModal(true)}
-                                    className="ml-2 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-bold text-slate-600 border border-slate-200 transition flex items-center gap-1"
-                                >
+                                <h2 className="text-xl font-bold text-slate-900 capitalize">
+                                    {activeView === 'settings' ? 'Service Management' : activeView.replace('-', ' ')}
+                                </h2>
+                                <button onClick={() => setShowTypeModal(true)} className="px-2 py-1 bg-slate-100 rounded-lg text-[10px] font-black text-slate-500 border hover:bg-slate-200 flex items-center gap-1">
                                     <Settings size={12} /> {providerType}
                                 </button>
                             </div>
-                            <p className="text-xs text-slate-500 font-bold hidden sm:block">{currentDate}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{currentDate}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 sm:gap-4">
-                        {/* ✅ UPDATED: Back to Website (Visible on Mobile as Icon) */}
-                        <button
-                            onClick={handleBackToHome}
-                            className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-white px-3 sm:px-4 py-2.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all group"
-                        >
-                            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-                            <span className="hidden sm:inline">Back to Website</span>
-                        </button>
 
-                        <button className="relative p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all">
-                            <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white animate-pulse"></span>
-                            <BellRing size={20} />
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <button onClick={handleBackToHome} className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 group transition-all">
+                            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                            <span className="hidden sm:inline">Exit to Website</span>
                         </button>
-                        <div className="h-9 w-9 rounded-full overflow-hidden border border-slate-200 cursor-pointer" onClick={() => setActiveView('profile')}>
+                        <button className="relative p-2.5 rounded-xl text-slate-400 hover:bg-slate-100 transition-colors">
+                            <BellRing size={20} />
+                            <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-white"></span>
+                        </button>
+                        <div className="h-9 w-9 rounded-full overflow-hidden border border-slate-200 cursor-pointer shadow-sm" onClick={() => handleViewChange('profile')}>
                             <img src={displayImg} className="h-full w-full object-cover" alt="Profile" />
                         </div>
                     </div>
                 </header>
 
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-32 lg:pb-8 scroll-smooth">
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {activeView === 'dashboard' && <DashboardHomeView stats={safeStats} setActiveView={handleViewChange} onBackToHome={handleBackToHome} isVerified={isVerified} />}
+                <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32 lg:pb-8 scroll-smooth">
+                    <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
 
+                        {/* 1. Dashboard Home */}
+                        {activeView === 'dashboard' && (
+                            <DashboardHomeView
+                                stats={{ stats: safeStats }} // ✅ Use Safe Stats Here
+                                setActiveView={handleViewChange}
+                                onBackToHome={handleBackToHome}
+                                isVerified={isVerified}
+                            />
+                        )}
+
+                        {/* 2. Operations / Requests */}
                         {activeView === 'requests' && (
                             <RequestsView
                                 bookings={bookings}
                                 orders={orders}
                                 showToast={showToast}
-                                onRefresh={refetch}
-                                providerType={providerType} // 👈 Add this line
+                                onRefresh={refetchDashboard}
+                                providerType={providerType}
                             />
                         )}
-                        {activeView === 'leads' && <LeadsView />}
-                        {/* {activeView === 'earnings' && <EarningsView />} */}
-                        {activeView === 'profile' && <ProfileView stats={safeStats} user={userData} onEdit={() => setActiveView('edit-profile')} />}
 
-                        {/* ✅ UPDATED MANAGEMENT VIEW LOGIC */}
+                        {/* 3. Market Leads */}
+                        {activeView === 'leads' && <LeadsView />}
+
+                        {/* 4. Account Profile */}
+                        {activeView === 'profile' && (
+                            <ProfileView
+                                stats={{ stats: safeStats }} // ✅ Use Safe Stats Here Too
+                                user={userData}
+                                onEdit={() => handleViewChange('edit-profile')}
+                            />
+                        )}
+
+                        {/* 5. Service / Product Management */}
                         {activeView === 'settings' && (
                             providerType === 'PRODUCT' ? (
-                                // 1. IF PRODUCT ONLY: SHOW PRODUCT VIEW DIRECTLY
                                 <div className="space-y-6">
-                                    <h2 className="text-xl font-bold text-slate-900">My Products</h2>
+                                    <h2 className="text-xl font-bold text-slate-900">Inventory Management</h2>
                                     {currentUser?.id && (
                                         <ProductsView
                                             setActiveView={handleViewChange}
@@ -311,30 +292,25 @@ export default function ProviderDashboard() {
                                     )}
                                 </div>
                             ) : (
-                                // 2. IF SERVICE OR BOTH: SHOW MANAGEMENT VIEW (SERVICES)
                                 <ManagementView
                                     currentUser={currentUser}
                                     userData={userData}
-                                    services={services}
-                                    refetch={refetch}
                                     showToast={showToast}
                                     setActiveView={handleViewChange}
-                                    providerType={providerType} // Pass providerType prop
+                                    providerType={providerType}
                                 />
                             )
                         )}
 
-                        {/* ✅ UPDATED PRODUCTS VIEW LOGIC */}
+                        {/* 6. Products Specific Tab (for Hybrid Providers) */}
                         {activeView === 'products' && (
                             <div className="space-y-6">
-                                {/* Only show toggle tabs if BOTH */}
                                 {providerType === 'BOTH' && (
-                                    <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm">
-                                        <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all">Services</button>
-                                        <button onClick={() => setActiveView('products')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-[#0f172a] text-white shadow-md transition-all">Products</button>
+                                    <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-xs border border-slate-200 shadow-sm">
+                                        <button onClick={() => handleViewChange('settings')} className="flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50">Services</button>
+                                        <button className="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-900 text-white shadow-sm">Products</button>
                                     </div>
                                 )}
-
                                 {currentUser?.id && (
                                     <ProductsView
                                         setActiveView={handleViewChange}
@@ -346,18 +322,20 @@ export default function ProviderDashboard() {
                             </div>
                         )}
 
+                        {/* 7. Verification / Edit Profile */}
                         {activeView === 'edit-profile' && (
                             <VerificationView
                                 userId={currentUser?.id || ""}
-                                existingData={extendedUserData}
+                                existingData={userData}
                                 showToast={showToast}
                                 onBack={() => {
-                                    refetch();
-                                    setActiveView('profile');
+                                    refetchDashboard();
+                                    handleViewChange('profile');
                                 }}
                             />
                         )}
 
+                        {/* 8. Add/Edit Product Form */}
                         {activeView === 'add-product' && currentUser?.id && (
                             <AddProductView
                                 setActiveView={handleViewChange}
@@ -370,13 +348,13 @@ export default function ProviderDashboard() {
                 </main>
             </div>
 
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 z-50 pb-safe shadow-[0_-4px_20px_-1px_rgba(0,0,0,0.05)] transition-all">
-                <div className="flex justify-around items-center h-16 px-1">
+            {/* --- MOBILE NAVIGATION --- */}
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 z-50 pb-safe shadow-lg">
+                <div className="flex justify-around items-center h-16">
                     <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeView} set={handleViewChange} />
                     <MobileNavBtn id="requests" icon={ClipboardList} label="Ops" active={activeView} set={handleViewChange} />
                     <MobileNavBtn id="settings" icon={Package} label="Manage" active={activeView} set={handleViewChange} />
-                    {/* <MobileNavBtn id="earnings" icon={Wallet} label="Earn" active={activeView} set={handleViewChange} /> */}
-                    <MobileNavBtn id="profile" icon={UserCircle} label="Profile" active={activeView} set={handleViewChange} />
+                    <MobileNavBtn id="profile" icon={UserCircle} label="Me" active={activeView} set={handleViewChange} />
                 </div>
             </nav>
         </div>

@@ -13,16 +13,26 @@ interface Props {
 export default async function ServiceDetailPage({ params }: Props) {
   const { id } = await params;
 
+  // 1. Fetch Service AND Provider Details (Including Addresses)
   const rawService = await prisma.service.findUnique({
     where: { id: id },
     include: {
       user: {
         select: {
+          id: true,
           name: true,
           image: true,
+          profileImage: true,
           isVerified: true,
           phone: true,
           shopName: true,
+          // Socials
+          instagramUrl: true,
+          facebookUrl: true,
+          youtubeUrl: true,
+          websiteUrl: true,
+          // ✅ FETCH PROVIDER ADDRESSES
+          addresses: true
         }
       },
       category: { select: { name: true } },
@@ -35,16 +45,55 @@ export default async function ServiceDetailPage({ params }: Props) {
 
   if (!rawService) return notFound();
 
-  // ✅ SANITIZE DATA: Convert Decimal objects to plain Numbers/Strings
-  // This prevents the "Only plain objects can be passed" error
+  // 2. ✅ SMART ADDRESS LOGIC
+  // Priority: 1. Service Specific Address -> 2. Provider Work Address -> 3. Provider Home Address
+  const providerAddresses = rawService.user.addresses || [];
+  const providerWorkAddr = providerAddresses.find(a => a.type === 'Work');
+  const providerHomeAddr = providerAddresses.find(a => a.type === 'Home');
+  const fallbackAddr = providerWorkAddr || providerHomeAddr || providerAddresses[0];
+
+  // Determine final values
+  const finalAddressLine1 = rawService.addressLine1 || fallbackAddr?.line1 || null;
+  const finalAddressLine2 = rawService.addressLine2 || fallbackAddr?.line2 || null;
+  const finalCity = rawService.city || fallbackAddr?.city || null;
+  const finalState = rawService.state || fallbackAddr?.state || null;
+  const finalPincode = rawService.pincode || fallbackAddr?.pincode || null;
+  const finalLandmark = fallbackAddr?.landmark || null; // Service model usually doesn't have landmark, so we take from Provider
+
+  // 3. Data Mapping
   const service = {
     ...rawService,
     price: Number(rawService.price),
     rating: Number(rawService.rating),
-    latitude: rawService.latitude ? Number(rawService.latitude) : null,
-    longitude: rawService.longitude ? Number(rawService.longitude) : null,
+    latitude: rawService.latitude ? Number(rawService.latitude) : 0,
+    longitude: rawService.longitude ? Number(rawService.longitude) : 0,
+
+    // ✅ Mapped Address Fields
+    addressLine1: finalAddressLine1,
+    addressLine2: finalAddressLine2,
+    city: finalCity,
+    state: finalState,
+    pincode: finalPincode,
+    landmark: finalLandmark, // Passed to frontend
+
+    // Socials Mapping (Service Level)
+    instagramUrl: (rawService as any).instagramUrl || null,
+    facebookUrl: (rawService as any).facebookUrl || null,
+    youtubeUrl: (rawService as any).youtubeUrl || null,
+    websiteUrl: (rawService as any).websiteUrl || null,
+
     createdAt: rawService.createdAt.toISOString(),
     updatedAt: rawService.updatedAt.toISOString(),
+
+    // User Mapping
+    user: {
+      ...rawService.user,
+      instagramUrl: (rawService.user as any).instagramUrl || null,
+      facebookUrl: (rawService.user as any).facebookUrl || null,
+      youtubeUrl: (rawService.user as any).youtubeUrl || null,
+      websiteUrl: (rawService.user as any).websiteUrl || null,
+    },
+
     reviews: rawService.reviews.map(review => ({
       ...review,
       createdAt: review.createdAt.toISOString(),

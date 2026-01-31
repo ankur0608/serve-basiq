@@ -1,4 +1,3 @@
-// app/services/page.tsx
 import ServicesExplorer from '@/components/services/ServicesExplorer';
 
 export const metadata = {

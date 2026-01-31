@@ -101,14 +101,14 @@ enum CategoryType {
 }
 
 model Category {
-    id   String        @id @default(uuid())
-    name String        @unique
-    type CategoryType?
-
+    id       String        @id @default(uuid())
+    name     String        @unique
+    type     CategoryType?
+    image    String?
     // 1. Self-Relation (Parent/Child)
     parentId String?
-    parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-    children Category[] @relation("CategoryHierarchy")
+    parent   Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+    children Category[]    @relation("CategoryHierarchy")
 
     // 2. Relations to Services
     services             Service[] @relation("MainCategory")

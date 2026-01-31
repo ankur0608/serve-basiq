@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { FaUser, FaMapLocation, FaPhone, FaEnvelope, FaXmark, FaCheck, FaCity, FaLocationDot, FaSpinner, FaCalendarDays, FaLanguage } from 'react-icons/fa6';
 import clsx from 'clsx';
-import Image from 'next/image';
+// 1. Swap Next/Image for AppImage
+import AppImage from '@/components/ui/AppImage';
 
 export interface ProfileData {
     name: string; email: string; phone: string; image?: string | null;
@@ -11,15 +12,14 @@ export interface ProfileData {
     addressLine1: string; addressLine2: string; landmark: string; city: string; state: string; pincode: string;
 }
 
-// 1. Updated Interface to include the new props
 interface ProfileEditModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialData: ProfileData;
     onSave: (data: ProfileData, file: File | null) => Promise<void>;
-    isEmailLocked?: boolean;        // Added
-    isPhoneLocked?: boolean;        // Added
-    onAddPhoneClick?: () => void;   // Added
+    isEmailLocked?: boolean;
+    isPhoneLocked?: boolean;
+    onAddPhoneClick?: () => void;
 }
 
 const DEFAULT_DATA: ProfileData = {
@@ -32,7 +32,7 @@ export default function ProfileEditModal({
     onClose,
     initialData,
     onSave,
-    isEmailLocked,      // Destructure new props
+    isEmailLocked,
     isPhoneLocked,
     onAddPhoneClick
 }: ProfileEditModalProps) {
@@ -78,8 +78,20 @@ export default function ProfileEditModal({
                         {/* Image Upload */}
                         <div className="flex flex-col items-center justify-center gap-3">
                             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-100 shadow-sm relative bg-slate-100">
-                                    {preview ? <Image src={preview} alt="Preview" fill className="object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-400 text-2xl font-bold">{formData.name?.substring(0, 2).toUpperCase()}</div>}
+                                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-100 shadow-sm relative bg-slate-100 flex items-center justify-center">
+                                    {preview ? (
+                                        // 2. Implementation of AppImage
+                                        <AppImage
+                                            src={preview}
+                                            alt="Preview"
+                                            type="avatar"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-2xl font-bold">
+                                            {formData.name?.substring(0, 2).toUpperCase()}
+                                        </div>
+                                    )}
                                 </div>
                                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                             </div>
@@ -93,7 +105,6 @@ export default function ProfileEditModal({
                                 <div><InputField label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={(v: string) => setFormData({ ...formData, dateOfBirth: v })} icon={<FaCalendarDays />} /></div>
                                 <div><SelectField label="Preferred Language" value={formData.preferredLanguage} onChange={(v: string) => setFormData({ ...formData, preferredLanguage: v })} options={['English', 'Hindi', 'Gujarati', 'Marathi']} icon={<FaLanguage />} /></div>
 
-                                {/* 2. Updated Fields to support locking and actions */}
                                 <div>
                                     <InputField
                                         label="Email Address"
@@ -101,7 +112,7 @@ export default function ProfileEditModal({
                                         onChange={(v: string) => setFormData({ ...formData, email: v })}
                                         type="email"
                                         icon={<FaEnvelope />}
-                                        disabled={isEmailLocked} // Apply lock
+                                        disabled={isEmailLocked}
                                     />
                                 </div>
                                 <div>
@@ -111,8 +122,7 @@ export default function ProfileEditModal({
                                         onChange={(v: string) => setFormData({ ...formData, phone: v })}
                                         type="tel"
                                         icon={<FaPhone />}
-                                        disabled={isPhoneLocked} // Apply lock
-                                        // 3. Add "Change" button if locked and callback provided
+                                        disabled={isPhoneLocked}
                                         rightElement={onAddPhoneClick && (
                                             <button
                                                 type="button"
@@ -151,7 +161,6 @@ export default function ProfileEditModal({
     );
 }
 
-// 4. Updated InputField to accept disabled and rightElement props
 function InputField({ label, value, onChange, type = "text", placeholder, icon, maxLength, disabled, rightElement }: any) {
     return (
         <div>

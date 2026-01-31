@@ -1,36 +1,48 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 
-// Define the shape of your Product to include ALL fields needed for editing
 export interface ProductProps {
     id: string;
     name: string;
-    category: string;
+    category: string; // Used for table display string
+    categoryObject?: any; // Stores the full category object for editing
     price: number;
     moq: number;
     unit: string;
-    image: string; // Used for UI Card
-    productImage: string; // Used for Edit Form
+    image: string;
+    productImage: string;
     supplier: string;
     isVerified: boolean;
-    // ✅ Added these fields so they appear in Edit Mode
     desc: string;
     gallery: string[];
     stockStatus: string;
     deliveryType: string;
+    subcategories?: any[]; // Stores the array of subcategory objects
 }
 
 export const useProducts = (userId?: string) => {
     const [products, setProducts] = useState<ProductProps[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     // --- FETCH PRODUCTS ---
     const fetchProducts = useCallback(async () => {
+        const controller = new AbortController();
+        const signal = controller.signal;
+
         setLoading(true);
         try {
             const endpoint = userId ? '/api/provider/products' : '/api/products/all';
-            const options = userId
-                ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }
-                : { method: 'GET', cache: 'no-store' as RequestCache };
+            const options: RequestInit = userId
+                ? {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId }),
+                    signal
+                }
+                : {
+                    method: 'GET',
+                    cache: 'no-store',
+                    signal
+                };
 
             const res = await fetch(endpoint, options);
             if (!res.ok) throw new Error(`HTTP Status: ${res.status}`);
@@ -42,23 +54,23 @@ export const useProducts = (userId?: string) => {
             else if (Array.isArray(rawData.data)) items = rawData.data;
             else if (rawData.products && Array.isArray(rawData.products)) items = rawData.products;
 
-            // ✅ Map Data Safely (INCLUDING ALL EDIT FIELDS)
             const formatted: ProductProps[] = items.map((item: any) => ({
+                // ✅ Fix: Spread 'item' first to preserve category and subcategories objects
+                ...item,
                 id: String(item.id),
                 name: item.name || "Untitled Product",
+
+                // Display logic: extract name for table, but keep object for form
                 category: typeof item.category === 'object' ? item.category?.name : (item.category || "General"),
+                categoryObject: item.category,
+
                 price: Number(item.price) || 0,
                 moq: Number(item.moq) || 1,
                 unit: item.unit || 'PIECE',
-
-                // Image Handling
-                image: item?.productImage || item.image || item.img || "", // For Card
-                productImage: item?.productImage || item.image || "", // For Form
-
+                image: item?.productImage || item.image || item.img || "",
+                productImage: item?.productImage || item.image || "",
                 supplier: item.user?.shopName || item.user?.name || "Verified Supplier",
                 isVerified: Boolean(item.isVerified),
-
-                // ✅ Critical: Pass these through for the Edit Form
                 desc: item.desc || "",
                 gallery: item.gallery || [],
                 stockStatus: item.stockStatus || "IN_STOCK",
@@ -66,11 +78,15 @@ export const useProducts = (userId?: string) => {
             }));
 
             setProducts(formatted);
-        } catch (e) {
-            console.error("Fetch error:", e);
+        } catch (e: any) {
+            if (e.name !== 'AbortError') {
+                console.error("Fetch error:", e);
+            }
         } finally {
             setLoading(false);
         }
+
+        return () => controller.abort();
     }, [userId]);
 
     // --- SAVE (CREATE / UPDATE) ---
@@ -87,6 +103,7 @@ export const useProducts = (userId?: string) => {
             });
             const data = await res.json();
             if (!data.success) throw new Error(data.message || "Failed to save");
+
             await fetchProducts();
             return { success: true, data };
         } catch (error: any) {
@@ -100,10 +117,10 @@ export const useProducts = (userId?: string) => {
     const deleteProduct = async (productId: string) => {
         if (!userId) return false;
         try {
-            const res = await fetch(`/api/products/delete`, {
+            const res = await fetch(`/api/products/${productId}`, { // Standardized to your route params
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId, userId })
+                body: JSON.stringify({ userId })
             });
             if (res.ok) {
                 setProducts(prev => prev.filter(p => p.id !== productId));
@@ -115,10 +132,6 @@ export const useProducts = (userId?: string) => {
             return false;
         }
     };
-
-    useEffect(() => {
-        fetchProducts();
-    }, [fetchProducts]);
 
     return { products, loading, fetchProducts, saveProduct, deleteProduct };
 };

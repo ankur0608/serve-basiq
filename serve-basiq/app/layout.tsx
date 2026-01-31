@@ -17,9 +17,9 @@ export const metadata: Metadata = {
   description: "Connect with verified professionals and wholesale suppliers.",
 
   icons: {
-    icon: "/logo.svg",
-    shortcut: "/logo.svg",
-    apple: "/logo.svg",
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
   },
 };
 

@@ -1,4 +1,3 @@
-// service-logic.ts
 import { useState, useEffect, useMemo } from 'react';
 
 // --- Types ---
@@ -11,6 +10,7 @@ export interface Category {
     id: string;
     name: string;
     children: SubCategory[];
+    subcategories?: SubCategory[];
 }
 
 export interface ServiceSettingsProps {
@@ -38,6 +38,11 @@ export async function uploadToBackend(file: File): Promise<string> {
 
 // --- Custom Hook ---
 export function useServiceForm({ userId, serviceData, userData, userAddress, onComplete, showToast }: ServiceSettingsProps) {
+    // 🔍 LOG: Initial Props
+    useEffect(() => {
+        console.log("🚀 [useServiceForm] Hook Initialized with:", { userId, hasServiceData: !!serviceData, userAddress });
+    }, []);
+
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -46,48 +51,129 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
     const [categories, setCategories] = useState<Category[]>([]);
     const [loadingCats, setLoadingCats] = useState(true);
 
-    // Initial Form State
+    // ✅ HELPER: Smart Address Resolution
+    const resolveAddress = (svc: any, usrAddr: any) => {
+        console.log("🔍 [resolveAddress] Input:", { svc, usrAddr });
+
+        // 1. Priority: Existing Service Data
+        if (svc && svc.addressLine1) {
+            console.log("✅ [resolveAddress] Using Existing Service Address");
+            return {
+                addressLine1: svc.addressLine1 || '',
+                addressLine2: svc.addressLine2 || '',
+                city: svc.city || '',
+                state: svc.state || '',
+                pincode: svc.pincode || '',
+                latitude: Number(svc.latitude) || 0,
+                longitude: Number(svc.longitude) || 0,
+            };
+        }
+
+        // 2. Fallback: User Profile Address
+        const addresses = Array.isArray(usrAddr) ? usrAddr : (usrAddr ? [usrAddr] : []);
+
+        const bestAddr = addresses.find((a: any) => a.type === 'Work')
+            || addresses.find((a: any) => a.type === 'Home')
+            || addresses[0];
+
+        if (bestAddr) {
+            console.log("✅ [resolveAddress] Found User Address:", bestAddr);
+            return {
+                addressLine1: bestAddr.line1 || bestAddr.addressLine1 || '',
+                addressLine2: bestAddr.line2 || bestAddr.addressLine2 || '',
+                city: bestAddr.city || '',
+                state: bestAddr.state || '',
+                pincode: bestAddr.pincode || '',
+                latitude: Number(bestAddr.latitude) || 0,
+                longitude: Number(bestAddr.longitude) || 0,
+            };
+        }
+
+        console.warn("⚠️ [resolveAddress] No address found. Starting empty.");
+        // Return default object structure
+        return { addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', latitude: 0, longitude: 0 };
+    };
+
+    // ✅ INITIAL FORM STATE
+    const initialAddress = resolveAddress(serviceData, userAddress);
+
     const [form, setForm] = useState({
         name: serviceData?.name || '',
         desc: serviceData?.desc || '',
         experience: serviceData?.experience || '',
         categoryId: serviceData?.categoryId || '',
         subCategoryIds: serviceData?.subcategories ? serviceData.subcategories.map((s: any) => s.id) : [],
+
+        // Contact
         altPhone: serviceData?.altPhone || userData?.phone || '',
+
+        // Visuals
         mainimg: serviceData?.mainimg || serviceData?.serviceimg || '',
         coverImg: serviceData?.coverImg || '',
         gallery: serviceData?.gallery || [],
+
+        // Pricing
         priceType: serviceData?.priceType || 'FIXED',
         price: serviceData?.price || '',
 
-        // Address
-        addressLine1: serviceData?.addressLine1 || userAddress?.addressLine1 || '',
-        addressLine2: serviceData?.addressLine2 || userAddress?.addressLine2 || '',
-        city: serviceData?.city || userAddress?.city || '',
-        state: serviceData?.state || userAddress?.state || '',
-        pincode: serviceData?.pincode || userAddress?.pincode || '',
-
-        latitude: serviceData?.latitude ? Number(serviceData.latitude) : 0,
-        longitude: serviceData?.longitude ? Number(serviceData.longitude) : 0,
+        // ✅ Address (Spread the resolved object)
+        ...initialAddress,
         radiusKm: serviceData?.radiusKm || 10,
+
+        // Schedule
         workingDays: serviceData?.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
         openTime: serviceData?.openTime || '09:00',
         closeTime: serviceData?.closeTime || '18:00',
+
+        // ✅ Socials
+        instagramUrl: serviceData?.instagramUrl || userData?.instagramUrl || '',
+        facebookUrl: serviceData?.facebookUrl || userData?.facebookUrl || '',
+        youtubeUrl: serviceData?.youtubeUrl || userData?.youtubeUrl || '',
+        websiteUrl: serviceData?.websiteUrl || userData?.websiteUrl || '',
     });
 
-    // Sync Address when Data Arrives
+    // ✅ FETCH FRESH USER DATA ON MOUNT
     useEffect(() => {
-        if (!serviceData && userAddress) {
-            setForm(prev => ({
-                ...prev,
-                addressLine1: prev.addressLine1 || userAddress.addressLine1 || '',
-                addressLine2: prev.addressLine2 || userAddress.addressLine2 || '',
-                city: prev.city || userAddress.city || '',
-                state: prev.state || userAddress.state || '',
-                pincode: prev.pincode || userAddress.pincode || '',
-            }));
+        if (!serviceData && userId) {
+            console.log("🔄 [useEffect] Fetching fresh user profile...");
+            const fetchLatestProfile = async () => {
+                try {
+                    const res = await fetch(`/api/user/profile?userId=${userId}`);
+                    if (res.ok) {
+                        const latestUser = await res.json();
+                        console.log("📥 [useEffect] Fresh User Data Received:", latestUser);
+
+                        setForm(prev => {
+                            // ✅ FIX: Provide a default object structure so TypeScript knows these properties exist
+                            const freshAddress = latestUser.addresses && latestUser.addresses.length > 0
+                                ? resolveAddress(null, latestUser.addresses)
+                                : { addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', latitude: 0, longitude: 0 };
+
+                            return {
+                                ...prev,
+                                // Sync Socials if empty
+                                instagramUrl: prev.instagramUrl || latestUser.instagramUrl || '',
+                                facebookUrl: prev.facebookUrl || latestUser.facebookUrl || '',
+                                youtubeUrl: prev.youtubeUrl || latestUser.youtubeUrl || '',
+                                websiteUrl: prev.websiteUrl || latestUser.websiteUrl || '',
+                                altPhone: prev.altPhone || latestUser.phone || '',
+
+                                // Sync Address if empty in form but exists in profile
+                                addressLine1: prev.addressLine1 || freshAddress.addressLine1 || '',
+                                addressLine2: prev.addressLine2 || freshAddress.addressLine2 || '',
+                                city: prev.city || freshAddress.city || '',
+                                state: prev.state || freshAddress.state || '',
+                                pincode: prev.pincode || freshAddress.pincode || '',
+                            };
+                        });
+                    }
+                } catch (e) {
+                    console.error("❌ [useEffect] Failed to fetch profile:", e);
+                }
+            };
+            fetchLatestProfile();
         }
-    }, [userAddress, serviceData]);
+    }, [userId, serviceData]);
 
     // Fetch Categories
     useEffect(() => {
@@ -108,7 +194,6 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
     // Handlers
     const handleChange = (field: string, value: any) => {
         setForm(prev => {
-            // If category changes, clear selected subcategories
             if (field === 'categoryId') return { ...prev, [field]: value, subCategoryIds: [] };
             return { ...prev, [field]: value };
         });
@@ -118,8 +203,8 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         setForm(prev => {
             const currentIds = prev.subCategoryIds || [];
             const newIds = currentIds.includes(subId)
-                ? currentIds.filter((id: string) => id !== subId) // Remove
-                : [...currentIds, subId]; // Add
+                ? currentIds.filter((id: string) => id !== subId)
+                : [...currentIds, subId];
             return { ...prev, subCategoryIds: newIds };
         });
     };
@@ -177,37 +262,66 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+
+        console.log("📤 [handleSubmit] Generating Payload...");
+
         try {
             const payload = {
                 ...form,
                 price: Number(form.price),
                 experience: Number(form.experience),
                 radiusKm: Number(form.radiusKm),
+                latitude: Number(form.latitude),
+                longitude: Number(form.longitude),
                 serviceimg: form.mainimg,
+                mainimg: form.mainimg,
+                subCategoryIds: Array.isArray(form.subCategoryIds) ? form.subCategoryIds : [],
+
+                // Address fields being sent
+                addressLine1: form.addressLine1,
+                addressLine2: form.addressLine2,
+                city: form.city,
+                state: form.state,
+                pincode: form.pincode,
+
+                // Socials
+                instagramUrl: form.instagramUrl,
+                facebookUrl: form.facebookUrl,
+                youtubeUrl: form.youtubeUrl,
+                websiteUrl: form.websiteUrl,
             };
 
-            const res = await fetch('/api/services/create', {
+            console.log("📦 [handleSubmit] Final Payload:", payload);
+
+            const res = await fetch('/api/services', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, serviceId: serviceData?.id, ...payload })
+                body: JSON.stringify({
+                    userId,
+                    serviceId: serviceData?.id,
+                    ...payload
+                })
             });
 
             const data = await res.json();
+            console.log("📥 [handleSubmit] Response:", data);
+
             if (!data.success) throw new Error(data.message || "Failed to save");
-            showToast?.("Service Saved Successfully!", "success");
+
+            showToast?.(serviceData ? "Service Updated!" : "Service Created!", "success");
             onComplete();
         } catch (error: any) {
-            showToast?.(error.message, "error");
+            console.error("❌ [handleSubmit] Error:", error);
+            showToast?.(error.message || "Failed to save service", "error");
         } finally {
             setLoading(false);
         }
     };
 
-    // 🟢 SAFETY CHECK: Handles both 'children' and 'subcategories' key from API
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(c => c.id === form.categoryId);
         if (!selectedCat) return [];
-        return selectedCat.children || (selectedCat as any).subcategories || [];
+        return selectedCat.children || selectedCat.subcategories || [];
     }, [categories, form.categoryId]);
 
     return {

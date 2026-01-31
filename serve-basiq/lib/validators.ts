@@ -1,4 +1,3 @@
-// lib/validators.ts
 import { z } from "zod";
 
 // --- ENUMS ---
@@ -44,11 +43,18 @@ export const serviceSettingsSchema = z.object({
     mainimg: z.string().optional(),
     coverImg: z.string().optional(),
 
+    // ✅ ADDED GALLERY & SOCIAL FIELDS (Fixes Validation Errors)
+    gallery: z.array(z.string()).optional().default([]),
+    instagramUrl: z.string().optional().or(z.literal("")),
+    facebookUrl: z.string().optional().or(z.literal("")),
+    websiteUrl: z.string().optional().or(z.literal("")),
+    youtubeUrl: z.string().optional().or(z.literal("")),
+
     // Category
     categoryId: z.string().min(1, "Category is required"),
     subCategoryIds: z.array(z.string()).default([]),
 
-    // ✅ ADDRESS FIX: Allow empty strings so API doesn't crash if address is missing
+    // Address
     addressLine1: z.string().optional().or(z.literal("")),
     addressLine2: z.string().optional().or(z.literal("")),
     city: z.string().optional().or(z.literal("")),
@@ -64,12 +70,6 @@ export const serviceSettingsSchema = z.object({
     workingDays: z.array(z.string()).min(1, "Select at least one working day"),
     openTime: z.string().min(1, "Open time is required"),
     closeTime: z.string().min(1, "Close time is required"),
-
-    // Social Links
-    instagramUrl: z.string().url().optional().or(z.literal("")),
-    facebookUrl: z.string().url().optional().or(z.literal("")),
-    websiteUrl: z.string().url().optional().or(z.literal("")),
-    youtubeUrl: z.string().url().optional().or(z.literal("")),
 });
 
 // --- 3. VERIFICATION SCHEMA ---

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
-import AppImage from '@/components/ui/AppImage'; // ✅ Import AppImage
+import AppImage from '@/components/ui/AppImage';
 import {
     Package, BadgeIndianRupee, ChevronRight, Loader2, Save, UploadCloud,
-    Trash2, X, Check, LayoutGrid, Scale, Box, Truck, Plus
+    Trash2, X, LayoutGrid, Scale, Box, Truck, Plus, Check
 } from 'lucide-react';
 
 // --- HELPER: Upload to Backend ---
@@ -76,7 +76,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         fetchCategories();
     }, [showToast]);
 
-    // Logic for Split View
+    // New Logic: Filter subcategories based on current categoryId
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(c => c.id === form.categoryId);
         return selectedCat ? selectedCat.children : [];
@@ -84,20 +84,11 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
     const handleChange = useCallback((field: string, value: any) => {
         setForm(prev => {
+            // New Logic: Reset subcategories if parent category changes
             if (field === 'categoryId') {
                 return { ...prev, [field]: value, subCategoryIds: [] };
             }
             return { ...prev, [field]: value };
-        });
-    }, []);
-
-    const toggleSubCategory = useCallback((subId: string) => {
-        setForm(prev => {
-            const currentIds = prev.subCategoryIds || [];
-            const newIds = currentIds.includes(subId)
-                ? currentIds.filter((id: string) => id !== subId)
-                : [...currentIds, subId];
-            return { ...prev, subCategoryIds: newIds };
         });
     }, []);
 
@@ -156,7 +147,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const closeForm = useCallback(() => setActiveView('products'), [setActiveView]);
 
     const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
-    const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
+    const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white appearance-none";
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -189,101 +180,73 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                                 <div className="col-span-2">
                                     <label className={labelClass}>Product Name</label>
                                     <div className="relative">
-                                        <Package className="absolute left-3 top-3 text-slate-400" size={18} />
+                                        <Package className="absolute left-3 top-3.5 text-slate-400" size={18} />
                                         <input className={`${inputClass} pl-10`} placeholder="e.g. Heavy Duty Drill" value={form.name} onChange={e => handleChange('name', e.target.value)} />
                                     </div>
                                 </div>
                                 <div>
                                     <label className={labelClass}>Unit Type</label>
                                     <div className="relative">
-                                        <Scale className="absolute left-3 top-3 text-slate-400" size={18} />
+                                        <Scale className="absolute left-3 top-3.5 text-slate-400" size={18} />
                                         <select className={`${inputClass} pl-10`} value={form.unit} onChange={e => handleChange('unit', e.target.value)}>
                                             {['PIECE', 'KG', 'BOX', 'LITER'].map(u => <option key={u} value={u}>{u}</option>)}
                                         </select>
+                                        <ChevronRight size={16} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* CATEGORY SELECTOR */}
-                            <div>
-                                <label className={labelClass}>Select Category & Sub-Category</label>
-                                <div className="flex h-80 border border-slate-200 rounded-xl overflow-hidden bg-white">
-                                    {/* Left: Parent Categories */}
-                                    <div className="w-1/3 border-r border-slate-100 bg-slate-50 flex flex-col">
-                                        <div className="p-3 bg-slate-100 text-[10px] font-bold uppercase text-slate-500 tracking-wider">Categories</div>
-                                        <div className="overflow-y-auto flex-1 p-2 space-y-1">
-                                            {loadingCats ? (
-                                                <div className="p-4 text-center"><Loader2 className="animate-spin text-slate-400 mx-auto" /></div>
-                                            ) : (
-                                                categories.map((c) => (
-                                                    <button
-                                                        key={c.id}
-                                                        type="button"
-                                                        onClick={() => handleChange('categoryId', c.id)}
-                                                        className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold flex justify-between items-center transition-all ${form.categoryId === c.id
-                                                            ? 'bg-slate-900 text-white shadow-md'
-                                                            : 'text-slate-600 hover:bg-white hover:shadow-sm'
-                                                            }`}
-                                                    >
-                                                        <span className="truncate">{c.name}</span>
-                                                        {form.categoryId === c.id && <ChevronRight size={14} />}
-                                                    </button>
-                                                ))
-                                            )}
-                                        </div>
+                            {/* DROPDOWN CATEGORY SELECTOR */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass}>Category</label>
+                                    <div className="relative">
+                                        <LayoutGrid className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                                        <select
+                                            className={`${inputClass} pl-10`}
+                                            value={form.categoryId}
+                                            onChange={e => handleChange('categoryId', e.target.value)}
+                                        >
+                                            <option value="">Select Category</option>
+                                            {categories.map(c => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronRight size={16} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
                                     </div>
+                                </div>
 
-                                    {/* Right: Subcategories */}
-                                    <div className="w-2/3 flex flex-col">
-                                        <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white">
-                                            <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Sub-Categories</span>
-                                            <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
-                                                {form.subCategoryIds.length} Selected
-                                            </span>
-                                        </div>
-                                        <div className="overflow-y-auto flex-1 p-4 bg-white">
-                                            {!form.categoryId ? (
-                                                <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
-                                                    <LayoutGrid size={32} strokeWidth={1.5} />
-                                                    <span className="text-xs">Select a category on the left</span>
-                                                </div>
-                                            ) : activeSubCategories.length === 0 ? (
-                                                <div className="text-center text-xs text-slate-400 py-10">No sub-categories found.</div>
-                                            ) : (
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {activeSubCategories.map((sub) => {
-                                                        const isSelected = form.subCategoryIds.includes(sub.id);
-                                                        return (
-                                                            <button
-                                                                key={sub.id}
-                                                                type="button"
-                                                                onClick={() => toggleSubCategory(sub.id)}
-                                                                className={`text-left px-3 py-2.5 rounded-lg border text-xs font-medium flex items-start gap-2 transition-all ${isSelected
-                                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                                    : 'border-slate-100 bg-slate-50 text-slate-600 hover:border-blue-200'
-                                                                    }`}
-                                                            >
-                                                                <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 ${isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-slate-300 bg-white'
-                                                                    }`}>
-                                                                    {isSelected && <Check size={10} />}
-                                                                </div>
-                                                                <span className="leading-tight">{sub.name}</span>
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
+                                <div>
+                                    <label className={labelClass}>Sub-Category</label>
+                                    <div className="relative">
+                                        <Box className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                                        <select
+                                            className={`${inputClass} pl-10`}
+                                            disabled={!form.categoryId}
+                                            value={form.subCategoryIds[0] || ""}
+                                            onChange={e => handleChange('subCategoryIds', [e.target.value])}
+                                        >
+                                            <option value="">{activeSubCategories.length === 0 ? "No Sub-categories" : "Select Sub-Category"}</option>
+                                            {activeSubCategories.map(s => (
+                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronRight size={16} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
                                     </div>
                                 </div>
                             </div>
 
                             <div>
                                 <label className={labelClass}>Description</label>
-                                <textarea className={inputClass} rows={2} placeholder="Describe product features..." value={form.desc} onChange={e => handleChange('desc', e.target.value)} />
+                                <textarea className={`${inputClass} resize-none`} rows={2} placeholder="Describe product features..." value={form.desc} onChange={e => handleChange('desc', e.target.value)} />
                             </div>
 
-                            <button type="button" onClick={() => setStep(2)} disabled={!form.categoryId || form.subCategoryIds.length === 0} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button
+                                type="button"
+                                onClick={() => setStep(2)}
+                                disabled={!form.categoryId || form.subCategoryIds.length === 0 || !form.name}
+                                className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 Next Step <ChevronRight size={18} />
                             </button>
                         </div>
@@ -297,11 +260,10 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                                 <div className="relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-300 transition-colors">
                                     <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'main')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                     {form.productImage ? (
-                                        // ✅ Replaced <img> with <AppImage>
                                         <AppImage
                                             src={form.productImage}
                                             alt="Product Preview"
-                                            type="card" // Good resolution for main preview
+                                            type="card"
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
@@ -318,11 +280,10 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                                 <div className="grid grid-cols-4 gap-2">
                                     {form.gallery.map((img: string, i: number) => (
                                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-100">
-                                            {/* ✅ Replaced <img> with <AppImage> */}
                                             <AppImage
                                                 src={img}
                                                 alt={`Gallery ${i}`}
-                                                type="thumbnail" // Optimized for small grid
+                                                type="thumbnail"
                                                 className="w-full h-full object-cover"
                                             />
                                             <button type="button" onClick={() => removeGalleryImg(i)} className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl-lg opacity-0 group-hover:opacity-100 transition z-10"><Trash2 size={10} /></button>
@@ -350,11 +311,12 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                                     <div>
                                         <label className="text-[10px] text-slate-400 font-bold mb-1 block">Stock Status</label>
                                         <div className="relative">
-                                            <Box className="absolute left-3 top-3 text-slate-400" size={18} />
+                                            <Box className="absolute left-3 top-3.5 text-slate-400" size={18} />
                                             <select className={`${inputClass} pl-10`} value={form.stockStatus} onChange={e => handleChange('stockStatus', e.target.value)}>
                                                 <option value="IN_STOCK">In Stock</option>
                                                 <option value="ON_DEMAND">On Demand</option>
                                             </select>
+                                            <ChevronRight size={14} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
                                         </div>
                                     </div>
                                     <div>
@@ -367,11 +329,12 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                 <label className={labelClass}>Logistics</label>
                                 <div className="relative">
-                                    <Truck className="absolute left-3 top-3 text-slate-400" size={18} />
+                                    <Truck className="absolute left-3 top-3.5 text-slate-400" size={18} />
                                     <select className={`${inputClass} pl-10`} value={form.deliveryType} onChange={e => handleChange('deliveryType', e.target.value)}>
                                         <option value="DELIVERY">Delivery</option>
                                         <option value="PICKUP">Pickup Only</option>
                                     </select>
+                                    <ChevronRight size={14} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
                                 </div>
                             </div>
 

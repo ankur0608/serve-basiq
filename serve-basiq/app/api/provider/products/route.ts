@@ -4,14 +4,28 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req: Request) {
   try {
     const { userId } = await req.json();
-    
+
+    if (!userId) {
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
+    }
+
     const products = await prisma.product.findMany({
-      where: { userId: userId },
-      orderBy: { createdAt: 'desc' }
+      where: {
+        userId: userId
+      },
+      // ✅ CRITICAL: This allows the frontend to see category names and subcategories
+      include: {
+        category: true,
+        subcategories: true,
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
 
     return NextResponse.json({ success: true, products });
   } catch (error) {
-    return NextResponse.json({ success: false }, { status: 500 });
+    console.error("Fetch products error:", error);
+    return NextResponse.json({ success: false, message: "Failed to fetch products" }, { status: 500 });
   }
 }

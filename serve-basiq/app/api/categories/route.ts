@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CategoryType } from "@prisma/client";
 
-export const dynamic = 'force-dynamic'; 
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
     try {
@@ -32,9 +32,15 @@ export async function GET(req: Request) {
             select: {
                 id: true,
                 name: true,
+                image: true, // ✅ ADDED THIS: Now the frontend will get the image URL
+                type: true,
                 // ⚠️ IMPORTANT: We fetch 'children' instead of 'subcategories'
                 children: {
-                    select: { id: true, name: true },
+                    select: {
+                        id: true,
+                        name: true,
+                        image: true // Optional: Add this if you want to show subcat images later
+                    },
                     orderBy: { name: 'asc' }
                 }
             },

@@ -6,13 +6,13 @@ import {
     FaMagnifyingGlass,
     FaRegBell,
     FaGlobe,
-    FaHandshakeSimple,
-    FaXmark,
     FaCartShopping,
-    FaUser,
+    FaXmark,
 } from "react-icons/fa6";
 import { useUIStore } from "@/lib/store";
 import Image from "next/image";
+// 1. Import your custom AppImage component
+import AppImage from "@/components/ui/AppImage";
 
 const Navbar = () => {
     const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -20,14 +20,24 @@ const Navbar = () => {
     const openLogin = useUIStore((state) => state.onOpenLogin);
     const currentUser = useUIStore((state) => state.currentUser);
 
+    // Helper to get image source safely
+    const getUserImage = () => {
+        if (!currentUser) return null;
+        // Check store first (DB source), then session source (Google/Auth)
+        return currentUser.img || currentUser.profileImage || null;
+    };
+
     const getInitials = () => {
         if (currentUser?.name) return currentUser.name[0].toUpperCase();
         return "U";
     };
 
+    const userImageSrc = getUserImage();
+
     return (
         <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
             <nav className="mx-auto max-w-7xl px-4">
+                {/* MOBILE VIEW */}
                 <div className="flex md:hidden items-center justify-between h-14">
                     <Link href="/" className="flex items-center">
                         <Image
@@ -55,8 +65,17 @@ const Navbar = () => {
 
                         {currentUser ? (
                             <Link href="/profile">
-                                <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-gray-100">
-                                    {getInitials()}
+                                <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-gray-100 overflow-hidden relative">
+                                    {userImageSrc ? (
+                                        <AppImage
+                                            src={userImageSrc}
+                                            alt={currentUser.name || "User"}
+                                            type="avatar"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <span>{getInitials()}</span>
+                                    )}
                                 </div>
                             </Link>
                         ) : (
@@ -91,10 +110,11 @@ const Navbar = () => {
                     </div>
                 )}
 
+                {/* DESKTOP VIEW */}
                 <div className="hidden md:flex items-center justify-between h-16 gap-4">
                     <Link href="/" className="flex items-center">
                         <Image
-                            src="/navbar.svg"
+                            src="/logo.png"
                             alt="ServeMate Logo"
                             width={160}
                             height={40}
@@ -102,7 +122,6 @@ const Navbar = () => {
                             className="h-16 w-auto"
                         />
                     </Link>
-
 
                     <div className="flex-1 max-w-lg">
                         <div className="relative">
@@ -127,12 +146,12 @@ const Navbar = () => {
                                 </Link>
                             </div>
 
-                            <Link
+                            {/* <Link
                                 href="/cart"
                                 className="p-2 hover:bg-gray-100 rounded-full text-gray-600"
                             >
                                 <FaCartShopping />
-                            </Link>
+                            </Link> */}
                         </div>
                         <button className="flex items-center gap-1 text-sm text-gray-600 ">
                             <FaGlobe /> EN
@@ -163,8 +182,27 @@ const Navbar = () => {
                                         {currentUser.isWorker ? "Professional" : "Customer"}
                                     </div>
                                 </div>
-                                <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-                                    {getInitials()}
+
+                                <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm overflow-hidden relative border border-gray-100">
+                                    {currentUser ? (
+                                        <Link href="/profile">
+                                            <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-gray-100 overflow-hidden relative">
+                                                {userImageSrc ? (
+                                                    <AppImage
+                                                        src={userImageSrc}
+                                                        alt={currentUser.name || "User"}
+                                                        type="avatar"
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    // Fallback if userImageSrc is null/undefined
+                                                    <span>{getInitials()}</span>
+                                                )}
+                                            </div>
+                                        </Link>
+                                    ) : (
+                                        <span>{getInitials()}</span>
+                                    )}
                                 </div>
                             </Link>
                         ) : (

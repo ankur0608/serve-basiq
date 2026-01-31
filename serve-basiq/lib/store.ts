@@ -2,41 +2,57 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-
+// Define a simple Address type for the array
 export interface Address {
   id: string;
-  userId: string;
-  type: "Home" | "Work" | "Other" | string;
   line1: string;
+  line2?: string;
+  landmark?: string;
   city: string;
   state: string;
   pincode: string;
   country: string;
-  createdAt?: string;
 }
-
+// ✅ 1. Define the User interface with explicit flattened address fields
 export interface User {
   id: string;
-  phone: string;
   name: string | null;
   email: string | null;
+  phone: string;
   img: string | null;
+  profileImage?: string | null; // Redundant key for safety
+
   role: string;
-  dob?: string | Date | null;
-  preferredLanguage?: string | null;
   providerType?: "SERVICE" | "PRODUCT" | "BOTH" | string;
+
   isPhoneVerified: boolean;
   isWorker: boolean;
   isVerified: boolean;
   isWebsite: boolean;
   addresses?: Address[];
-  createdAt?: string;
-  updatedAt?: string;
+  // Flattened Address Fields (Matches API response)
+  addressLine1?: string;
+  addressLine2?: string;
+  landmark?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+
+  dob?: string | Date | null;
+  dateOfBirth?: string; // Alias for frontend forms
+  preferredLanguage?: string | null;
+
+  // Flag to check if we have fetched full details from DB
+  isFullProfile?: boolean;
 }
 
 export interface UIState {
   currentUser: User | null;
+  lastFetched: number | null;
+
   setCurrentUser: (user: User | null) => void;
+  setLastFetched: (time: number | null) => void;
   logout: () => void;
 
   loginIntent: "user" | "provider";
@@ -49,23 +65,17 @@ export interface UIState {
   devOtp?: string;
   isNewUser: boolean;
 
-  // ✅ MODAL VISIBILITY STATES
   isLoginOpen: boolean;
   isOtpOpen: boolean;
   isNameOpen: boolean;
-  isEditProfileOpen: boolean; // 🆕 ADDED THIS
+  isEditProfileOpen: boolean;
 
-  // ✅ ACTIONS
   onOpenOtp: (phone: string, otp?: string, isNewUser?: boolean) => void;
   onCloseOtp: () => void;
-
   onOpenLogin: () => void;
   onCloseLogin: () => void;
-
   onOpenName: () => void;
   onCloseName: () => void;
-
-  // 🆕 EDIT PROFILE ACTIONS
   onOpenEditProfile: () => void;
   onCloseEditProfile: () => void;
 }
@@ -74,8 +84,11 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       currentUser: null,
-      setCurrentUser: (user) => set({ currentUser: user }),
-      logout: () => set({ currentUser: null }),
+      lastFetched: null,
+
+      setCurrentUser: (user) => set({ currentUser: user, lastFetched: Date.now() }),
+      setLastFetched: (time) => set({ lastFetched: time }),
+      logout: () => set({ currentUser: null, lastFetched: null }),
 
       loginIntent: "user",
       setLoginIntent: (intent) => set({ loginIntent: intent }),
@@ -87,11 +100,10 @@ export const useUIStore = create<UIState>()(
       devOtp: undefined,
       isNewUser: false,
 
-      // Initial Modal States
       isLoginOpen: false,
       isOtpOpen: false,
       isNameOpen: false,
-      isEditProfileOpen: false, // 🆕 Initialize as false
+      isEditProfileOpen: false,
 
       onOpenOtp: (phone, otp, isNewUser) =>
         set({
@@ -103,12 +115,7 @@ export const useUIStore = create<UIState>()(
           isNameOpen: false,
         }),
 
-      onCloseOtp: () =>
-        set({
-          mobileNumber: "",
-          devOtp: undefined,
-          isOtpOpen: false,
-        }),
+      onCloseOtp: () => set({ mobileNumber: "", devOtp: undefined, isOtpOpen: false }),
 
       onOpenLogin: () =>
         set({
@@ -128,21 +135,9 @@ export const useUIStore = create<UIState>()(
           isNameOpen: false,
         }),
 
-      onOpenName: () =>
-        set({
-          isNameOpen: true,
-          isOtpOpen: false,
-          isLoginOpen: false,
-        }),
+      onOpenName: () => set({ isNameOpen: true, isOtpOpen: false, isLoginOpen: false }),
+      onCloseName: () => set({ isNameOpen: false, isNewUser: false, tempName: "" }),
 
-      onCloseName: () =>
-        set({
-          isNameOpen: false,
-          isNewUser: false,
-          tempName: "",
-        }),
-
-      // 🆕 IMPLEMENTATION FOR EDIT PROFILE MODAL
       onOpenEditProfile: () => set({ isEditProfileOpen: true }),
       onCloseEditProfile: () => set({ isEditProfileOpen: false }),
     }),
@@ -151,6 +146,7 @@ export const useUIStore = create<UIState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         currentUser: state.currentUser,
+        lastFetched: state.lastFetched,
       }),
     }
   )

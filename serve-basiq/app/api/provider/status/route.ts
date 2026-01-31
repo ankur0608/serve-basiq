@@ -5,29 +5,18 @@ export async function POST(req: Request) {
   try {
     const { userId } = await req.json();
 
-    if (!userId) return NextResponse.json({ success: false }, { status: 400 });
+    if (!userId) return NextResponse.json({ success: false, message: "User ID missing" }, { status: 400 });
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        // ❌ WAS: services: true,
-        // ✅ CHANGE TO:
-        services: {
-          include: {
-            subcategories: {
-              select: { id: true, name: true } // Fetch the IDs needed for the edit form
-            }
-          }
-        },
+        // ❌ Services removed as requested
         addresses: true,
         kycDetails: true,
       },
     });
 
-    if (!user) return NextResponse.json({ success: false }, { status: 404 });
-
-    // ... rest of your existing code (Bookings, Orders, Stats) ...
-    // ... no changes needed below here ...
+    if (!user) return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
 
     // 1. Fetch Bookings
     const bookings = await prisma.booking.findMany({

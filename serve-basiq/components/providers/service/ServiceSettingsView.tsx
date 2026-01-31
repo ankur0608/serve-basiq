@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useServiceForm, ServiceSettingsProps } from './service-logic';
 import { StepOneBasic, StepTwoVisuals, StepThreeSchedule, StepFourPricing } from './ServiceSteps';
@@ -9,7 +10,11 @@ const defaultToast = (msg: string, type: 'success' | 'error') => alert(`${type.t
 export function ServiceSettingsView(props: ServiceSettingsProps) {
   const { onComplete, showToast = defaultToast, serviceData } = props;
 
-  // Initialize Logic Hook
+  // 🔍 LOG: Verify props received by Component
+  useEffect(() => {
+    console.log("🖥️ [ServiceSettingsView] Mounted. Props:", props);
+  }, []);
+
   const {
     step, setStep, loading, form, categories, loadingCats, activeSubCategories,
     handleChange, toggleSubCategory, toggleDay, handleImageUpload, removeGalleryImg,

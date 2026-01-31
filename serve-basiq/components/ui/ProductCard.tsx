@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { FaTag, FaCircleCheck } from 'react-icons/fa6';
-import AppImage from '@/components/ui/AppImage'; // ✅ Adjust path based on where you saved AppImage
+// ✅ Ensure this path is correct
+import AppImage from '@/components/ui/AppImage';
 
 export interface ProductProps {
     id: string;
@@ -10,7 +11,7 @@ export interface ProductProps {
     category: string;
     price: number;
     moq: number;
-    image: string;
+    image: string; // The parent now maps 'productImage' to this
     supplier: string;
     isVerified: boolean;
     unit: string;
@@ -24,7 +25,6 @@ export default function ProductCard({ product }: { product: ProductProps }) {
                 {/* Image */}
                 <div className="relative w-full h-36 aspect-square rounded-xl overflow-hidden bg-gray-100 mb-3 flex items-center justify-center">
 
-                    {/* ✅ Replaced complex img/fallback logic with AppImage */}
                     <AppImage
                         src={product.image}
                         alt={product.name}
