@@ -1,20 +1,15 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { FaScrewdriverWrench } from 'react-icons/fa6';
 
-// Move Style Map here (Presentation Logic)
-const STYLE_MAP: Record<string, { emoji: string; color: string }> = {
-  cleaning: { emoji: "🧹", color: "blue" },
-  repair: { emoji: "🛠️", color: "orange" },
-  plumbing: { emoji: "💧", color: "cyan" },
-  electrical: { emoji: "⚡", color: "yellow" },
-  beauty: { emoji: "💅", color: "pink" },
-  painting: { emoji: "🎨", color: "purple" },
-  moving: { emoji: "📦", color: "indigo" },
-  default: { emoji: "📌", color: "gray" }
-};
+interface Category {
+  id: string;
+  name: string;
+  image: string | null;
+}
 
 interface CategoryProps {
-  categories: { id: string; name: string }[];
+  categories: Category[];
 }
 
 export default function ServiceCategories({ categories }: CategoryProps) {
@@ -24,32 +19,48 @@ export default function ServiceCategories({ categories }: CategoryProps) {
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
           <FaScrewdriverWrench className="text-brand-500" /> Popular Services
         </h2>
-        <Link href="/services" className="text-xs font-bold text-slate-500 hover:text-brand-600 uppercase tracking-wide">
+        <Link
+          href="/servicescategory"
+          className="text-xs font-bold text-slate-500 hover:text-brand-600 uppercase tracking-wide"
+        >
           View All
         </Link>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         {categories.length > 0 ? (
-          categories.map((cat) => {
-            // Apply Styling Map
-            const style = STYLE_MAP[cat.id] || STYLE_MAP.default;
-
-            return (
-              <Link
-                href={`/services/category/${cat.id}`}
-                key={cat.id}
-                className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group"
-              >
-                <div className={`text-3xl mb-2 group-hover:scale-110 transition w-12 h-12 mx-auto flex items-center justify-center rounded-lg bg-${style.color}-50 text-${style.color}-600`}>
-                  {style.emoji}
-                </div>
-                <div className="text-xs font-bold text-slate-700 uppercase tracking-wide">{cat.name}</div>
-              </Link>
-            );
-          })
+          categories.map((cat) => (
+            <Link
+              href={`/services/category/${cat.id}`}
+              key={cat.id}
+              className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex flex-col items-center justify-center h-32"
+            >
+              <div className="w-12 h-12 mb-3 relative group-hover:scale-110 transition flex items-center justify-center">
+                {cat.image ? (
+                  // ✅ Use Database Image
+                  <Image
+                    src={cat.image}
+                    alt={cat.name}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                ) : (
+                  // ✅ Clean Fallback Icon
+                  <div className="w-full h-full bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-xl">
+                    <FaScrewdriverWrench />
+                  </div>
+                )}
+              </div>
+              <div className="text-xs font-bold text-slate-700 uppercase tracking-wide line-clamp-2">
+                {cat.name}
+              </div>
+            </Link>
+          ))
         ) : (
-          <div className="col-span-full text-center text-gray-400 text-sm py-4">No categories found.</div>
+          <div className="col-span-full text-center text-gray-400 text-sm py-8">
+            No service categories found.
+          </div>
         )}
       </div>
     </div>

@@ -10,17 +10,19 @@ export default function ProductCategoryPage() {
     const params = useParams();
     const router = useRouter();
 
-    // Decode URL safe string back to normal text
-    const categoryName = decodeURIComponent(params.category as string);
+    // Decode URL safe string back to normal text (e.g. "Raw%20Material" -> "Raw Material")
+    const categoryName = params.category ? decodeURIComponent(params.category as string) : "";
 
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchCategoryProducts = async () => {
+            if (!categoryName) return;
+
             setLoading(true);
             try {
-                // Fetch products using the updated API logic
+                // Fetch products using the filtered API
                 const res = await fetch(`/api/products/all?cat=${encodeURIComponent(categoryName)}`, {
                     cache: 'no-store'
                 });
@@ -36,7 +38,7 @@ export default function ProductCategoryPage() {
             }
         };
 
-        if (categoryName) fetchCategoryProducts();
+        fetchCategoryProducts();
     }, [categoryName]);
 
     return (
@@ -71,7 +73,7 @@ export default function ProductCategoryPage() {
                         <p className="text-slate-400 font-medium text-sm">Loading products...</p>
                     </div>
                 ) : products.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                         {products.map((product) => (
                             <ProductCard key={product.id} product={product} />
                         ))}
@@ -87,10 +89,10 @@ export default function ProductCategoryPage() {
                             We currently don't have any products listed under <strong>{categoryName}</strong>.
                         </p>
                         <button
-                            onClick={() => router.push('/marketplace')}
+                            onClick={() => router.back()}
                             className="mt-6 text-white bg-slate-900 px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-black transition shadow-lg shadow-slate-200"
                         >
-                            Browse All Categories
+                            Go Back
                         </button>
                     </div>
                 )}

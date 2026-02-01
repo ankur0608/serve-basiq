@@ -2,121 +2,121 @@ import Link from "next/link";
 import {
   FaMagnifyingGlass,
   FaShieldHalved,
-  FaShop,
   FaArrowTrendUp,
   FaStar,
 } from "react-icons/fa6";
 
 export default function Hero() {
   return (
-    <div className="bg-gradient-to-br from-brand-50 via-white to-commerce-50 pb-16 pt-8 md:py-20 px-4 text-center rounded-b-[3rem] shadow-sm relative overflow-hidden">
+    <div className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-blue-50 pb-12 pt-12 text-center rounded-b-[2rem] md:rounded-b-[4rem] shadow-sm md:pt-24 md:pb-24">
       {/* Background Pattern */}
       <div
-        className="absolute inset-0 opacity-40 pointer-events-none"
+        className="absolute inset-0 pointer-events-none opacity-30"
         style={{
-          backgroundImage: "radial-gradient(#cbd5e1 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
+          backgroundImage: "radial-gradient(#94a3b8 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
         }}
       ></div>
 
-      <div className="relative z-10 max-w-4xl mx-auto">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-blue-100 text-brand-700 px-3 py-1.5 rounded-full text-[11px] font-bold mb-6 shadow-sm animate-fade-in cursor-default uppercase tracking-wider">
-          <FaShieldHalved /> 100% Verified & Insured Providers
+        <div className="mb-6 inline-flex animate-fade-in items-center gap-2 rounded-full border border-blue-100 bg-white/60 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-blue-700 shadow-sm backdrop-blur-sm transition-transform hover:scale-105 cursor-default">
+          <FaShieldHalved className="text-blue-600" />
+          <span>100% Verified & Insured</span>
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight text-slate-900 tracking-tight">
+        <h1 className="mx-auto mb-6 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl">
           Experts You Can Trust.
-          <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">
-            Prices You'll Love.
+          <br className="hidden sm:block" />
+          <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            {" "}Prices You'll Love.
           </span>
         </h1>
 
         {/* Subheadline */}
-        <p className="text-slate-600 text-base md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
+        <p className="mx-auto mb-10 max-w-2xl text-base font-medium leading-relaxed text-slate-600 sm:text-lg md:text-xl">
           Connect directly with local professionals and factories.{" "}
-          <strong>No middleman markups. Guaranteed safety.</strong>
+          <span className="block sm:inline font-semibold text-slate-900">
+            <strong>No middleman markups. Guaranteed safety.</strong>
+          </span>
         </p>
 
         {/* SEARCH SECTION */}
-        <div className="max-w-2xl mx-auto mb-12">
-          <div className="bg-white p-2 rounded-full shadow-lg flex items-center border border-gray-100">
-            <div className="pl-4 text-gray-400">
-              <FaMagnifyingGlass size={20} />
+        <div className="mx-auto mb-16 max-w-2xl">
+          {/* Input Wrapper */}
+          <div className="group relative flex items-center rounded-full border border-gray-200 bg-white p-1.5 shadow-lg transition-all focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-100 hover:shadow-xl">
+            <div className="pl-4 text-gray-400 group-focus-within:text-blue-500">
+              <FaMagnifyingGlass size={18} />
             </div>
             <input
               type="text"
-              placeholder="What do you need help with today?"
-              className="flex-grow px-4 py-3 text-gray-700 bg-transparent focus:outline-none font-medium"
+              placeholder="What do you need help with?"
+              className="w-full flex-grow bg-transparent px-4 py-3 text-base font-medium text-gray-700 placeholder-gray-400 focus:outline-none sm:text-lg"
+              aria-label="Search services"
             />
-            <button className="bg-slate-900 text-white px-8 py-3 rounded-full font-bold hover:bg-black transition active:scale-95">
+            <button className="shrink-0 rounded-full bg-slate-900 px-6 py-3 font-bold text-white transition-all hover:bg-black active:scale-95 sm:px-8">
               Search
             </button>
           </div>
+
           {/* Popular Tags */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-sm text-gray-500">
-            <span className="font-bold uppercase tracking-wider text-xs mr-2">
-              Popular Now:
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-gray-500">
+            <span className="mr-1 text-xs font-bold uppercase tracking-wider text-gray-400">
+              Popular:
             </span>
-            <span className="inline-flex items-center gap-1 bg-white border border-gray-200 px-3 py-1 rounded-full">
-              <FaArrowTrendUp className="text-brand-500" /> Cleaning
-            </span>
-            <span className="bg-white border border-gray-200 px-3 py-1 rounded-full">
-              Plumber
-            </span>
-            <span className="bg-white border border-gray-200 px-3 py-1 rounded-full">
-              Electronics
-            </span>
+            {["Cleaning", "Plumbing", "Electronics"].map((tag, index) => (
+              <button
+                key={index}
+                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:text-sm"
+              >
+                {tag === "Cleaning" && <FaArrowTrendUp className="text-blue-500" />}
+                {tag}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* STATISTICS BLOCK */}
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 md:p-6 max-w-5xl mx-auto mb-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-            <div className="text-center p-4">
-              <div className="text-4xl md:text-5xl font-extrabold text-slate-900">
-                500+
+        <div className="mx-auto max-w-5xl">
+          <div className="rounded-3xl border border-gray-100 bg-white/80 p-6 shadow-xl backdrop-blur-md md:p-10">
+            <div className="grid grid-cols-1 divide-y divide-gray-100 md:grid-cols-3 md:divide-x md:divide-y-0">
+
+              {/* Stat 1 */}
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="text-4xl font-extrabold text-slate-900 sm:text-5xl">
+                  500+
+                </div>
+                <div className="mt-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Verified Experts
+                </div>
               </div>
-              <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-2">
-                Verified Experts
+
+              {/* Stat 2 */}
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="text-4xl font-extrabold text-slate-900 sm:text-5xl">
+                  10k+
+                </div>
+                <div className="mt-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Transactions
+                </div>
               </div>
-            </div>
-            <div className="text-center p-4">
-              <div className="text-4xl md:text-5xl font-extrabold text-slate-900">
-                10k+
+
+              {/* Stat 3 */}
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="flex items-center gap-2 text-4xl font-extrabold text-slate-900 sm:text-5xl">
+                  4.9 <FaStar className="text-yellow-400 text-3xl sm:text-4xl" />
+                </div>
+                <div className="mt-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Average Rating
+                </div>
               </div>
-              <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-2">
-                Transactions
-              </div>
-            </div>
-            <div className="text-center p-4">
-              <div className="text-4xl md:text-5xl font-extrabold text-slate-900 flex items-center justify-center gap-1">
-                4.9 <FaStar className="text-yellow-400" size={32} />
-              </div>
-              <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-2">
-                Average Rating
-              </div>
+
             </div>
           </div>
         </div>
 
-        {/* HERO BUTTONS (Original) */}
-        {/* <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in px-4">
-          <Link
-            href="/services"
-            className="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-base shadow-xl shadow-slate-900/20 hover:bg-black hover:scale-[1.02] active:scale-95 transition flex items-center justify-center gap-3 w-full sm:w-auto"
-          >
-            <FaMagnifyingGlass /> Find a Service
-          </Link>
-          <Link
-            href="/products"
-            className="bg-white text-slate-900 border border-gray-200 px-8 py-4 rounded-xl font-bold text-base hover:bg-gray-50 hover:border-gray-300 hover:scale-[1.02] active:scale-95 transition flex items-center justify-center gap-3 shadow-sm w-full sm:w-auto"
-          >
-            <FaShop className="text-commerce-600" /> Wholesale Market
-          </Link>
-        </div> */}
       </div>
     </div>
   );

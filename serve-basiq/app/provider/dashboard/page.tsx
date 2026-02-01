@@ -14,7 +14,7 @@ import clsx from 'clsx';
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
 import {
     DashboardHomeView,
-    LeadsView,
+    // LeadsView,
     ProfileView
 } from '@/components/providers/GeneralViews';
 import { AddProductView } from '@/components/providers/AddProductView';
@@ -193,7 +193,7 @@ export default function ProviderDashboard() {
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
                     <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeView} set={handleViewChange} />
                     <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeView} set={handleViewChange} badge={dashboardData?.stats?.pendingRequests} />
-                    <NavButton id="leads" icon={TrendingUp} label="Market Leads" active={activeView} set={handleViewChange} />
+                    {/* <NavButton id="leads" icon={TrendingUp} label="Market Leads" active={activeView} set={handleViewChange} /> */}
                     <NavButton id="settings" icon={Package} label="Management" active={activeView} set={handleViewChange} />
                     <NavButton id="profile" icon={UserCircle} label="Account" active={activeView} set={handleViewChange} />
                 </nav>
@@ -266,7 +266,7 @@ export default function ProviderDashboard() {
                         )}
 
                         {/* 3. Market Leads */}
-                        {activeView === 'leads' && <LeadsView />}
+                        {/* {activeView === 'leads' && <LeadsView />} */}
 
                         {/* 4. Account Profile */}
                         {activeView === 'profile' && (

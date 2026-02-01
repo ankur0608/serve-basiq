@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useCallback, memo, useRef } from 'react';
+import { useCallback, memo } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
-import { Plus, Package, Loader2, Pencil, Trash2, Layers } from 'lucide-react';
+import { Plus, Package, Loader2, Pencil, Trash2 } from 'lucide-react';
 
 interface ProductsViewProps {
     setActiveView: (view: string) => void;
@@ -11,11 +11,12 @@ interface ProductsViewProps {
     showToast: (msg: string, type: 'success' | 'error') => void;
 }
 
+// ... (ProductTableRow remains exactly the same as your code, so I omitted it for brevity) ...
+// Copy the ProductTableRow from your previous code here.
 const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: number, onEdit: (p: any) => void, onDelete: (id: string) => void }) => {
     const isInStock = p.stockStatus === 'IN_STOCK';
 
-    // ✅ Logic to handle Subcategories array
-    // Checks if p.subcategories is an array and joins names, or defaults to 'None'
+    // Logic for subcategories
     const subcategoriesText = p.subcategories && Array.isArray(p.subcategories)
         ? p.subcategories.map((sub: any) => sub.name).join(', ')
         : 'None';
@@ -23,9 +24,7 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
     return (
         <tr className="group border-b border-slate-50 last:border-none hover:bg-slate-50/50 transition-colors">
             <td className="py-4 pl-6 align-middle">
-                <span className="text-sm font-bold text-slate-500">
-                    {index + 1 < 10 ? `0${index + 1}` : index + 1}
-                </span>
+                <span className="text-sm font-bold text-slate-500">{index + 1 < 10 ? `0${index + 1}` : index + 1}</span>
             </td>
             <td className="py-4 align-middle">
                 <div className="flex items-center gap-3">
@@ -38,13 +37,9 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
                     </div>
                 </div>
             </td>
-            {/* Category Column */}
             <td className="py-4 align-middle">
-                <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">
-                    {p.category || 'General'}
-                </span>
+                <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">{p.category || 'General'}</span>
             </td>
-            {/* ✅ NEW: Sub-category Column */}
             <td className="py-4 align-middle">
                 <div className="flex flex-wrap gap-1 max-w-[150px]">
                     {p.subcategories && p.subcategories.length > 0 ? (
@@ -73,16 +68,10 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
 });
 ProductTableRow.displayName = "ProductTableRow";
 
-export function ProductsView({ setActiveView, userId, setSelectedProduct, showToast }: ProductsViewProps) {
-    const { products, loading, fetchProducts, deleteProduct } = useProducts(userId);
-    const isInitialized = useRef(false);
 
-    useEffect(() => {
-        if (!isInitialized.current) {
-            fetchProducts();
-            isInitialized.current = true;
-        }
-    }, [fetchProducts]);
+export function ProductsView({ setActiveView, userId, setSelectedProduct, showToast }: ProductsViewProps) {
+    // ✅ React Query hook handles fetching automatically on mount
+    const { products, loading, deleteProduct, isDeleting } = useProducts(userId);
 
     const handleEdit = useCallback((product: any) => {
         setSelectedProduct(product);
@@ -91,10 +80,13 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
 
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("Are you sure you want to delete this product?")) return;
-        const success = await deleteProduct(id);
-        if (success) {
+
+        try {
+            // ✅ Using the mutation function from the hook
+            await deleteProduct(id);
             showToast("Product deleted successfully", "success");
-        } else {
+        } catch (error) {
+            console.error(error);
             showToast("Failed to delete", "error");
         }
     }, [deleteProduct, showToast]);
@@ -133,7 +125,14 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                     </button>
                 </div>
             ) : (
-                <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden relative">
+                    {/* Optional: Show loading overlay if deleting */}
+                    {isDeleting && (
+                        <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
+                            <Loader2 className="animate-spin text-slate-900" />
+                        </div>
+                    )}
+
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -141,7 +140,6 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                                     <th className="py-4 pl-6 text-[10px] font-bold text-slate-400 uppercase tracking-wider">No.</th>
                                     <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product</th>
                                     <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</th>
-                                    {/* ✅ Added Header for Sub-category */}
                                     <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sub-Category</th>
                                     <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rate</th>
                                     <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>

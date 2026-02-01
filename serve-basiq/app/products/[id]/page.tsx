@@ -3,15 +3,15 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import {
   FaArrowLeft, FaRegHeart, FaBuilding, FaCircleCheck,
-  FaTruckFast, FaBox, FaRotateLeft, FaCommentDots
+  FaTruckFast, FaBox, FaRotateLeft
 } from 'react-icons/fa6';
 import clsx from 'clsx';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import ProductWrapper from '@/components/products/ProductWrapper';
 import SupplierProfileModal from '@/components/products/SupplierProfileModal';
+import { ImageOff } from 'lucide-react';
 
-// ✅ Force Next.js to not cache this page
 export const dynamic = "force-dynamic";
 
 interface Props {
@@ -19,41 +19,19 @@ interface Props {
 }
 
 export default async function ProductDetail({ params }: Props) {
-
   const { id } = await params;
-  const productId = id;
 
-  // 2. Fetch Product Data
+  // Direct Database Call (Most efficient - No API needed)
   const product = await prisma.product.findUnique({
-    where: { id: productId },
+    where: { id },
     include: {
       category: { select: { name: true } },
-
-      // ✅ FIX: Fetch ALL Public User Data for the Modal
       user: {
         select: {
-          id: true,
-          name: true,
-          shopName: true,
-          email: true,       // Contact
-          phone: true,       // Contact
-          isVerified: true,
-          image: true,
-          profileImage: true,
-          createdAt: true,   // Member Since
-
-          // Social Media
-          instagramUrl: true,
-          facebookUrl: true,
-          websiteUrl: true,
-          youtubeUrl: true,
-
-          // Location (City/State only for privacy/context)
-          addresses: {
-            where: { type: "Work" }, // Prefer Work address
-            take: 1,
-            select: { city: true, state: true, country: true }
-          }
+          id: true, name: true, shopName: true, email: true, phone: true,
+          isVerified: true, image: true, profileImage: true, createdAt: true,
+          instagramUrl: true, facebookUrl: true, websiteUrl: true, youtubeUrl: true,
+          addresses: { where: { type: "Work" }, take: 1, select: { city: true, state: true, country: true } }
         }
       }
     }
@@ -61,33 +39,23 @@ export default async function ProductDetail({ params }: Props) {
 
   if (!product) return notFound();
 
-  // 3. Fetch Current User
   const session = await getServerSession(authOptions);
-  const currentUserId = session?.user?.id;
 
   let loggedInUser = null;
-  if (currentUserId) {
+  if (session?.user?.id) {
     loggedInUser = await prisma.user.findUnique({
-      where: { id: currentUserId },
+      where: { id: session.user.id },
       include: { addresses: true }
     });
   }
 
-  // Helper Data
-  const specs = [
-    { label: "MOQ", value: `${product.moq} ${product.unit}` },
-    { label: "Category", value: product.category?.name || "General" },
-    { label: "Warranty", value: "Standard Manufacturer" },
-    { label: "Condition", value: "New" },
-  ];
-
-  const mainImage = product.productImage || "https://via.placeholder.com/500?text=No+Image";
-  const galleryImages = (product.gallery && product.gallery.length > 0)
-    ? product.gallery
-    : [mainImage, mainImage, mainImage, mainImage];
+  // Helper Logic
+  const mainImage = product.productImage || null;
+  const galleryImages = (product.gallery && product.gallery.length > 0) ? product.gallery : [];
+  if (mainImage && galleryImages.length === 0) galleryImages.push(mainImage);
 
   const supplierName = product.user?.shopName || product.user?.name || "Verified Seller";
-  const supplierImage = product.user?.profileImage || product.user?.image || "";
+  const supplierImage = product.user?.profileImage || product.user?.image;
 
   return (
     <div className="pb-32 bg-white min-h-screen">
@@ -96,22 +64,34 @@ export default async function ProductDetail({ params }: Props) {
         {/* --- LEFT: IMAGES --- */}
         <div className="space-y-4">
           <div className="bg-gray-50 p-8 rounded-3xl border border-gray-100 flex items-center justify-center relative h-[300px] md:h-[500px] group overflow-hidden">
-            <img src={mainImage} alt={product.name} className="object-contain mix-blend-multiply relative z-10 hover:scale-110 transition duration-700 max-h-full" />
+            {mainImage ? (
+              <img src={mainImage} alt={product.name} className="object-contain mix-blend-multiply relative z-10 hover:scale-110 transition duration-700 max-h-full" />
+            ) : (
+              <div className="flex flex-col items-center text-gray-400">
+                <ImageOff size={48} />
+                <span className="text-sm mt-2 font-medium">No Image Available</span>
+              </div>
+            )}
+
             <Link href="/products" className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 hover:text-slate-900 z-20 transition"><FaArrowLeft /></Link>
             <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 hover:text-red-500 z-20 transition"><FaRegHeart /></button>
           </div>
-          <div className="grid grid-cols-4 gap-3">
-            {galleryImages.slice(0, 4).map((img, i) => (
-              <div key={i} className="bg-gray-50 border border-gray-100 p-2 rounded-xl h-20 md:h-24 flex items-center justify-center cursor-pointer hover:border-blue-500 transition">
-                <img src={img} alt="thumb" className="w-full h-full object-contain mix-blend-multiply" />
-              </div>
-            ))}
-          </div>
+
+          {/* Thumbnails */}
+          {galleryImages.length > 0 && (
+            <div className="grid grid-cols-4 gap-3">
+              {galleryImages.slice(0, 4).map((img, i) => (
+                <div key={i} className="bg-gray-50 border border-gray-100 p-2 rounded-xl h-20 md:h-24 flex items-center justify-center cursor-pointer hover:border-blue-500 transition overflow-hidden">
+                  <img src={img} alt={`View ${i}`} className="w-full h-full object-contain mix-blend-multiply" />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* --- RIGHT: DETAILS --- */}
         <div className="pt-4">
-          {/* Stock Status */}
+          {/* ... (Existing Details code remains the same as it is purely presentation) ... */}
           <div className="flex justify-between items-start mb-4">
             <span className={clsx("px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border flex items-center gap-2", product.stockStatus === 'IN_STOCK' ? "bg-green-100 text-green-700 border-green-200" : "bg-amber-100 text-amber-700 border-amber-200")}>
               <span className={clsx("w-2 h-2 rounded-full animate-pulse", product.stockStatus === 'IN_STOCK' ? "bg-green-600" : "bg-amber-600")}></span>
@@ -126,7 +106,6 @@ export default async function ProductDetail({ params }: Props) {
             <span className="text-gray-500 text-base mb-1.5 font-medium">/ {product.unit} (excl. GST)</span>
           </div>
 
-          {/* ✅ SUPPLIER INFO CARD */}
           <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 mb-8">
             <div className="w-12 h-12 bg-white rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden">
               {supplierImage ? <img src={supplierImage} alt={supplierName} className="w-full h-full object-cover" /> : <FaBuilding className="text-2xl text-slate-400" />}
@@ -138,18 +117,13 @@ export default async function ProductDetail({ params }: Props) {
                 {product.user?.isVerified && <FaCircleCheck className="text-blue-500 text-sm" />}
               </div>
             </div>
-
-            {/* ✅ MODAL TRIGGER (Pass full user object) */}
             <SupplierProfileModal supplier={product.user} />
           </div>
 
-          {/* Product Details Sections */}
+          {/* Details & Specs */}
           <div className="space-y-6">
             <div><h3 className="font-bold text-slate-900 mb-2 border-b border-gray-100 pb-2">Description</h3><p className="text-gray-600 leading-relaxed whitespace-pre-line text-sm">{product.desc}</p></div>
-            <div>
-              <h3 className="font-bold text-slate-900 mb-2 border-b border-gray-100 pb-2">Specifications</h3>
-              <div className="grid grid-cols-2 gap-y-3 text-sm">{specs.map((s, i) => (<div key={i} className="contents"><div className="text-gray-500">{s.label}</div><div className="font-medium text-slate-900">{s.value}</div></div>))}</div>
-            </div>
+
             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
               <h3 className="font-bold text-slate-900 mb-3 text-sm">Shipping & Returns</h3>
               <div className="space-y-3 text-sm text-gray-600">
@@ -165,8 +139,15 @@ export default async function ProductDetail({ params }: Props) {
       {/* --- BOTTOM ACTION BAR --- */}
       <div className="fixed bottom-0 left-0 right-0 z-[70] p-4 md:p-6 flex justify-center pointer-events-none">
         <div className="bg-white/95 backdrop-blur-xl border border-gray-200 shadow-xl rounded-2xl p-4 w-full max-w-4xl pointer-events-auto flex items-center gap-3 md:gap-6">
-          {/* <button className="flex-1 bg-gray-100 text-gray-700 py-3.5 rounded-xl font-bold text-sm hover:bg-gray-200 transition flex items-center justify-center gap-2"><FaCommentDots /> Chat</button> */}
-          <ProductWrapper productId={product.id} productName={product.name} productPrice={product.price} productUnit={product.unit} moq={product.moq} currentUser={loggedInUser} userAddresses={loggedInUser?.addresses || []} />
+          <ProductWrapper
+            productId={product.id}
+            productName={product.name}
+            productPrice={Number(product.price)}
+            productUnit={product.unit}
+            moq={Number(product.moq)}
+            currentUser={loggedInUser}
+            userAddresses={loggedInUser?.addresses || []}
+          />
         </div>
       </div>
     </div>

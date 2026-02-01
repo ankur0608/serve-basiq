@@ -2,21 +2,43 @@ import Link from 'next/link';
 import { prisma } from "@/lib/prisma";
 import FeaturedProviders from '@/components/sections/FeaturedProviders';
 import TrendingProducts from '@/components/sections/TrendingProducts';
-import Hero from '@/components/home/Hero'; // ✅ Import Hero
-import ServiceCategories from '@/components/home/ServiceCategories'; // ✅ Import Category Logic
+import Hero from '@/components/home/Hero';
+import ServiceCategories from '@/components/home/ServiceCategories';
+import ProductCategories from '@/components/home/ProductCategories'; // ✅ Import
 
-// Icons needed for the remaining sections in this file
 import {
   FaWrench, FaBoxesStacked, FaPenFancy, FaStore,
-  FaBoxOpen, FaShieldHalved, FaWallet, FaHeadset, FaArrowRight
+  FaShieldHalved, FaWallet, FaHeadset, FaArrowRight
 } from 'react-icons/fa6';
 
 export default async function Home() {
 
-  // ✅ Fetch Data (Server Side)
+  // 1. Fetch Service Categories (Existing)
   const serviceCategories = await prisma.category.findMany({
     take: 6,
-    select: { id: true, name: true }
+    where: {
+      parentId: null,
+      OR: [{ type: 'SERVICE' }, { type: 'BOTH' }]
+    },
+    select: { id: true, name: true, image: true }
+  });
+
+  // 2. ✅ Fetch Product Categories (New Logic based on your API)
+  const productCategories = await prisma.category.findMany({
+    take: 6,
+    where: {
+      parentId: null, // Top level only
+      OR: [
+        { type: 'PRODUCT' },
+        { type: 'BOTH' }
+      ]
+    },
+    select: {
+      id: true,
+      name: true,
+      image: true // We need the image for the UI
+    },
+    orderBy: { name: 'asc' }
   });
 
   return (
@@ -66,7 +88,7 @@ export default async function Home() {
         {/* 3. CATEGORIES SECTION WRAPPER */}
         <div className="space-y-12">
 
-          {/* ✅ Dynamic Service Categories (Extracted) */}
+          {/* Dynamic Service Categories */}
           <ServiceCategories categories={serviceCategories} />
 
           {/* Sponsored Banner */}
@@ -83,32 +105,9 @@ export default async function Home() {
             <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
           </div>
 
-          {/* Static Product Categories */}
-          <div>
-            <div className="flex justify-between items-end mb-6 px-1">
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <FaBoxOpen className="text-commerce-500" /> Wholesale Products
-              </h2>
-              <Link href="/products" className="text-xs font-bold text-slate-500 hover:text-commerce-600 uppercase tracking-wide">
-                View All
-              </Link>
-            </div>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-              {[
-                { emoji: "🏗️", label: "Industrial" },
-                { emoji: "📱", label: "Electronics" },
-                { emoji: "📎", label: "Office" },
-                { emoji: "🧱", label: "Construction" },
-                { emoji: "🪑", label: "Furniture" },
-                { emoji: "👕", label: "Fashion" },
-              ].map((cat, i) => (
-                <Link href={`/products?category=${cat.label}`} key={i} className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group">
-                  <div className="text-3xl mb-2 group-hover:scale-110 transition">{cat.emoji}</div>
-                  <div className="text-xs font-bold text-slate-700">{cat.label}</div>
-                </Link>
-              ))}
-            </div>
-          </div>
+          {/* ✅ Dynamic Product Categories */}
+          <ProductCategories categories={productCategories} />
+
         </div>
 
         {/* 4. LISTINGS */}

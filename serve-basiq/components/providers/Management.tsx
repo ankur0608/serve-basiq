@@ -130,7 +130,7 @@ export function ManagementView({
         if (result.success) {
             showToast("Service deleted successfully", "success");
         } else {
-            showToast(result.error || "Failed to delete", "error");
+            showToast("Failed to delete", "error");
         }
     }, [deleteService, showToast]);
 

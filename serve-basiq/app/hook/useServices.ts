@@ -1,67 +1,60 @@
-// @/app/hook/useServices.ts
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+// --- API FETCH FUNCTION ---
+const fetchServicesFn = async (userId?: string) => {
+    if (!userId) return [];
+
+    const res = await fetch(`/api/services?userId=${userId}`);
+    // If 404 or empty, return empty array to prevent crashes
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+};
 
 export function useServices(userId: string | undefined) {
-    const [services, setServices] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const queryClient = useQueryClient();
+    const queryKey = ['services', userId];
 
-    // ✅ Track fetching status to prevent parallel identical calls
-    const isFetching = useRef(false);
-    const lastId = useRef<string | null>(null);
+    // --- 1. FETCH QUERY ---
+    const { data: services = [], isLoading, refetch } = useQuery({
+        queryKey: queryKey,
+        queryFn: () => fetchServicesFn(userId),
+        enabled: !!userId, // Only fetch if userId exists
 
-    const fetchServices = useCallback(async (force = false) => {
-        // 1. Block if no userId
-        // 2. Block if already fetching (prevents the "double call" on mount)
-        // 3. Block if we already have data for this user (unless forced)
-        if (!userId || isFetching.current) return;
-        if (!force && lastId.current === userId) return;
+        // ✅ Call API only once on mount, never auto-refetch unless invalidated
+        staleTime: Infinity,
+        refetchOnWindowFocus: false,
+    });
 
-        isFetching.current = true;
-        setIsLoading(true);
+    // --- 2. DELETE MUTATION ---
+    const deleteMutation = useMutation({
+        mutationFn: async (serviceId: string) => {
+            if (!userId) throw new Error("Missing User ID");
 
-        try {
-            const res = await fetch(`/api/services?userId=${userId}`);
-            const data = await res.json();
-            setServices(Array.isArray(data) ? data : []);
-            lastId.current = userId;
-        } catch (error) {
-            console.error("Fetch error:", error);
-        } finally {
-            setIsLoading(false);
-            isFetching.current = false;
-        }
-    }, [userId]);
-
-    const deleteService = async (serviceId: string) => {
-        if (!userId || !serviceId) return { success: false, error: "Missing IDs" };
-
-        try {
             const res = await fetch('/api/services', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, serviceId })
             });
 
-            if (res.ok) {
-                // ✅ Force set lastId to null so the refetch is guaranteed to run
-                lastId.current = null;
-                await fetchServices(true);
-                return { success: true };
-            }
-            return { success: false, error: "Failed to delete" };
-        } catch (error) {
-            return { success: false, error: "Network error" };
+            if (!res.ok) throw new Error("Failed to delete");
+            return { success: true };
+        },
+        onSuccess: () => {
+            // ✅ Automatically refresh the list after a successful delete
+            queryClient.invalidateQueries({ queryKey });
+        },
+        onError: (error) => {
+            console.error("Delete error:", error);
         }
-    };
-
-    useEffect(() => {
-        fetchServices();
-    }, [fetchServices]);
+    });
 
     return {
         services,
         isLoading,
-        refetch: () => fetchServices(true),
-        deleteService
+        refetch, // Exposed for ServiceSettingsView to trigger updates
+        deleteService: deleteMutation.mutateAsync,
+        isDeleting: deleteMutation.isPending
     };
 }

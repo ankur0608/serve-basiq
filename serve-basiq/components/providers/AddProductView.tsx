@@ -5,7 +5,7 @@ import { useProducts } from '@/app/hook/useProducts';
 import AppImage from '@/components/ui/AppImage';
 import {
     Package, BadgeIndianRupee, ChevronRight, Loader2, Save, UploadCloud,
-    Trash2, X, LayoutGrid, Scale, Box, Truck, Plus, Check
+    Trash2, X, LayoutGrid, Scale, Box, Truck, Plus
 } from 'lucide-react';
 
 // --- HELPER: Upload to Backend ---
@@ -30,7 +30,8 @@ interface AddProductProps {
 }
 
 export function AddProductView({ setActiveView, userId, showToast, editingProduct }: AddProductProps) {
-    const { saveProduct, loading: saving } = useProducts(userId);
+    // loading state comes from useMutation (aliased as saving in your logic, or isSaving from hook)
+    const { saveProduct, isSaving } = useProducts(userId);
 
     const [step, setStep] = useState(1);
     const [uploading, setUploading] = useState(false);
@@ -38,6 +39,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
     // Categories State
     const [categories, setCategories] = useState<Category[]>([]);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [loadingCats, setLoadingCats] = useState(true);
 
     const [form, setForm] = useState({
@@ -76,7 +79,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         fetchCategories();
     }, [showToast]);
 
-    // New Logic: Filter subcategories based on current categoryId
+    // Filter subcategories based on current categoryId
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(c => c.id === form.categoryId);
         return selectedCat ? selectedCat.children : [];
@@ -84,7 +87,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
     const handleChange = useCallback((field: string, value: any) => {
         setForm(prev => {
-            // New Logic: Reset subcategories if parent category changes
+            // Reset subcategories if parent category changes
             if (field === 'categoryId') {
                 return { ...prev, [field]: value, subCategoryIds: [] };
             }
@@ -128,19 +131,22 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         if (!form.productImage) return showToast("Main product image is required", "error");
 
         const payload = {
-            id: editingProduct?.id,
+            id: editingProduct?.id, // ID presence tells the hook to UPDATE instead of CREATE
             ...form,
             price: parseFloat(form.price),
             moq: parseInt(form.moq),
         };
 
-        const result = await saveProduct(payload, !!editingProduct);
+        try {
+            // ✅ FIX: Removed the second argument (!!editingProduct).
+            // TanStack Query's mutateAsync only takes one argument (the payload).
+            await saveProduct(payload);
 
-        if (result.success) {
             showToast(editingProduct ? "Product Updated!" : "Product Created!", "success");
             setActiveView('products');
-        } else {
-            showToast(result.error || "Failed to save", "error");
+        } catch (error: any) {
+            // React Query throws on error, so we catch it here
+            showToast(error.message || "Failed to save", "error");
         }
     };
 
@@ -358,8 +364,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                             </div>
                             <div className="flex gap-3 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={() => setStep(3)} className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">Back</button>
-                                <button type="submit" disabled={saving} className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200">
-                                    {saving ? <Loader2 className="animate-spin" /> : <Save size={18} />}
+                                <button type="submit" disabled={isSaving} className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200">
+                                    {isSaving ? <Loader2 className="animate-spin" /> : <Save size={18} />}
                                     {editingProduct ? "Update Product" : "Save Product"}
                                 </button>
                             </div>

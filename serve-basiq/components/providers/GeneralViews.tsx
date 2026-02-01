@@ -90,18 +90,18 @@ export function DashboardHomeView({ stats, setActiveView }: any) {
 }
 
 
-export function LeadsView() {
-    return (
-        <div className="bg-white rounded-2xl shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 bg-white flex justify-between items-center"><h3 className="font-bold text-slate-900 text-lg">Active Leads</h3></div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-white">
-                <LeadCard title="Modular Kitchen" dist="4.5 km" time="20 mins ago" category="Furniture" color="blue" />
-                <LeadCard title="Office Chair" dist="1.2 km" time="1 hour ago" category="Office" color="orange" />
-                <LeadCard title="Full Home Interior" dist="8.0 km" time="3 hours ago" category="Interior" color="emerald" />
-            </div>
-        </div>
-    )
-}
+// export function LeadsView() {
+//     return (
+//         <div className="bg-white rounded-2xl shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden">
+//             <div className="px-6 py-5 border-b border-slate-100 bg-white flex justify-between items-center"><h3 className="font-bold text-slate-900 text-lg">Active Leads</h3></div>
+//             <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-white">
+//                 <LeadCard title="Modular Kitchen" dist="4.5 km" time="20 mins ago" category="Furniture" color="blue" />
+//                 <LeadCard title="Office Chair" dist="1.2 km" time="1 hour ago" category="Office" color="orange" />
+//                 <LeadCard title="Full Home Interior" dist="8.0 km" time="3 hours ago" category="Interior" color="emerald" />
+//             </div>
+//         </div>
+//     )
+// }
 
 export function EarningsView() {
     return (

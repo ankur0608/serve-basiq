@@ -49,7 +49,7 @@ export default function ProfileStats() {
                 />
             </div>
 
-            {/* {!isWorker && (
+            {!isWorker && (
                 <Link href="/become-pro" className="block relative group cursor-pointer">
                     <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-6 text-white flex items-center justify-between shadow-lg relative overflow-hidden">
                         <div className="relative z-10">
@@ -83,7 +83,7 @@ export default function ProfileStats() {
                         </p>
                     </div>
                 </div>
-            )} */}
+            )}
         </div>
     );
 }

@@ -101,7 +101,7 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
                         onClick={handleProviderClick}
                         className={clsx("flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm shadow-lg border", isWorker ? "bg-green-500 text-white border-green-400 hover:bg-green-600" : "bg-white text-blue-600 border-white hover:bg-blue-50")}
                     >
-                        {isWorker ? <><FaGaugeHigh /> Dashboard</> : <><FaBriefcase /> Become a Pro</>}
+                        {isWorker ? <><FaGaugeHigh /> Dashboard</> : <><FaBriefcase /> Become a Partner</>}
                     </button>
 
                     <button
