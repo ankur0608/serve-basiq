@@ -15,6 +15,7 @@ interface CategoryProps {
 export default function ServiceCategories({ categories }: CategoryProps) {
   return (
     <div>
+      {/* Header Section */}
       <div className="flex justify-between items-end mb-6 px-1">
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
           <FaScrewdriverWrench className="text-brand-500" /> Popular Services
@@ -27,7 +28,8 @@ export default function ServiceCategories({ categories }: CategoryProps) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+      {/* Grid Section: Changed to grid-cols-3 to match ProductCategories (3 per row) */}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
         {categories.length > 0 ? (
           categories.map((cat) => (
             <Link
@@ -35,9 +37,9 @@ export default function ServiceCategories({ categories }: CategoryProps) {
               key={cat.id}
               className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex flex-col items-center justify-center h-32"
             >
+              {/* Image Container */}
               <div className="w-12 h-12 mb-3 relative group-hover:scale-110 transition flex items-center justify-center">
                 {cat.image ? (
-                  // ✅ Use Database Image
                   <Image
                     src={cat.image}
                     alt={cat.name}
@@ -46,12 +48,14 @@ export default function ServiceCategories({ categories }: CategoryProps) {
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                 ) : (
-                  // ✅ Clean Fallback Icon
+                  // Styled Fallback Icon (Blue/Brand theme for Services)
                   <div className="w-full h-full bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-xl">
                     <FaScrewdriverWrench />
                   </div>
                 )}
               </div>
+
+              {/* Category Name */}
               <div className="text-xs font-bold text-slate-700 uppercase tracking-wide line-clamp-2">
                 {cat.name}
               </div>

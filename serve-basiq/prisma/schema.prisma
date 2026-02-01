@@ -224,9 +224,11 @@ model User {
     bookings     Booking[]
     requirements Requirement[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    orders    Order[]
+    createdAt        DateTime          @default(now())
+    updatedAt        DateTime          @updatedAt
+    orders           Order[]
+    favoriteServices FavoriteService[]
+    favoriteProducts FavoriteProduct[]
 }
 
 model KycDetails {
@@ -358,19 +360,20 @@ model Service {
     loc        String?
     isVerified Boolean  @default(false)
     gallery    String[]
+    reviews    Review[]
 
-    reviews Review[]
-
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
-    bookings  Booking[]
+    createdAt   DateTime          @default(now())
+    updatedAt   DateTime          @updatedAt
+    bookings    Booking[]
+    favoritedBy FavoriteService[]
 }
 
 model Review {
-    id      Int     @id @default(autoincrement())
+    id      Int      @id @default(autoincrement())
     rating  Int
     comment String?
-
+    images  String[] 
+    
     serviceId String
     service   Service @relation(fields: [serviceId], references: [id])
 
@@ -399,11 +402,35 @@ model Product {
     price        Float
     moq          Int
 
-    stockStatus  StockStatus  @default(IN_STOCK)
-    unit         UnitType     @default(PIECE)
-    deliveryType DeliveryType @default(DELIVERY)
+    stockStatus  StockStatus       @default(IN_STOCK)
+    unit         UnitType          @default(PIECE)
+    deliveryType DeliveryType      @default(DELIVERY)
+    isVerified   Boolean           @default(false)
+    createdAt    DateTime          @default(now())
+    orders       Order[]
+    favoritedBy  FavoriteProduct[]
+}
 
-    isVerified Boolean  @default(false)
-    createdAt  DateTime @default(now())
-    orders     Order[]
+// ✅ NEW MODEL: FavoriteService
+model FavoriteService {
+    id        String   @id @default(cuid())
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    serviceId String
+    service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now())
+
+    @@unique([userId, serviceId]) // Prevent duplicate likes
+}
+
+// ✅ NEW MODEL: FavoriteProduct
+model FavoriteProduct {
+    id        String   @id @default(cuid())
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    productId String
+    product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now())
+
+    @@unique([userId, productId]) // Prevent duplicate likes
 }

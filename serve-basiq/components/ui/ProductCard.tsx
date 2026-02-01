@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FaTag, FaCircleCheck } from 'react-icons/fa6';
-// ✅ Ensure this path is correct
+import { FaTag, FaCircleCheck, FaHeart, FaRegHeart } from 'react-icons/fa6'; // ✅ Imported Heart Icons
 import AppImage from '@/components/ui/AppImage';
 
 export interface ProductProps {
@@ -11,18 +10,25 @@ export interface ProductProps {
     category: string;
     price: number;
     moq: number;
-    image: string; // The parent now maps 'productImage' to this
+    image: string;
     supplier: string;
     isVerified: boolean;
     unit: string;
 }
 
-export default function ProductCard({ product }: { product: ProductProps }) {
-    return (
-        <Link href={`/products/${product.id}`} className="block h-full">
-            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition flex flex-col h-full group">
+// ✅ Updated props to include isFav and toggleFav
+interface ProductCardProps {
+    product: ProductProps;
+    isFav?: boolean; // Optional to prevent errors if not passed immediately
+    toggleFav?: (e: any) => void;
+}
 
-                {/* Image */}
+export default function ProductCard({ product, isFav = false, toggleFav }: ProductCardProps) {
+    return (
+        <Link href={`/products/${product.id}`} className="block h-full relative group">
+            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition flex flex-col h-full">
+
+                {/* Image Container */}
                 <div className="relative w-full h-36 aspect-square rounded-xl overflow-hidden bg-gray-100 mb-3 flex items-center justify-center">
 
                     <AppImage
@@ -32,9 +38,23 @@ export default function ProductCard({ product }: { product: ProductProps }) {
                         className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                     />
 
+                    {/* MOQ Badge (Top Left) */}
                     <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-sm z-10">
                         MOQ: {product.moq} {product.unit}
                     </div>
+
+                    {/* ✅ Favorite / Love Button (Top Right) */}
+                    <button
+                        onClick={toggleFav}
+                        className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-full shadow-sm z-20 hover:scale-110 transition active:scale-95 group/btn"
+                        title={isFav ? "Remove from favorites" : "Add to favorites"}
+                    >
+                        {isFav ? (
+                            <FaHeart className="text-red-500 text-sm animate-in zoom-in duration-200" />
+                        ) : (
+                            <FaRegHeart className="text-slate-400 text-sm group-hover/btn:text-red-500 transition-colors" />
+                        )}
+                    </button>
                 </div>
 
                 {/* Content */}

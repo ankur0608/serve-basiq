@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import ProductCard from '@/components/ui/ProductCard';
-import { FaMagnifyingGlass, FaArrowLeft } from 'react-icons/fa6';
-import { PackageOpen, ImageOff } from 'lucide-react';
+import { FaMagnifyingGlass, FaArrowLeft, FaArrowRight } from 'react-icons/fa6';
+import { PackageOpen, ImageOff, Box } from 'lucide-react';
 import { BiMap } from "react-icons/bi";
 
 // --- Fetch Functions ---
@@ -15,7 +16,6 @@ const fetchCategories = async () => {
   return res.json();
 };
 
-// Fetch general trending products (no category filter here)
 const fetchProducts = async (searchTerm: string) => {
   const params = new URLSearchParams({ limit: '50' });
   if (searchTerm) params.append('search', searchTerm);
@@ -28,15 +28,30 @@ const fetchProducts = async (searchTerm: string) => {
 export default function B2BMarketplace() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
 
-  // --- Query 1: Categories ---
+  // 1️⃣ Query for User Favorites (Initial Load)
+  useQuery({
+    queryKey: ['favorites', 'user'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/favorites');
+      if (!res.ok) return { products: [] };
+      const data = await res.json();
+      // Update local state with fetched IDs
+      setFavorites(data.products || []);
+      return data;
+    },
+    staleTime: 0,
+  });
+
+  // --- Query 2: Categories ---
   const { data: catData, isLoading: catLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
     staleTime: 1000 * 60 * 60 * 24, // 24 Hours Cache
   });
 
-  // --- Query 2: Trending Products (General) ---
+  // --- Query 3: Trending Products ---
   const { data: prodData, isLoading: prodLoading } = useQuery({
     queryKey: ['products', 'trending', searchTerm],
     queryFn: () => fetchProducts(searchTerm),
@@ -45,6 +60,40 @@ export default function B2BMarketplace() {
 
   const categories = catData?.categories || (Array.isArray(catData) ? catData : []) || [];
   const products = prodData?.products || [];
+
+  const mobileCategories = categories.slice(0, 4);
+  const webCategories = categories.slice(0, 6);
+
+  // ✅ REAL API TOGGLE FUNCTION
+  const handleToggleFav = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // Stop click from navigating to details page
+
+    // 1. Optimistic Update
+    const isCurrentlyFav = favorites.includes(id);
+    const newFavorites = isCurrentlyFav
+      ? favorites.filter(favId => favId !== id)
+      : [...favorites, id];
+
+    setFavorites(newFavorites);
+
+    try {
+      // 2. API Call
+      const res = await fetch('/api/favorites/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: id, type: 'PRODUCT' }) // Note type is PRODUCT here
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update favorite");
+      }
+    } catch (error) {
+      // 3. Rollback
+      console.error("Favorite toggle failed:", error);
+      setFavorites(favorites);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -80,45 +129,67 @@ export default function B2BMarketplace() {
 
       <main className="max-w-7xl mx-auto px-4 py-8 pb-32 animate-in fade-in duration-500">
 
-        {/* --- CATEGORIES (Click to Redirect) --- */}
-        <div className="mb-10">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">Shop by Category</h2>
-
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {catLoading ? (
-              [...Array(8)].map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 rounded-xl animate-pulse" />
-              ))
-            ) : (
-              categories.map((cat: any) => (
-                <button
-                  key={cat.id}
-                  onClick={() => router.push(`/products/category/${encodeURIComponent(cat.name)}`)}
-                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-100 bg-white shadow-sm transition-all group h-32 hover:shadow-md hover:border-blue-200 hover:bg-blue-50"
-                >
-                  <div className="w-14 h-14 rounded-lg overflow-hidden mb-2 bg-slate-50 border border-slate-100 relative">
-                    {cat.image ? (
-                      <img
-                        src={cat.image}
-                        alt={cat.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                        }}
-                      />
-                    ) : null}
-                    <div className={`absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-300 ${cat.image ? 'hidden' : ''}`}>
-                      <ImageOff size={20} />
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-bold text-slate-700 text-center leading-tight line-clamp-2 uppercase tracking-wide group-hover:text-blue-700">
-                    {cat.name}
-                  </span>
-                </button>
-              ))
-            )}
+        {/* --- CATEGORIES SECTION --- */}
+        <div className="mb-12">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Shop by Category</h2>
+            <Link
+              href="/productscategory"
+              className="text-blue-600 text-xs font-bold uppercase hover:underline flex items-center gap-1 group"
+            >
+              View All <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
+
+          {catLoading ? (
+            // Skeleton Loader
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+              {[...Array(6)].map((_, i) => <div key={i} className="h-24 bg-gray-200 rounded-xl animate-pulse" />)}
+            </div>
+          ) : (
+            <>
+              {/* MOBILE LAYOUT (4 Columns) */}
+              <div className="grid grid-cols-4 gap-3 sm:hidden">
+                {mobileCategories.map((cat: any) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => router.push(`/products/category/${encodeURIComponent(cat.name)}`)}
+                    className="bg-white rounded-xl p-3 text-center shadow-sm border border-transparent hover:shadow-md hover:border-blue-200 cursor-pointer transition group"
+                  >
+                    <div className="w-9 h-9 bg-slate-50 rounded-lg mx-auto mb-2 group-hover:scale-105 transition overflow-hidden border border-slate-100 flex items-center justify-center">
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Box className="text-slate-400 text-sm" />
+                      )}
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-700 line-clamp-1 group-hover:text-blue-600">{cat.name}</p>
+                  </button>
+                ))}
+              </div>
+
+              {/* DESKTOP LAYOUT (6 Columns) */}
+              <div className="hidden sm:grid grid-cols-3 md:grid-cols-6 gap-4">
+                {webCategories.map((cat: any) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => router.push(`/products/category/${encodeURIComponent(cat.name)}`)}
+                    className="bg-white rounded-xl p-4 text-center shadow-sm border border-transparent hover:shadow-md hover:border-blue-200 cursor-pointer transition group"
+                  >
+                    <div className="w-12 h-12 bg-slate-50 rounded-lg mx-auto mb-3 group-hover:scale-105 transition overflow-hidden border border-slate-100 flex items-center justify-center">
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Box className="text-slate-400 text-lg" />
+                      )}
+                    </div>
+                    <p className="text-xs font-bold uppercase text-slate-700 group-hover:text-blue-600 line-clamp-1">{cat.name}</p>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* --- TRENDING PRODUCTS --- */}
@@ -136,7 +207,12 @@ export default function B2BMarketplace() {
           ) : products.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {products.map((product: any) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  isFav={favorites.includes(product.id)}
+                  toggleFav={(e: any) => handleToggleFav(e, product.id)}
+                />
               ))}
             </div>
           ) : (

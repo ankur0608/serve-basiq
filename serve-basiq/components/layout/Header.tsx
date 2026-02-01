@@ -44,7 +44,7 @@ const Navbar = () => {
                 <div className="flex md:hidden items-center justify-between h-14">
                     <Link href="/" className="flex items-center">
                         <Image
-                            src="/navbar.svg"
+                            src="/navbar.png"
                             alt="ServeMate Logo"
                             width={160}
                             height={40}
@@ -117,12 +117,12 @@ const Navbar = () => {
                 <div className="hidden md:flex items-center justify-between h-16 gap-4">
                     <Link href="/" className="flex items-center">
                         <Image
-                            src="/logo.png"
+                            src="/navbar.png"
                             alt="ServeMate Logo"
-                            width={160}
-                            height={40}
+                            width={180}
+                            height={90}
                             priority
-                            className="h-16 w-auto"
+                            className="h-24 w-auto"
                         />
                     </Link>
 
