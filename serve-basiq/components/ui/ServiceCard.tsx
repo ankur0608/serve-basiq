@@ -1,112 +1,174 @@
 'use client';
 
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { FaHeart, FaRegHeart, FaStar, FaCircleCheck, FaLocationDot } from 'react-icons/fa6';
-import AppImage from '@/components/ui/AppImage'; // ✅ Adjust path based on where you saved AppImage
+import Image from 'next/image';
+import { FaHeart, FaRegHeart, FaStar } from "react-icons/fa6";
+import { BadgeCheck, MapPin } from 'lucide-react';
+import BookingWrapper from '@/components/booking/BookingWrapper';
 
-// 1. Define the shape of the Service data
+// ✅ FIX 1: Add 'export' here so other files can import it
 export interface ServiceProps {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  priceType: 'HOURLY' | 'FIXED' | string;
-  location: string;
-  image: string;
-  rating: number;
-  isVerified: boolean;
-  providerName?: string;
-  providerImage?: string;
+    id: string;
+    name: string;
+    category: string;
+    image: string;
+    location: string;
+    rating: number;
+    price: number;
+    priceType: string;
+    isVerified?: boolean;
+    providerName?: string;
+    providerImage?: string | null;
+    reviewCount?: number;
+    user?: any; 
 }
 
-// 2. Define the Props the Component accepts (Service + State controls)
-interface ServiceCardComponentProps {
-  service: ServiceProps;
-  isFav?: boolean;                                              // Passed from parent
-  toggleFav?: (e: React.MouseEvent<any>, id: string) => void;   // Passed from parent
-  index?: number;                                               // Passed for animation
+// ✅ FIX 2: Make interactive props optional so Server Components can use this card
+interface ServiceCardProps {
+    service: ServiceProps;
+    isFav?: boolean;                       
+    toggleFav?: (e: React.MouseEvent) => void; 
+    currentUser?: any;
+    index?: number;
 }
 
-export default function ServiceCard({
-  service,
-  isFav = false,
-  toggleFav,
-  index = 0
-}: ServiceCardComponentProps) {
+export default function ServiceCard({ service, isFav = false, toggleFav, currentUser }: ServiceCardProps) {
+    const [showBooking, setShowBooking] = useState(false);
 
-  return (
-    <div
-      className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex gap-4 group h-full relative overflow-hidden animate-in fade-in slide-in-from-bottom-4"
-      // Use index for a staggered loading effect
-      style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
-    >
+    const {
+        id,
+        name,
+        category,
+        image,
+        location,
+        rating = 4.8,
+        reviewCount = 0,
+        price,
+        priceType,
+        user
+    } = service;
 
-      {/* Favorite Button */}
-      <button
-        onClick={(e) => {
-          if (toggleFav) {
-            toggleFav(e, service.id);
-          }
-        }}
-        className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white shadow-sm z-20 transition-all hover:scale-110"
-      >
-        {isFav ? <FaHeart className="text-red-500" /> : <FaRegHeart className="text-gray-400" />}
-      </button>
+    const displayImage = image || 'https://via.placeholder.com/500x300';
+    
+    // Fallback logic for provider name
+    const providerName = service.providerName || user?.name || user?.shopName || "Verified Pro";
 
-      {/* Main Link */}
-      <Link href={`/services/${service.id}`} className="flex gap-4 w-full">
+    const handleBookNow = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowBooking(true);
+    };
 
-        {/* Image Section */}
-        <div className="relative w-28 h-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
-          {/* ✅ Replaced standard img with AppImage */}
-          <AppImage
-            src={service.image}
-            alt={service.name}
-            type="thumbnail"
-            className="w-full h-full object-cover group-hover:scale-110 transition duration-700 ease-out"
-          />
-        </div>
+    return (
+        <>
+            <Link
+                href={`/services/${id}`}
+                className="group block w-full bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-black overflow-hidden relative"
+            >
+                {/* --- Image Section --- */}
+                <div className="relative h-48 w-full overflow-hidden bg-gray-100">
+                    <Image
+                        src={displayImage}
+                        alt={name || 'Service Image'}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
 
-        {/* Content Section */}
-        <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
-          <div>
-            {/* Category & Badge */}
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md truncate max-w-[100px]">
-                {service.category}
-              </span>
-              {service.isVerified && (
-                <FaCircleCheck className="text-emerald-500 text-xs" title="Verified Provider" />
-              )}
-            </div>
+                    {/* Badge: Category */}
+                    <span className="absolute top-3 left-3 bg-blue-600 text-white text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-sm z-10 uppercase tracking-wide">
+                        {category || "Service"}
+                    </span>
 
-            {/* Title */}
-            <h4 className="font-bold text-slate-900 truncate group-hover:text-blue-600 transition text-lg leading-tight">
-              {service.name}
-            </h4>
+                    {/* Wishlist Button - Only show if toggleFav is passed */}
+                    {toggleFav && (
+                        <button
+                            onClick={toggleFav}
+                            className="absolute top-3 right-3 bg-white p-2 rounded-full shadow hover:bg-gray-100 active:scale-95 transition-all z-10 flex items-center justify-center"
+                        >
+                            {isFav ? (
+                                <FaHeart className="text-red-500 text-sm md:text-base" />
+                            ) : (
+                                <FaRegHeart className="text-gray-400 text-sm md:text-base hover:text-red-400" />
+                            )}
+                        </button>
+                    )}
+                </div>
 
-            {/* Location */}
-            <div className="text-xs text-gray-500 mt-1 truncate font-medium flex items-center gap-1">
-              <FaLocationDot size={10} className="text-gray-300" />
-              {service.location}
-            </div>
-          </div>
+                {/* --- Content Section --- */}
+                <div className="p-4 space-y-3">
+                    
+                    {/* Location + Verified */}
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                        <div className="flex items-center gap-1 truncate max-w-[60%]">
+                            <MapPin size={14} className="text-slate-400" />
+                            <span className="truncate">{location || 'Remote/Online'}</span>
+                        </div>
+                        {service.isVerified && (
+                            <span className="text-green-600 text-[10px] md:text-xs flex items-center gap-0.5 bg-green-50 px-1.5 py-0.5 rounded-md border border-green-100 ml-auto">
+                                <BadgeCheck size={12} /> Verified
+                            </span>
+                        )}
+                    </div>
 
-          {/* Footer: Price & Rating */}
-          <div className="flex items-end justify-between mt-2">
-            <div className="text-slate-900 font-extrabold text-lg leading-none">
-              ₹{service.price}
-              <span className="text-xs text-gray-400 font-normal ml-0.5 uppercase">
-                {service.priceType === 'HOURLY' ? '/hr' : ''}
-              </span>
-            </div>
+                    {/* Service Name */}
+                    <h3 className="text-lg font-bold text-gray-900 leading-snug line-clamp-1 group-hover:text-blue-700 transition-colors">
+                        {name}
+                    </h3>
 
-            <span className="text-xs font-bold text-amber-500 flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-              {service.rating > 0 ? service.rating.toFixed(1) : 'New'} <FaStar size={10} />
-            </span>
-          </div>
-        </div>
-      </Link>
-    </div>
-  );
+                    {/* Rating + Provider */}
+                    <div className="flex justify-between items-center text-sm text-gray-600">
+                        <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md text-xs font-bold border border-amber-100">
+                            <FaStar size={10} /> {rating} <span className="text-amber-600/60 font-medium">({reviewCount})</span>
+                        </div>
+                        <span className="text-xs text-gray-500">by <strong>{providerName}</strong></span>
+                    </div>
+
+                    {/* Price */}
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-lg font-bold text-slate-900">₹{price}</span>
+                        <span className="text-sm font-medium text-slate-500 lowercase">
+                            {priceType === 'HOURLY' ? '/ hr' : priceType === 'FIXED' ? '(fixed)' : '/ visit'}
+                        </span>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex gap-3 pt-2">
+                        <button className="flex-1 border border-gray-300 text-gray-700 rounded-xl py-2 text-sm font-bold hover:bg-gray-50 transition-colors">
+                            View Details
+                        </button>
+                        <button
+                            onClick={handleBookNow}
+                            className="flex-1 bg-black text-white rounded-xl py-2 text-sm font-bold hover:bg-gray-800 transition-colors shadow-sm"
+                        >
+                            Book Now
+                        </button>
+                    </div>
+                </div>
+            </Link>
+
+            {/* Modal Logic */}
+            {showBooking && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setShowBooking(false); 
+                    }}
+                >
+                    <div className="w-full max-w-md relative" onClick={(e) => e.stopPropagation()}>
+                        <BookingWrapper
+                            serviceId={id}
+                            serviceName={name}
+                            price={price}
+                            currentUser={currentUser}
+                            userAddresses={currentUser?.addresses || []}
+                            defaultOpen={true}
+                            onRequestClose={() => setShowBooking(false)}
+                        />
+                    </div>
+                </div>
+            )}
+        </>
+    );
 }

@@ -13,7 +13,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "ServeMate | Global Marketplace",
+  title: "Servebasiq | Global Marketplace",
   description: "Connect with verified professionals and wholesale suppliers.",
 
   icons: {

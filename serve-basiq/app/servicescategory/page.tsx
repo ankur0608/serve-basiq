@@ -1,12 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react"; // Assuming you have lucide-react or similar icons
+import { ArrowLeft } from "lucide-react";
+import CategoryImage from "@/components/ui/CategoryImage"; // <--- Import the new component
 
-// Fetch data directly in Server Component for speed
+// Optional: Prevent DB connection errors during build if your DB is busy
+export const dynamic = 'force-dynamic'; 
+
 async function getMainCategories() {
     return await prisma.category.findMany({
         where: {
-            parentId: null, // Only top-level
+            parentId: null,
             OR: [{ type: "SERVICE" }, { type: "BOTH" }],
         },
         orderBy: { name: "asc" },
@@ -17,47 +20,55 @@ export default async function ServiceCategoriesPage() {
     const categories = await getMainCategories();
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-12">
-                    <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">
-                        Explore Our Services
-                    </h1>
-                    <p className="mt-4 text-xl text-gray-500">
-                        Choose a category to find the perfect professional for your needs.
-                    </p>
+        <div className="min-h-screen bg-gray-50">
+            {/* HEADER */}
+            <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
+                    <Link
+                        href="/"
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
+                    >
+                        <ArrowLeft className="w-6 h-6 text-gray-800" />
+                    </Link>
+                    <div>
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">
+                            Explore Services Categories
+                        </h1>
+                        <p className="text-xs text-gray-500">Choose a service to continue</p>
+                    </div>
                 </div>
+            </header>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* CATEGORY GRID */}
+            <main className="max-w-7xl mx-auto px-4 pt-6 pb-12">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-4">
                     {categories.map((cat) => (
                         <Link
                             key={cat.id}
                             href={`/servicescategory/${cat.id}`}
-                            className="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
+                            className="group bg-white rounded-xl p-4 border border-gray-100 shadow-sm
+                                     text-center transition-all duration-300
+                                     hover:shadow-md hover:-translate-y-1
+                                     active:scale-[0.98] flex flex-col items-center justify-start h-full"
                         >
-                            {/* Image Section */}
-                            <div className="aspect-w-16 aspect-h-9 h-48 w-full bg-gray-200 overflow-hidden">
-                                <img
-                                    src={cat.image || "/placeholder-category.jpg"}
-                                    alt={cat.name}
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                />
-                                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
+                            {/* Icon/Image Container */}
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center rounded-2xl
+                                          bg-gray-50 mb-3 overflow-hidden p-3
+                                          group-hover:bg-blue-50 transition-colors">
+                                
+                                {/* ✅ Replaced the complex <img> logic with our Client Component */}
+                                <CategoryImage src={cat.image} alt={cat.name} />
+                                
                             </div>
 
-                            {/* Content Section */}
-                            <div className="p-6">
-                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                    {cat.name}
-                                </h3>
-                                <div className="mt-4 flex items-center text-sm font-medium text-indigo-600 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all">
-                                    View Subcategories <ArrowRight className="ml-2 h-4 w-4" />
-                                </div>
-                            </div>
+                            {/* Category Label */}
+                            <h3 className="text-[10px] sm:text-[11px] font-bold text-gray-700 uppercase tracking-tight leading-tight transition-colors group-hover:text-blue-600">
+                                {cat.name}
+                            </h3>
                         </Link>
                     ))}
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

@@ -5,16 +5,58 @@ import { useParams, useRouter } from 'next/navigation';
 import ProductCard from '@/components/ui/ProductCard';
 import { FaArrowLeft } from 'react-icons/fa6';
 import { PackageOpen, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query'; // ✅ Import React Query
 
 export default function ProductCategoryPage() {
     const params = useParams();
     const router = useRouter();
 
-    // Decode URL safe string back to normal text (e.g. "Raw%20Material" -> "Raw Material")
+    // Decode URL safe string back to normal text
     const categoryName = params.category ? decodeURIComponent(params.category as string) : "";
 
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // ✅ 1. Add State for Favorites
+    const [favorites, setFavorites] = useState<string[]>([]);
+
+    // ✅ 2. Fetch User Favorites (Using React Query for consistency)
+    useQuery({
+        queryKey: ['favorites', 'user'],
+        queryFn: async () => {
+            const res = await fetch('/api/user/favorites');
+            if (!res.ok) return { products: [] };
+            const data = await res.json();
+            setFavorites(data.products || []); // Assuming API returns { products: ['id1', 'id2'] }
+            return data;
+        },
+        staleTime: 0,
+    });
+
+    // ✅ 3. Handle Favorite Toggle
+    const handleToggleFav = async (e: React.MouseEvent, id: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const isCurrentlyFav = favorites.includes(id);
+        const newFavorites = isCurrentlyFav
+            ? favorites.filter(favId => favId !== id)
+            : [...favorites, id];
+
+        setFavorites(newFavorites);
+
+        try {
+            const res = await fetch('/api/favorites/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ itemId: id, type: 'PRODUCT' })
+            });
+            if (!res.ok) throw new Error("Failed to update favorite");
+        } catch (error) {
+            console.error("Favorite toggle failed:", error);
+            setFavorites(favorites); // Rollback
+        }
+    };
 
     useEffect(() => {
         const fetchCategoryProducts = async () => {
@@ -22,7 +64,6 @@ export default function ProductCategoryPage() {
 
             setLoading(true);
             try {
-                // Fetch products using the filtered API
                 const res = await fetch(`/api/products/all?cat=${encodeURIComponent(categoryName)}`, {
                     cache: 'no-store'
                 });
@@ -75,7 +116,13 @@ export default function ProductCategoryPage() {
                 ) : products.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                         {products.map((product) => (
-                            <ProductCard key={product.id} product={product} />
+                            <ProductCard
+                                key={product.id}
+                                product={product}
+                                // ✅ Pass the required props here
+                                isFav={favorites.includes(product.id)}
+                                toggleFav={(e) => handleToggleFav(e, product.id)}
+                            />
                         ))}
                     </div>
                 ) : (

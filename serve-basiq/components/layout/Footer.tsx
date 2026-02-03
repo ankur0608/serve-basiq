@@ -63,7 +63,7 @@ export default function Footer() {
       
       {/* Bottom Bar */}
       <div className="border-t border-white/10 pt-8 text-center text-slate-500 text-sm flex flex-col md:flex-row justify-between items-center max-w-7xl mx-auto px-4">
-        <span>&copy; 2025 ServeMate Inc. All rights reserved.</span>
+        <span>&copy; 2025 Servebasiq Inc. All rights reserved.</span>
         <div className="flex gap-6 mt-4 md:mt-0">
             <Link href="#" className="hover:text-white transition">Privacy</Link>
             <Link href="#" className="hover:text-white transition">Terms</Link>

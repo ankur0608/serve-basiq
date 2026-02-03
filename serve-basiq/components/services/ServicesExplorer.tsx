@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -10,21 +10,24 @@ import ServiceCard from '@/components/ui/ServiceCard';
 import AppImage from '@/components/ui/AppImage';
 import { BiMap } from "react-icons/bi";
 
-// Skeleton Component
+// --- SKELETON LOADER ---
 function ExplorerSkeleton() {
     return (
         <div className="animate-pulse">
             <div className="h-8 w-48 bg-slate-200 rounded mb-2"></div>
             <div className="h-4 w-64 bg-slate-200 rounded mb-10"></div>
+
             <div className="mb-12">
-                <div className="h-4 w-32 bg-slate-200 rounded mb-5"></div>
-                <div className="grid grid-cols-4 sm:hidden gap-3">
-                    {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-slate-200 rounded-xl"></div>)}
-                </div>
-                <div className="hidden sm:grid grid-cols-6 gap-4">
-                    {[...Array(6)].map((_, i) => <div key={i} className="h-28 bg-slate-200 rounded-xl"></div>)}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="flex flex-col items-center">
+                            <div className="h-14 w-14 sm:h-16 sm:w-16 bg-slate-200 rounded-xl mb-2"></div>
+                            <div className="h-2 w-12 bg-slate-200 rounded"></div>
+                        </div>
+                    ))}
                 </div>
             </div>
+
             <div>
                 <div className="h-8 w-40 bg-slate-200 rounded mb-6"></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -39,21 +42,20 @@ export default function ServicesExplorer() {
     const router = useRouter();
     const [favorites, setFavorites] = useState<string[]>([]);
 
-    // 1️⃣ Query for User Favorites (Initial Load)
+    // 1️⃣ Query: User Favorites
     useQuery({
         queryKey: ['favorites', 'user'],
         queryFn: async () => {
             const res = await fetch('/api/user/favorites');
             if (!res.ok) return { services: [] };
             const data = await res.json();
-            // Update local state with fetched IDs
             setFavorites(data.services || []);
             return data;
         },
-        staleTime: 0, // Always fetch fresh on mount
+        staleTime: 0,
     });
 
-    // 2️⃣ Query for Categories
+    // 2️⃣ Query: Categories
     const { data: categories = [], isLoading: catLoading } = useQuery({
         queryKey: ['categories', 'SERVICE'],
         queryFn: async () => {
@@ -63,7 +65,7 @@ export default function ServicesExplorer() {
         staleTime: 1000 * 60 * 60 * 24,
     });
 
-    // 3️⃣ Query for Services
+    // 3️⃣ Query: Services
     const { data: rawServices = [], isLoading: servLoading } = useQuery({
         queryKey: ['services', 'explorer'],
         queryFn: async () => {
@@ -73,27 +75,24 @@ export default function ServicesExplorer() {
         staleTime: 1000 * 60 * 1,
     });
 
+    // Normalize Service Data
     const services = Array.isArray(rawServices) ? rawServices.map((item: any) => ({
         id: item.id,
         name: item.name,
         category: item.category?.name || "General",
         price: Number(item.price) || 0,
         priceType: item.priceType,
-        rating: 4.5,
+        rating: 4.8,
+        reviewCount: 12,
         location: item.city || "Remote",
-        image: item.serviceimg || item.mainimg || item.user?.profileImage || item.user?.image || "",
-        isVerified: true
+        image: item.serviceimg || item.mainimg || item.user?.profileImage || "",
+        isVerified: true,
+        user: item.user,
     })) : [];
 
     const loading = catLoading || servLoading;
 
-    // Slices for different views
-    const mobileCategories = categories.slice(0, 4);
-    const webCategories = categories.slice(0, 6);
-
-    // ✅ REAL API TOGGLE FUNCTION
     const handleToggleFav = async (id: string) => {
-        // 1. Optimistic Update (Instant UI feedback)
         const isCurrentlyFav = favorites.includes(id);
         const newFavorites = isCurrentlyFav
             ? favorites.filter(favId => favId !== id)
@@ -102,21 +101,14 @@ export default function ServicesExplorer() {
         setFavorites(newFavorites);
 
         try {
-            // 2. API Call
-            const res = await fetch('/api/favorites/toggle', {
+            await fetch('/api/favorites/toggle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ itemId: id, type: 'SERVICE' })
             });
-
-            if (!res.ok) {
-                throw new Error("Failed to update favorite");
-            }
         } catch (error) {
-            // 3. Rollback on Error
-            console.error("Favorite toggle failed:", error);
-            setFavorites(favorites); // Revert to previous state
-            // toast.error("Could not update favorite"); 
+            console.error(error);
+            setFavorites(favorites);
         }
     };
 
@@ -145,68 +137,61 @@ export default function ServicesExplorer() {
                 {loading ? <ExplorerSkeleton /> : (
                     <div className="animate-in fade-in duration-500">
 
-                        {/* --- CATEGORY SECTION --- */}
+                        {/* ================= CATEGORIES SECTION (Updated) ================= */}
                         <div className="mb-12">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Shop by Category</h2>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Top Categories</h2>
                                 <Link href="/servicescategory" className="text-blue-600 text-xs font-bold uppercase hover:underline">View All</Link>
                             </div>
 
-                            {/* MOBILE (4 Items) */}
-                            <div className="grid grid-cols-4 gap-3 sm:hidden">
-                                {mobileCategories.map((cat: any) => (
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-4 gap-y-6">
+                                {categories.slice(0, 6).map((cat: any) => (
                                     <div
                                         key={cat.id}
                                         onClick={() => router.push(`/servicescategory/${cat.id}`)}
-                                        className="bg-white rounded-xl p-3 text-center shadow-sm border border-transparent hover:shadow-md hover:border-blue-200 cursor-pointer transition group"
+                                        className="group flex flex-col items-center text-center cursor-pointer"
                                     >
-                                        <div className="w-9 h-9 bg-slate-50 rounded-lg mx-auto mb-2 group-hover:scale-105 transition overflow-hidden border border-slate-100 flex items-center justify-center">
+                                        <div className="
+                                            w-14 h-14 sm:w-16 sm:h-16
+                                            flex items-center justify-center
+                                            rounded-xl
+                                            border border-gray-200
+                                            bg-white
+                                            group-hover:border-blue-600
+                                            transition
+                                            overflow-hidden
+                                            p-3
+                                        ">
                                             {cat.image ? (
                                                 <AppImage
                                                     src={cat.image}
                                                     alt={cat.name}
                                                     type="thumbnail"
-                                                    className="w-full h-full object-cover"
+                                                    className="w-full h-full object-contain"
                                                 />
                                             ) : (
-                                                <FaScrewdriverWrench className="text-slate-400 text-sm" />
+                                                <FaScrewdriverWrench className="text-blue-600 w-6 h-6 sm:w-7 sm:h-7" />
                                             )}
                                         </div>
-                                        <p className="text-[10px] font-bold text-slate-700 line-clamp-1 group-hover:text-blue-600">{cat.name}</p>
-                                    </div>
-                                ))}
-                            </div>
 
-                            {/* WEB (6 Items) */}
-                            <div className="hidden sm:grid grid-cols-3 md:grid-cols-6 gap-4">
-                                {webCategories.map((cat: any) => (
-                                    <div
-                                        key={cat.id}
-                                        onClick={() => router.push(`/servicescategory/${cat.id}`)}
-                                        className="bg-white rounded-xl p-4 text-center shadow-sm border border-transparent hover:shadow-md hover:border-blue-200 cursor-pointer transition group"
-                                    >
-                                        <div className="w-12 h-12 bg-slate-50 rounded-lg mx-auto mb-3 group-hover:scale-105 transition overflow-hidden border border-slate-100 flex items-center justify-center">
-                                            {cat.image ? (
-                                                <AppImage
-                                                    src={cat.image}
-                                                    alt={cat.name}
-                                                    type="thumbnail"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <FaScrewdriverWrench className="text-slate-400 text-lg" />
-                                            )}
-                                        </div>
-                                        <p className="text-xs font-bold uppercase text-slate-700 group-hover:text-blue-600 line-clamp-1">{cat.name}</p>
+                                        <span className="mt-2 text-xs sm:text-sm font-medium text-gray-800 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                                            {cat.name}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
                         </div>
+                        {/* ================= END CATEGORIES ================= */}
+
 
                         {/* Services Section */}
                         <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3"><FaFire className="text-orange-500 animate-pulse" /> Popular Near You</h3>
-                            <div className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">{services.length} Services Found</div>
+                            <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                                <FaFire className="text-orange-500 animate-pulse" /> Popular Near You
+                            </h3>
+                            <div className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                                {services.length} Services Found
+                            </div>
                         </div>
 
                         {services.length === 0 ? (
@@ -221,8 +206,13 @@ export default function ServicesExplorer() {
                                         key={service.id}
                                         service={service}
                                         isFav={favorites.includes(service.id)}
-                                        toggleFav={() => handleToggleFav(service.id)}
+                                        toggleFav={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleToggleFav(service.id);
+                                        }}
                                         index={i}
+                                        currentUser={null} // You should probably pass real user here if available
                                     />
                                 ))}
                             </div>

@@ -80,7 +80,7 @@ export default async function Home() {
             <div className="w-12 h-12 mx-auto bg-orange-50 text-orange-500 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
               <FaStore />
             </div>
-            <h3 className="font-bold text-slate-900">Start Selling</h3>
+            <h3 className="font-bold text-slate-900">S  tart Selling</h3>
             <p className="text-xs text-gray-500 mt-1">Join as Partner</p>
           </Link>
         </div>

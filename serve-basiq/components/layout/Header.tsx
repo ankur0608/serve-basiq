@@ -45,11 +45,11 @@ const Navbar = () => {
                     <Link href="/" className="flex items-center">
                         <Image
                             src="/navbar.png"
-                            alt="ServeMate Logo"
-                            width={160}
-                            height={40}
+                            alt="Servebasiq Logo"
+                            width={170}
+                            height={50}
                             priority
-                            className="h-14 w-auto"
+                            className="h-24 w-auto"
                         />
                     </Link>
 
@@ -93,7 +93,7 @@ const Navbar = () => {
                     </div>
                 </div>
 
-                {showMobileSearch && (
+                {/* {showMobileSearch && (
                     <div className="md:hidden pb-3">
                         <div className="relative">
                             <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
@@ -111,22 +111,22 @@ const Navbar = () => {
                             </button>
                         </div>
                     </div>
-                )}
+                )} */}
 
                 {/* DESKTOP VIEW */}
                 <div className="hidden md:flex items-center justify-between h-16 gap-4">
                     <Link href="/" className="flex items-center">
                         <Image
                             src="/navbar.png"
-                            alt="ServeMate Logo"
-                            width={180}
-                            height={90}
+                            alt="Servebasiq Logo"
+                            width={190}
+                            height={100}
                             priority
-                            className="h-24 w-auto"
+                            className="h-28 w-auto"
                         />
                     </Link>
 
-                    <div className="flex-1 max-w-lg">
+                    {/* <div className="flex-1 max-w-lg">
                         <div className="relative">
                             <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
@@ -135,7 +135,7 @@ const Navbar = () => {
                                 className="w-full h-11 pl-11 pr-4 rounded-full bg-slate-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
                         </div>
-                    </div>
+                    </div> */}
 
                     <div className="flex items-center gap-4">
                         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">

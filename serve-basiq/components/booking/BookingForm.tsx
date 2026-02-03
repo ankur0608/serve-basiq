@@ -14,7 +14,6 @@ interface BookingFormProps {
   onRequestClose: () => void;
 }
 
-// Enum values for the API
 const TIMELINE_OPTIONS = [
   { label: 'Immediate', value: 'IMMEDIATE' },
   { label: 'In 2 Days', value: 'IN_2_DAYS' },
@@ -32,19 +31,13 @@ export default function BookingForm({
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // --- Local State for Addresses ---
   const [addresses, setAddresses] = useState(initialAddresses);
-
-  // Default to the first address if available
   const [addressId, setAddressId] = useState(addresses[0]?.id || '');
   const [timeline, setTimeline] = useState('IMMEDIATE');
   const [instructions, setInstructions] = useState('');
 
-  // --- Modal State for Add/Edit Address ---
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [editingAddress, setEditingAddress] = useState<any>(null); // Null = Add Mode
-
-  // --- Handlers ---
+  const [editingAddress, setEditingAddress] = useState<any>(null);
 
   const handleAddAddress = () => {
     setEditingAddress(null);
@@ -58,9 +51,8 @@ export default function BookingForm({
   };
 
   const handleSaveAddress = async (data: any) => {
-    // 1. Optimistic Update (Update UI immediately)
     const newAddress = {
-      id: editingAddress?.id || `temp-${Date.now()}`, // Temp ID used here
+      id: editingAddress?.id || `temp-${Date.now()}`,
       userId,
       line1: data.addressLine1,
       line2: data.addressLine2,
@@ -68,7 +60,7 @@ export default function BookingForm({
       city: data.city,
       state: data.state,
       pincode: data.pincode,
-      type: "Home", // Default
+      type: "Home",
       country: "India"
     };
 
@@ -77,31 +69,20 @@ export default function BookingForm({
       updatedList = addresses.map(a => a.id === editingAddress.id ? newAddress : a);
     } else {
       updatedList = [...addresses, newAddress];
-      setAddressId(newAddress.id); // Auto-select the new address
+      setAddressId(newAddress.id);
     }
 
     setAddresses(updatedList);
     setIsAddressModalOpen(false);
-
-    // Note: We don't save to backend immediately here. 
-    // We let the Booking API handle the creation if it's a new address.
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!addressId) {
-      alert("Please select an address");
-      return;
-    }
-
+    if (!addressId) { alert("Please select an address"); return; }
     setLoading(true);
 
     try {
-      // ✅ 1. Find the selected address object
       const selectedAddressObj = addresses.find(a => a.id === addressId);
-
-      // ✅ 2. Prepare Payload
       const payload: any = {
         userId,
         serviceId,
@@ -110,7 +91,6 @@ export default function BookingForm({
         specialInstructions: instructions,
       };
 
-      // ✅ 3. CHECK: If ID is temporary (starts with "temp-"), append full details
       if (addressId.toString().startsWith('temp-') && selectedAddressObj) {
         payload.newAddress = {
           line1: selectedAddressObj.line1,
@@ -119,7 +99,7 @@ export default function BookingForm({
           city: selectedAddressObj.city,
           state: selectedAddressObj.state,
           pincode: selectedAddressObj.pincode,
-          type: (selectedAddressObj.type || "HOME").toUpperCase(), // Ensure enum match
+          type: (selectedAddressObj.type || "HOME").toUpperCase(),
         };
       }
 
@@ -130,10 +110,9 @@ export default function BookingForm({
       });
 
       const data = await res.json();
-
       if (data.success) {
         alert('Booking Request Sent Successfully!');
-        router.refresh(); // Refresh to get real IDs back
+        router.refresh();
         onRequestClose();
       } else {
         alert(data.message || 'Booking failed');
@@ -146,15 +125,10 @@ export default function BookingForm({
     }
   };
 
-  // Helper to prepopulate modal data
   const getModalInitialData = () => {
     if (editingAddress) {
       return {
-        name: "",
-        email: "",
-        phone: "",
-        dateOfBirth: "",         // Added
-        preferredLanguage: "English", // Added
+        name: "", email: "", phone: "", dateOfBirth: "", preferredLanguage: "English",
         addressLine1: editingAddress.line1 || "",
         addressLine2: editingAddress.line2 || "",
         landmark: editingAddress.landmark || "",
@@ -163,37 +137,38 @@ export default function BookingForm({
         pincode: editingAddress.pincode || ""
       };
     }
-    return {
-      name: "", email: "", phone: "", dateOfBirth: "",         // Added
-      preferredLanguage: "English", // Added  
-      addressLine1: "", addressLine2: "", landmark: "", city: "", state: "", pincode: ""
-    };
+    return { name: "", email: "", phone: "", dateOfBirth: "", preferredLanguage: "English", addressLine1: "", addressLine2: "", landmark: "", city: "", state: "", pincode: "" };
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full mx-auto animate-in fade-in zoom-in-95 duration-200">
+    // ✅ CHANGED: w-full h-full, removed max-w-md, shadow, and rounded corners
+    <div className="bg-white w-full h-full flex flex-col">
 
-      {/* Header */}
-      <div className="bg-slate-900 p-6 text-white">
-        <h2 className="text-xl font-bold">Book Service</h2>
-        <p className="text-slate-400 text-sm mt-1">
-          Requesting: <span className="text-white font-medium">{serviceName}</span>
-        </p>
+      {/* Header - Sticky */}
+      <div className="bg-slate-900 px-5 py-4 text-white flex justify-between items-center sticky top-0 z-10 shadow-md">
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mt-5">Requesting</h2>
+          <p className="text-white font-bold text-lg leading-tight truncate max-w-[200px]">{serviceName}</p>
+        </div>
+        <div className="text-right mt-5">
+             <span className="block text-xs text-slate-400 mt-5">Total</span>
+             <span className="text-xl font-bold text-white">₹{price}</span>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="p-5 space-y-5 flex-1">
 
-        {/* 1. Timeline Dropdown */}
+        {/* 1. Timeline */}
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
             When do you need this?
           </label>
           <div className="relative">
-            <Clock className="absolute left-3 top-3.5 text-slate-400" size={18} />
+            <Clock className="absolute left-3 top-3 text-slate-400" size={18} />
             <select
               value={timeline}
               onChange={(e) => setTimeline(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 appearance-none cursor-pointer"
+              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 appearance-none cursor-pointer text-sm"
             >
               {TIMELINE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -201,24 +176,17 @@ export default function BookingForm({
                 </option>
               ))}
             </select>
-            <div className="absolute right-4 top-4 pointer-events-none">
-              <ChevronRight className="rotate-90 text-slate-400" size={14} />
-            </div>
           </div>
         </div>
 
-        {/* 2. Address Selection */}
+        {/* 2. Address */}
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="block text-xs font-bold text-slate-500 uppercase">
-              Service Location
+              Location
             </label>
             {addresses.length > 0 && (
-              <button
-                type="button"
-                onClick={handleAddAddress}
-                className="text-[10px] font-bold text-blue-600 flex items-center gap-1 hover:underline"
-              >
+              <button type="button" onClick={handleAddAddress} className="text-[10px] font-bold text-blue-600 flex items-center gap-1 hover:underline">
                 <Plus size={12} /> Add New
               </button>
             )}
@@ -230,30 +198,19 @@ export default function BookingForm({
                 <div
                   key={addr.id}
                   onClick={() => setAddressId(addr.id)}
-                  className={`relative p-3 rounded-xl border cursor-pointer flex items-start gap-3 transition-all group ${addressId === addr.id
+                  className={`relative p-3 rounded-xl border cursor-pointer flex items-start gap-3 transition-all ${addressId === addr.id
                     ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
                     : 'border-slate-200 hover:border-slate-300'
                     }`}
                 >
                   <MapPin className={`mt-0.5 flex-shrink-0 ${addressId === addr.id ? 'text-blue-600' : 'text-slate-400'}`} size={18} />
                   <div className="flex-1 pr-6">
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm font-bold text-slate-900">{addr.type || "Home"}</p>
-                      {addressId === addr.id && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Selected</span>}
-                    </div>
+                    <p className="text-sm font-bold text-slate-900">{addr.type || "Home"}</p>
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
-                      {addr.line1}, {addr.line2 ? addr.line2 + ', ' : ''}{addr.city} - {addr.pincode}
+                      {addr.line1}, {addr.city}
                     </p>
-                    {addr.landmark && <p className="text-[10px] text-slate-400 mt-1">Landmark: {addr.landmark}</p>}
                   </div>
-
-                  {/* Edit Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => handleEditAddress(e, addr)}
-                    className="absolute right-2 top-2 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
-                    title="Edit Address"
-                  >
+                  <button type="button" onClick={(e) => handleEditAddress(e, addr)} className="absolute right-2 top-2 p-1.5 text-slate-400 hover:text-blue-600">
                     <Pencil size={14} />
                   </button>
                 </div>
@@ -263,17 +220,15 @@ export default function BookingForm({
             <button
               type="button"
               onClick={handleAddAddress}
-              className="w-full p-6 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all group"
+              className="w-full py-4 border border-dashed border-slate-300 rounded-xl flex items-center justify-center gap-2 text-slate-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
             >
-              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-blue-100 transition">
-                <Plus size={20} />
-              </div>
+              <Plus size={18} />
               <span className="text-sm font-bold">Add Address</span>
             </button>
           )}
         </div>
 
-        {/* 3. Special Instructions */}
+        {/* 3. Instructions */}
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
             Special Instructions
@@ -281,8 +236,8 @@ export default function BookingForm({
           <div className="relative">
             <AlignLeft className="absolute left-3 top-3 text-slate-400" size={18} />
             <textarea
-              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="Gate code, specific issue, or things to bring..."
+              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+              placeholder="Gate code, specific issue..."
               rows={3}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
@@ -290,29 +245,22 @@ export default function BookingForm({
           </div>
         </div>
 
-        {/* Footer / Submit */}
-        <div className="pt-2 border-t border-slate-100">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-slate-500 text-sm font-medium">Estimated Price</span>
-            <span className="text-xl font-black text-slate-900">₹{price}</span>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onRequestClose}
-              className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !addressId}
-              className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {loading ? <Loader2 className="animate-spin" /> : 'Confirm Booking'}
-            </button>
-          </div>
+        {/* Footer */}
+        <div className="pt-2 flex gap-3 border-t border-slate-100 mt-auto">
+          <button
+            type="button"
+            onClick={onRequestClose}
+            className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading || !addressId}
+            className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {loading ? <Loader2 className="animate-spin" /> : 'Confirm Booking'}
+          </button>
         </div>
 
       </form>

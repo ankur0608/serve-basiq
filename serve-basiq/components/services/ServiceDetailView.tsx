@@ -127,6 +127,14 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                                         <span className="leading-relaxed">{fullAddress}</span>
                                     </p>
                                 </div>
+                                {socials.length > 0 && (
+                                    <div className="bg-white rounded-3xl">
+                                        <h4 className="font-bold text-slate-900 mb-4">Connect on Socials</h4>
+                                        <div className="flex gap-3">
+                                            {socials.map((social, i) => (<a key={i} href={social.url!} target="_blank" rel="noopener noreferrer" title={social.name} className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all duration-300 shadow-sm hover:-translate-y-1 ${social.styleClass}`}>{social.icon}</a>))}
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="flex flex-col items-end">
                                     <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-2xl border border-amber-100">
                                         <FaStar className="text-amber-500" />
@@ -198,15 +206,7 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                             <BookingWrapper serviceId={service.id} serviceName={displayName!} price={service.price} currentUser={loggedInUser} userAddresses={loggedInUser?.addresses || []} />
                         </div>
 
-                        {/* SOCIALS */}
-                        {socials.length > 0 && (
-                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-                                <h4 className="font-bold text-slate-900 mb-4">Connect on Socials</h4>
-                                <div className="flex gap-3">
-                                    {socials.map((social, i) => (<a key={i} href={social.url!} target="_blank" rel="noopener noreferrer" title={social.name} className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all duration-300 shadow-sm hover:-translate-y-1 ${social.styleClass}`}>{social.icon}</a>))}
-                                </div>
-                            </div>
-                        )}
+
                     </div>
                 </div>
             </div>
