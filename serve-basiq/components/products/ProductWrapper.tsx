@@ -5,10 +5,13 @@ import { createPortal } from 'react-dom';
 import { FaPaperPlane, FaXmark } from 'react-icons/fa6';
 import { useRouter } from 'next/navigation';
 import { useUIStore } from "@/lib/store";
+import { useSession } from 'next-auth/react';
+import { useQuery } from '@tanstack/react-query';
 
-// Components
 import ProductRequestForm from './ProductRequestForm';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
+// ✅ 1. Import Success Modal
+import SuccessModal from '@/components/ui/SuccessModal';
 
 interface Props {
     productId: string;
@@ -18,7 +21,7 @@ interface Props {
     moq: number;
     currentUser: any;
     userAddresses: any[];
-    defaultOpen?: boolean; 
+    defaultOpen?: boolean;
     onRequestClose?: () => void;
 }
 
@@ -33,8 +36,13 @@ export default function ProductWrapper({
     defaultOpen = false,
     onRequestClose
 }: Props) {
+    const { data: session, status } = useSession();
+
+    // States
     const [isFormOpen, setIsFormOpen] = useState(defaultOpen);
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+    // ✅ 2. Add Success State
+    const [isSuccessOpen, setIsSuccessOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     const router = useRouter();
@@ -44,36 +52,65 @@ export default function ProductWrapper({
         setMounted(true);
     }, []);
 
+    // ------------------------------------------------------------------
+    // 🔍 SMART USER FETCHING LOGIC
+    // ------------------------------------------------------------------
+    const isPropUserIncomplete = currentUser && (currentUser.isPhoneVerified === undefined || !currentUser.addresses);
+    const shouldFetch = status === "authenticated" && (!currentUser || isPropUserIncomplete);
+
+    const { data: fetchedUser, isLoading: isFetchingUser, refetch: refetchUser } = useQuery({
+        queryKey: ['user', 'profile'],
+        queryFn: async () => {
+            const res = await fetch('/api/user/profile');
+            if (!res.ok) return null;
+            return res.json();
+        },
+        enabled: shouldFetch,
+        staleTime: 0,
+    });
+
+    const activeUser = fetchedUser || (isPropUserIncomplete ? null : currentUser) || null;
+
+    const effectiveAddresses = (activeUser?.addresses && activeUser.addresses.length > 0)
+        ? activeUser.addresses
+        : (userAddresses || []);
+    // ------------------------------------------------------------------
+
     const handleClose = () => {
         setIsFormOpen(false);
         if (onRequestClose) onRequestClose();
     };
 
-    // Logic to validate user before showing form
+    // ✅ 3. Handle Success
+    const handleRequestSuccess = () => {
+        setIsFormOpen(false); // Close Form
+        setIsSuccessOpen(true); // Open Success Modal
+    };
+
     const checkAndProceed = () => {
-        if (!currentUser) {
-            handleClose(); 
+        if (status === "loading" || (shouldFetch && isFetchingUser)) return;
+
+        if (!activeUser && !session) {
+            handleClose();
             if (onOpenLogin) onOpenLogin();
             else router.push('/login?callbackUrl=' + window.location.pathname);
             return;
         }
 
-        if (!currentUser.isPhoneVerified) {
+        if (activeUser && activeUser.isPhoneVerified !== true) {
             setIsMobileModalOpen(true);
             return;
         }
 
-        // Only open form if verified
         setIsFormOpen(true);
     };
 
-    // If defaultOpen is true (e.g. inside Modal), run check immediately
     useEffect(() => {
         if (defaultOpen && mounted) {
             checkAndProceed();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [defaultOpen, mounted]);
+    }, [defaultOpen, mounted, status, isFetchingUser, activeUser]);
 
     const handleRequestClick = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -81,9 +118,17 @@ export default function ProductWrapper({
         checkAndProceed();
     };
 
+    if (defaultOpen && (status === "loading" || (shouldFetch && isFetchingUser))) {
+        return (
+            <div className="w-full h-full flex items-center justify-center bg-white">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+            </div>
+        );
+    }
+
     return (
         <>
-            {/* 1. BUTTON: Only show if NOT defaultOpen (e.g. on Details Page Bottom Bar) */}
+            {/* BUTTON */}
             {!defaultOpen && (
                 <button
                     onClick={handleRequestClick}
@@ -93,27 +138,28 @@ export default function ProductWrapper({
                 </button>
             )}
 
-            {/* 2. MOBILE VERIFICATION MODAL */}
+            {/* MOBILE VERIFICATION MODAL */}
             {mounted && isMobileModalOpen && (
                 <MobileVerificationModal
-                    userId={currentUser?.id}
+                    userId={activeUser?.id || (session?.user as any)?.id}
                     isOpen={isMobileModalOpen}
                     onClose={() => {
                         setIsMobileModalOpen(false);
-                        if(defaultOpen) handleClose();
+                        if (defaultOpen) handleClose();
                     }}
-                    onSuccess={() => {
+                    onSuccess={async () => {
                         setIsMobileModalOpen(false);
+                        await refetchUser();
                         setIsFormOpen(true);
                         router.refresh();
                     }}
                 />
             )}
 
-            {/* 3. PRODUCT REQUEST FORM */}
-            {mounted && isFormOpen && (
+            {/* PRODUCT REQUEST FORM */}
+            {mounted && isFormOpen && activeUser && (
                 defaultOpen ? (
-                    // ✅ INLINE MODE (For ProductCard Modal)
+                    // Inline Mode
                     <div className="w-full h-full">
                         <ProductRequestForm
                             productId={productId}
@@ -121,21 +167,23 @@ export default function ProductWrapper({
                             price={productPrice}
                             unit={productUnit}
                             moq={moq}
-                            userId={currentUser?.id}
-                            userAddresses={userAddresses}
+                            userId={activeUser?.id}
+                            userAddresses={effectiveAddresses}
+                            userDetails={activeUser}
+                            onSuccess={handleRequestSuccess} // ✅ Pass Success Handler
                             onRequestClose={handleClose}
                         />
                     </div>
                 ) : (
-                    // ✅ PORTAL MODE (For standalone button usage)
+                    // Portal Mode
                     createPortal(
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                            <div className="relative w-full max-w-sm bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                                 <button
                                     onClick={handleClose}
-                                    className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition z-10"
+                                    className="absolute top-4 right-4 z-50 w-8 h-8 flex items-center justify-center bg-black/10 hover:bg-black/20 text-white rounded-full transition backdrop-blur-sm"
                                 >
-                                    <FaXmark size={24} />
+                                    <FaXmark size={14} />
                                 </button>
                                 <ProductRequestForm
                                     productId={productId}
@@ -143,8 +191,10 @@ export default function ProductWrapper({
                                     price={productPrice}
                                     unit={productUnit}
                                     moq={moq}
-                                    userId={currentUser?.id}
-                                    userAddresses={userAddresses}
+                                    userId={activeUser?.id}
+                                    userAddresses={effectiveAddresses}
+                                    userDetails={activeUser}
+                                    onSuccess={handleRequestSuccess} // ✅ Pass Success Handler
                                     onRequestClose={handleClose}
                                 />
                             </div>
@@ -152,6 +202,21 @@ export default function ProductWrapper({
                         document.body
                     )
                 )
+            )}
+
+            {/* ✅ 4. SUCCESS MODAL */}
+            {mounted && isSuccessOpen && (
+                <SuccessModal
+                    isOpen={isSuccessOpen}
+                    onClose={() => {
+                        setIsSuccessOpen(false);
+                        if (onRequestClose) onRequestClose();
+                    }}
+                    title="Request Sent!"
+                    message={`Your quote request for ${productName} has been sent successfully.`}
+                    buttonText="View My Orders"
+                    onButtonClick={() => router.push('/profile/orders')}
+                />
             )}
         </>
     );

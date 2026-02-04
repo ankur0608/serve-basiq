@@ -15,11 +15,11 @@ export default function MyBookingsPage() {
         const fetchBookings = async () => {
             if (!currentUser?.id) return;
             try {
-                // Assuming your API can filter or returns bookings in the profile object
-                const res = await fetch(`/api/user/profile?identifier=${currentUser.id}`);
+                // Updated to use the new dedicated endpoint
+                const res = await fetch(`/api/user/bookings/active`);
                 if (res.ok) {
                     const data = await res.json();
-                    setBookings(data.bookings || []);
+                    setBookings(data); // Data is now an array directly
                 }
             } catch (error) {
                 console.error("Failed to load bookings", error);

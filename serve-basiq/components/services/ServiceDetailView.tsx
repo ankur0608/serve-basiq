@@ -76,14 +76,13 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
     const isVerified = service.isVerified || service.user.isVerified;
 
     // ✅ PERFECT ADDRESS FORMATTING
-    // Constructs: "Line 1, Line 2, Near Landmark, City, State - Pincode"
     const addressParts = [
         service.addressLine1,
         service.addressLine2,
         service.landmark ? `Near ${service.landmark}` : null,
         service.city,
         service.state ? `${service.state}` : null
-    ].filter(Boolean); // Remove null/undefined/empty strings
+    ].filter(Boolean);
 
     let fullAddress = addressParts.join(', ');
     if (service.pincode) fullAddress += ` - ${service.pincode}`;
@@ -157,24 +156,65 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                             </div>
                         </div>
 
-                        {/* REVIEWS */}
+                        {/* REVIEWS SECTION */}
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                             <h3 className="text-2xl font-black text-slate-900 mb-8">Reviews & Ratings</h3>
                             <div className="grid md:grid-cols-2 gap-10">
-                                <div className="space-y-6">
+                                <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                                     {service.reviews.length > 0 ? (
                                         service.reviews.map((review) => (
-                                            <div key={review.id} className="border-b border-slate-100 pb-4 last:border-0">
+                                            <div key={review.id} className="border-b border-slate-100 pb-6 last:border-0">
                                                 <div className="flex items-center gap-3 mb-2">
-                                                    <div className="h-8 w-8 rounded-full bg-slate-200 overflow-hidden"><AppImage src={review.author.image || ""} alt={review.author.name || "User"} type="avatar" className="w-full h-full object-cover" /></div>
-                                                    <div><p className="font-bold text-slate-900 text-sm">{review.author.name || "Customer"}</p><div className="flex text-amber-500 text-[10px]">{[...Array(5)].map((_, i) => (<FaStar key={i} className={i < review.rating ? "fill-current" : "text-slate-200"} />))}</div></div>
+                                                    <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden flex-shrink-0">
+                                                        <AppImage src={review.author.image || ""} alt={review.author.name || "User"} type="avatar" className="w-full h-full object-cover" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-900 text-sm">{review.author.name || "Customer"}</p>
+                                                        <div className="flex text-amber-500 text-[10px]">
+                                                            {[...Array(5)].map((_, i) => (
+                                                                <FaStar key={i} className={i < review.rating ? "fill-current" : "text-slate-200"} />
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <p className="text-slate-600 text-sm italic">"{review.comment}"</p>
+
+                                                <p className="text-slate-600 text-sm italic mb-3">"{review.comment}"</p>
+
+                                                {/* ✅ NEW: Review Images Section */}
+                                                {review.images && review.images.length > 0 && (
+                                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                                        {review.images.map((img: string, idx: number) => (
+                                                            <div key={idx} className="h-16 w-16 flex-shrink-0 rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:scale-105 transition-transform">
+                                                                <AppImage
+                                                                    src={img}
+                                                                    alt={`Review attachment ${idx}`}
+                                                                    type="gallery"
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         ))
-                                    ) : (<p className="text-slate-400 text-sm italic">No reviews yet.</p>)}
+                                    ) : (
+                                        <p className="text-slate-400 text-sm italic">No reviews yet.</p>
+                                    )}
                                 </div>
-                                <div>{session ? <RatingForm serviceId={service.id} /> : <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100 text-center"><p className="text-blue-800 text-sm font-medium">Log in to rate.</p><Link href="/login" className="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition">Login Now</Link></div>}</div>
+
+                                {/* Rating Form */}
+                                <div>
+                                    {session ? (
+                                        <RatingForm serviceId={service.id} />
+                                    ) : (
+                                        <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100 text-center sticky top-24">
+                                            <p className="text-blue-800 text-sm font-medium">Log in to rate this service.</p>
+                                            <Link href="/login" className="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition">
+                                                Login Now
+                                            </Link>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -197,7 +237,7 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                             <div className="flex flex-wrap gap-2">{service.workingDays.map(day => (<span key={day} className="text-[10px] px-2 py-1 rounded-md font-bold bg-slate-900 text-white">{day}</span>))}</div>
                         </div>
 
-                        <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 top-8">
+                        <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 top-8 sticky">
                             <div className="mb-6"><p className="text-slate-400 text-sm font-medium">Starting at</p><div className="flex items-baseline gap-1"><span className="text-4xl font-black text-slate-900">₹{service.price}</span><span className="text-slate-400 font-bold">{service.priceType === 'HOURLY' ? '/hour' : '/fixed'}</span></div></div>
                             <div className="space-y-4 mb-6">
                                 <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl"><div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><FaPhone size={14} /></div><div><p className="text-[10px] text-slate-400 font-bold uppercase">Direct Contact</p><p className="text-sm font-bold text-slate-900">+91 {service.altPhone || service.user.phone || 'N/A'}</p></div></div>
@@ -205,8 +245,6 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                             </div>
                             <BookingWrapper serviceId={service.id} serviceName={displayName!} price={service.price} currentUser={loggedInUser} userAddresses={loggedInUser?.addresses || []} />
                         </div>
-
-
                     </div>
                 </div>
             </div>

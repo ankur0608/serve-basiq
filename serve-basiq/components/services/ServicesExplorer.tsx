@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { FaFire, FaArrowLeft, FaScrewdriverWrench } from 'react-icons/fa6';
 import { SearchX } from 'lucide-react';
+import { BiMap } from "react-icons/bi";
+
+// Internal Components
 import ServiceCard from '@/components/ui/ServiceCard';
 import AppImage from '@/components/ui/AppImage';
-import { BiMap } from "react-icons/bi";
 
 // --- SKELETON LOADER ---
 function ExplorerSkeleton() {
@@ -42,7 +44,19 @@ export default function ServicesExplorer() {
     const router = useRouter();
     const [favorites, setFavorites] = useState<string[]>([]);
 
-    // 1️⃣ Query: User Favorites
+    // 1️⃣ Query: Current User Profile (Includes Addresses)
+    // ✅ This fixes the missing address issue in the Booking Modal
+    const { data: currentUser } = useQuery({
+        queryKey: ['user', 'profile'],
+        queryFn: async () => {
+            const res = await fetch('/api/user/profile');
+            if (!res.ok) return null;
+            return res.json();
+        },
+        staleTime: 1000 * 60 * 5, // Cache for 5 mins
+    });
+
+    // 2️⃣ Query: User Favorites
     useQuery({
         queryKey: ['favorites', 'user'],
         queryFn: async () => {
@@ -55,7 +69,7 @@ export default function ServicesExplorer() {
         staleTime: 0,
     });
 
-    // 2️⃣ Query: Categories
+    // 3️⃣ Query: Categories
     const { data: categories = [], isLoading: catLoading } = useQuery({
         queryKey: ['categories', 'SERVICE'],
         queryFn: async () => {
@@ -65,7 +79,7 @@ export default function ServicesExplorer() {
         staleTime: 1000 * 60 * 60 * 24,
     });
 
-    // 3️⃣ Query: Services
+    // 4️⃣ Query: Services
     const { data: rawServices = [], isLoading: servLoading } = useQuery({
         queryKey: ['services', 'explorer'],
         queryFn: async () => {
@@ -137,14 +151,14 @@ export default function ServicesExplorer() {
                 {loading ? <ExplorerSkeleton /> : (
                     <div className="animate-in fade-in duration-500">
 
-                        {/* ================= CATEGORIES SECTION (Updated) ================= */}
+                        {/* ================= CATEGORIES SECTION ================= */}
                         <div className="mb-12">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Top Categories</h2>
                                 <Link href="/servicescategory" className="text-blue-600 text-xs font-bold uppercase hover:underline">View All</Link>
                             </div>
 
-                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-4 gap-y-6">
+                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-x-4 gap-y-6">
                                 {categories.slice(0, 6).map((cat: any) => (
                                     <div
                                         key={cat.id}
@@ -152,29 +166,32 @@ export default function ServicesExplorer() {
                                         className="group flex flex-col items-center text-center cursor-pointer"
                                     >
                                         <div className="
-                                            w-14 h-14 sm:w-16 sm:h-16
-                                            flex items-center justify-center
-                                            rounded-xl
-                                            border border-gray-200
-                                            bg-white
-                                            group-hover:border-blue-600
-                                            transition
-                                            overflow-hidden
-                                            p-3
-                                        ">
+                w-[45px] h-[45px] 
+                flex items-center justify-center
+                rounded-xl
+                border border-gray-200
+                bg-white
+                group-hover:border-blue-600
+                transition
+                overflow-hidden
+                /* REMOVED PADDING ENTIRELY (p-0) */
+                p-0 
+            ">
                                             {cat.image ? (
                                                 <AppImage
                                                     src={cat.image}
                                                     alt={cat.name}
                                                     type="thumbnail"
-                                                    className="w-full h-full object-contain"
+                                                    /* CHANGED object-contain TO object-cover TO FILL THE 45px SQUARE */
+                                                    className="w-full h-full object-cover"
                                                 />
                                             ) : (
-                                                <FaScrewdriverWrench className="text-blue-600 w-6 h-6 sm:w-7 sm:h-7" />
+                                                /* BIG FALLBACK ICON */
+                                                <FaScrewdriverWrench className="text-blue-600 w-8 h-8" />
                                             )}
                                         </div>
 
-                                        <span className="mt-2 text-xs sm:text-sm font-medium text-gray-800 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                                        <span className="mt-2 text-[10px] sm:text-xs font-medium text-gray-800 line-clamp-1 group-hover:text-blue-600 transition-colors">
                                             {cat.name}
                                         </span>
                                     </div>
@@ -212,7 +229,9 @@ export default function ServicesExplorer() {
                                             handleToggleFav(service.id);
                                         }}
                                         index={i}
-                                        currentUser={null} // You should probably pass real user here if available
+                                        // ✅ PASSING THE FETCHED USER HERE
+                                        // This ensures the booking modal receives the full user profile with addresses
+                                        currentUser={currentUser}
                                     />
                                 ))}
                             </div>

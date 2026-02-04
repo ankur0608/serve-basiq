@@ -13,12 +13,11 @@ export default function MyOrdersPage() {
 
     useEffect(() => {
         const fetchOrders = async () => {
-            if (!currentUser?.id) return;
             try {
-                const res = await fetch(`/api/user/profile?identifier=${currentUser.id}`);
+                const res = await fetch(`/api/user/orders`);
                 if (res.ok) {
                     const data = await res.json();
-                    setOrders(data.orders || []);
+                    setOrders(data);
                 }
             } catch (error) {
                 console.error("Failed to load orders", error);
@@ -27,12 +26,11 @@ export default function MyOrdersPage() {
             }
         };
         fetchOrders();
-    }, [currentUser?.id]);
-
+    }, []); 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
-             {/* Simple Header */}
-             <div className="bg-white px-4 py-4 sticky top-0 z-10 shadow-sm flex items-center gap-3">
+            {/* Simple Header */}
+            <div className="bg-white px-4 py-4 sticky top-0 z-10 shadow-sm flex items-center gap-3">
                 <Link href="/profile" className="p-2 -ml-2 hover:bg-slate-100 rounded-full text-slate-600">
                     <FaArrowLeft />
                 </Link>

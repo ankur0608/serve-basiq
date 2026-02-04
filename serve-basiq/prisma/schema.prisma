@@ -301,13 +301,12 @@ model Requirement {
     title       String
     description String
 
-    addressId String
-    address   Address @relation(fields: [addressId], references: [id])
-
     status RequestStatus @default(OPEN)
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    address   Address? @relation(fields: [addressId], references: [id])
+    addressId String?
 }
 
 model Otp {
@@ -372,8 +371,8 @@ model Review {
     id      Int      @id @default(autoincrement())
     rating  Int
     comment String?
-    images  String[] 
-    
+    images  String[]
+
     serviceId String
     service   Service @relation(fields: [serviceId], references: [id])
 

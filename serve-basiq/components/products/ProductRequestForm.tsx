@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-    MapPin, Plus, Loader2, Pencil, Clock, ChevronRight,
+    Loader2, MapPin, AlignLeft, Plus, Pencil, Clock,
     Package, Calculator, Coins, ArrowRight, ArrowLeft, CheckCircle2,
-    StickyNote
+    StickyNote,
+    ChevronRight
 } from 'lucide-react';
-import ProfileEditModal from '@/components/profile/ProfileEditModal';
+import ProfileEditModal, { ProfileData } from '@/components/profile/ProfileEditModal';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
 
@@ -16,9 +17,18 @@ interface Props {
     price: number;
     unit: string;
     moq: number;
-    userId: string;
+    userId?: string;
     userAddresses: any[];
+    userDetails?: {
+        name?: string;
+        email?: string;
+        phone?: string;
+        dob?: string;
+        preferredLanguage?: string;
+    };
     onRequestClose: () => void;
+    // ✅ ADDED: Success callback prop
+    onSuccess?: () => void;
 }
 
 // --- CONSTANTS ---
@@ -45,14 +55,21 @@ const BUDGET_OPTIONS = [
 ];
 
 export default function ProductRequestForm({
-    productId, productName, price, unit, moq, userId, userAddresses: initialAddresses, onRequestClose
+    productId, productName, price, unit, moq, userId, userAddresses, userDetails, onRequestClose, onSuccess // 👈 Destructure
 }: Props) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState<1 | 2>(1);
 
     // --- Local State for Addresses ---
-    const [addresses, setAddresses] = useState(initialAddresses);
+    const [addresses, setAddresses] = useState(userAddresses || []);
+
+    // Sync if props change
+    useEffect(() => {
+        if (userAddresses && userAddresses.length > 0) {
+            setAddresses(userAddresses);
+        }
+    }, [userAddresses]);
 
     // --- Form State ---
     const [quantity, setQuantity] = useState<number>(moq || 1);
@@ -82,7 +99,8 @@ export default function ProductRequestForm({
         setIsAddressModalOpen(true);
     };
 
-    const handleSaveAddress = async (data: any) => {
+    // ✅ FIXED: Added async to match ProfileEditModal interface
+    const handleSaveAddress = async (data: ProfileData) => {
         const newAddress = {
             id: editingAddress?.id || `temp-${Date.now()}`,
             userId,
@@ -98,7 +116,7 @@ export default function ProductRequestForm({
 
         let updatedList;
         if (editingAddress) {
-            updatedList = addresses.map(a => a.id === editingAddress.id ? newAddress : a);
+            updatedList = addresses.map((a: any) => a.id === editingAddress.id ? newAddress : a);
         } else {
             updatedList = [...addresses, newAddress];
             setAddressId(newAddress.id);
@@ -106,6 +124,7 @@ export default function ProductRequestForm({
 
         setAddresses(updatedList);
         setIsAddressModalOpen(false);
+        return Promise.resolve(); // Return promise
     };
 
     const handleNext = () => {
@@ -131,7 +150,7 @@ export default function ProductRequestForm({
         setLoading(true);
 
         try {
-            const selectedAddressObj = addresses.find(a => a.id === addressId);
+            const selectedAddressObj = addresses.find((a: any) => a.id === addressId);
 
             let finalNotes = notes;
             if (budget) {
@@ -171,9 +190,14 @@ export default function ProductRequestForm({
             const data = await res.json();
 
             if (data.success || res.ok) {
-                alert('Request Sent Successfully!');
+                // ✅ TRIGGER SUCCESS CALLBACK
+                if (onSuccess) {
+                    onSuccess();
+                } else {
+                    alert('Request Sent Successfully!');
+                    onRequestClose();
+                }
                 router.refresh();
-                onRequestClose();
             } else {
                 alert(data.message || 'Request failed.');
             }
@@ -185,15 +209,18 @@ export default function ProductRequestForm({
         }
     };
 
-    // ✅ FIX: Added missing dateOfBirth and preferredLanguage
-    const getModalInitialData = () => {
+    const getModalInitialData = (): ProfileData => {
+        const defaults = {
+            dateOfBirth: userDetails?.dob || "",
+            preferredLanguage: userDetails?.preferredLanguage || "English",
+            name: userDetails?.name || "",
+            email: userDetails?.email || "",
+            phone: userDetails?.phone || ""
+        };
+
         if (editingAddress) {
             return {
-                name: "",
-                email: "",
-                phone: "",
-                dateOfBirth: "",         // Added
-                preferredLanguage: "English", // Added
+                ...defaults,
                 addressLine1: editingAddress.line1 || "",
                 addressLine2: editingAddress.line2 || "",
                 landmark: editingAddress.landmark || "",
@@ -203,11 +230,7 @@ export default function ProductRequestForm({
             };
         }
         return {
-            name: "",
-            email: "",
-            phone: "",
-            dateOfBirth: "",         // Added
-            preferredLanguage: "English", // Added
+            ...defaults,
             addressLine1: "",
             addressLine2: "",
             landmark: "",
@@ -312,7 +335,7 @@ export default function ProductRequestForm({
                             </div>
                         </div>
 
-                        {/* 4. NOTES (IMPROVED LAYOUT) */}
+                        {/* 4. NOTES */}
                         <div className="pt-2">
                             <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-3">
                                 <StickyNote size={14} /> Additional Notes / Requirements
@@ -349,7 +372,6 @@ export default function ProductRequestForm({
                                 <button type="button" onClick={handleBack} className="text-xs font-bold text-blue-600 underline">Edit</button>
                             </div>
 
-                            {/* Note Preview in Step 2 */}
                             {notes && (
                                 <div className="mt-1 pt-2 border-t border-blue-200/60 flex gap-2">
                                     <StickyNote size={12} className="text-blue-400 mt-0.5 shrink-0" />
@@ -374,7 +396,7 @@ export default function ProductRequestForm({
 
                             {addresses.length > 0 ? (
                                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                                    {addresses.map((addr) => (
+                                    {addresses.map((addr: any) => (
                                         <div
                                             key={addr.id}
                                             onClick={() => setAddressId(addr.id)}
@@ -385,7 +407,6 @@ export default function ProductRequestForm({
                                                     : 'border-slate-200 hover:border-slate-300'
                                             )}
                                         >
-                                            {/* ✅ Fixed: Changed flex-shrink-0 to shrink-0 */}
                                             <MapPin className={clsx("mt-0.5 shrink-0", addressId === addr.id ? 'text-blue-600' : 'text-slate-400')} size={16} />
                                             <div className="flex-1 pr-6">
                                                 <p className="text-sm font-bold text-slate-900">{addr.type || "Home"}</p>
@@ -429,9 +450,6 @@ export default function ProductRequestForm({
                         >
                             Cancel
                         </button>
-                        {/* ✅ Fixed: Changed flex-[2] to flex-2 (if Tailwind configured) or kept flex-[2] if arbitrary. 
-                            Keeping flex-[2] as it is standard arbitrary value unless you have a plugin. 
-                        */}
                         <button
                             type="button"
                             onClick={handleNext}

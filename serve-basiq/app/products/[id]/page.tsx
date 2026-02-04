@@ -137,7 +137,7 @@ export default async function ProductDetail({ params }: Props) {
       </div>
 
       {/* --- BOTTOM ACTION BAR --- */}
-      <div className="fixed bottom-0 left-0 right-0 z-[70] p-4 md:p-6 flex justify-center pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 z-[40] p-4 md:p-6 flex justify-center pointer-events-none">
         <div className="bg-white/95 backdrop-blur-xl border border-gray-200 shadow-xl rounded-2xl p-4 w-full max-w-4xl pointer-events-auto flex items-center gap-3 md:gap-6">
           <ProductWrapper
             productId={product.id}

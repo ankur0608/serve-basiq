@@ -5,9 +5,6 @@ import { authOptions } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
-/* =========================================================================
-   GET: Fetch User & Flatten Data
-   ========================================================================= */
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -22,7 +19,8 @@ export async function GET(request: Request) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        addresses: { take: 1, orderBy: { createdAt: 'desc' } },
+        // ✅ FIX: Removed 'take: 1' so we get ALL addresses
+        addresses: { orderBy: { createdAt: 'desc' } },
         orders: { take: 1 },
         bookings: { take: 1 }
       },
@@ -32,7 +30,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Flatten Address
+    // Flatten Address (keep primary address logic for backward compatibility with profile forms)
     const primaryAddress = user.addresses[0] || {};
 
     // Helper: convert null/undefined to empty string for React Inputs
@@ -64,8 +62,8 @@ export async function GET(request: Request) {
       role: user.role,
       providerType: user.providerType,
       isWorker: user.isWorker,
-
-      // Address Fields (Flattened)
+      isPhoneVerified: user.isPhoneVerified,
+      // Address Fields (Flattened - mostly for Profile Edit Form)
       addressLine1: val(primaryAddress.line1),
       addressLine2: val(primaryAddress.line2),
       landmark: val(primaryAddress.landmark),
@@ -73,6 +71,9 @@ export async function GET(request: Request) {
       state: val(primaryAddress.state),
       pincode: val(primaryAddress.pincode),
       country: val(primaryAddress.country) || "India",
+
+      // ✅ CRITICAL: Return the FULL array of addresses for the Booking Modal
+      addresses: user.addresses,
 
       // ✅ Flag for Frontend Logic
       isFullProfile: true
@@ -85,6 +86,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
 
 /* =========================================================================
    PATCH: Update User & Address
@@ -192,4 +194,3 @@ export async function POST(request: Request) {
   }
 }
 
-// Keep your existing GET and PATCH methods below...

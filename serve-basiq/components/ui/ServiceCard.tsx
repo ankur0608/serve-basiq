@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FaHeart, FaRegHeart, FaStar } from "react-icons/fa6";
+import { useSession } from 'next-auth/react';
+import { FaHeart, FaRegHeart, FaStar, FaXmark } from "react-icons/fa6";
 import { BadgeCheck, MapPin } from 'lucide-react';
 import BookingWrapper from '@/components/booking/BookingWrapper';
 
-// ✅ FIX 1: Add 'export' here so other files can import it
 export interface ServiceProps {
     id: string;
     name: string;
@@ -21,19 +21,19 @@ export interface ServiceProps {
     providerName?: string;
     providerImage?: string | null;
     reviewCount?: number;
-    user?: any; 
+    user?: any;
 }
 
-// ✅ FIX 2: Make interactive props optional so Server Components can use this card
 interface ServiceCardProps {
     service: ServiceProps;
-    isFav?: boolean;                       
-    toggleFav?: (e: React.MouseEvent) => void; 
+    isFav?: boolean;
+    toggleFav?: (e: React.MouseEvent) => void;
     currentUser?: any;
     index?: number;
 }
 
 export default function ServiceCard({ service, isFav = false, toggleFav, currentUser }: ServiceCardProps) {
+    const { data: session } = useSession();
     const [showBooking, setShowBooking] = useState(false);
 
     const {
@@ -50,9 +50,28 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
     } = service;
 
     const displayImage = image || 'https://via.placeholder.com/500x300';
-    
-    // Fallback logic for provider name
     const providerName = service.providerName || user?.name || user?.shopName || "Verified Pro";
+
+    // ✅ SMART USER RESOLUTION
+    const effectiveUser = useMemo(() => {
+        // Priority 1: User passed from parent (Best for Server Components, has addresses & verification)
+        if (currentUser) return currentUser;
+
+        // Priority 2: User from active session (Client fallback)
+        if (session?.user) {
+            return {
+                ...session.user,
+                id: (session.user as any).id,
+                // Note: Standard session might NOT have isPhoneVerified.
+                // The Wrapper will handle fetching the full profile if this is missing.
+                isPhoneVerified: (session.user as any).isPhoneVerified,
+                addresses: []
+            };
+        }
+
+        // Priority 3: Not logged in
+        return null;
+    }, [currentUser, session]);
 
     const handleBookNow = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -80,7 +99,7 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
                         {category || "Service"}
                     </span>
 
-                    {/* Wishlist Button - Only show if toggleFav is passed */}
+                    {/* Wishlist Button */}
                     {toggleFav && (
                         <button
                             onClick={toggleFav}
@@ -97,7 +116,7 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
 
                 {/* --- Content Section --- */}
                 <div className="p-4 space-y-3">
-                    
+
                     {/* Location + Verified */}
                     <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                         <div className="flex items-center gap-1 truncate max-w-[60%]">
@@ -150,19 +169,28 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
             {/* Modal Logic */}
             {showBooking && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setShowBooking(false); 
+                    className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShowBooking(false);
                     }}
                 >
-                    <div className="w-full max-w-md relative" onClick={(e) => e.stopPropagation()}>
+                    {/* ✅ FIXED HEIGHT: Consistent with Product Modal */}
+                    <div className="relative w-full max-w-lg h-[92vh] md:h-[85vh] flex flex-col bg-white rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => setShowBooking(false)}
+                            className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition"
+                        >
+                            <FaXmark size={20} />
+                        </button>
+
                         <BookingWrapper
                             serviceId={id}
                             serviceName={name}
                             price={price}
-                            currentUser={currentUser}
-                            userAddresses={currentUser?.addresses || []}
+                            // ✅ Passing effectiveUser allows the Wrapper to check/fetch verification status
+                            currentUser={effectiveUser}
+                            userAddresses={effectiveUser?.addresses || []}
                             defaultOpen={true}
                             onRequestClose={() => setShowBooking(false)}
                         />

@@ -1,55 +1,36 @@
-// app/api/user/stats/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth"; // Ensure correct path to authOptions
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(req: Request) {
+export async function GET() {
     try {
         const session = await getServerSession(authOptions);
+        const user = session?.user as any;
 
-        if (!session || !session.user?.email) {
-            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        if (!user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const userEmail = session.user.email;
+        const userId = user.id;
 
-        // Get the user ID first
-        const user = await prisma.user.findUnique({
-            where: { email: userEmail },
-            select: { id: true },
-        });
-
-        if (!user) {
-            return NextResponse.json({ message: "User not found" }, { status: 404 });
-        }
-
-        // Fetch Booking Counts
-        // We count total valid bookings (excluding cancellations) and cancellations separately
-        const [bookingCount, cancellationCount] = await Promise.all([
-            prisma.booking.count({
-                where: {
-                    userId: user.id,
-                    status: {
-                        not: "CANCELLED", // Count everything except CANCELLED (PENDING, CONFIRMED, COMPLETED)
-                    },
-                },
-            }),
-            prisma.booking.count({
-                where: {
-                    userId: user.id,
-                    status: "CANCELLED",
-                },
-            }),
+        const [
+            activeBookings,
+            activeOrders,
+            cancelledBookings,
+            cancelledOrders
+        ] = await Promise.all([
+            prisma.booking.count({ where: { userId, status: { not: "CANCELLED" } } }),
+            prisma.order.count({ where: { userId, status: { not: "CANCELLED" } } }),
+            prisma.booking.count({ where: { userId, status: "CANCELLED" } }),
+            prisma.order.count({ where: { userId, status: "CANCELLED" } })
         ]);
 
         return NextResponse.json({
-            bookings: bookingCount,
-            cancellations: cancellationCount,
+            bookings: activeBookings + activeOrders,
+            cancellations: cancelledBookings + cancelledOrders,
         });
-
     } catch (error) {
-        console.error("🔥 [API] User Stats Error:", error);
-        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

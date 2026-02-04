@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import ProductCard from '@/components/ui/ProductCard';
+import ProductCard from '@/components/ui/ProductCard'; // ✅ Check this path
 import AppImage from '@/components/ui/AppImage';
 import { FaArrowLeft, FaScrewdriverWrench } from 'react-icons/fa6';
 import { PackageOpen } from 'lucide-react';
@@ -72,15 +72,17 @@ export default function B2BMarketplace() {
     staleTime: 1000 * 60,
   });
 
-  // 4️⃣ ✅ ADDED: Fetch Current User
+  // 4️⃣ ✅ FETCH CURRENT USER (FIXED URL)
   const { data: currentUser } = useQuery({
-    queryKey: ['currentUser'],
+    queryKey: ['user', 'profile'],
     queryFn: async () => {
-      const res = await fetch('/api/user/me'); // Ensure this API endpoint exists and returns the user
+      // 🔴 WAS: fetch('/api/user/me') -> 404 Error
+      // ✅ FIX: Use correct path
+      const res = await fetch('/api/user/profile');
       if (!res.ok) return null;
       return res.json();
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 mins
+    staleTime: 1000 * 60 * 5,
   });
 
   const categories = catData?.categories || (Array.isArray(catData) ? catData : []) || [];
@@ -189,7 +191,7 @@ export default function B2BMarketplace() {
                       product={product}
                       isFav={favorites.includes(product.id)}
                       toggleFav={(e: any) => handleToggleFav(e, product.id)}
-                      currentUser={currentUser} // ✅ Now passing the actual fetched user
+                      currentUser={currentUser} // ✅ This will now have correct data
                     />
                   ))}
                 </div>

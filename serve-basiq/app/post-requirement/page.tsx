@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useUIStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import {
@@ -18,27 +18,15 @@ export default function PostRequirementPage() {
 
     // Form State
     const [form, setForm] = useState({
-        type: 'SERVICE',       // Selectable (Product/Service)
-        title: '',             // Input
-        description: '',       // Input
-        addressId: ''          // Hidden & Auto-filled
+        type: 'SERVICE' as 'SERVICE' | 'PRODUCT',
+        title: '',
+        description: '',
     });
-
-    // Auto-select the user's first address (Hidden from UI)
-    useEffect(() => {
-        if (currentUser?.addresses && currentUser.addresses.length > 0) {
-            setForm(prev => ({ ...prev, addressId: currentUser.addresses![0].id }));
-        }
-    }, [currentUser]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentUser) return alert("Please login first");
 
-        // Safety check for address
-        if (!form.addressId) {
-            return alert("Please add an address to your profile before posting.");
-        }
+        if (!currentUser) return alert("Please login first");
 
         setLoading(true);
         try {
@@ -47,19 +35,21 @@ export default function PostRequirementPage() {
                 ...form
             };
 
-            const res = await fetch('/api/orders/create', {
+            const res = await fetch('/api/requirements/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             const data = await res.json();
-            if (data.success) {
+
+            if (data.success || res.ok) {
                 setStep(3); // Show Success Screen
             } else {
                 alert(data.message || 'Failed to post requirement');
             }
         } catch (error) {
+            console.error(error);
             alert('Error submitting form');
         } finally {
             setLoading(false);
@@ -70,7 +60,7 @@ export default function PostRequirementPage() {
     const inputClass = "w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 outline-none focus:bg-white focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all text-sm font-medium text-slate-900 placeholder:text-slate-400";
     const labelClass = "text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2.5 ml-1";
 
-    // --- SUCCESS VIEW ---
+    // --- SUCCESS VIEW (Updated: Only "Back to Home") ---
     if (step === 3) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -83,10 +73,11 @@ export default function PostRequirementPage() {
                         We have received your requirement. Providers will contact you shortly.
                     </p>
                     <div className="space-y-3">
-                        <button onClick={() => router.push('/dashboard')} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition">
-                            Go to Dashboard
-                        </button>
-                        <button onClick={() => router.push('/')} className="w-full bg-white border border-slate-200 text-slate-600 py-3.5 rounded-xl font-bold hover:bg-slate-50 transition">
+                        {/* Only Home Button */}
+                        <button
+                            onClick={() => router.push('/')}
+                            className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition"
+                        >
                             Back to Home
                         </button>
                     </div>
@@ -101,7 +92,7 @@ export default function PostRequirementPage() {
 
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
-                    <button onClick={() => router.back()} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-sm group">
+                    <button onClick={() => router.back()} type="button" className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-sm group">
                         <ArrowLeft size={20} className="text-slate-600 group-hover:-translate-x-1 transition-transform" />
                     </button>
                     <div>
@@ -110,9 +101,9 @@ export default function PostRequirementPage() {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 space-y-8">
+                <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-4xl shadow-sm border border-slate-200 space-y-8">
 
-                    {/* 1. TYPE SELECTION (Visual Cards) */}
+                    {/* TYPE SELECTION */}
                     <div>
                         <label className={labelClass}>I am looking for...</label>
                         <div className="grid grid-cols-2 gap-4">
@@ -156,7 +147,7 @@ export default function PostRequirementPage() {
                         </div>
                     </div>
 
-                    {/* 2. TITLE & DESCRIPTION */}
+                    {/* INPUTS */}
                     <div className="space-y-6">
                         <div>
                             <label className={labelClass}>
@@ -194,18 +185,11 @@ export default function PostRequirementPage() {
                     <div className="pt-2">
                         <button
                             type="submit"
-                            disabled={loading || !form.addressId}
+                            disabled={loading}
                             className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-slate-200 hover:bg-black hover:shadow-2xl hover:shadow-slate-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]"
                         >
                             {loading ? <Loader2 className="animate-spin" /> : <>Post Requirement <ChevronRight className="group-hover:translate-x-1 transition" /></>}
                         </button>
-
-                        {/* Hidden Address Warning */}
-                        {!form.addressId && currentUser && (
-                            <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center justify-center gap-2 text-red-600 text-xs font-bold animate-pulse">
-                                <CheckCircle2 size={14} /> Please add an address to your profile first
-                            </div>
-                        )}
                     </div>
 
                 </form>
