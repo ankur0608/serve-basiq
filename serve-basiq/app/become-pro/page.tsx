@@ -12,7 +12,7 @@ import { useProviderOnboarding } from "@/app/hook/useProviderOnboarding";
 import AppImage from "@/components/ui/AppImage";
 import MobileVerificationModal from "@/components/auth/MobileVerificationModal";
 
-// --- SUB-COMPONENT 1: Profile Image ---
+// --- SUB-COMPONENT 1: Profile Image (NO CHANGES) ---
 const ProfileSection = memo(({
     imgPreview, uploading, error, onUpload
 }: {
@@ -47,7 +47,7 @@ const ProfileSection = memo(({
 ));
 ProfileSection.displayName = "ProfileSection";
 
-// --- SUB-COMPONENT 2: Personal Details (UPDATED) ---
+// --- SUB-COMPONENT 2: Personal Details (NO CHANGES) ---
 const PersonalDetails = memo(({
     form, errors, onChange, session, onVerifyStart
 }: {
@@ -56,8 +56,6 @@ const PersonalDetails = memo(({
     const getInputClass = (fieldName: string) => `w-full bg-slate-50 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition ${errors[fieldName] ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`;
     const ErrorMsg = ({ field }: { field: string }) => errors[field] ? <p className="text-red-500 text-xs mt-1 font-medium">{errors[field]}</p> : null;
 
-    // ✅ Safe Access to Session Data
-    // Note: These will be undefined if Step 1 (Auth Options) is not fixed.
     const userPhone = session?.user?.phone;
     const isPhoneVerified = session?.user?.isPhoneVerified;
 
@@ -67,7 +65,6 @@ const PersonalDetails = memo(({
                 <User className="text-blue-600" size={20} /> <span className="font-bold text-slate-900">Personal Details</span>
             </div>
             <div className="space-y-4">
-                {/* Full Name */}
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Full Name</label>
                     <input
@@ -78,8 +75,6 @@ const PersonalDetails = memo(({
                     />
                     <ErrorMsg field="fullName" />
                 </div>
-
-                {/* Provider Type */}
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">What do you want to offer?</label>
                     <div className="relative">
@@ -95,8 +90,6 @@ const PersonalDetails = memo(({
                         </select>
                     </div>
                 </div>
-
-                {/* Email (Read Only if from Session) */}
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Email</label>
                     <div className="relative">
@@ -112,13 +105,9 @@ const PersonalDetails = memo(({
                     </div>
                     <ErrorMsg field="email" />
                 </div>
-
-                {/* ✅ Primary Phone Number Section */}
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Primary Phone Number</label>
-
                     {isPhoneVerified ? (
-                        // ✅ CASE A: VERIFIED (NO INPUT, NO BUTTON)
                         <div className="w-full bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center gap-3 animate-in fade-in">
                             <div className="bg-green-100 p-1.5 rounded-full text-green-600">
                                 <ShieldCheck size={18} />
@@ -132,13 +121,11 @@ const PersonalDetails = memo(({
                             <Check size={20} className="text-green-600" />
                         </div>
                     ) : (
-                        // ❌ CASE B: NOT VERIFIED (SHOW INPUT PLACEHOLDER & BUTTON)
                         <div className="flex gap-2">
                             <div className="relative flex-1">
                                 <Smartphone size={16} className="absolute left-3 top-2.5 text-slate-400" />
                                 <input
                                     disabled
-                                    // If userPhone is missing from session, it shows "No number linked"
                                     placeholder={userPhone ? `+91 ${userPhone} (Not Verified)` : "No number linked"}
                                     className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 py-2 text-slate-500 cursor-not-allowed"
                                 />
@@ -152,41 +139,61 @@ const PersonalDetails = memo(({
                             </button>
                         </div>
                     )}
-
-                    {/* Helper text only if NOT verified */}
                     {!isPhoneVerified && (
                         <p className="text-xs text-orange-500 mt-1.5 font-medium flex items-center gap-1">
                             <AlertTriangle size={12} /> Mobile verification is required.
                         </p>
                     )}
                 </div>
-
-                {/* Alternate Phone */}
-                {/* <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Alternate Phone Number (Optional)</label>
-                    <div className="relative">
-                        <Phone size={16} className="absolute left-3 top-2.5 text-slate-400" />
-                        <input
-                            value={form.altPhone}
-                            onChange={e => onChange('altPhone', e.target.value)}
-                            className={`${getInputClass('altPhone')} pl-9`}
-                            placeholder="+91 XXXXX XXXXX"
-                        />
-                    </div>
-                    <ErrorMsg field="altPhone" />
-                </div> */}
             </div>
         </div>
     );
 });
 PersonalDetails.displayName = "PersonalDetails";
 
-// --- SUB-COMPONENT 3: Address Details (Same as before) ---
+// --- SUB-COMPONENT 3: Address Details (UPDATED WITH PINCODE AUTOFILL & DISTRICT) ---
 const AddressDetails = memo(({
     form, errors, onChange, onGetLocation, gettingLoc
 }: {
     form: any, errors: any, onChange: (field: string, val: any) => void, onGetLocation: () => void, gettingLoc: boolean
 }) => {
+    const [fetchingPincode, setFetchingPincode] = useState(false);
+
+    // ✅ Effect: Watch Pincode for changes
+    useEffect(() => {
+        const fetchPincodeDetails = async () => {
+            if (form.pincode && form.pincode.length === 6) {
+                setFetchingPincode(true);
+                try {
+                    // Using Indian Postal API
+                    const response = await fetch(`https://api.postalpincode.in/pincode/${form.pincode}`);
+                    const data = await response.json();
+
+                    if (data && data[0].Status === 'Success') {
+                        const details = data[0].PostOffice[0];
+
+                        // Auto-fill State
+                        onChange('state', details.State);
+
+                        // Auto-fill District (Destric)
+                        onChange('district', details.District);
+
+                        // Auto-fill City (Block or Name)
+                        const cityVal = details.Block !== "NA" ? details.Block : details.Name;
+                        onChange('city', cityVal);
+                    }
+                } catch (error) {
+                    console.error("Error fetching pincode details:", error);
+                } finally {
+                    setFetchingPincode(false);
+                }
+            }
+        };
+
+        const timer = setTimeout(() => fetchPincodeDetails(), 400); // Small debounce
+        return () => clearTimeout(timer);
+    }, [form.pincode]);
+
     const getInputClass = (fieldName: string) => `w-full bg-slate-50 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition ${errors[fieldName] ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'}`;
     const ErrorMsg = ({ field }: { field: string }) => errors[field] ? <p className="text-red-500 text-xs mt-1 font-medium">{errors[field]}</p> : null;
 
@@ -225,6 +232,27 @@ const AddressDetails = memo(({
                     />
                     <ErrorMsg field="landmark" />
                 </div>
+
+                {/* Pincode Field - Moved up to trigger auto-fill */}
+                <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Pincode</label>
+                    <div className="relative">
+                        <input
+                            value={form.pincode}
+                            onChange={e => onChange('pincode', e.target.value.replace(/\D/g, ''))} // Digits only
+                            className={getInputClass('pincode')}
+                            maxLength={6}
+                        />
+                        {fetchingPincode && (
+                            <div className="absolute right-3 top-2.5">
+                                <Loader2 className="animate-spin text-blue-500" size={16} />
+                            </div>
+                        )}
+                    </div>
+                    <ErrorMsg field="pincode" />
+                </div>
+
+                {/* City Field */}
                 <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">City</label>
                     <input
@@ -234,17 +262,20 @@ const AddressDetails = memo(({
                     />
                     <ErrorMsg field="city" />
                 </div>
+
+                {/* District Field (NEW) */}
                 <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Pincode</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase block mb-1">District</label>
                     <input
-                        value={form.pincode}
-                        onChange={e => onChange('pincode', e.target.value)}
-                        className={getInputClass('pincode')}
-                        maxLength={6}
+                        value={form.district || ''}
+                        onChange={e => onChange('district', e.target.value)}
+                        className={getInputClass('district')}
                     />
-                    <ErrorMsg field="pincode" />
+                    <ErrorMsg field="district" />
                 </div>
-                <div className="col-span-2">
+
+                {/* State Field */}
+                <div>
                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">State</label>
                     <input
                         value={form.state}
@@ -276,7 +307,7 @@ const AddressDetails = memo(({
 });
 AddressDetails.displayName = "AddressDetails";
 
-// --- MAIN PAGE COMPONENT ---
+// --- MAIN PAGE COMPONENT (NO CHANGES) ---
 export default function BecomeProPage() {
     const router = useRouter();
     const { data: session, status } = useSession();
@@ -287,7 +318,6 @@ export default function BecomeProPage() {
         handleChange, handleGetLocation, handleImageUpload, handleSubmit
     } = useProviderOnboarding();
 
-    // ✅ Prefill email/name
     useEffect(() => {
         if (session?.user?.email && !form.email) {
             handleChange('email', session.user.email);
@@ -297,17 +327,12 @@ export default function BecomeProPage() {
         }
     }, [session, form.email, form.fullName]);
 
-
-    // ✅ Block submission if phone is not verified
     const handleFinalSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
-        // If phone not verified, force modal open
         if (!session?.user?.isPhoneVerified) {
             setPhoneModalOpen(true);
             return;
         }
-
         handleSubmit(e);
     };
 
@@ -318,8 +343,6 @@ export default function BecomeProPage() {
     return (
         <div className="min-h-screen bg-slate-50 py-10 px-4 animate-in fade-in duration-500">
             <div className="max-w-xl mx-auto">
-
-                {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
                     <button onClick={() => router.back()} className="p-2 bg-white rounded-full border border-slate-200 hover:bg-slate-50 transition">
                         <ArrowLeft size={20} />
@@ -331,16 +354,12 @@ export default function BecomeProPage() {
                 </div>
 
                 <form onSubmit={handleFinalSubmit} className="space-y-6">
-
-                    {/* 1. Profile Image Section */}
                     <ProfileSection
                         imgPreview={imgPreview}
                         uploading={uploading}
                         error={errors.profileImage}
                         onUpload={handleImageUpload}
                     />
-
-                    {/* 2. Personal Details Section */}
                     <PersonalDetails
                         form={form}
                         errors={errors}
@@ -348,8 +367,6 @@ export default function BecomeProPage() {
                         session={session}
                         onVerifyStart={() => setPhoneModalOpen(true)}
                     />
-
-                    {/* 3. Address & Location Section */}
                     <AddressDetails
                         form={form}
                         errors={errors}
@@ -357,16 +374,12 @@ export default function BecomeProPage() {
                         onGetLocation={handleGetLocation}
                         gettingLoc={gettingLoc}
                     />
-
-                    {/* General Error Banner */}
                     {Object.keys(errors).length > 0 && (
                         <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 text-sm font-bold border border-red-100 animate-in fade-in slide-in-from-bottom-2">
                             <AlertTriangle size={20} className="shrink-0" />
                             <span>Please fix the highlighted errors before submitting.</span>
                         </div>
                     )}
-
-                    {/* Submit Button */}
                     <button
                         type="submit"
                         disabled={loading || uploading}
@@ -386,8 +399,6 @@ export default function BecomeProPage() {
                     </button>
                 </form>
             </div>
-
-            {/* ✅ Mobile Verification Modal */}
             {session?.user?.id && (
                 <MobileVerificationModal
                     userId={session.user.id}

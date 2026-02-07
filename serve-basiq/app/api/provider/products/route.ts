@@ -13,10 +13,10 @@ export async function POST(req: Request) {
       where: {
         userId: userId
       },
-      // ✅ CRITICAL: This allows the frontend to see category names and subcategories
       include: {
         category: true,
-        subcategories: true,
+        // ✅ FIXED: Changed 'subcategories' to 'subcategory' to match your new Schema
+        subcategory: true,
       },
       orderBy: {
         createdAt: 'desc'

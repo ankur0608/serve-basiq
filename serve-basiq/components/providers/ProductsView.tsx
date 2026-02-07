@@ -9,17 +9,11 @@ interface ProductsViewProps {
     userId: string;
     setSelectedProduct: (product: any) => void;
     showToast: (msg: string, type: 'success' | 'error') => void;
+    providerType?: string;
 }
 
-// ... (ProductTableRow remains exactly the same as your code, so I omitted it for brevity) ...
-// Copy the ProductTableRow from your previous code here.
 const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: number, onEdit: (p: any) => void, onDelete: (id: string) => void }) => {
     const isInStock = p.stockStatus === 'IN_STOCK';
-
-    // Logic for subcategories
-    const subcategoriesText = p.subcategories && Array.isArray(p.subcategories)
-        ? p.subcategories.map((sub: any) => sub.name).join(', ')
-        : 'None';
 
     return (
         <tr className="group border-b border-slate-50 last:border-none hover:bg-slate-50/50 transition-colors">
@@ -29,7 +23,11 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
             <td className="py-4 align-middle">
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0">
-                        {p.image ? <img src={p.image} alt={p.name} className="h-full w-full object-cover" /> : <Package size={16} className="text-slate-300 m-auto" />}
+                        {p.productImage ? (
+                            <img src={p.productImage} alt={p.name} className="h-full w-full object-cover" />
+                        ) : (
+                            <Package size={16} className="text-slate-300 m-auto" />
+                        )}
                     </div>
                     <div>
                         <p className="font-bold text-slate-900 text-sm">{p.name}</p>
@@ -38,16 +36,18 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
                 </div>
             </td>
             <td className="py-4 align-middle">
-                <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">{p.category || 'General'}</span>
+                {/* ✅ FIX 1: Access category safely (it might be a string from your hook or an object) */}
+                <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">
+                    {typeof p.category === 'object' ? p.category?.name : (p.category || 'General')}
+                </span>
             </td>
             <td className="py-4 align-middle">
+                {/* ✅ FIX 2: Render SINGLE subcategory object, not map() */}
                 <div className="flex flex-wrap gap-1 max-w-[150px]">
-                    {p.subcategories && p.subcategories.length > 0 ? (
-                        p.subcategories.map((sub: any) => (
-                            <span key={sub.id} className="text-[9px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
-                                {sub.name}
-                            </span>
-                        ))
+                    {p.subcategory ? (
+                        <span className="text-[9px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
+                            {p.subcategory.name}
+                        </span>
                     ) : (
                         <span className="text-[10px] text-slate-400">---</span>
                     )}
@@ -68,9 +68,8 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
 });
 ProductTableRow.displayName = "ProductTableRow";
 
+export function ProductsView({ setActiveView, userId, setSelectedProduct, showToast, providerType }: ProductsViewProps) {
 
-export function ProductsView({ setActiveView, userId, setSelectedProduct, showToast }: ProductsViewProps) {
-    // ✅ React Query hook handles fetching automatically on mount
     const { products, loading, deleteProduct, isDeleting } = useProducts(userId);
 
     const handleEdit = useCallback((product: any) => {
@@ -80,9 +79,7 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
 
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("Are you sure you want to delete this product?")) return;
-
         try {
-            // ✅ Using the mutation function from the hook
             await deleteProduct(id);
             showToast("Product deleted successfully", "success");
         } catch (error) {
@@ -98,6 +95,25 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 p-4">
+
+            {/* View Toggle */}
+            {providerType === 'BOTH' && (
+                <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
+                    <button
+                        onClick={() => setActiveView('settings')}
+                        className="flex-1 py-3 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                    >
+                        Services & Rentals
+                    </button>
+                    <button
+                        onClick={() => setActiveView('products')}
+                        className="flex-1 py-3 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all"
+                    >
+                        Products
+                    </button>
+                </div>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900 tracking-tight">My Products</h2>
@@ -111,6 +127,7 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                 </button>
             </div>
 
+            {/* List / Loading State */}
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-32 text-slate-400 gap-4">
                     <Loader2 className="animate-spin" size={40} />
@@ -126,13 +143,11 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                 </div>
             ) : (
                 <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden relative">
-                    {/* Optional: Show loading overlay if deleting */}
                     {isDeleting && (
                         <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
                             <Loader2 className="animate-spin text-slate-900" />
                         </div>
                     )}
-
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>

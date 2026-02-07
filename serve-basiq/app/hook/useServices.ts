@@ -1,15 +1,33 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+// Define the structure of the API response
+interface ListingsData {
+    services: any[];
+    rentals: any[];
+}
+
 // --- API FETCH FUNCTION ---
-const fetchServicesFn = async (userId?: string) => {
-    if (!userId) return [];
+const fetchServicesFn = async (userId?: string): Promise<ListingsData> => {
+    if (!userId) return { services: [], rentals: [] };
 
-    const res = await fetch(`/api/services?userId=${userId}`);
-    // If 404 or empty, return empty array to prevent crashes
-    if (!res.ok) return [];
+    try {
+        const res = await fetch(`/api/services?userId=${userId}`);
 
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+        // If request fails, return empty arrays
+        if (!res.ok) return { services: [], rentals: [] };
+
+        const data = await res.json();
+
+        // ✅ FIX: The API returns an object { services: [...], rentals: [...] }
+        // We must return that structure, not check for Array.isArray(data)
+        return {
+            services: Array.isArray(data.services) ? data.services : [],
+            rentals: Array.isArray(data.rentals) ? data.rentals : []
+        };
+    } catch (error) {
+        console.error("Fetch error:", error);
+        return { services: [], rentals: [] };
+    }
 };
 
 export function useServices(userId: string | undefined) {
@@ -17,12 +35,10 @@ export function useServices(userId: string | undefined) {
     const queryKey = ['services', userId];
 
     // --- 1. FETCH QUERY ---
-    const { data: services = [], isLoading, refetch } = useQuery({
+    const { data, isLoading, refetch } = useQuery({
         queryKey: queryKey,
         queryFn: () => fetchServicesFn(userId),
-        enabled: !!userId, // Only fetch if userId exists
-
-        // ✅ Call API only once on mount, never auto-refetch unless invalidated
+        enabled: !!userId,
         staleTime: Infinity,
         refetchOnWindowFocus: false,
     });
@@ -38,11 +54,12 @@ export function useServices(userId: string | undefined) {
                 body: JSON.stringify({ userId, serviceId })
             });
 
-            if (!res.ok) throw new Error("Failed to delete");
-            return { success: true };
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || "Failed to delete");
+
+            return result;
         },
         onSuccess: () => {
-            // ✅ Automatically refresh the list after a successful delete
             queryClient.invalidateQueries({ queryKey });
         },
         onError: (error) => {
@@ -51,9 +68,12 @@ export function useServices(userId: string | undefined) {
     });
 
     return {
-        services,
+        // ✅ Safely extract arrays from the data object
+        services: data?.services || [],
+        rentals: data?.rentals || [],
+
         isLoading,
-        refetch, // Exposed for ServiceSettingsView to trigger updates
+        refetch,
         deleteService: deleteMutation.mutateAsync,
         isDeleting: deleteMutation.isPending
     };

@@ -21,12 +21,12 @@ const Navbar = () => {
     const currentUser = useUIStore((state) => state.currentUser);
 
     // ✅ CRITICAL: Unified login check
-    // This prevents the "Please Login" text or stale images during logout transitions
     const isLoggedIn = status === "authenticated" && !!currentUser;
 
     const getUserImage = () => {
         if (!currentUser) return null;
-        return currentUser.img || currentUser.profileImage || null;
+        // ✅ FIX: Cast to 'any' to access profileImage without TS error
+        return currentUser.img || (currentUser as any).profileImage || null;
     };
 
     const getInitials = () => {
@@ -93,7 +93,7 @@ const Navbar = () => {
                     </div>
                 </div>
 
-                {/* {showMobileSearch && (
+                {showMobileSearch && (
                     <div className="md:hidden pb-3">
                         <div className="relative">
                             <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
@@ -111,7 +111,7 @@ const Navbar = () => {
                             </button>
                         </div>
                     </div>
-                )} */}
+                )}
 
                 {/* DESKTOP VIEW */}
                 <div className="hidden md:flex items-center justify-between h-16 gap-4">
@@ -126,7 +126,7 @@ const Navbar = () => {
                         />
                     </Link>
 
-                    {/* <div className="flex-1 max-w-lg">
+                    <div className="flex-1 max-w-lg">
                         <div className="relative">
                             <FaMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
@@ -135,7 +135,7 @@ const Navbar = () => {
                                 className="w-full h-11 pl-11 pr-4 rounded-full bg-slate-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
                         </div>
-                    </div> */}
+                    </div>
 
                     <div className="flex items-center gap-4">
                         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">

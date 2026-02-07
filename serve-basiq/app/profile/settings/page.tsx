@@ -10,7 +10,7 @@ import {
 import Link from 'next/link';
 import { fullLogout } from '@/lib/logout';
 
-// Modals (Imported from your previous code)
+// Modals
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
 
@@ -33,6 +33,8 @@ export default function SettingsPage() {
     // Prepare data for modals
     const addresses = currentUser?.addresses || [];
     const primaryAddress: any = addresses.length > 0 ? addresses[0] : {};
+
+    // ✅ FIXED: Added 'district' to modalInitialData
     const modalInitialData = {
         name: currentUser?.name || '',
         email: currentUser?.email || session?.user?.email || '',
@@ -43,6 +45,7 @@ export default function SettingsPage() {
         addressLine2: primaryAddress.line2 || '',
         landmark: primaryAddress.landmark || '',
         city: primaryAddress.city || '',
+        district: primaryAddress.district || '', // <--- ADDED THIS LINE
         state: primaryAddress.state || '',
         pincode: primaryAddress.pincode || '',
     };

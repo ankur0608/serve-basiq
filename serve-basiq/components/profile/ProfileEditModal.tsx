@@ -1,15 +1,28 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { FaUser, FaMapLocation, FaPhone, FaEnvelope, FaXmark, FaCheck, FaCity, FaLocationDot, FaSpinner, FaCalendarDays, FaLanguage } from 'react-icons/fa6';
+import {
+    FaUser, FaMapLocation, FaPhone, FaEnvelope, FaXmark, FaCheck,
+    FaCity, FaLocationDot, FaSpinner, FaCalendarDays, FaLanguage, FaBuilding
+} from 'react-icons/fa6';
 import clsx from 'clsx';
-// 1. Swap Next/Image for AppImage
 import AppImage from '@/components/ui/AppImage';
 
+// ... (Interfaces remain the same) ...
 export interface ProfileData {
-    name: string; email: string; phone: string; image?: string | null;
-    dateOfBirth: string; preferredLanguage: string;
-    addressLine1: string; addressLine2: string; landmark: string; city: string; state: string; pincode: string;
+    name: string;
+    email: string;
+    phone: string;
+    image?: string | null;
+    dateOfBirth: string;
+    preferredLanguage: string;
+    addressLine1: string;
+    addressLine2: string;
+    landmark: string;
+    city: string;
+    district: string;
+    state: string;
+    pincode: string;
 }
 
 interface ProfileEditModalProps {
@@ -24,7 +37,7 @@ interface ProfileEditModalProps {
 
 const DEFAULT_DATA: ProfileData = {
     name: '', email: '', phone: '', dateOfBirth: '', preferredLanguage: 'English',
-    addressLine1: '', addressLine2: '', landmark: '', city: '', state: '', pincode: '', image: ''
+    addressLine1: '', addressLine2: '', landmark: '', city: '', district: '', state: '', pincode: '', image: ''
 };
 
 export default function ProfileEditModal({
@@ -40,11 +53,18 @@ export default function ProfileEditModal({
     const [preview, setPreview] = useState<string | null>(null);
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+    const [fetchingPincode, setFetchingPincode] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen && initialData) {
-            setFormData({ ...DEFAULT_DATA, ...initialData, name: initialData.name || '', email: initialData.email || '', phone: initialData.phone || '' });
+            setFormData({
+                ...DEFAULT_DATA,
+                ...initialData,
+                name: initialData.name || '',
+                email: initialData.email || '',
+                phone: initialData.phone || ''
+            });
             setPreview(initialData.image || null);
         }
     }, [isOpen, initialData]);
@@ -57,6 +77,35 @@ export default function ProfileEditModal({
         }
     };
 
+    const handlePincodeChange = async (value: string) => {
+        const numericValue = value.replace(/\D/g, '');
+        setFormData(prev => ({ ...prev, pincode: numericValue }));
+
+        if (numericValue.length === 6) {
+            setFetchingPincode(true);
+            try {
+                const response = await fetch(`https://api.postalpincode.in/pincode/${numericValue}`);
+                const data = await response.json();
+
+                if (data && data[0].Status === "Success") {
+                    const details = data[0].PostOffice[0];
+                    setFormData(prev => ({
+                        ...prev,
+                        state: details.State,
+                        district: details.District,
+                        city: details.Block !== "NA" ? details.Block : details.District
+                    }));
+                } else {
+                    console.warn("Invalid Pincode");
+                }
+            } catch (error) {
+                console.error("Failed to fetch pincode details", error);
+            } finally {
+                setFetchingPincode(false);
+            }
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -66,21 +115,29 @@ export default function ProfileEditModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        // ✅ FIX 1: Removed 'mt-22' and changed 'p-8' to 'p-4' for mobile
+        // Added 'items-end md:items-center' to ensure on very small screens it sits well, 
+        // but 'items-center' usually works if height is controlled.
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}></div>
-            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative z-10 flex flex-col max-h-[90vh]">
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+
+            {/* ✅ FIX 2: Changed max-h to 'max-h-[90vh]' or 'max-h-[85dvh]' to fit mobile viewports better */}
+            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative z-10 flex flex-col max-h-[85vh] sm:max-h-[90vh]">
+
+                {/* Header */}
+                <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div><h2 className="text-xl font-extrabold text-slate-900">Edit Profile</h2><p className="text-sm text-gray-500">Update personal details</p></div>
-                    <button onClick={onClose}><FaXmark className="text-xl" /></button>
+                    <button onClick={onClose} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100"><FaXmark className="text-lg" /></button>
                 </div>
-                <div className="p-6 overflow-y-auto custom-scrollbar">
-                    <form id="profile-form" onSubmit={handleSubmit} className="space-y-8">
+
+                {/* Scrollable Content */}
+                <div className="p-5 overflow-y-auto custom-scrollbar">
+                    <form id="profile-form" onSubmit={handleSubmit} className="space-y-6">
                         {/* Image Upload */}
                         <div className="flex flex-col items-center justify-center gap-3">
                             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                                 <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-100 shadow-sm relative bg-slate-100 flex items-center justify-center">
                                     {preview ? (
-                                        // 2. Implementation of AppImage
                                         <AppImage
                                             src={preview}
                                             alt="Preview"
@@ -98,12 +155,36 @@ export default function ProfileEditModal({
                             <p className="text-xs text-blue-600 font-bold cursor-pointer" onClick={() => fileInputRef.current?.click()}>Change Photo</p>
                         </div>
 
+                        {/* Basic Info */}
                         <div>
                             <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2"><FaUser /> Basic Information</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="md:col-span-2"><InputField label="Full Name" value={formData.name} onChange={(v: string) => setFormData({ ...formData, name: v })} /></div>
-                                <div><InputField label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={(v: string) => setFormData({ ...formData, dateOfBirth: v })} icon={<FaCalendarDays />} /></div>
-                                <div><SelectField label="Preferred Language" value={formData.preferredLanguage} onChange={(v: string) => setFormData({ ...formData, preferredLanguage: v })} options={['English', 'Hindi', 'Gujarati', 'Marathi']} icon={<FaLanguage />} /></div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <InputField
+                                        label="Full Name"
+                                        value={formData.name}
+                                        onChange={(v: string) => setFormData({ ...formData, name: v })}
+                                        placeholder="e.g. John Doe"
+                                    />
+                                </div>
+                                <div>
+                                    <InputField
+                                        label="Date of Birth"
+                                        type="date"
+                                        value={formData.dateOfBirth}
+                                        onChange={(v: string) => setFormData({ ...formData, dateOfBirth: v })}
+                                        icon={<FaCalendarDays />}
+                                    />
+                                </div>
+                                <div>
+                                    <SelectField
+                                        label="Preferred Language"
+                                        value={formData.preferredLanguage}
+                                        onChange={(v: string) => setFormData({ ...formData, preferredLanguage: v })}
+                                        options={['English', 'Hindi', 'Gujarati', 'Marathi']}
+                                        icon={<FaLanguage />}
+                                    />
+                                </div>
 
                                 <div>
                                     <InputField
@@ -113,6 +194,7 @@ export default function ProfileEditModal({
                                         type="email"
                                         icon={<FaEnvelope />}
                                         disabled={isEmailLocked}
+                                        placeholder="e.g. john@example.com"
                                     />
                                 </div>
                                 <div>
@@ -123,6 +205,7 @@ export default function ProfileEditModal({
                                         type="tel"
                                         icon={<FaPhone />}
                                         disabled={isPhoneLocked}
+                                        placeholder="e.g. 9876543210"
                                         rightElement={onAddPhoneClick && (
                                             <button
                                                 type="button"
@@ -137,22 +220,77 @@ export default function ProfileEditModal({
                             </div>
                         </div>
                         <div className="border-t border-gray-100"></div>
+
+                        {/* Address Details */}
                         <div>
                             <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 flex items-center gap-2"><FaMapLocation /> Address Details</h4>
-                            <div className="grid grid-cols-2 gap-5">
-                                <div className="col-span-2"><InputField label="Address Line 1" value={formData.addressLine1} onChange={(v: string) => setFormData({ ...formData, addressLine1: v })} icon={<FaLocationDot />} /></div>
-                                <div className="col-span-2"><InputField label="Address Line 2" value={formData.addressLine2} onChange={(v: string) => setFormData({ ...formData, addressLine2: v })} /></div>
-                                <div className="col-span-2"><InputField label="Landmark" value={formData.landmark} onChange={(v: string) => setFormData({ ...formData, landmark: v })} /></div>
-                                <InputField label="City" value={formData.city} onChange={(v: string) => setFormData({ ...formData, city: v })} icon={<FaCity />} />
-                                <InputField label="Pincode" value={formData.pincode} onChange={(v: string) => setFormData({ ...formData, pincode: v })} maxLength={6} />
-                                <div className="col-span-2 md:col-span-1"><InputField label="State" value={formData.state} onChange={(v: string) => setFormData({ ...formData, state: v })} /></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <InputField
+                                        label="Address Line 1"
+                                        value={formData.addressLine1}
+                                        onChange={(v: string) => setFormData({ ...formData, addressLine1: v })}
+                                        icon={<FaLocationDot />}
+                                        placeholder="House No., Building, Apartment"
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <InputField
+                                        label="Address Line 2"
+                                        value={formData.addressLine2}
+                                        onChange={(v: string) => setFormData({ ...formData, addressLine2: v })}
+                                        placeholder="Area, Colony, Road, Sector"
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <InputField
+                                        label="Landmark"
+                                        value={formData.landmark}
+                                        onChange={(v: string) => setFormData({ ...formData, landmark: v })}
+                                        placeholder="e.g. Near City Mall"
+                                    />
+                                </div>
+
+                                <InputField
+                                    label="Pincode"
+                                    value={formData.pincode}
+                                    onChange={handlePincodeChange}
+                                    maxLength={6}
+                                    placeholder="e.g. 400001"
+                                    rightElement={fetchingPincode && <FaSpinner className="animate-spin text-blue-600 text-xs" />}
+                                />
+
+                                <InputField
+                                    label="City"
+                                    value={formData.city}
+                                    onChange={(v: string) => setFormData({ ...formData, city: v })}
+                                    icon={<FaCity />}
+                                    placeholder="e.g. Mumbai"
+                                />
+
+                                <InputField
+                                    label="District"
+                                    value={formData.district}
+                                    onChange={(v: string) => setFormData({ ...formData, district: v })}
+                                    icon={<FaBuilding />}
+                                    placeholder="e.g. Thane"
+                                />
+
+                                <InputField
+                                    label="State"
+                                    value={formData.state}
+                                    onChange={(v: string) => setFormData({ ...formData, state: v })}
+                                    placeholder="e.g. Maharashtra"
+                                />
                             </div>
                         </div>
                     </form>
                 </div>
-                <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-3xl flex gap-3">
-                    <button type="button" onClick={onClose} disabled={loading} className="flex-1 py-3.5 rounded-xl border border-gray-300 font-bold hover:bg-white transition">Cancel</button>
-                    <button type="submit" form="profile-form" disabled={loading} className="flex-2 py-3.5 rounded-xl bg-slate-900 text-white font-bold hover:bg-black transition flex items-center justify-center gap-2">
+
+                {/* Footer Buttons - Fixed to bottom of modal */}
+                <div className="p-5 border-t border-gray-100 bg-gray-50 rounded-b-3xl flex gap-3 shrink-0">
+                    <button type="button" onClick={onClose} disabled={loading} className="flex-1 py-3 rounded-xl border border-gray-300 font-bold hover:bg-white transition text-sm sm:text-base">Cancel</button>
+                    <button type="submit" form="profile-form" disabled={loading} className="flex-2 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-black transition flex items-center justify-center gap-2 text-sm sm:text-base">
                         {loading ? <FaSpinner className="animate-spin" /> : <><FaCheck /> Save Changes</>}
                     </button>
                 </div>
@@ -177,7 +315,7 @@ function InputField({ label, value, onChange, type = "text", placeholder, icon, 
                     maxLength={maxLength}
                     disabled={disabled}
                     className={clsx(
-                        "w-full border rounded-xl px-4 py-3 text-sm font-medium outline-none transition border-gray-200 focus:border-blue-500",
+                        "w-full border rounded-xl px-4 py-3 text-sm font-medium outline-none transition border-gray-200 focus:border-blue-500 placeholder:text-gray-400",
                         icon ? "pl-10" : "",
                         disabled ? "bg-gray-50 text-gray-500 cursor-not-allowed" : "bg-white"
                     )}

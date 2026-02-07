@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     const stats = {
       revenue: bookingRevenue + orderRevenue,
       jobsCompleted: bookings.filter(b => b.status === 'COMPLETED').length + orders.filter(o => o.status === 'DELIVERED').length,
-      pendingRequests: bookings.filter(b => b.status === 'PENDING').length + orders.filter(o => o.status === 'PENDING').length,
+      pendingRequests: bookings.filter(b => b.status === 'REQUESTED').length + orders.filter(o => o.status === 'REQUESTED').length,
       rating: 5.0
     };
 

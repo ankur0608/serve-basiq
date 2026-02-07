@@ -14,7 +14,7 @@ interface RequestsViewProps {
     orders?: any[];
     showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
     onRefresh?: () => void;
-    providerType: string; // ✅ Added prop
+    providerType: string;
 }
 
 type TabType = 'ALL' | 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
@@ -25,10 +25,10 @@ export default function RequestsView({
     orders = [],
     showToast,
     onRefresh,
-    providerType // ✅ Destructured
+    providerType
 }: RequestsViewProps) {
 
-    // ✅ Initialize based on providerType
+    // ✅ Initialize View Mode based on Provider Type
     const [viewMode, setViewMode] = useState<ViewMode>(
         providerType === 'PRODUCT' ? 'PRODUCTS' : 'SERVICES'
     );
@@ -36,33 +36,35 @@ export default function RequestsView({
     const [activeTab, setActiveTab] = useState<TabType>('PENDING');
     const [processingId, setProcessingId] = useState<string | null>(null);
 
-    // ✅ Sync viewMode if providerType changes dynamically
+    // ✅ Sync viewMode when providerType prop changes
     useEffect(() => {
         if (providerType === 'PRODUCT') setViewMode('PRODUCTS');
-        if (providerType === 'SERVICE') setViewMode('SERVICES');
+        else if (providerType === 'SERVICE') setViewMode('SERVICES');
     }, [providerType]);
 
     // --- 1. SELECT & NORMALIZE DATA BASED ON VIEW MODE ---
     const currentData = useMemo(() => {
         if (viewMode === 'SERVICES') {
-            return bookings.map(b => ({
+            return (bookings || []).map(b => ({
                 ...b,
                 type: 'BOOKING',
-                date: b.bookingDate,
+                date: b.createdAt || b.bookingDate,
                 displayStatus: b.status,
-                title: b.service?.name,
-                price: b.service?.price,
-                img: b.user?.profileImage || b.user?.image
+                title: b.service?.name || "Unknown Service",
+                price: b.service?.price || 0,
+                img: b.user?.profileImage || b.user?.image || "",
+                timeSlot: b.openTime ? `${b.openTime} - ${b.closeTime}` : "Scheduled"
             }));
         } else {
-            return orders.map(o => ({
+            return (orders || []).map(o => ({
                 ...o,
                 type: 'ORDER',
                 date: o.createdAt,
                 displayStatus: o.status,
-                title: `${o.product?.name} (x${o.quantity})`,
-                price: o.totalPrice,
-                img: o.user?.profileImage || o.user?.image
+                title: o.product ? `${o.product.name} (x${o.quantity})` : "Unknown Product",
+                price: o.totalPrice || 0,
+                img: o.user?.profileImage || o.user?.image || "",
+                deliveryType: o.product?.deliveryType || 'DELIVERY'
             }));
         }
     }, [viewMode, bookings, orders]);
@@ -76,10 +78,19 @@ export default function RequestsView({
     const filteredRequests = sortedData.filter((item) => {
         const s = item.displayStatus;
         if (activeTab === 'ALL') return true;
-        if (activeTab === 'PENDING') return s === 'PENDING';
-        if (activeTab === 'CANCELLED') return s === 'CANCELLED' || s === 'RETURNED';
+
+        // PENDING TAB
+        if (activeTab === 'PENDING') return s === 'PENDING' || s === 'REQUESTED';
+
+        // REJECTED / CANCELLED TAB
+        if (activeTab === 'CANCELLED') return s === 'CANCELLED' || s === 'RETURNED' || s === 'REJECTED';
+
+        // COMPLETED TAB
         if (activeTab === 'COMPLETED') return s === 'COMPLETED' || s === 'DELIVERED';
-        if (activeTab === 'ACTIVE') return ['CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY'].includes(s);
+
+        // ACTIVE TAB (Everything in between)
+        if (activeTab === 'ACTIVE') return ['ACCEPTED', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'IN_PROGRESS'].includes(s);
+
         return false;
     });
 
@@ -99,7 +110,7 @@ export default function RequestsView({
             const data = await res.json();
 
             if (data.success) {
-                showToast("Status Updated Successfully", "success");
+                showToast(`Status updated to ${newStatus.replace('_', ' ')}`, "success");
                 if (onRefresh) onRefresh();
             } else {
                 showToast(data.message || "Failed to update", "error");
@@ -126,7 +137,7 @@ export default function RequestsView({
             {/* --- TOP HEADER --- */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
 
-                {/* ✅ LOGIC: Only show Switcher Buttons if providerType is BOTH */}
+                {/* ✅ Operation Type Switcher */}
                 {providerType === 'BOTH' ? (
                     <div className="w-full md:w-auto">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block pl-1">Operation Type</label>
@@ -152,7 +163,6 @@ export default function RequestsView({
                         </div>
                     </div>
                 ) : (
-                    /* ✅ If restricted to one type, show a simple title instead */
                     <div className="pb-2">
                         <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                             {viewMode === 'SERVICES' ? <Briefcase className="text-blue-600" /> : <ShoppingBag className="text-purple-600" />}
@@ -237,14 +247,14 @@ export default function RequestsView({
 
                                         {/* STATUS BADGE */}
                                         <span className={clsx("px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1.5 uppercase tracking-wide",
-                                            req.displayStatus === 'PENDING' ? "bg-amber-50 text-amber-700 border-amber-100" :
-                                                ['CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY'].includes(req.displayStatus) ? "bg-blue-50 text-blue-700 border-blue-100" :
+                                            ['PENDING', 'REQUESTED'].includes(req.displayStatus) ? "bg-amber-50 text-amber-700 border-amber-100" :
+                                                ['CONFIRMED', 'ACCEPTED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'IN_PROGRESS'].includes(req.displayStatus) ? "bg-blue-50 text-blue-700 border-blue-100" :
                                                     ['COMPLETED', 'DELIVERED'].includes(req.displayStatus) ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
                                                         "bg-red-50 text-red-700 border-red-100"
                                         )}>
                                             <span className={clsx("w-1.5 h-1.5 rounded-full",
-                                                req.displayStatus === 'PENDING' ? "bg-amber-500" :
-                                                    ['CONFIRMED', 'SHIPPED'].includes(req.displayStatus) ? "bg-blue-500" :
+                                                ['PENDING', 'REQUESTED'].includes(req.displayStatus) ? "bg-amber-500" :
+                                                    ['CONFIRMED', 'ACCEPTED', 'SHIPPED'].includes(req.displayStatus) ? "bg-blue-500" :
                                                         ['COMPLETED', 'DELIVERED'].includes(req.displayStatus) ? "bg-emerald-500" : "bg-red-500"
                                             )}></span>
                                             {req.displayStatus.replace(/_/g, " ")}
@@ -268,11 +278,11 @@ export default function RequestsView({
                                         />
                                     </div>
 
-                                    {/* ACTION FOOTER */}
+                                    {/* ✅ ACTION FOOTER: CLEANED UP */}
                                     <div className="px-4 pb-4 pt-1">
 
-                                        {/* PENDING STATE (Both Types) */}
-                                        {req.displayStatus === 'PENDING' && (
+                                        {/* 1. PENDING / REQUESTED STATE (Single Logic Block) */}
+                                        {['PENDING', 'REQUESTED'].includes(req.displayStatus) && (
                                             <div className="flex gap-3">
                                                 <button
                                                     onClick={() => updateStatus(req.id, 'CANCELLED')}
@@ -280,8 +290,10 @@ export default function RequestsView({
                                                 >
                                                     Reject
                                                 </button>
+
+                                                {/* ✅ SINGLE ACCEPT BUTTON FOR BOTH TYPES */}
                                                 <button
-                                                    onClick={() => updateStatus(req.id, 'CONFIRMED')}
+                                                    onClick={() => updateStatus(req.id, 'ACCEPTED')}
                                                     className="flex-1 py-2.5 bg-[#0f172a] text-white hover:bg-slate-800 text-xs font-bold rounded-lg transition-transform active:scale-95 shadow-md"
                                                 >
                                                     Accept Request
@@ -289,27 +301,31 @@ export default function RequestsView({
                                             </div>
                                         )}
 
-                                        {/* SERVICES SPECIFIC ACTIONS */}
-                                        {viewMode === 'SERVICES' && req.displayStatus === 'CONFIRMED' && (
-                                            <button onClick={() => updateStatus(req.id, 'COMPLETED')} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-2">
-                                                <CheckCircle2 size={16} /> Mark Job Completed
+                                        {/* 2. SERVICES ACTIONS (After Accepted) */}
+                                        {viewMode === 'SERVICES' && req.displayStatus === 'ACCEPTED' && (
+                                            <button onClick={() => updateStatus(req.id, 'IN_PROGRESS')} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-2">
+                                                <Truck size={16} /> Start Job
                                             </button>
                                         )}
 
-                                        {/* PRODUCTS SPECIFIC ACTIONS */}
+                                        {viewMode === 'SERVICES' && req.displayStatus === 'IN_PROGRESS' && (
+                                            <button onClick={() => updateStatus(req.id, 'COMPLETED')} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-2">
+                                                <CheckCircle2 size={16} /> Mark Completed
+                                            </button>
+                                        )}
+
+                                        {/* 3. PRODUCTS ACTIONS (After Accepted) */}
                                         {viewMode === 'PRODUCTS' && (
                                             <>
-                                                {req.displayStatus === 'CONFIRMED' && (
+                                                {/* Accepted -> Shipped */}
+                                                {req.displayStatus === 'ACCEPTED' && (
                                                     <button onClick={() => updateStatus(req.id, 'SHIPPED')} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-2">
-                                                        <Package size={16} /> Mark as Shipped <ArrowRight size={14} />
+                                                        <Package size={16} /> Mark Shipped <ArrowRight size={14} />
                                                     </button>
                                                 )}
+
+                                                {/* Shipped -> Delivered */}
                                                 {req.displayStatus === 'SHIPPED' && (
-                                                    <button onClick={() => updateStatus(req.id, 'OUT_FOR_DELIVERY')} className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-2">
-                                                        <Truck size={16} /> Out for Delivery <ArrowRight size={14} />
-                                                    </button>
-                                                )}
-                                                {req.displayStatus === 'OUT_FOR_DELIVERY' && (
                                                     <button onClick={() => updateStatus(req.id, 'DELIVERED')} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-2">
                                                         <BoxSelect size={16} /> Confirm Delivery
                                                     </button>

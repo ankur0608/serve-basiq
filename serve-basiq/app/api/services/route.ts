@@ -4,69 +4,87 @@ import { serviceSettingsSchema } from "@/lib/validators";
 
 export const dynamic = 'force-dynamic';
 
-// 1. GET: Fetch services
+const userSelect = {
+    id: true,
+    name: true,
+    image: true,
+    profileImage: true,
+    email: true,
+    phone: true,
+    shopName: true,
+    isVerified: true,
+    role: true,
+    instagramUrl: true,
+    facebookUrl: true,
+    youtubeUrl: true,
+    websiteUrl: true,
+    createdAt: true,
+    addresses: {
+        select: {
+            id: true,
+            type: true,
+            line1: true,
+            line2: true,
+            landmark: true,
+            city: true,
+            state: true,
+            pincode: true,
+            country: true
+        }
+    }
+};
+
+// ============================================================================
+// 1. GET: Fetch Services AND Rentals
+// ============================================================================
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
         const userId = searchParams.get('userId');
-        
-        // ✅ ADD LIMIT LOGIC (Default to 50 if not specified to prevent slow loads)
         const limitParam = searchParams.get('limit');
         const limit = limitParam ? parseInt(limitParam) : undefined;
 
         const whereClause = userId ? { userId: userId } : {};
 
-        const services = await prisma.service.findMany({
-            where: whereClause,
-            // ✅ Apply Limit if provided
-            take: limit, 
-            include: {
-                category: { select: { id: true, name: true } },
-                subcategories: { select: { id: true, name: true } },
+        const [services, rentals] = await Promise.all([
+            // 1. Fetch Services
+            prisma.service.findMany({
+                where: whereClause,
+                take: limit,
+                include: {
+                    category: { select: { id: true, name: true } },
+                    // ✅ FIXED: Changed 'subcategories' to 'subcategory'
+                    subcategory: { select: { id: true, name: true } },
+                    user: { select: userSelect }
+                },
+                orderBy: { createdAt: 'desc' },
+            }),
 
-                user: {
-                    select: { 
-                        id: true, 
-                        name: true, 
-                        image: true, 
-                        profileImage: true,
-                        email: true,
-                        phone: true,
-                        shopName: true,
-                        isVerified: true,
-                        role: true,
-                        instagramUrl: true,
-                        facebookUrl: true,
-                        youtubeUrl: true,
-                        websiteUrl: true,
-                        addresses: {
-                            select: {
-                                id: true,
-                                type: true,
-                                line1: true,
-                                line2: true,
-                                landmark: true,
-                                city: true,
-                                state: true,
-                                pincode: true,
-                                country: true
-                            }
-                        },
-                        createdAt: true
-                    }
-                }
-            },
-            orderBy: { createdAt: 'desc' },
+            // 2. Fetch Rentals
+            prisma.rental.findMany({
+                where: whereClause,
+                take: limit,
+                include: {
+                    category: { select: { id: true, name: true } },
+                    // ✅ FIXED: Changed 'subcategories' to 'subcategory'
+                    subcategory: { select: { id: true, name: true } },
+                    user: { select: userSelect }
+                },
+                orderBy: { createdAt: 'desc' },
+            })
+        ]);
+
+        return NextResponse.json({
+            services,
+            rentals
         });
 
-        return NextResponse.json(services);
     } catch (error: any) {
-        console.error("GET Service Error:", error);
-        return NextResponse.json({ error: "Failed to fetch services", details: error.message }, { status: 500 });
+        console.error("GET Listings Error:", error);
+        return NextResponse.json({ error: "Failed to fetch listings", details: error.message }, { status: 500 });
     }
 }
 
-// 2. POST: Create or Update (Service Data + User Socials)
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -78,7 +96,6 @@ export async function POST(req: Request) {
 
         const data = serviceSettingsSchema.parse(formData);
 
-        // ✅ 1. Service Data (Goes to 'Service' Table)
         const servicePayload = {
             name: data.name,
             desc: data.desc,
@@ -88,8 +105,6 @@ export async function POST(req: Request) {
             price: data.price,
             experience: data.experience,
             priceType: data.priceType || "FIXED",
-
-            // Service Specific Address (If different from Provider Address)
             addressLine1: data.addressLine1,
             addressLine2: data.addressLine2,
             city: data.city,
@@ -98,15 +113,12 @@ export async function POST(req: Request) {
             radiusKm: data.radiusKm,
             latitude: data.latitude,
             longitude: data.longitude,
-
             workingDays: data.workingDays,
             openTime: data.openTime,
             closeTime: data.closeTime,
             gallery: data.gallery || [],
-            altPhone: data.altPhone,
         };
 
-        // ✅ 2. User Data (Goes to 'User' Table - Social Links)
         const userSocialsUpdate = {
             instagramUrl: data.instagramUrl,
             facebookUrl: data.facebookUrl,
@@ -115,41 +127,37 @@ export async function POST(req: Request) {
         };
 
         const categoryRelation = data.categoryId ? { connect: { id: data.categoryId } } : undefined;
-        const subCatsConnect = data.subCategoryIds?.map((id: string) => ({ id })) || [];
+
+        // ✅ FIXED: Read from raw 'formData' to avoid TS error on 'data'
+        // 'data' is typed by Zod, which might not have 'subCategoryId' yet.
+        // 'formData' is 'any', so it allows access.
+        const rawSubId = (formData as any).subCategoryId || (data.subCategoryIds && data.subCategoryIds[0]);
+        const subCategoryRelation = rawSubId ? { connect: { id: rawSubId } } : undefined;
 
         let result;
 
         if (serviceId) {
-            // --- UPDATE EXISTING SERVICE ---
+            // --- UPDATE ---
             result = await prisma.service.update({
                 where: { id: serviceId },
                 data: {
                     ...servicePayload,
                     category: categoryRelation,
-                    subcategories: { set: subCatsConnect },
-
-                    // Update User Socials via Nested Update
-                    user: {
-                        update: userSocialsUpdate
-                    }
+                    subcategory: subCategoryRelation,
+                    user: { update: userSocialsUpdate }
                 },
             });
         } else {
-            // --- CREATE NEW SERVICE ---
+            // --- CREATE ---
             result = await prisma.service.create({
                 data: {
                     ...servicePayload,
                     category: categoryRelation,
-                    subcategories: { connect: subCatsConnect },
-
-                    // Connect to User
-                    user: {
-                        connect: { id: userId },
-                    }
+                    subcategory: subCategoryRelation,
+                    user: { connect: { id: userId } }
                 },
             });
 
-            // Explicitly update user socials after create (since nested connect+update is tricky in some Prisma versions)
             await prisma.user.update({
                 where: { id: userId },
                 data: userSocialsUpdate
@@ -163,19 +171,33 @@ export async function POST(req: Request) {
     }
 }
 
-// 3. DELETE
+// ============================================================================
+// 3. DELETE (Handles both Services and Rentals)
+// ============================================================================
 export async function DELETE(req: Request) {
     try {
         const { userId, serviceId } = await req.json();
         if (!userId || !serviceId) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
-        const result = await prisma.service.deleteMany({
+        // 1. Try deleting from Service first
+        const serviceDelete = await prisma.service.deleteMany({
             where: { id: serviceId, userId: userId }
         });
 
-        if (result.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        if (serviceDelete.count > 0) {
+            return NextResponse.json({ success: true, message: "Service Deleted" });
+        }
 
-        return NextResponse.json({ success: true, message: "Deleted" });
+        // 2. If not found in Service, try deleting from Rental
+        const rentalDelete = await prisma.rental.deleteMany({
+            where: { id: serviceId, userId: userId }
+        });
+
+        if (rentalDelete.count > 0) {
+            return NextResponse.json({ success: true, message: "Rental Deleted" });
+        }
+
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

@@ -46,7 +46,7 @@ export default function Hero() {
         {/* SEARCH SECTION */}
         <div className="mx-auto mb-16 max-w-2xl">
           {/* Input Wrapper */}
-          <div className="group relative flex items-center rounded-full border border-gray-200 bg-white p-1.5 shadow-lg transition-all focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-100 hover:shadow-xl">
+          {/* <div className="group relative flex items-center rounded-full border border-gray-200 bg-white p-1.5 shadow-lg transition-all focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-100 hover:shadow-xl">
             <div className="pl-4 text-gray-400 group-focus-within:text-blue-500">
               <FaMagnifyingGlass size={18} />
             </div>
@@ -59,7 +59,7 @@ export default function Hero() {
             <button className="shrink-0 rounded-full bg-slate-900 px-6 py-3 font-bold text-white transition-all hover:bg-black active:scale-95 sm:px-8">
               Search
             </button>
-          </div>
+          </div> */}
 
           {/* Popular Tags */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-gray-500">

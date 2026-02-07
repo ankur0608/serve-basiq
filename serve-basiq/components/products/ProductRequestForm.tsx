@@ -27,7 +27,6 @@ interface Props {
         preferredLanguage?: string;
     };
     onRequestClose: () => void;
-    // ✅ ADDED: Success callback prop
     onSuccess?: () => void;
 }
 
@@ -55,7 +54,7 @@ const BUDGET_OPTIONS = [
 ];
 
 export default function ProductRequestForm({
-    productId, productName, price, unit, moq, userId, userAddresses, userDetails, onRequestClose, onSuccess // 👈 Destructure
+    productId, productName, price, unit, moq, userId, userAddresses, userDetails, onRequestClose, onSuccess
 }: Props) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -99,7 +98,6 @@ export default function ProductRequestForm({
         setIsAddressModalOpen(true);
     };
 
-    // ✅ FIXED: Added async to match ProfileEditModal interface
     const handleSaveAddress = async (data: ProfileData) => {
         const newAddress = {
             id: editingAddress?.id || `temp-${Date.now()}`,
@@ -108,6 +106,7 @@ export default function ProductRequestForm({
             line2: data.addressLine2,
             landmark: data.landmark,
             city: data.city,
+            district: data.district || '', // ✅ Added District Here
             state: data.state,
             pincode: data.pincode,
             type: "Home",
@@ -124,7 +123,7 @@ export default function ProductRequestForm({
 
         setAddresses(updatedList);
         setIsAddressModalOpen(false);
-        return Promise.resolve(); // Return promise
+        return Promise.resolve();
     };
 
     const handleNext = () => {
@@ -175,6 +174,7 @@ export default function ProductRequestForm({
                     line2: selectedAddressObj.line2,
                     landmark: selectedAddressObj.landmark,
                     city: selectedAddressObj.city,
+                    district: selectedAddressObj.district, // ✅ Pass district to API
                     state: selectedAddressObj.state,
                     pincode: selectedAddressObj.pincode,
                     type: (selectedAddressObj.type || "HOME").toUpperCase(),
@@ -190,7 +190,6 @@ export default function ProductRequestForm({
             const data = await res.json();
 
             if (data.success || res.ok) {
-                // ✅ TRIGGER SUCCESS CALLBACK
                 if (onSuccess) {
                     onSuccess();
                 } else {
@@ -209,6 +208,7 @@ export default function ProductRequestForm({
         }
     };
 
+    // ✅ FIXED: Added district to both return paths
     const getModalInitialData = (): ProfileData => {
         const defaults = {
             dateOfBirth: userDetails?.dob || "",
@@ -225,6 +225,7 @@ export default function ProductRequestForm({
                 addressLine2: editingAddress.line2 || "",
                 landmark: editingAddress.landmark || "",
                 city: editingAddress.city || "",
+                district: editingAddress.district || "", // ✅ Added District
                 state: editingAddress.state || "",
                 pincode: editingAddress.pincode || ""
             };
@@ -235,6 +236,7 @@ export default function ProductRequestForm({
             addressLine2: "",
             landmark: "",
             city: "",
+            district: "", // ✅ Added District
             state: "",
             pincode: ""
         };

@@ -12,8 +12,6 @@ export async function POST(req: Request) {
             productId,
             quantity,
             addressId,
-            // deliveryType, // ❌ REMOVED
-            
             notes,
             timeline
         } = body;
@@ -48,14 +46,16 @@ export async function POST(req: Request) {
             data: {
                 userId,
                 productId,
-                addressId: addressId, // ✅ Directly use addressId
+                addressId: addressId,
                 quantity: finalQuantity,
                 unit: product.unit,
                 totalPrice: totalPrice,
-                // deliveryType: "DELIVERY", // ❌ REMOVED (Ensure your Prisma schema default handles this or remove the field from schema too)
                 specialInstructions: notes,
-                status: 'PENDING',
-                paymentStatus: 'PENDING',
+
+                // ✅ FIXED: Changed 'PENDING' to 'REQUESTED' to match your Schema
+                status: 'REQUESTED',
+
+                paymentStatus: 'PENDING', // This is still valid if PaymentStatus enum has PENDING
                 timeline: timeline || 'IMMEDIATE',
             },
         });

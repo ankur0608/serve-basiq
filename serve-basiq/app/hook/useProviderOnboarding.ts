@@ -3,26 +3,49 @@ import { useRouter } from "next/navigation";
 import { onboardSchema } from "@/lib/validators";
 import { useUIStore, User } from "@/lib/store"; // Added User import
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import imageCompression from 'browser-image-compression';
 
-// --- HELPER: Upload to Backend ---
 async function uploadToBackend(file: File): Promise<string> {
-    const formData = new FormData();
-    formData.append("file", file);
+    // 1. Compression Options
+    const options = {
+        maxSizeMB: 0.8,          // Max size roughly 800KB
+        maxWidthOrHeight: 1200, // Resizes large images
+        useWebWorker: true,
+    };
 
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    try {
+        // 2. Compress the file
+        const compressedFile = await imageCompression(file, options);
+        console.log(`Compressed from ${file.size / 1024}KB to ${compressedFile.size / 1024}KB`);
 
-    if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Upload failed");
+        // 3. Prepare FormData with the smaller file
+        const formData = new FormData();
+        formData.append("file", compressedFile, file.name);
+
+        // 4. Send to your working API
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.message || "Upload failed");
+        }
+
+        const data = await res.json();
+
+        // Return the URL from your R2 helper
+        if (data.url) return data.url;
+
+        // Fallback to ImageKit if you use that for transformations
+        if (data.key) {
+            const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
+            if (urlEndpoint) return `${urlEndpoint.replace(/\/$/, "")}/${data.key}`;
+        }
+
+        throw new Error("Upload successful but no valid URL returned");
+    } catch (error) {
+        console.error("Compression or Upload Error:", error);
+        throw error;
     }
-
-    const data = await res.json();
-    if (data.url) return data.url;
-    if (data.key) {
-        const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
-        if (urlEndpoint) return `${urlEndpoint.replace(/\/$/, "")}/${data.key}`;
-    }
-    throw new Error("Upload successful but no valid URL returned");
 }
 
 export function useProviderOnboarding() {
@@ -173,6 +196,7 @@ export function useProviderOnboarding() {
 
         try {
             setUploading(true);
+            // This now handles both compression and the API call
             const url = await uploadToBackend(file);
             setImgPreview(url);
         } catch (err: any) {

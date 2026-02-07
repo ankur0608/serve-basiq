@@ -21,7 +21,6 @@ interface BookingFormProps {
     dob?: string;
   };
   onRequestClose: () => void;
-  // ✅ Added onSuccess callback
   onSuccess?: () => void;
 }
 
@@ -39,13 +38,12 @@ export default function BookingForm({
   userAddresses: initialAddresses,
   userDetails,
   onRequestClose,
-  onSuccess // 👈 Destructure this
+  onSuccess
 }: BookingFormProps) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const [addresses, setAddresses] = useState(initialAddresses || []);
-  // Initialize empty so user MUST pick one
   const [addressId, setAddressId] = useState(addresses.length === 1 ? addresses[0].id : '');
 
   const [timeline, setTimeline] = useState('IMMEDIATE');
@@ -73,6 +71,7 @@ export default function BookingForm({
       line2: data.addressLine2,
       landmark: data.landmark,
       city: data.city,
+      district: data.district || '', // ✅ Save district as well
       state: data.state,
       pincode: data.pincode,
       type: "Home",
@@ -84,7 +83,6 @@ export default function BookingForm({
       updatedList = addresses.map((a: any) => a.id === editingAddress.id ? newAddress : a);
     } else {
       updatedList = [...addresses, newAddress];
-      // ✅ Auto-select the newly created address
       setAddressId(newAddress.id);
     }
 
@@ -94,7 +92,7 @@ export default function BookingForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addressId) return; // Button is disabled, but safety check
+    if (!addressId) return;
     setLoading(true);
 
     try {
@@ -113,6 +111,7 @@ export default function BookingForm({
           line2: selectedAddressObj.line2,
           landmark: selectedAddressObj.landmark,
           city: selectedAddressObj.city,
+          district: selectedAddressObj.district, // ✅ Include district in payload
           state: selectedAddressObj.state,
           pincode: selectedAddressObj.pincode,
           type: (selectedAddressObj.type || "HOME").toUpperCase(),
@@ -128,7 +127,7 @@ export default function BookingForm({
       const data = await res.json();
       if (data.success) {
         if (onSuccess) {
-          onSuccess(); // ✅ Trigger Success Modal
+          onSuccess();
         } else {
           alert('Booking Request Sent Successfully!');
           onRequestClose();
@@ -157,6 +156,7 @@ export default function BookingForm({
         addressLine2: editingAddress.line2 || "",
         landmark: editingAddress.landmark || "",
         city: editingAddress.city || "",
+        district: editingAddress.district || "", // ✅ ADDED THIS
         state: editingAddress.state || "",
         pincode: editingAddress.pincode || ""
       };
@@ -171,6 +171,7 @@ export default function BookingForm({
       addressLine2: "",
       landmark: "",
       city: "",
+      district: "", // ✅ ADDED THIS
       state: "",
       pincode: ""
     };
@@ -316,7 +317,6 @@ export default function BookingForm({
         <button
           type="submit"
           onClick={handleSubmit}
-          // ✅ Button strictly disabled if no address
           disabled={loading || !addressId}
           className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >

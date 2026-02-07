@@ -21,7 +21,7 @@ export default function ServiceCategories({ categories }: CategoryProps) {
           <FaScrewdriverWrench className="text-brand-500" /> Popular Services
         </h2>
         <Link
-          href="/servicescategory"
+          href="/categories"
           className="text-xs font-bold text-slate-500 hover:text-brand-600 uppercase tracking-wide"
         >
           View All

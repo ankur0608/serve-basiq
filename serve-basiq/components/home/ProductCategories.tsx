@@ -21,7 +21,7 @@ export default function ProductCategories({ categories }: ProductCategoriesProps
                     <FaBoxOpen className="text-commerce-500" /> Wholesale Products
                 </h2>
                 <Link
-                    href="/productscategory"
+                    href="/categories"
                     className="text-xs font-bold text-slate-500 hover:text-commerce-600 uppercase tracking-wide"
                 >
                     View All

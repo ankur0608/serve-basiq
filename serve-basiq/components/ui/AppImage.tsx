@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image"; // Optional: Use Next.js Image for optimization if preferred
+import Image from "next/image"; // ✅ Using Next.js Image
+import { FaImage } from "react-icons/fa6"; // Optional: Icon for error state
 
 type ImageType =
   | "avatar"
@@ -19,7 +20,7 @@ interface AppImageProps {
   priority?: boolean;
 }
 
-// Keep presets if you integrate an Image CDN later
+// ImageKit Presets (Optional usage)
 const IMAGE_PRESETS: Record<ImageType, string> = {
   avatar: "w-120,h-120,c-fill,q-auto,f-auto",
   thumbnail: "w-300,h-220,c-fill,q-auto,f-auto",
@@ -31,49 +32,50 @@ const IMAGE_PRESETS: Record<ImageType, string> = {
 
 export default function AppImage({
   src,
-  alt = "",
+  alt = "Image",
   type = "card",
   className = "",
   priority = false,
 }: AppImageProps) {
   const [error, setError] = useState(false);
 
-  // If src is missing or error occurred, show fallback
+  // 1. Handle Missing Source or Error
   if (!src || error) {
     return (
       <div
-        className={`bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase tracking-wider ${className}`}
+        className={`bg-slate-100 flex items-center justify-center text-slate-300 ${className}`}
+        title="Image not found"
       >
-        <span>No IMG</span>
+        <FaImage size={24} />
       </div>
     );
   }
 
-  // ✅ FIX: Determine if we should apply ImageKit transformations
-  // Only apply if the URL actually belongs to your ImageKit endpoint
-  const isImageKit = src.includes("imagekit.io");
+  // 2. Check for R2 (Cloudflare) to skip optimization
+  // This fixes the "upstream image response timed out" 500 error
+  const isR2Image = src.includes("r2.dev");
 
+  // 3. Handle ImageKit Transformations (Optional)
   let finalSrc = src;
+  const isImageKit = src.includes("imagekit.io");
 
   if (isImageKit) {
     const transform = IMAGE_PRESETS[type];
-    // Append query param correctly (handle existing query params)
     const separator = src.includes("?") ? "&" : "?";
     finalSrc = `${src}${separator}tr=${transform}`;
   }
 
-  // ✅ Render Standard Image Tag (Safer for mixed sources like Google/Local)
   return (
-    <img
+    <Image
       src={finalSrc}
       alt={alt}
-      loading={priority ? "eager" : "lazy"}
-      decoding="async"
-      onError={(e) => {
-        // Prevent infinite error loops if fallback fails
-        setError(true);
-      }}
-      className={`transition-opacity duration-300 ${className}`}
+      fill // ✅ Adapts to parent container size
+      priority={priority}
+      // ✅ Critical Fix: Skip Next.js optimization for R2 to avoid timeouts
+      unoptimized={isR2Image}
+      className={`object-cover transition-opacity duration-300 ${className}`}
+      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+      onError={() => setError(true)}
     />
   );
 }

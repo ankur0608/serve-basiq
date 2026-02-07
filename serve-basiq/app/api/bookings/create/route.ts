@@ -74,7 +74,9 @@ export async function POST(req: Request) {
         addressId: finalAddressId, // <--- Now guaranteed to be real
         timeline: data.timeline,
         specialInstructions: data.specialInstructions,
-        status: 'PENDING',
+
+        // ✅ FIXED: Changed 'PENDING' to 'REQUESTED' to match your Schema
+        status: 'REQUESTED',
       },
     });
 

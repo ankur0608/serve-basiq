@@ -3,20 +3,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
 import AppImage from '@/components/ui/AppImage';
+import { uploadImage } from '@/lib/upload'; // ✅ Import the updated helper
 import {
     Package, BadgeIndianRupee, ChevronRight, Loader2, Save, UploadCloud,
     Trash2, X, LayoutGrid, Scale, Box, Truck, Plus
 } from 'lucide-react';
-
-// --- HELPER: Upload to Backend ---
-async function uploadToBackend(file: File): Promise<string> {
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
-    if (!res.ok) throw new Error("Upload failed");
-    const data = await res.json();
-    return data.url;
-}
 
 // --- Interfaces ---
 interface SubCategory { id: string; name: string; }
@@ -30,7 +21,6 @@ interface AddProductProps {
 }
 
 export function AddProductView({ setActiveView, userId, showToast, editingProduct }: AddProductProps) {
-    // loading state comes from useMutation (aliased as saving in your logic, or isSaving from hook)
     const { saveProduct, isSaving } = useProducts(userId);
 
     const [step, setStep] = useState(1);
@@ -40,21 +30,13 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     // Categories State
     const [categories, setCategories] = useState<Category[]>([]);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [loadingCats, setLoadingCats] = useState(true);
-
     const [form, setForm] = useState({
         name: editingProduct?.name || '',
         desc: editingProduct?.desc || '',
-
         categoryId: editingProduct?.categoryId || '',
-        subCategoryIds: editingProduct?.subcategories
-            ? editingProduct.subcategories.map((s: any) => s.id)
-            : [] as string[],
-
+        subCategoryId: editingProduct?.subCategoryId || editingProduct?.subcategory?.id || '',
         productImage: editingProduct?.productImage || editingProduct?.image || '',
         gallery: editingProduct?.gallery || [] as string[],
-
         price: editingProduct?.price ? String(editingProduct.price) : '',
         moq: editingProduct?.moq ? String(editingProduct.moq) : '1',
         stockStatus: editingProduct?.stockStatus || 'IN_STOCK',
@@ -72,8 +54,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
             } catch (error) {
                 console.error("Failed to load categories");
                 showToast("Failed to load categories", "error");
-            } finally {
-                setLoadingCats(false);
             }
         };
         fetchCategories();
@@ -87,14 +67,14 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
     const handleChange = useCallback((field: string, value: any) => {
         setForm(prev => {
-            // Reset subcategories if parent category changes
             if (field === 'categoryId') {
-                return { ...prev, [field]: value, subCategoryIds: [] };
+                return { ...prev, [field]: value, subCategoryId: '' };
             }
             return { ...prev, [field]: value };
         });
     }, []);
 
+    // ✅ UPDATED IMAGE UPLOAD HANDLER
     const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, target: 'main' | 'gallery') => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -103,7 +83,10 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField(target);
 
         try {
-            const url = await uploadToBackend(file);
+            // Logic is now inside uploadImage helper (compress -> presign -> upload)
+            const url = await uploadImage(file);
+            console.log("Uploaded URL:", url);
+
             if (target === 'main') {
                 setForm(prev => ({ ...prev, productImage: url }));
             } else {
@@ -111,6 +94,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
             }
             showToast("Image uploaded!", "success");
         } catch (e) {
+            console.error(e);
             showToast("Upload failed", "error");
         } finally {
             setUploading(false);
@@ -131,21 +115,17 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         if (!form.productImage) return showToast("Main product image is required", "error");
 
         const payload = {
-            id: editingProduct?.id, // ID presence tells the hook to UPDATE instead of CREATE
+            id: editingProduct?.id,
             ...form,
             price: parseFloat(form.price),
             moq: parseInt(form.moq),
         };
 
         try {
-            // ✅ FIX: Removed the second argument (!!editingProduct).
-            // TanStack Query's mutateAsync only takes one argument (the payload).
             await saveProduct(payload);
-
             showToast(editingProduct ? "Product Updated!" : "Product Created!", "success");
             setActiveView('products');
         } catch (error: any) {
-            // React Query throws on error, so we catch it here
             showToast(error.message || "Failed to save", "error");
         }
     };
@@ -202,7 +182,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                                 </div>
                             </div>
 
-                            {/* DROPDOWN CATEGORY SELECTOR */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>Category</label>
@@ -229,8 +208,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                                         <select
                                             className={`${inputClass} pl-10`}
                                             disabled={!form.categoryId}
-                                            value={form.subCategoryIds[0] || ""}
-                                            onChange={e => handleChange('subCategoryIds', [e.target.value])}
+                                            value={form.subCategoryId}
+                                            onChange={e => handleChange('subCategoryId', e.target.value)}
                                         >
                                             <option value="">{activeSubCategories.length === 0 ? "No Sub-categories" : "Select Sub-Category"}</option>
                                             {activeSubCategories.map(s => (
@@ -250,7 +229,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                             <button
                                 type="button"
                                 onClick={() => setStep(2)}
-                                disabled={!form.categoryId || form.subCategoryIds.length === 0 || !form.name}
+                                disabled={!form.categoryId || !form.subCategoryId || !form.name}
                                 className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Next Step <ChevronRight size={18} />

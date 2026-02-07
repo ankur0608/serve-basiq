@@ -2,7 +2,8 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-// Define a simple Address type for the array
+
+// ✅ 1. Define Address Interface
 export interface Address {
   id: string;
   line1: string;
@@ -12,15 +13,17 @@ export interface Address {
   state: string;
   pincode: string;
   country: string;
+  district?: string;
 }
-// ✅ 1. Define the User interface with explicit flattened address fields
+
+// ✅ 2. Define User Interface
 export interface User {
   id: string;
   name: string | null;
   email: string | null;
   phone: string;
   img: string | null;
-  profileImage?: string | null; // Redundant key for safety
+  image?: string | null; // Keep both for compatibility
 
   role: string;
   providerType?: "SERVICE" | "PRODUCT" | "BOTH" | string;
@@ -29,32 +32,34 @@ export interface User {
   isWorker: boolean;
   isVerified: boolean;
   isWebsite: boolean;
+
   addresses?: Address[];
-  // Flattened Address Fields (Matches API response)
+
+  // Flattened Address Fields
   addressLine1?: string;
   addressLine2?: string;
   landmark?: string;
   city?: string;
+  district?: string;
   state?: string;
   pincode?: string;
   country?: string;
 
   dob?: string | Date | null;
-  dateOfBirth?: string; // Alias for frontend forms
+  dateOfBirth?: string;
   preferredLanguage?: string | null;
 
-  // Flag to check if we have fetched full details from DB
   isFullProfile?: boolean;
 }
 
-export interface UIState {
+interface UIState {
   currentUser: User | null;
-  lastFetched: number | null;
+  lastFetched: number; // ✅ Track when we last fetched
 
   setCurrentUser: (user: User | null) => void;
-  setLastFetched: (time: number | null) => void;
   logout: () => void;
 
+  // Login/Modal State
   loginIntent: "user" | "provider";
   setLoginIntent: (intent: "user" | "provider") => void;
 
@@ -84,11 +89,12 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       currentUser: null,
-      lastFetched: null,
+      lastFetched: 0, // Default to 0 (never fetched)
 
+      // ✅ When setting user, update timestamp
       setCurrentUser: (user) => set({ currentUser: user, lastFetched: Date.now() }),
-      setLastFetched: (time) => set({ lastFetched: time }),
-      logout: () => set({ currentUser: null, lastFetched: null }),
+
+      logout: () => set({ currentUser: null, lastFetched: 0 }),
 
       loginIntent: "user",
       setLoginIntent: (intent) => set({ loginIntent: intent }),
@@ -142,11 +148,12 @@ export const useUIStore = create<UIState>()(
       onCloseEditProfile: () => set({ isEditProfileOpen: false }),
     }),
     {
-      name: "servemate-storage",
+      name: "servemate-storage", // Unique name in localStorage
       storage: createJSONStorage(() => localStorage),
+      // ✅ Only save User and Timestamp
       partialize: (state) => ({
         currentUser: state.currentUser,
-        lastFetched: state.lastFetched,
+        lastFetched: state.lastFetched
       }),
     }
   )

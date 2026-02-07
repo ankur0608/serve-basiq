@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CategoryType } from "@prisma/client";
 
+// Force dynamic ensures we don't cache stale data on the server side
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
@@ -9,7 +10,7 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const typeParam = searchParams.get('type');
 
-        // 1. Base filter: We only want PARENTS (Level 1)
+        // 1. Base filter: We only want PARENTS (Level 1 Categories)
         let whereClause: any = {
             parentId: null
         };
@@ -32,14 +33,14 @@ export async function GET(req: Request) {
             select: {
                 id: true,
                 name: true,
-                image: true, // ✅ ADDED THIS: Now the frontend will get the image URL
+                image: true,
                 type: true,
-                // ⚠️ IMPORTANT: We fetch 'children' instead of 'subcategories'
+                // ✅ Fetch 'children' (Subcategories) for the dropdowns
                 children: {
                     select: {
                         id: true,
                         name: true,
-                        image: true // Optional: Add this if you want to show subcat images later
+                        image: true
                     },
                     orderBy: { name: 'asc' }
                 }

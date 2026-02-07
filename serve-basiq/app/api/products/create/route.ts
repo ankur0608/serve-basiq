@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// 1. Updated Zod Schema to match Frontend Payload
+// 1. Updated Zod Schema to match Single Subcategory
 const ProductSchema = z.object({
     name: z.string(),
     desc: z.string().optional().or(z.literal('')),
@@ -11,10 +11,11 @@ const ProductSchema = z.object({
     price: z.number(),
     moq: z.number(),
 
-    // ✅ Changed from 'category' to 'categoryId'
+    // ✅ Category ID
     categoryId: z.string().min(1, "Category is required"),
-    // ✅ Added subcategories array
-    subCategoryIds: z.array(z.string()).optional(),
+
+    // ✅ Changed from 'subCategoryIds' (array) to 'subCategoryId' (single string)
+    subCategoryId: z.string().optional(),
 
     stockStatus: z.enum(['IN_STOCK', 'ON_DEMAND']).default('IN_STOCK'),
     unit: z.enum(['PIECE', 'KG', 'BOX', 'LITER']).default('PIECE'),
@@ -33,10 +34,15 @@ export async function POST(req: Request) {
         }
 
         // 2. Validate with Zod
-        const data = ProductSchema.parse(formData);
+        // Note: If your frontend sends 'subCategoryIds' array, we map it to 'subCategoryId' manually below if needed, 
+        // but ideally frontend should send 'subCategoryId' string.
 
-        // 3. Prepare Relation Connections
-        const subCategoryConnect = data.subCategoryIds?.map((id) => ({ id })) || [];
+        // Quick fix for backward compatibility if frontend sends array:
+        if (formData.subCategoryIds && Array.isArray(formData.subCategoryIds) && formData.subCategoryIds.length > 0) {
+            formData.subCategoryId = formData.subCategoryIds[0];
+        }
+
+        const data = ProductSchema.parse(formData);
 
         const basePayload = {
             name: data.name,
@@ -60,15 +66,15 @@ export async function POST(req: Request) {
                 where: { id: productId },
                 data: {
                     ...basePayload,
-                    // Update Category (Connect New / Disconnect Old)
+                    // Update Main Category
                     category: data.categoryId
                         ? { connect: { id: data.categoryId } }
                         : { disconnect: true },
 
-                    // Update Subcategories (Replace list using 'set')
-                    subcategories: {
-                        set: subCategoryConnect
-                    }
+                    // ✅ Update Subcategory (Singular)
+                    subcategory: data.subCategoryId
+                        ? { connect: { id: data.subCategoryId } }
+                        : { disconnect: true },
                 },
             });
         } else {
@@ -81,15 +87,15 @@ export async function POST(req: Request) {
 
                     ...basePayload,
 
-                    // Connect Category
-                    category: {
-                        connect: { id: data.categoryId }
-                    },
+                    // Connect Main Category
+                    category: data.categoryId
+                        ? { connect: { id: data.categoryId } }
+                        : undefined,
 
-                    // Connect Subcategories (Use 'connect' for create)
-                    subcategories: {
-                        connect: subCategoryConnect
-                    }
+                    // ✅ Connect Subcategory (Singular)
+                    subcategory: data.subCategoryId
+                        ? { connect: { id: data.subCategoryId } }
+                        : undefined,
                 },
             });
         }

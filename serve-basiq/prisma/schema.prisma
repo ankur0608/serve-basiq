@@ -14,8 +14,9 @@ enum PriceType {
 }
 
 enum BookingStatus {
-    PENDING
-    CONFIRMED
+    REQUESTED
+    ACCEPTED
+    IN_PROGRESS
     COMPLETED
     CANCELLED
 }
@@ -32,13 +33,11 @@ enum RequestStatus {
 }
 
 enum OrderStatus {
-    PENDING
-    CONFIRMED
+    REQUESTED
+    ACCEPTED
     SHIPPED
-    OUT_FOR_DELIVERY
     DELIVERED
     CANCELLED
-    RETURNED
 }
 
 enum PaymentStatus {
@@ -98,28 +97,101 @@ enum CategoryType {
     SERVICE
     PRODUCT
     BOTH
+    RENTAL
 }
 
+model Rental {
+    id String @id @default(uuid())
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    name      String
+    desc      String
+    rentalImg String
+    coverImg  String?
+    gallery   String[]
+
+    // ✅ 1. Main Category
+    categoryId String?
+    category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
+
+    // ✅ 2. Subcategory
+    subCategoryId String?
+    subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
+
+    price     Float  @default(0)
+    priceType String
+    stock     Int    @default(1)
+
+    addressLine1 String?
+    addressLine2 String?
+    city         String?
+    state        String?
+    pincode      String?
+    latitude     Decimal?
+    longitude    Decimal?
+    radiusKm     Int?     @default(10)
+
+    isVerified Boolean @default(false)
+
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    bookings  Booking[]
+}
+
+// model Category {
+//     id       String        @id @default(uuid())
+//     name     String        @unique
+//     type     CategoryType?
+//     image    String?
+//     // 1. Self-Relation (Parent/Child)
+//     parentId String?
+//     parent   Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+//     children Category[]    @relation("CategoryHierarchy")
+
+//     // 2. Relations to Services
+//     services             Service[] @relation("MainCategory")
+//     serviceSubcategories Service[] @relation("ServiceSubcategories")
+
+//     // 3. Relations to Products
+//     products             Product[] @relation("ProductMainCategory")
+//     productSubcategories Product[] @relation("ProductSubcategories")
+
+//     rentals             Rental[] @relation("RentalMainCategory")
+//     rentalSubcategories Rental[] @relation("RentalSubcategories")
+//     createdAt           DateTime @default(now())
+//     updatedAt           DateTime @updatedAt
+// }
 model Category {
-    id       String        @id @default(uuid())
-    name     String        @unique
-    type     CategoryType?
-    image    String?
-    // 1. Self-Relation (Parent/Child)
+    id    String        @id @default(uuid())
+    name  String        @unique
+    type  CategoryType?
+    image String?
+
+    // 1. Hierarchy (Parent/Child)
     parentId String?
-    parent   Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
-    children Category[]    @relation("CategoryHierarchy")
+    parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+    children Category[] @relation("CategoryHierarchy")
 
-    // 2. Relations to Services
-    services             Service[] @relation("MainCategory")
-    serviceSubcategories Service[] @relation("ServiceSubcategories")
+    // 2. Services Relations
+    services      Service[] @relation("MainCategory")
+    servicesInSub Service[] @relation("ServiceSubCategory")
 
-    // 3. Relations to Products
-    products             Product[] @relation("ProductMainCategory")
-    productSubcategories Product[] @relation("ProductSubcategories")
+    // 3. Products Relations
+    products      Product[] @relation("ProductMainCategory")
+    productsInSub Product[] @relation("ProductSubCategory")
+
+    // 4. Rentals Relations
+    rentals      Rental[] @relation("RentalMainCategory")
+    rentalsInSub Rental[] @relation("RentalSubCategory")
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    service   Service? @relation(fields: [serviceId], references: [id])
+    serviceId String?
+    product   Product? @relation(fields: [productId], references: [id])
+    productId String?
 }
 
 model Admin {
@@ -147,10 +219,11 @@ model Booking {
 
     specialInstructions String?
 
-    status BookingStatus @default(PENDING)
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    status    BookingStatus @default(REQUESTED)
+    rentalId  String?
+    rental    Rental?       @relation(fields: [rentalId], references: [id])
+    createdAt DateTime      @default(now())
+    updatedAt DateTime      @updatedAt
 }
 
 model Order {
@@ -169,7 +242,7 @@ model Order {
     unit       UnitType
     totalPrice Float
 
-    status        OrderStatus   @default(PENDING)
+    status        OrderStatus   @default(REQUESTED)
     timeline      Timeline      @default(IMMEDIATE)
     paymentStatus PaymentStatus @default(PENDING)
 
@@ -196,10 +269,11 @@ model User {
     dob               DateTime?
     preferredLanguage String?       @default("English")
 
-    isPhoneVerified Boolean @default(false)
-    isWorker        Boolean @default(false)
-    isWebsite       Boolean @default(true)
+    isPhoneVerified Boolean  @default(false)
+    isWorker        Boolean  @default(false)
+    isWebsite       Boolean  @default(true)
     rejectionReason String?
+    rentals         Rental[] // ✅ Add this
 
     instagramUrl String?
     facebookUrl  String?
@@ -282,6 +356,7 @@ model Address {
     line1        String
     line2        String
     city         String
+    district     String?
     state        String
     pincode      String
     country      String        @default("India")
@@ -330,13 +405,13 @@ model Service {
     coverImg   String?
     mainimg    String?
 
-    // ✅ 1. Main Category Relation (matches "MainCategory" in Category model)
+    // ✅ 1. Main Category
     categoryId String?
     category   Category? @relation("MainCategory", fields: [categoryId], references: [id])
 
-    // ✅ 2. Subcategories Relation (matches "ServiceSubcategories" in Category model)
-    // This replaces "subCategoryIds String[]"
-    subcategories Category[] @relation("ServiceSubcategories")
+    // ✅ 2. Subcategory
+    subCategoryId String?
+    subcategory   Category? @relation("ServiceSubCategory", fields: [subCategoryId], references: [id])
 
     priceType PriceType @default(FIXED)
     price     Float     @default(0)
@@ -365,6 +440,7 @@ model Service {
     updatedAt   DateTime          @updatedAt
     bookings    Booking[]
     favoritedBy FavoriteService[]
+    categories  Category[]
 }
 
 model Review {
@@ -391,10 +467,13 @@ model Product {
     name String
     desc String
 
+    // ✅ 1. Main Category
     categoryId String?
     category   Category? @relation("ProductMainCategory", fields: [categoryId], references: [id])
 
-    subcategories Category[] @relation("ProductSubcategories")
+    // ✅ 2. Subcategory
+    subCategoryId String?
+    subcategory   Category? @relation("ProductSubCategory", fields: [subCategoryId], references: [id])
 
     productImage String
     gallery      String[]
@@ -408,6 +487,7 @@ model Product {
     createdAt    DateTime          @default(now())
     orders       Order[]
     favoritedBy  FavoriteProduct[]
+    categories   Category[]
 }
 
 // ✅ NEW MODEL: FavoriteService

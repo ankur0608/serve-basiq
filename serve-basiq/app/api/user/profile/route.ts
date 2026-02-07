@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        // ✅ FIX: Removed 'take: 1' so we get ALL addresses
+        // ✅ Get all addresses, newest first
         addresses: { orderBy: { createdAt: 'desc' } },
         orders: { take: 1 },
         bookings: { take: 1 }
@@ -30,52 +30,43 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Flatten Address (keep primary address logic for backward compatibility with profile forms)
+    // Flatten Address - Get the most recent one (index 0)
     const primaryAddress = user.addresses[0] || {};
 
-    // Helper: convert null/undefined to empty string for React Inputs
+    // Helper: convert null/undefined to empty string
     const val = (v: any) => (v === null || v === undefined ? "" : v);
 
-    // Format DOB
     const formattedDob = user.dob
       ? new Date(user.dob).toISOString().split('T')[0]
       : "";
 
-    // ✅ Construct the "Perfect" Response
+    // ✅ Construct Response with FULL address details
     const finalUserData = {
-      // Basic Info
       id: user.id,
       name: val(user.name),
       email: val(user.email),
       phone: val(user.phone),
-
-      // Images
-      img: val(user.image),
-      profileImage: val(user.image),
-
-      // Profile Details
+      img: val(user.image), // Normalized key
+      image: val(user.image), // Normalized key
       dob: formattedDob,
       dateOfBirth: formattedDob,
       preferredLanguage: val(user.preferredLanguage) || "English",
-
-      // Roles
       role: user.role,
       providerType: user.providerType,
       isWorker: user.isWorker,
       isPhoneVerified: user.isPhoneVerified,
-      // Address Fields (Flattened - mostly for Profile Edit Form)
+
+      // ✅ Address Fields (Mapped directly from primaryAddress)
       addressLine1: val(primaryAddress.line1),
       addressLine2: val(primaryAddress.line2),
       landmark: val(primaryAddress.landmark),
       city: val(primaryAddress.city),
       state: val(primaryAddress.state),
+      district: val(primaryAddress.district), // Ensure this is returned
       pincode: val(primaryAddress.pincode),
       country: val(primaryAddress.country) || "India",
 
-      // ✅ CRITICAL: Return the FULL array of addresses for the Booking Modal
-      addresses: user.addresses,
-
-      // ✅ Flag for Frontend Logic
+      addresses: user.addresses, // Full list for other uses
       isFullProfile: true
     };
 
@@ -87,10 +78,6 @@ export async function GET(request: Request) {
   }
 }
 
-
-/* =========================================================================
-   PATCH: Update User & Address
-   ========================================================================= */
 export async function PATCH(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -100,13 +87,12 @@ export async function PATCH(request: Request) {
     // @ts-ignore
     const userId = session.user.id;
 
-    // Destructure everything
     const {
       name, email, phone, dateOfBirth, dob, preferredLanguage, profileImage, image,
-      addressLine1, addressLine2, landmark, city, state, pincode, country
+      addressLine1, addressLine2, landmark, city, state, district, pincode, country
     } = body;
 
-    // 1. Prepare User Data
+    // 1. Update User Basic Info
     const userUpdateData: any = {};
     if (name) userUpdateData.name = name;
     if (email) userUpdateData.email = email;
@@ -121,25 +107,43 @@ export async function PATCH(request: Request) {
       await prisma.user.update({ where: { id: userId }, data: userUpdateData });
     }
 
-    // 2. Prepare Address Data
-    const hasAddressData = addressLine1 || city || state || pincode;
+    // 2. Update Address
+    // Check if we have ANY address data to save
+    const hasAddressData = addressLine1 || city || state || pincode || district;
+
     if (hasAddressData) {
       const addressData = {
         line1: addressLine1 || '',
         line2: addressLine2 || '',
         landmark: landmark || '',
         city: city || '',
+        district: district || '', // ✅ Ensure district is saved
         state: state || '',
         pincode: pincode || '',
         country: country || 'India'
       };
 
-      const existingAddress = await prisma.address.findFirst({ where: { userId } });
+      // Find the most recent address for this user
+      const existingAddress = await prisma.address.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'desc' } // Get the latest one
+      });
 
       if (existingAddress) {
-        await prisma.address.update({ where: { id: existingAddress.id }, data: addressData });
+        // Update existing
+        await prisma.address.update({
+          where: { id: existingAddress.id },
+          data: addressData
+        });
       } else {
-        await prisma.address.create({ data: { userId, type: 'Home', ...addressData } });
+        // Create new
+        await prisma.address.create({
+          data: {
+            userId,
+            type: 'Home',
+            ...addressData
+          }
+        });
       }
     }
 
@@ -149,12 +153,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
   }
 }
-
-// ... existing imports
-
-/* =========================================================================
-   POST: Handle Specific Actions (like UPDATE_NAME)
-   ========================================================================= */
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);

@@ -3,6 +3,8 @@
 import { ShieldCheck, UploadCloud, Loader2, Check } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import clsx from 'clsx';
+// ✅ Import the compression library
+import imageCompression from 'browser-image-compression';
 
 export default function StepThreeKYC({
     form,
@@ -19,30 +21,54 @@ export default function StepThreeKYC({
 }) {
     const [uploading, setUploading] = useState<Record<string, boolean>>({});
 
-    // ✅ Helper to determine the label text based on selection
+    // Helper to determine the label text based on selection
     const getUploadLabel = () => {
         switch (form.idProofType) {
-            case 'PAN':
-                return 'Upload PAN Card';
-            case 'DL':
-                return 'Upload Driving License';
+            case 'PAN': return 'Upload PAN Card';
+            case 'DL': return 'Upload Driving License';
             case 'Aadhaar':
-            default:
-                return 'Upload Aadhaar Card';
+            default: return 'Upload Aadhaar Card';
         }
     };
 
     const handleUpload = useCallback(async (file: File, field: string) => {
         setUploading((p) => ({ ...p, [field]: true }));
+
         try {
+            let fileToUpload = file;
+
+            // ✅ COMPRESSION LOGIC
+            // Only compress if it is an image
+            if (file.type.startsWith('image/')) {
+                const options = {
+                    maxSizeMB: 1,          // Max size in MB
+                    maxWidthOrHeight: 1920, // Max width/height
+                    useWebWorker: true,    // Use web worker for better performance
+                    initialQuality: 0.8    // Initial quality (0 to 1)
+                };
+
+                try {
+                    // console.log(`Original size: ${file.size / 1024 / 1024} MB`);
+                    fileToUpload = await imageCompression(file, options);
+                    // console.log(`Compressed size: ${fileToUpload.size / 1024 / 1024} MB`);
+                } catch (err) {
+                    console.error("Compression failed, uploading original file:", err);
+                    // We fall back to the original file if compression fails
+                }
+            }
+
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', fileToUpload);
+
             const res = await fetch('/api/upload', { method: 'POST', body: formData });
             if (!res.ok) throw new Error('Upload failed');
+
             const data = await res.json();
             updateField(field, data.url || data.key);
             showToast('Document uploaded successfully', 'success');
-        } catch {
+
+        } catch (error) {
+            console.error(error);
             showToast('Upload failed', 'error');
         } finally {
             setUploading((p) => ({ ...p, [field]: false }));
@@ -70,7 +96,7 @@ export default function StepThreeKYC({
                         const file = e.target.files?.[0];
                         if (!file) return;
                         handleUpload(file, field);
-                        e.target.value = '';
+                        e.target.value = ''; // Reset input so same file can be selected again if needed
                     }}
                 />
 
@@ -84,8 +110,7 @@ export default function StepThreeKYC({
                     )}
                     <div>
                         <p className="text-sm font-bold text-slate-700">
-                            {/* Use the dynamic label here as well if the file isn't uploaded yet */}
-                            {form[field] ? 'Document Uploaded' : uploading[field] ? 'Uploading...' : `Click to ${label}`}
+                            {form[field] ? 'Document Uploaded' : uploading[field] ? 'Compressing & Uploading...' : `Click to ${label}`}
                         </p>
                         {!form[field] && !uploading[field] && (
                             <p className="text-xs text-slate-400 mt-1">Supports JPG, PNG (Max 5MB)</p>
@@ -137,7 +162,6 @@ export default function StepThreeKYC({
                 </div>
 
                 {/* Single Image Picker with Dynamic Label */}
-                {/* ✅ Change: We call getUploadLabel() here */}
                 <FileUploadBox field="idProofImg" label={getUploadLabel()} />
 
                 {/* GST Section */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react'; // ✅ Added useMemo
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -45,7 +45,6 @@ export default function ServicesExplorer() {
     const [favorites, setFavorites] = useState<string[]>([]);
 
     // 1️⃣ Query: Current User Profile (Includes Addresses)
-    // ✅ This fixes the missing address issue in the Booking Modal
     const { data: currentUser } = useQuery({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
@@ -79,30 +78,49 @@ export default function ServicesExplorer() {
         staleTime: 1000 * 60 * 60 * 24,
     });
 
-    // 4️⃣ Query: Services
-    const { data: rawServices = [], isLoading: servLoading } = useQuery({
+    // 4️⃣ Query: Services & Rentals (Fetching the Object)
+    const { data: apiResponse, isLoading: servLoading } = useQuery({
         queryKey: ['services', 'explorer'],
         queryFn: async () => {
             const res = await fetch('/api/services?limit=12');
-            return res.json();
+            return res.json(); // Returns { services: [...], rentals: [...] }
         },
         staleTime: 1000 * 60 * 1,
     });
 
-    // Normalize Service Data
-    const services = Array.isArray(rawServices) ? rawServices.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        category: item.category?.name || "General",
-        price: Number(item.price) || 0,
-        priceType: item.priceType,
-        rating: 4.8,
-        reviewCount: 12,
-        location: item.city || "Remote",
-        image: item.serviceimg || item.mainimg || item.user?.profileImage || "",
-        isVerified: true,
-        user: item.user,
-    })) : [];
+    // ✅ FIX: Normalize & Combine Data using useMemo
+    const items = useMemo(() => {
+        if (!apiResponse) return [];
+
+        // Handle both Services and Rentals arrays from the response
+        const servicesList = apiResponse.services || [];
+        const rentalsList = apiResponse.rentals || [];
+
+        // Combine them
+        const combined = [...servicesList, ...rentalsList];
+
+        // Map to uniform structure
+        return combined.map((item: any) => {
+            const isRental = !!item.rentalImg; // Distinguish rental vs service
+
+            return {
+                id: item.id,
+                name: item.name,
+                category: item.category?.name || "General",
+                subcategory: item.subcategory?.name, // ✅ Added Subcategory
+                price: Number(item.price) || 0,
+                priceType: item.priceType,
+                rating: item.rating || 4.8,
+                reviewCount: item._count?.reviews || 12, // Use actual count if available
+                location: item.city || "Remote",
+                // ✅ FIX: Check all possible image fields
+                image: item.serviceimg || item.rentalImg || item.mainimg || item.user?.profileImage || "",
+                isVerified: item.isVerified,
+                user: item.user,
+                type: isRental ? 'RENTAL' : 'SERVICE' // Useful for debugging or badges
+            };
+        });
+    }, [apiResponse]);
 
     const loading = catLoading || servLoading;
 
@@ -140,7 +158,7 @@ export default function ServicesExplorer() {
                             >
                                 <FaArrowLeft size={20} />
                             </button>
-                            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Explore Services</h1>
+                            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Explore Services & Rentals</h1>
                             <div className="hidden md:flex items-center gap-2 text-sm font-bold text-gray-600 bg-gray-100 pl-3 pr-4 py-2 rounded-full cursor-pointer hover:bg-gray-200 transition">
                                 <BiMap className="text-blue-600 text-lg" /> <span>Global</span>
                             </div>
@@ -152,7 +170,7 @@ export default function ServicesExplorer() {
                     <div className="animate-in fade-in duration-500">
 
                         {/* ================= CATEGORIES SECTION ================= */}
-                        <div className="mb-12">
+                        {/* <div className="mb-12">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Top Categories</h2>
                                 <Link href="/servicescategory" className="text-blue-600 text-xs font-bold uppercase hover:underline">View All</Link>
@@ -166,27 +184,24 @@ export default function ServicesExplorer() {
                                         className="group flex flex-col items-center text-center cursor-pointer"
                                     >
                                         <div className="
-                w-[45px] h-[45px] 
-                flex items-center justify-center
-                rounded-xl
-                border border-gray-200
-                bg-white
-                group-hover:border-blue-600
-                transition
-                overflow-hidden
-                /* REMOVED PADDING ENTIRELY (p-0) */
-                p-0 
-            ">
+                                            w-[45px] h-[45px] 
+                                            flex items-center justify-center
+                                            rounded-xl
+                                            border border-gray-200
+                                            bg-white
+                                            group-hover:border-blue-600
+                                            transition
+                                            overflow-hidden
+                                            p-0 
+                                        ">
                                             {cat.image ? (
                                                 <AppImage
                                                     src={cat.image}
                                                     alt={cat.name}
                                                     type="thumbnail"
-                                                    /* CHANGED object-contain TO object-cover TO FILL THE 45px SQUARE */
                                                     className="w-full h-full object-cover"
                                                 />
                                             ) : (
-                                                /* BIG FALLBACK ICON */
                                                 <FaScrewdriverWrench className="text-blue-600 w-8 h-8" />
                                             )}
                                         </div>
@@ -197,40 +212,38 @@ export default function ServicesExplorer() {
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        </div> */}
                         {/* ================= END CATEGORIES ================= */}
 
 
-                        {/* Services Section */}
+                        {/* Services & Rentals Section */}
                         <div className="flex items-center justify-between mb-8">
                             <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
                                 <FaFire className="text-orange-500 animate-pulse" /> Popular Near You
                             </h3>
                             <div className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-                                {services.length} Services Found
+                                {items.length} Results Found
                             </div>
                         </div>
 
-                        {services.length === 0 ? (
+                        {items.length === 0 ? (
                             <div className="bg-white rounded-3xl p-16 border-2 border-dashed border-slate-200 text-center">
                                 <SearchX className="mx-auto text-slate-300 mb-4" size={60} />
-                                <h4 className="text-xl font-bold text-slate-800">No Services Available</h4>
+                                <h4 className="text-xl font-bold text-slate-800">No Services or Rentals Available</h4>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {services.map((service, i) => (
+                                {items.map((item, i) => (
                                     <ServiceCard
-                                        key={service.id}
-                                        service={service}
-                                        isFav={favorites.includes(service.id)}
+                                        key={item.id}
+                                        service={item} // ✅ Pass the normalized item
+                                        isFav={favorites.includes(item.id)}
                                         toggleFav={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            handleToggleFav(service.id);
+                                            handleToggleFav(item.id);
                                         }}
                                         index={i}
-                                        // ✅ PASSING THE FETCHED USER HERE
-                                        // This ensures the booking modal receives the full user profile with addresses
                                         currentUser={currentUser}
                                     />
                                 ))}

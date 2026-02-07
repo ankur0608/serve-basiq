@@ -4,64 +4,77 @@ import { useSession } from "next-auth/react";
 import { useUIStore } from "@/lib/store";
 import { FaCalendarCheck, FaBoxOpen, FaGear, FaChevronRight, FaSpinner } from "react-icons/fa6";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { fullLogout } from "@/lib/logout";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
 import ProfileEditModal, { ProfileData } from "@/components/profile/ProfileEditModal";
+import imageCompression from 'browser-image-compression';
 
 export default function ProfilePage() {
     const { data: session, status, update: updateSession } = useSession();
-
     const {
         currentUser,
         setCurrentUser,
+        lastFetched, // ✅ Get last fetched time
         logout,
         isEditProfileOpen,
         onOpenEditProfile,
         onCloseEditProfile
     } = useUIStore();
 
-    // Ref to prevent double-fetching in React Strict Mode
+    // Prevent hydration mismatch
+    const [isHydrated, setIsHydrated] = useState(false);
     const isFetching = useRef(false);
 
+    // Wait for Zustand to load from localStorage
     useEffect(() => {
-        // Only run if user is logged in
-        if (status === "authenticated" && session?.user) {
+        setIsHydrated(true);
+    }, []);
 
-            // ✅ LOGIC: Fetch if currentUser is null OR if it's missing the full DB data (isFullProfile)
-            // This stops the infinite loop because once we fetch, isFullProfile becomes true.
-            const needsData = !currentUser || !currentUser.isFullProfile;
+    useEffect(() => {
+        // 1. Wait for hydration and auth
+        if (!isHydrated || status !== "authenticated") return;
 
-            if (needsData && !isFetching.current) {
-                isFetching.current = true;
+        // 2. CACHE CHECK: Is data fresh? (e.g., fetched less than 5 mins ago)
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 Minutes
+        const isDataFresh = currentUser?.isFullProfile && (Date.now() - lastFetched < CACHE_DURATION);
 
-                const fetchProfile = async () => {
-                    try {
-                        // Timestamp prevents browser caching
-                        const res = await fetch(`/api/user/profile?t=${Date.now()}`);
-
-                        if (res.status === 401) {
-                            logout();
-                            return;
-                        }
-                        if (res.ok) {
-                            const data = await res.json();
-                            setCurrentUser(data); // This sets isFullProfile: true
-                        }
-                    } catch (error) {
-                        console.error("Profile fetch error", error);
-                    } finally {
-                        isFetching.current = false;
-                    }
-                };
-
-                fetchProfile();
-            }
+        // If fresh, STOP. Do NOT fetch.
+        if (isDataFresh) {
+            // console.log("✅ Using cached profile data");
+            return;
         }
-    }, [status, session, currentUser, setCurrentUser, logout]);
 
-    // Handle Saving Logic
+        // 3. Prevent double fetching
+        if (isFetching.current) return;
+        isFetching.current = true;
+
+        const fetchProfile = async () => {
+            try {
+                // ✅ No timestamp param, allow browser caching if needed
+                const res = await fetch(`/api/user/profile`);
+
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+                if (res.ok) {
+                    const data = await res.json();
+                    setCurrentUser(data); // This updates 'lastFetched' automatically in store
+                }
+            } catch (error) {
+                console.error("Profile fetch error", error);
+            } finally {
+                isFetching.current = false;
+            }
+        };
+
+        fetchProfile();
+
+    }, [status, isHydrated, currentUser, lastFetched, setCurrentUser, logout]);
+
+    // --- SAVE LOGIC (Compressed) ---
     const handleSaveProfile = async (formData: ProfileData, file: File | null) => {
         try {
             // @ts-ignore
@@ -70,26 +83,26 @@ export default function ProfilePage() {
 
             let uploadedImageUrl = formData.image;
 
-            // 1. Upload new image if exists
             if (file) {
+                let fileToUpload = file;
+                if (file.type.startsWith('image/')) {
+                    try {
+                        const options = { maxSizeMB: 1, maxWidthOrHeight: 1080, useWebWorker: true, initialQuality: 0.8 };
+                        fileToUpload = await imageCompression(file, options);
+                    } catch (e) { console.warn("Compression failed", e); }
+                }
+
                 const uploadData = new FormData();
-                uploadData.append('file', file);
+                uploadData.append('file', fileToUpload);
                 const res = await fetch('/api/upload', { method: 'POST', body: uploadData });
                 if (res.ok) {
                     const d = await res.json();
-                    uploadedImageUrl = d.url;
+                    uploadedImageUrl = d.url || (d.key ? `${process.env.NEXT_PUBLIC_R2_DOMAIN}/${d.key}` : null);
                 }
             }
 
-            // 2. Prepare Payload
-            const payload = {
-                userId,
-                ...formData,
-                image: uploadedImageUrl,
-                profileImage: uploadedImageUrl
-            };
+            const payload = { userId, ...formData, image: uploadedImageUrl, profileImage: uploadedImageUrl };
 
-            // 3. Send to API
             const updateRes = await fetch('/api/user/profile', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -97,28 +110,30 @@ export default function ProfilePage() {
             });
 
             if (updateRes.ok) {
-                // 4. Update Local Store Optimistically
-                const updatedUser = {
+                const updatedUser: any = {
                     ...currentUser,
                     ...formData,
                     img: uploadedImageUrl,
-                    // Ensure we keep the flag true so it doesn't re-fetch
+                    image: uploadedImageUrl,
                     isFullProfile: true
                 };
-
-                // @ts-ignore
-                setCurrentUser(updatedUser);
-
-                // 5. Update Session (for Header/Nav)
+                setCurrentUser(updatedUser); // Updates localStorage immediately
                 await updateSession({ name: formData.name, image: uploadedImageUrl });
-
                 onCloseEditProfile();
             }
         } catch (e) { console.error(e); }
     };
 
-    // Loading State
-    if (status === "loading") {
+    // --- RENDER ---
+
+    // 1. Show nothing until hydrated (avoids flicker)
+    if (!isHydrated) return null;
+
+    // 2. Fallback to session user if store is empty
+    const userToShow = currentUser || (session?.user as any);
+
+    // 3. Only show loading if we TRULY have no data
+    if (status === "loading" && !userToShow) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <FaSpinner className="animate-spin text-4xl text-slate-300" />
@@ -128,23 +143,20 @@ export default function ProfilePage() {
 
     if (status === "unauthenticated") return <div className="p-10 text-center">Please Login</div>;
 
-    const userAny = (currentUser as any) || {};
+    const userAny = userToShow || {};
 
-    // ✅ PREPARE DATA FOR MODAL
-    // Now simpler because API returns flattened keys (addressLine1, city, etc)
     const profileData: ProfileData = {
-        name: userAny.name || session?.user?.name || '',
-        email: userAny.email || session?.user?.email || '',
+        name: userAny.name || '',
+        email: userAny.email || '',
         phone: userAny.phone || '',
-        image: userAny.img || userAny.image || session?.user?.image || '',
+        image: userAny.img || userAny.image || '',
         dateOfBirth: userAny.dateOfBirth || userAny.dob || '',
         preferredLanguage: userAny.preferredLanguage || 'English',
-
-        // Direct mapping now works because API flattened it
-        addressLine1: userAny.addressLine1 || '',
-        addressLine2: userAny.addressLine2 || '',
+        addressLine1: userAny.addressLine1 || userAny.line1 || '',
+        addressLine2: userAny.addressLine2 || userAny.line2 || '',
         landmark: userAny.landmark || '',
         city: userAny.city || '',
+        district: userAny.district || '',
         state: userAny.state || '',
         pincode: userAny.pincode || ''
     };
@@ -152,14 +164,13 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen pb-32 bg-slate-50 animate-in fade-in">
             <ProfileHeader
-                userImage={userAny.img || session?.user?.image}
+                userImage={userAny.img || userAny.image}
                 onLogout={fullLogout}
                 onEditClick={onOpenEditProfile}
             />
 
             <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20 space-y-6">
                 <ProfileStats />
-
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="flex flex-col">
                         <MenuLink href="/profile/bookings" icon={<FaCalendarCheck className="text-blue-500" />} label="My Bookings" />
@@ -167,7 +178,6 @@ export default function ProfilePage() {
                         <MenuLink href="/profile/settings" icon={<FaGear className="text-slate-600" />} label="Settings" isLast />
                     </div>
                 </div>
-
                 <ProfileEditModal
                     isOpen={isEditProfileOpen}
                     onClose={onCloseEditProfile}

@@ -5,8 +5,20 @@ export async function PATCH(req: Request) {
     try {
         const { bookingId, status } = await req.json();
 
-        if (!['CONFIRMED', 'CANCELLED', 'COMPLETED'].includes(status)) {
-            return NextResponse.json({ success: false, message: "Invalid status" }, { status: 400 });
+        // ✅ Updated Valid Statuses based on your new Schema
+        const validStatuses = [
+            'REQUESTED',
+            'ACCEPTED',
+            'IN_PROGRESS',
+            'COMPLETED',
+            'CANCELLED'
+        ];
+
+        if (!validStatuses.includes(status)) {
+            return NextResponse.json({
+                success: false,
+                message: `Invalid status. Allowed: ${validStatuses.join(", ")}`
+            }, { status: 400 });
         }
 
         const updatedBooking = await prisma.booking.update({
@@ -16,6 +28,7 @@ export async function PATCH(req: Request) {
 
         return NextResponse.json({ success: true, booking: updatedBooking });
     } catch (error) {
+        console.error("Update Status Error:", error);
         return NextResponse.json({ success: false, message: "Error updating booking" }, { status: 500 });
     }
 }

@@ -12,17 +12,13 @@ import clsx from 'clsx';
 
 // --- IMPORTS ---
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
-import {
-    DashboardHomeView,
-    // LeadsView,
-    ProfileView
-} from '@/components/providers/GeneralViews';
+import { DashboardHomeView, ProfileView } from '@/components/providers/GeneralViews';
 import { AddProductView } from '@/components/providers/AddProductView';
 import { ManagementView } from '@/components/providers/Management';
 import { VerificationView } from '@/components/providers/VerificationView';
 import RequestsView from '@/components/providers/RequestsView';
 import { RestrictionModal } from '@/components/providers/RestrictionModal';
-import { ProductsView } from '@/components/providers/ProductsView';
+import { ProductsView } from '@/components/providers/ProductsView'; // Ensure path is correct
 
 export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
@@ -41,14 +37,14 @@ export default function ProviderDashboard() {
     const [showTypeModal, setShowTypeModal] = useState(false);
     const [updatingType, setUpdatingType] = useState(false);
 
-    // ✅ SAFE DATA EXTRACTION (Prevents Crash)
+    // ✅ SAFE DATA EXTRACTION
     const bookings = dashboardData?.bookings || [];
     const orders = dashboardData?.orders || [];
     const userData = dashboardData?.user;
     const providerType = dashboardData?.user?.providerType || 'BOTH';
     const isVerified = dashboardData?.isSetupComplete || false;
 
-    // ✅ FIX: Default Stats Object to prevent 'undefined' error
+    // ✅ FIX: Default Stats Object
     const safeStats = useMemo(() => {
         return dashboardData?.stats || {
             revenue: 0,
@@ -193,7 +189,6 @@ export default function ProviderDashboard() {
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
                     <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeView} set={handleViewChange} />
                     <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeView} set={handleViewChange} badge={dashboardData?.stats?.pendingRequests} />
-                    {/* <NavButton id="leads" icon={TrendingUp} label="Market Leads" active={activeView} set={handleViewChange} /> */}
                     <NavButton id="settings" icon={Package} label="Management" active={activeView} set={handleViewChange} />
                     <NavButton id="profile" icon={UserCircle} label="Account" active={activeView} set={handleViewChange} />
                 </nav>
@@ -247,7 +242,7 @@ export default function ProviderDashboard() {
                         {/* 1. Dashboard Home */}
                         {activeView === 'dashboard' && (
                             <DashboardHomeView
-                                stats={{ stats: safeStats }} // ✅ Use Safe Stats Here
+                                stats={{ stats: safeStats }}
                                 setActiveView={handleViewChange}
                                 onBackToHome={handleBackToHome}
                                 isVerified={isVerified}
@@ -265,19 +260,16 @@ export default function ProviderDashboard() {
                             />
                         )}
 
-                        {/* 3. Market Leads */}
-                        {/* {activeView === 'leads' && <LeadsView />} */}
-
-                        {/* 4. Account Profile */}
+                        {/* 3. Account Profile */}
                         {activeView === 'profile' && (
                             <ProfileView
-                                stats={{ stats: safeStats }} // ✅ Use Safe Stats Here Too
+                                stats={{ stats: safeStats }}
                                 user={userData}
                                 onEdit={() => handleViewChange('edit-profile')}
                             />
                         )}
 
-                        {/* 5. Service / Product Management */}
+                        {/* 4. Service / Product Management (Parent View) */}
                         {activeView === 'settings' && (
                             providerType === 'PRODUCT' ? (
                                 <div className="space-y-6">
@@ -288,6 +280,7 @@ export default function ProviderDashboard() {
                                             userId={currentUser.id}
                                             setSelectedProduct={setSelectedProduct}
                                             showToast={showToast}
+                                            providerType={providerType} // Pass for consistency
                                         />
                                     )}
                                 </div>
@@ -302,27 +295,23 @@ export default function ProviderDashboard() {
                             )
                         )}
 
-                        {/* 6. Products Specific Tab (for Hybrid Providers) */}
+                        {/* 5. Products Specific Tab (for Hybrid Providers) */}
                         {activeView === 'products' && (
                             <div className="space-y-6">
-                                {providerType === 'BOTH' && (
-                                    <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-xs border border-slate-200 shadow-sm">
-                                        <button onClick={() => handleViewChange('settings')} className="flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50">Services</button>
-                                        <button className="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-900 text-white shadow-sm">Products</button>
-                                    </div>
-                                )}
+                                {/* ✅ CLEANED UP: No hardcoded buttons here anymore */}
                                 {currentUser?.id && (
                                     <ProductsView
                                         setActiveView={handleViewChange}
                                         userId={currentUser.id}
                                         setSelectedProduct={setSelectedProduct}
                                         showToast={showToast}
+                                        providerType={providerType} // ✅ Passing prop for internal toggle
                                     />
                                 )}
                             </div>
                         )}
 
-                        {/* 7. Verification / Edit Profile */}
+                        {/* 6. Verification / Edit Profile */}
                         {activeView === 'edit-profile' && (
                             <VerificationView
                                 userId={currentUser?.id || ""}
@@ -335,7 +324,7 @@ export default function ProviderDashboard() {
                             />
                         )}
 
-                        {/* 8. Add/Edit Product Form */}
+                        {/* 7. Add/Edit Product Form */}
                         {activeView === 'add-product' && currentUser?.id && (
                             <AddProductView
                                 setActiveView={handleViewChange}

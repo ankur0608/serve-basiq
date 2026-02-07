@@ -18,7 +18,9 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
   const {
     step, setStep, loading, form, categories, loadingCats, activeSubCategories,
     handleChange, toggleSubCategory, toggleDay, handleImageUpload, removeGalleryImg,
-    handleGetLocation, handleSubmit, gettingLoc, activeUploadField
+    handleGetLocation, handleSubmit, gettingLoc, activeUploadField,
+    // ✅ NEW: Extract listing type controls from the hook
+    listingType, setListingType
   } = useServiceForm({ ...props, showToast });
 
   return (
@@ -33,7 +35,11 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
         <div className="bg-slate-900 p-6 text-white relative shrink-0">
           <div className="flex justify-between items-center mb-1">
             <h2 className="text-xl font-bold">
-              {serviceData ? 'Edit Service' : 'Create Service'}
+              {/* Dynamic Title based on Type */}
+              {serviceData
+                ? `Edit ${listingType === 'RENTAL' ? 'Rental' : 'Service'}`
+                : `Create ${listingType === 'RENTAL' ? 'Rental' : 'Service'}`
+              }
             </h2>
             <span className="text-xs font-bold bg-white/10 px-2 py-1 rounded text-slate-300">
               Step {step} of 4
@@ -56,6 +62,9 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
               activeSubCategories={activeSubCategories}
               toggleSubCategory={toggleSubCategory}
               setStep={setStep}
+              // ✅ Pass Type Controls
+              listingType={listingType}
+              setListingType={setListingType}
             />
           )}
 
@@ -88,6 +97,8 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
               setStep={setStep}
               onComplete={onComplete}
               serviceData={serviceData}
+              // ✅ Pass Type to adjust pricing models
+              listingType={listingType}
             />
           )}
 

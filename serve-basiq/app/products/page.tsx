@@ -134,7 +134,7 @@ export default function B2BMarketplace() {
           <div className="animate-in fade-in duration-500">
 
             {/* --- CATEGORIES --- */}
-            <div className="mb-12">
+            {/* <div className="mb-12">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Explore Categories</h2>
                 <Link href="/productscategory" className="text-blue-600 text-xs font-bold uppercase hover:underline">View All</Link>
@@ -175,7 +175,7 @@ export default function B2BMarketplace() {
                   </div>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             {/* --- TRENDING PRODUCTS --- */}
             <div>
