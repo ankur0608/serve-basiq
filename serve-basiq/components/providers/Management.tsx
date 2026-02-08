@@ -101,7 +101,7 @@ export function ManagementView({
 }: ManagementViewProps) {
 
     // 1. Data Fetching
-    const { services: rawServices, rentals: rawRentals, isLoading, refetch, deleteService } = useServices(currentUser?.id);
+    const { services: rawServices, rentals: rawRentals, isLoading, refetch, deleteItem } = useServices(currentUser?.id);
 
     const [selectedServiceToEdit, setSelectedServiceToEdit] = useState<any>(null);
     const [isEditingService, setIsEditingService] = useState(false);
@@ -142,12 +142,14 @@ export function ManagementView({
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("Are you sure you want to delete this listing?")) return;
         try {
-            await deleteService(id);
+            const service = allListings.find((s: any) => s.id === id);
+            const type = service?.listingType === 'RENTAL' ? 'RENTAL' : 'SERVICE';
+            await deleteItem({ id, type });
             showToast("Deleted successfully", "success");
         } catch (error) {
             showToast("Failed to delete", "error");
         }
-    }, [deleteService, showToast]);
+    }, [deleteItem, showToast, allListings]);
 
     const handleCreateNew = useCallback(() => {
         setSelectedServiceToEdit(null);

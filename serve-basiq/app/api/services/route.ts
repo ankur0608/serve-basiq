@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serviceSettingsSchema } from "@/lib/validators";
-
 export const dynamic = 'force-dynamic';
 
 const userSelect = {
@@ -34,9 +33,6 @@ const userSelect = {
     }
 };
 
-// ============================================================================
-// 1. GET: Fetch Services AND Rentals
-// ============================================================================
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
@@ -44,29 +40,31 @@ export async function GET(req: Request) {
         const limitParam = searchParams.get('limit');
         const limit = limitParam ? parseInt(limitParam) : undefined;
 
-        const whereClause = userId ? { userId: userId } : {};
+
+        const whereClause = {
+            isVerified: true,
+            ...(userId && { userId: userId })
+        };
 
         const [services, rentals] = await Promise.all([
-            // 1. Fetch Services
+            // 1. Fetch Verified Services
             prisma.service.findMany({
                 where: whereClause,
                 take: limit,
                 include: {
                     category: { select: { id: true, name: true } },
-                    // ✅ FIXED: Changed 'subcategories' to 'subcategory'
                     subcategory: { select: { id: true, name: true } },
                     user: { select: userSelect }
                 },
                 orderBy: { createdAt: 'desc' },
             }),
 
-            // 2. Fetch Rentals
+            // 2. Fetch Verified Rentals
             prisma.rental.findMany({
                 where: whereClause,
                 take: limit,
                 include: {
                     category: { select: { id: true, name: true } },
-                    // ✅ FIXED: Changed 'subcategories' to 'subcategory'
                     subcategory: { select: { id: true, name: true } },
                     user: { select: userSelect }
                 },
@@ -84,7 +82,6 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Failed to fetch listings", details: error.message }, { status: 500 });
     }
 }
-
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -128,9 +125,6 @@ export async function POST(req: Request) {
 
         const categoryRelation = data.categoryId ? { connect: { id: data.categoryId } } : undefined;
 
-        // ✅ FIXED: Read from raw 'formData' to avoid TS error on 'data'
-        // 'data' is typed by Zod, which might not have 'subCategoryId' yet.
-        // 'formData' is 'any', so it allows access.
         const rawSubId = (formData as any).subCategoryId || (data.subCategoryIds && data.subCategoryIds[0]);
         const subCategoryRelation = rawSubId ? { connect: { id: rawSubId } } : undefined;
 

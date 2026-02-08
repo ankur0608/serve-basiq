@@ -40,8 +40,8 @@ export const StepOneBasic = ({
                         handleChange('categoryId', ''); // Reset category
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${listingType === 'SERVICE'
-                            ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200'
-                            : 'text-slate-400 hover:text-slate-600'
+                        ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200'
+                        : 'text-slate-400 hover:text-slate-600'
                         }`}
                 >
                     <Hammer size={18} /> Service
@@ -53,8 +53,8 @@ export const StepOneBasic = ({
                         handleChange('categoryId', ''); // Reset category
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${listingType === 'RENTAL'
-                            ? 'bg-white text-orange-600 shadow-sm ring-1 ring-slate-200'
-                            : 'text-slate-400 hover:text-slate-600'
+                        ? 'bg-white text-orange-600 shadow-sm ring-1 ring-slate-200'
+                        : 'text-slate-400 hover:text-slate-600'
                         }`}
                 >
                     <Truck size={18} /> Rental
@@ -135,62 +135,52 @@ export const StepOneBasic = ({
                 </div>
             </div>
 
-            {/* --- SUB-CATEGORY MULTI-SELECT --- */}
-            <div className="relative" ref={dropdownRef}>
+            {/* --- SUB-CATEGORY DROPDOWN (Single Select) --- */}
+            <div className="relative">
                 <label className={labelClass}>
-                    {listingType === 'SERVICE' ? 'Sub-Services' : 'Sub-Items'}
-                    {form.subCategoryIds.length > 0 &&
-                        <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">
-                            {form.subCategoryIds.length} Selected
-                        </span>
-                    }
+                    {listingType === 'SERVICE' ? 'Sub-Service' : 'Sub-Item Type'}
                 </label>
+                <div className="relative">
+                    <select
+                        className={`${inputClass} appearance-none cursor-pointer ${!form.categoryId ? 'opacity-50 bg-slate-100' : ''}`}
+                        value={form.subCategoryIds[0] || ""} // Selects the first (and only) ID
+                        disabled={!form.categoryId || activeSubCategories.length === 0}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            // We save as [id] so your backend logic doesn't need to change
+                            handleChange('subCategoryIds', val ? [val] : []);
+                        }}
+                    >
+                        <option value="">
+                            {!form.categoryId
+                                ? "Select a category first..."
+                                : activeSubCategories.length === 0
+                                    ? "No options available"
+                                    : "Select a specific type..."
+                            }
+                        </option>
+                        {activeSubCategories.map((sub: SubCategory) => (
+                            <option key={sub.id} value={sub.id}>
+                                {sub.name}
+                            </option>
+                        ))}
+                    </select>
 
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (form.categoryId) setIsSubDropdownOpen(!isSubDropdownOpen);
-                    }}
-                    disabled={!form.categoryId}
-                    className={`w-full flex justify-between items-center text-left ${inputClass} ${!form.categoryId ? 'opacity-50 cursor-not-allowed bg-slate-100' : 'cursor-pointer hover:border-blue-300'}`}
-                >
-                    <span className={form.subCategoryIds.length === 0 ? "text-slate-400" : "text-slate-900 font-semibold"}>
-                        {!form.categoryId
-                            ? "Select a category above first"
-                            : form.subCategoryIds.length === 0
-                                ? "Select options..."
-                                : `${form.subCategoryIds.length} selected`
-                        }
-                    </span>
-                    <ChevronDown size={16} className={`text-slate-500 transition-transform ${isSubDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isSubDropdownOpen && form.categoryId && (
-                    <div className="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto p-2 animate-in fade-in zoom-in-95 duration-100">
-                        {activeSubCategories.length === 0 ? (
-                            <div className="p-4 text-center text-xs text-slate-400 font-medium">
-                                No specific options found for this category.
-                            </div>
+                    {/* Consistent Arrow Icon */}
+                    <div className="absolute right-4 top-3.5 pointer-events-none text-slate-500">
+                        {loadingCats ? (
+                            <Loader2 className="animate-spin" size={16} />
                         ) : (
-                            <div className="grid grid-cols-2 gap-2">
-                                {activeSubCategories.map((sub: SubCategory) => {
-                                    const isSelected = form.subCategoryIds.includes(sub.id);
-                                    return (
-                                        <div
-                                            key={sub.id}
-                                            onClick={() => toggleSubCategory(sub.id)}
-                                            className={`cursor-pointer px-3 py-2.5 rounded-lg border text-xs font-medium transition-all flex items-center gap-2 ${isSelected ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-100 hover:bg-slate-50 text-slate-600'}`}
-                                        >
-                                            <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-slate-300 bg-white'}`}>
-                                                {isSelected && <Check size={10} strokeWidth={4} />}
-                                            </div>
-                                            <span className="truncate">{sub.name}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            <ChevronDown size={16} />
                         )}
                     </div>
+                </div>
+
+                {/* Helpful hint if a category has no subcategories */}
+                {form.categoryId && activeSubCategories.length === 0 && !loadingCats && (
+                    <p className="text-[10px] text-slate-400 mt-1 italic">
+                        * No sub-categories found for this selection.
+                    </p>
                 )}
             </div>
 
@@ -233,7 +223,7 @@ export const StepOneBasic = ({
 };
 
 // --- STEP 2: Visuals (Same as before) ---
-export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, removeGalleryImg, setStep }: any) => (
+export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, removeGalleryImg, setStep, handleChange }: any) => (
     <div className="space-y-6 animate-in slide-in-from-right duration-300">
         <div>
             <label className={labelClass}>Main Image <span className="text-red-500">*</span></label>
@@ -271,9 +261,13 @@ export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, rem
                 {form.gallery.map((img: string, i: number) => (
                     <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 shadow-sm">
                         <img src={img} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
-                        <button type="button" onClick={() => removeGalleryImg(i)} className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition shadow-md hover:bg-red-600">
-                            <Trash2 size={12} />
+                        <button
+                            onClick={() => handleChange('gallery', form.gallery.filter((_: string, index: number) => index !== i))}
+                            className="p-2 border rounded-lg hover:bg-red-50 text-slate-500 transition-colors"
+                        >
+                            <Trash2 size={14} />
                         </button>
+
                     </div>
                 ))}
                 <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
@@ -441,3 +435,7 @@ export const StepFourPricing = ({ form, handleChange, loading, setStep, onComple
         </div>
     );
 };
+
+function onDelete(arg0: { id: any; type: any; }): void {
+    throw new Error('Function not implemented.');
+}

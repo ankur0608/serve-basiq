@@ -7,15 +7,14 @@ export default async function FeaturedProviders() {
   let services: any[] = [];
 
   try {
-    console.log("🔍 Fetching Featured Providers..."); // Log start
-
     services = await prisma.service.findMany({
-      take: 3,
+      take: 4, // Change this to 4 if you want to match the other page
       orderBy: { createdAt: 'desc' },
       where: {
-        // ✅ Relaxed filter: Only checks if the SERVICE is verified
+        // ⚠️ IF YOU WANT TO SEE ALL 4: 
+        // Either set 'isVerified' to true for all 4 in DB, 
+        // or comment this line out temporarily to confirm data exists.
         isVerified: true,
-        // user: { isVerified: true } // 👈 Commented out for testing
       },
       include: {
         category: { select: { name: true } },
@@ -24,15 +23,14 @@ export default async function FeaturedProviders() {
             name: true,
             image: true,
             isVerified: true,
-            shopName: true
+            shopName: true,
+            profileImage: true // Added this as a fallback
           }
         }
       }
     });
 
-    console.log("✅ Featured Providers Found:", services.length); // Log count
-    if (services.length === 0) console.log("⚠️ No services found. Check DB 'isVerified' field.");
-
+    console.log("✅ Featured Providers Found:", services.length);
   } catch (error) {
     console.error("❌ Featured Providers Error:", error);
   }
@@ -60,6 +58,16 @@ export default async function FeaturedProviders() {
       {services && services.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {services.map((service) => {
+            // ✅ FIX: Priority logic for images to match your other pages
+            const mainImage =
+              service.coverImg ||
+              service.serviceimg ||
+              service.mainimg ||
+              (service.gallery && service.gallery.length > 0 ? service.gallery[0] : null) ||
+              service.user?.image ||
+              service.user?.profileImage ||
+              "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80";
+
             const formattedService: ServiceProps = {
               id: service.id,
               name: service.name,
@@ -69,11 +77,11 @@ export default async function FeaturedProviders() {
               location: service.city
                 ? `${service.city}${service.state ? `, ${service.state}` : ''}`
                 : (service.loc || "India"),
-              image: service.mainimg || service.serviceimg || service.user?.image || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80",
+              image: mainImage,
               rating: Number(service.rating) || 5.0,
               isVerified: service.isVerified,
               providerName: service.user?.shopName || service.user?.name || "Expert Provider",
-              providerImage: service.user?.image
+              providerImage: service.user?.profileImage || service.user?.image || ""
             };
 
             return <ServiceCard key={formattedService.id} service={formattedService} />;

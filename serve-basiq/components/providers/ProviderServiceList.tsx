@@ -14,74 +14,80 @@ interface ManagementViewProps {
 }
 
 // ✅ ServiceTableRow: Updated to handle Rentals & Services
-const ServiceTableRow = memo(({ s, index, onEdit, onDelete }: { s: any, index: number, onEdit: (s: any) => void, onDelete: (id: string) => void }) => {
+const ServiceTableRow = memo(
+    ({ s, index, onEdit, onDelete }: {
+        s: any;
+        index: number;
+        onEdit: (s: any) => void;
+        onDelete: (payload: { id: string; type: 'SERVICE' | 'RENTAL' }) => void;
+    }) => {
 
-    // Normalize Image
-    const imageSrc = s.img || "";
+        // Normalize Image
+        const imageSrc = s.img || "";
 
-    // Helper for Price Label
-    const getPriceUnit = (type: string) => {
-        switch (type) {
-            case 'HOURLY': return 'hr';
-            case 'DAILY': return 'day';
-            case 'MONTHLY': return 'mo';
-            default: return 'fix';
-        }
-    };
+        // Helper for Price Label
+        const getPriceUnit = (type: string) => {
+            switch (type) {
+                case 'HOURLY': return 'hr';
+                case 'DAILY': return 'day';
+                case 'MONTHLY': return 'mo';
+                default: return 'fix';
+            }
+        };
 
-    return (
-        <tr className="group border-b border-slate-50 last:border-none hover:bg-slate-50/50 transition-colors">
-            <td className="py-4 pl-6 align-middle">
-                <span className="text-sm font-bold text-slate-500">{index + 1 < 10 ? `0${index + 1}` : index + 1}</span>
-            </td>
-            <td className="py-4 align-middle">
-                <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 relative">
-                        {imageSrc ? (
-                            <img src={imageSrc} alt={s.name} className="h-full w-full object-cover" />
-                        ) : (
-                            <Package size={16} className="text-slate-300 m-auto absolute inset-0" />
-                        )}
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <p className="font-bold text-slate-900 text-sm">{s.name}</p>
-                            {/* Type Badge */}
-                            <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${s.listingType === 'RENTAL' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
-                                {s.listingType === 'RENTAL' ? 'Rental' : 'Service'}
-                            </span>
+        return (
+            <tr className="group border-b border-slate-50 last:border-none hover:bg-slate-50/50 transition-colors">
+                <td className="py-4 pl-6 align-middle">
+                    <span className="text-sm font-bold text-slate-500">{index + 1 < 10 ? `0${index + 1}` : index + 1}</span>
+                </td>
+                <td className="py-4 align-middle">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 relative">
+                            {imageSrc ? (
+                                <img src={imageSrc} alt={s.name} className="h-full w-full object-cover" />
+                            ) : (
+                                <Package size={16} className="text-slate-300 m-auto absolute inset-0" />
+                            )}
                         </div>
-                        <p className="text-[10px] text-slate-400 line-clamp-1">{s.desc || 'No description provided'}</p>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <p className="font-bold text-slate-900 text-sm">{s.name}</p>
+                                {/* Type Badge */}
+                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${s.listingType === 'RENTAL' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
+                                    {s.listingType === 'RENTAL' ? 'Rental' : 'Service'}
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 line-clamp-1">{s.desc || 'No description provided'}</p>
+                        </div>
                     </div>
-                </div>
-            </td>
-            <td className="py-4 align-middle">
-                <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">
-                    {s.category?.name || 'General'}
-                </span>
-            </td>
-            <td className="py-4 align-middle font-bold text-slate-700 text-sm">
-                ₹{Number(s.price).toLocaleString()}
-                <span className="text-[10px] text-slate-400 font-medium ml-1 uppercase">
-                    /{getPriceUnit(s.priceType)}
-                </span>
-            </td>
-            <td className="py-4 align-middle">
-                {s.listingType === 'RENTAL' ? (
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${s.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                        {s.stock > 0 ? `${s.stock} in Stock` : 'Out of Stock'}
+                </td>
+                <td className="py-4 align-middle">
+                    <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">
+                        {s.category?.name || 'General'}
                     </span>
-                ) : (
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">Active</span>
-                )}
-            </td>
-            <td className="py-4 pr-6 align-middle text-right flex justify-end gap-2">
-                <button onClick={() => onEdit(s)} className="p-2 border rounded-lg hover:bg-blue-50 text-slate-500 transition-colors"><Pencil size={14} /></button>
-                <button onClick={() => onDelete(s.id)} className="p-2 border rounded-lg hover:bg-red-50 text-slate-500 transition-colors"><Trash2 size={14} /></button>
-            </td>
-        </tr>
-    );
-});
+                </td>
+                <td className="py-4 align-middle font-bold text-slate-700 text-sm">
+                    ₹{Number(s.price).toLocaleString()}
+                    <span className="text-[10px] text-slate-400 font-medium ml-1 uppercase">
+                        /{getPriceUnit(s.priceType)}
+                    </span>
+                </td>
+                <td className="py-4 align-middle">
+                    {s.listingType === 'RENTAL' ? (
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${s.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                            {s.stock > 0 ? `${s.stock} in Stock` : 'Out of Stock'}
+                        </span>
+                    ) : (
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">Active</span>
+                    )}
+                </td>
+                <td className="py-4 pr-6 align-middle text-right flex justify-end gap-2">
+                    <button onClick={() => onEdit(s)} className="p-2 border rounded-lg hover:bg-blue-50 text-slate-500 transition-colors"><Pencil size={14} /></button>
+                    <button onClick={() => onDelete(s.id)} className="p-2 border rounded-lg hover:bg-red-50 text-slate-500 transition-colors"><Trash2 size={14} /></button>
+                </td>
+            </tr>
+        );
+    });
 ServiceTableRow.displayName = "ServiceTableRow";
 
 
@@ -94,7 +100,7 @@ export function ManagementView({
 }: ManagementViewProps) {
 
     // ✅ FIXED: Now correctly extracts rentals from the hook
-    const { services: rawServices, rentals: rawRentals, isLoading, refetch, deleteService } = useServices(currentUser?.id);
+    const { services: rawServices, rentals: rawRentals, isLoading, refetch, deleteItem } = useServices(currentUser?.id);
 
     const [selectedServiceToEdit, setSelectedServiceToEdit] = useState<any>(null);
     const [isEditingService, setIsEditingService] = useState(false);
@@ -131,16 +137,20 @@ export function ManagementView({
         setIsEditingService(true);
     }, []);
 
-    const handleDelete = useCallback(async (id: string) => {
-        if (!confirm("Are you sure you want to delete this listing?")) return;
+    const handleDelete = useCallback(
+        async ({ id, type }: { id: string; type: 'SERVICE' | 'RENTAL' }) => {
+            if (!confirm("Are you sure you want to delete this listing?")) return;
 
-        try {
-            await deleteService(id);
-            showToast("Deleted successfully", "success");
-        } catch (error) {
-            showToast("Failed to delete", "error");
-        }
-    }, [deleteService, showToast]);
+            try {
+                await deleteItem({ id, type });
+                showToast("Deleted successfully", "success");
+            } catch {
+                showToast("Failed to delete", "error");
+            }
+        },
+        [deleteItem, showToast]
+    );
+
 
     const handleCreateNew = useCallback(() => {
         setSelectedServiceToEdit(null);

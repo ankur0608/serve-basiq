@@ -1,80 +1,41 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-// Define the structure of the API response
-interface ListingsData {
-    services: any[];
-    rentals: any[];
-}
-
-// --- API FETCH FUNCTION ---
-const fetchServicesFn = async (userId?: string): Promise<ListingsData> => {
-    if (!userId) return { services: [], rentals: [] };
-
-    try {
-        const res = await fetch(`/api/services?userId=${userId}`);
-
-        // If request fails, return empty arrays
-        if (!res.ok) return { services: [], rentals: [] };
-
-        const data = await res.json();
-
-        // ✅ FIX: The API returns an object { services: [...], rentals: [...] }
-        // We must return that structure, not check for Array.isArray(data)
-        return {
-            services: Array.isArray(data.services) ? data.services : [],
-            rentals: Array.isArray(data.rentals) ? data.rentals : []
-        };
-    } catch (error) {
-        console.error("Fetch error:", error);
-        return { services: [], rentals: [] };
-    }
-};
-
 export function useServices(userId: string | undefined) {
     const queryClient = useQueryClient();
     const queryKey = ['services', userId];
 
-    // --- 1. FETCH QUERY ---
     const { data, isLoading, refetch } = useQuery({
         queryKey: queryKey,
-        queryFn: () => fetchServicesFn(userId),
+        queryFn: async () => {
+            if (!userId) return { services: [], rentals: [] };
+            const res = await fetch(`/api/provider/services?userId=${userId}`);
+            return res.json();
+        },
         enabled: !!userId,
-        staleTime: Infinity,
-        refetchOnWindowFocus: false,
     });
 
-    // --- 2. DELETE MUTATION ---
+    // ✅ FIXED: Passes unified payload to match Backend DELETE expectations
     const deleteMutation = useMutation({
-        mutationFn: async (serviceId: string) => {
-            if (!userId) throw new Error("Missing User ID");
-
-            const res = await fetch('/api/services', {
+        mutationFn: async ({ id, type }: { id: string; type: 'SERVICE' | 'RENTAL' }) => {
+            const res = await fetch('/api/provider/services', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, serviceId })
+                body: JSON.stringify({ userId, id, type })
             });
-
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error || "Failed to delete");
-
-            return result;
+            if (!res.ok) throw new Error("Delete failed");
+            return res.json();
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey });
         },
-        onError: (error) => {
-            console.error("Delete error:", error);
-        }
     });
 
     return {
-        // ✅ Safely extract arrays from the data object
         services: data?.services || [],
         rentals: data?.rentals || [],
-
         isLoading,
         refetch,
-        deleteService: deleteMutation.mutateAsync,
+        deleteItem: deleteMutation.mutateAsync, // Use this for deletion
         isDeleting: deleteMutation.isPending
     };
 }
