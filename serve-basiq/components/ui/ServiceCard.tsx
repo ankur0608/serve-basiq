@@ -22,6 +22,8 @@ export interface ServiceProps {
     providerImage?: string | null;
     reviewCount?: number;
     user?: any;
+    // ✅ Added type to distinguish between Service and Rental
+    type?: 'SERVICE' | 'RENTAL'; 
 }
 
 interface ServiceCardProps {
@@ -46,30 +48,26 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
         reviewCount = 0,
         price,
         priceType,
-        user
+        user,
+        type = 'SERVICE' // ✅ Default to Service
     } = service;
 
     const displayImage = image || 'https://via.placeholder.com/500x300';
     const providerName = service.providerName || user?.name || user?.shopName || "Verified Pro";
 
-    // ✅ SMART USER RESOLUTION
-    const effectiveUser = useMemo(() => {
-        // Priority 1: User passed from parent (Best for Server Components, has addresses & verification)
-        if (currentUser) return currentUser;
+    // ✅ DYNAMIC PATH: Redirects to /rentals/ or /services/ correctly
+    const detailPath = type === 'RENTAL' ? `/rentals/${id}` : `/services/${id}`;
 
-        // Priority 2: User from active session (Client fallback)
+    const effectiveUser = useMemo(() => {
+        if (currentUser) return currentUser;
         if (session?.user) {
             return {
                 ...session.user,
                 id: (session.user as any).id,
-                // Note: Standard session might NOT have isPhoneVerified.
-                // The Wrapper will handle fetching the full profile if this is missing.
                 isPhoneVerified: (session.user as any).isPhoneVerified,
                 addresses: []
             };
         }
-
-        // Priority 3: Not logged in
         return null;
     }, [currentUser, session]);
 
@@ -82,7 +80,7 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
     return (
         <>
             <Link
-                href={`/services/${id}`}
+                href={detailPath} // ✅ Use dynamic path here
                 className="group block w-full bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-black overflow-hidden relative"
             >
                 {/* --- Image Section --- */}
@@ -93,31 +91,21 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-
-                    {/* Badge: Category */}
                     <span className="absolute top-3 left-3 bg-blue-600 text-white text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-sm z-10 uppercase tracking-wide">
                         {category || "Service"}
                     </span>
-
-                    {/* Wishlist Button */}
                     {toggleFav && (
                         <button
                             onClick={toggleFav}
                             className="absolute top-3 right-3 bg-white p-2 rounded-full shadow hover:bg-gray-100 active:scale-95 transition-all z-10 flex items-center justify-center"
                         >
-                            {isFav ? (
-                                <FaHeart className="text-red-500 text-sm md:text-base" />
-                            ) : (
-                                <FaRegHeart className="text-gray-400 text-sm md:text-base hover:text-red-400" />
-                            )}
+                            {isFav ? <FaHeart className="text-red-500" /> : <FaRegHeart className="text-gray-400" />}
                         </button>
                     )}
                 </div>
 
                 {/* --- Content Section --- */}
                 <div className="p-4 space-y-3">
-
-                    {/* Location + Verified */}
                     <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                         <div className="flex items-center gap-1 truncate max-w-[60%]">
                             <MapPin size={14} className="text-slate-400" />
@@ -130,12 +118,10 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
                         )}
                     </div>
 
-                    {/* Service Name */}
                     <h3 className="text-lg font-bold text-gray-900 leading-snug line-clamp-1 group-hover:text-blue-700 transition-colors">
                         {name}
                     </h3>
 
-                    {/* Rating + Provider */}
                     <div className="flex justify-between items-center text-sm text-gray-600">
                         <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md text-xs font-bold border border-amber-100">
                             <FaStar size={10} /> {rating} <span className="text-amber-600/60 font-medium">({reviewCount})</span>
@@ -143,7 +129,6 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
                         <span className="text-xs text-gray-500">by <strong>{providerName}</strong></span>
                     </div>
 
-                    {/* Price */}
                     <div className="flex items-baseline gap-1">
                         <span className="text-lg font-bold text-slate-900">₹{price}</span>
                         <span className="text-sm font-medium text-slate-500 lowercase">
@@ -151,11 +136,10 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
                         </span>
                     </div>
 
-                    {/* Buttons */}
                     <div className="flex gap-3 pt-2">
-                        <button className="flex-1 border border-gray-300 text-gray-700 rounded-xl py-2 text-sm font-bold hover:bg-gray-50 transition-colors">
+                        <div className="flex-1 text-center border border-gray-300 text-gray-700 rounded-xl py-2 text-sm font-bold hover:bg-gray-50 transition-colors">
                             View Details
-                        </button>
+                        </div>
                         <button
                             onClick={handleBookNow}
                             className="flex-1 bg-black text-white rounded-xl py-2 text-sm font-bold hover:bg-gray-800 transition-colors shadow-sm"
@@ -170,25 +154,14 @@ export default function ServiceCard({ service, isFav = false, toggleFav, current
             {showBooking && (
                 <div
                     className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setShowBooking(false);
-                    }}
+                    onClick={() => setShowBooking(false)}
                 >
-                    {/* ✅ FIXED HEIGHT: Consistent with Product Modal */}
                     <div className="relative w-full max-w-lg h-[92vh] md:h-[85vh] flex flex-col bg-white rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                        <button
-                            onClick={() => setShowBooking(false)}
-                            className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition"
-                        >
-                            <FaXmark size={20} />
-                        </button>
-
+                        <button onClick={() => setShowBooking(false)} className="absolute top-4 right-4 z-50 p-2 bg-white/10 text-white rounded-full transition"><FaXmark size={20} /></button>
                         <BookingWrapper
                             serviceId={id}
                             serviceName={name}
                             price={price}
-                            // ✅ Passing effectiveUser allows the Wrapper to check/fetch verification status
                             currentUser={effectiveUser}
                             userAddresses={effectiveUser?.addresses || []}
                             defaultOpen={true}

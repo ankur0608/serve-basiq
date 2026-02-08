@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react'; // ✅ Added useMemo
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -78,7 +78,7 @@ export default function ServicesExplorer() {
         staleTime: 1000 * 60 * 60 * 24,
     });
 
-    // 4️⃣ Query: Services & Rentals (Fetching the Object)
+    // 4️⃣ Query: Services & Rentals
     const { data: apiResponse, isLoading: servLoading } = useQuery({
         queryKey: ['services', 'explorer'],
         queryFn: async () => {
@@ -88,37 +88,34 @@ export default function ServicesExplorer() {
         staleTime: 1000 * 60 * 1,
     });
 
-    // ✅ FIX: Normalize & Combine Data using useMemo
+    // ✅ Normalizing & Combining Data
     const items = useMemo(() => {
         if (!apiResponse) return [];
 
-        // Handle both Services and Rentals arrays from the response
         const servicesList = apiResponse.services || [];
         const rentalsList = apiResponse.rentals || [];
 
-        // Combine them
         const combined = [...servicesList, ...rentalsList];
 
-        // Map to uniform structure
         return combined.map((item: any) => {
             const isRental = !!item.rentalImg; // Distinguish rental vs service
+            const type = isRental ? 'RENTAL' : 'SERVICE';
 
             return {
                 id: item.id,
                 name: item.name,
                 category: item.category?.name || "General",
-                subcategory: item.subcategory?.name, // ✅ Added Subcategory
+                subcategory: item.subcategory?.name,
                 price: Number(item.price) || 0,
                 priceType: item.priceType,
                 rating: item.rating || 4.8,
-                reviewCount: item._count?.reviews || 12, // Use actual count if available
+                reviewCount: item._count?.reviews || 12,
                 location: item.city || "Remote",
-                // ✅ FIX: Check all possible image fields
                 image: item.serviceimg || item.rentalImg || item.mainimg || item.user?.profileImage || "",
                 isVerified: item.isVerified,
                 user: item.user,
-                type: isRental ? 'RENTAL' : 'SERVICE' // Useful for debugging or badges
-            };
+                type
+            } as const;
         });
     }, [apiResponse]);
 
@@ -169,53 +166,6 @@ export default function ServicesExplorer() {
                 {loading ? <ExplorerSkeleton /> : (
                     <div className="animate-in fade-in duration-500">
 
-                        {/* ================= CATEGORIES SECTION ================= */}
-                        {/* <div className="mb-12">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Top Categories</h2>
-                                <Link href="/servicescategory" className="text-blue-600 text-xs font-bold uppercase hover:underline">View All</Link>
-                            </div>
-
-                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-x-4 gap-y-6">
-                                {categories.slice(0, 6).map((cat: any) => (
-                                    <div
-                                        key={cat.id}
-                                        onClick={() => router.push(`/servicescategory/${cat.id}`)}
-                                        className="group flex flex-col items-center text-center cursor-pointer"
-                                    >
-                                        <div className="
-                                            w-[45px] h-[45px] 
-                                            flex items-center justify-center
-                                            rounded-xl
-                                            border border-gray-200
-                                            bg-white
-                                            group-hover:border-blue-600
-                                            transition
-                                            overflow-hidden
-                                            p-0 
-                                        ">
-                                            {cat.image ? (
-                                                <AppImage
-                                                    src={cat.image}
-                                                    alt={cat.name}
-                                                    type="thumbnail"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <FaScrewdriverWrench className="text-blue-600 w-8 h-8" />
-                                            )}
-                                        </div>
-
-                                        <span className="mt-2 text-[10px] sm:text-xs font-medium text-gray-800 line-clamp-1 group-hover:text-blue-600 transition-colors">
-                                            {cat.name}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div> */}
-                        {/* ================= END CATEGORIES ================= */}
-
-
                         {/* Services & Rentals Section */}
                         <div className="flex items-center justify-between mb-8">
                             <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
@@ -233,20 +183,25 @@ export default function ServicesExplorer() {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {items.map((item, i) => (
-                                    <ServiceCard
-                                        key={item.id}
-                                        service={item} // ✅ Pass the normalized item
-                                        isFav={favorites.includes(item.id)}
-                                        toggleFav={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            handleToggleFav(item.id);
-                                        }}
-                                        index={i}
-                                        currentUser={currentUser}
-                                    />
-                                ))}
+                                {items.map((item, i) => {
+                                    // ✅ DYNAMIC ROUTING: Choose path based on item type
+                                    const detailLink = item.type === 'RENTAL' ? `/rentals/${item.id}` : `/services/${item.id}`;
+
+                                    return (
+                                        <ServiceCard
+                                            key={item.id}
+                                            service={item as any} // ✅ Cast to any briefly if interfaces are drifting
+                                            isFav={favorites.includes(item.id)}
+                                            toggleFav={(e: React.MouseEvent) => { // ✅ Fix for Error 7006
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleToggleFav(item.id);
+                                            }}
+                                            index={i}
+                                            currentUser={currentUser}
+                                        />
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

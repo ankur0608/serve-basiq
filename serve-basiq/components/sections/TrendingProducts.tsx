@@ -6,33 +6,34 @@ export default async function TrendingProducts() {
   let trendingProducts: any[] = [];
 
   try {
+    console.log("🔍 Fetching Trending Products..."); // Log start
+
     const data = await prisma.product.findMany({
       take: 4,
       orderBy: { createdAt: 'desc' },
       where: {
+        // ✅ Relaxed filter: Only checks if the PRODUCT is verified
         isVerified: true,
-        user: {
-          isVerified: true
-        }
+        // user: { isVerified: true } // 👈 Commented out for testing
       },
       include: {
         user: {
-          select: { name: true }
+          select: { name: true, shopName: true }
         },
-        // ✅ FIX: Include Category Relation to get the name
         category: {
           select: { name: true }
         }
       }
     });
 
-    // ✅ Map Data
+    console.log("✅ Trending Products Found:", data.length); // Log count
+
+    // Map Data
     trendingProducts = data.map((product) => ({
       ...product,
-      image: product.productImage || "", 
-      // ✅ FIX: Safely access category name
+      image: product.productImage || (product.gallery && product.gallery[0]) || "",
       category: product.category?.name || "General",
-      supplier: product.user?.name || "Verified Seller",
+      supplier: product.user?.shopName || product.user?.name || "Verified Seller",
     }));
 
   } catch (error) {
@@ -60,6 +61,7 @@ export default async function TrendingProducts() {
       ) : (
         <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-gray-200">
           <p className="text-gray-500">No verified trending products found.</p>
+          <p className="text-xs text-slate-400 mt-2">Check terminal for details</p>
         </div>
       )}
     </section>

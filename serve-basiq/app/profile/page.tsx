@@ -2,57 +2,62 @@
 
 import { useSession } from "next-auth/react";
 import { useUIStore } from "@/lib/store";
-import { FaCalendarCheck, FaBoxOpen, FaGear, FaChevronRight, FaSpinner } from "react-icons/fa6";
+import {
+    FaCalendarCheck,
+    FaBoxOpen,
+    FaGear,
+    FaChevronRight,
+    FaSpinner,
+} from "react-icons/fa6";
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { fullLogout } from "@/lib/logout";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
-import ProfileEditModal, { ProfileData } from "@/components/profile/ProfileEditModal";
-import imageCompression from 'browser-image-compression';
+import ProfileEditModal, {
+    ProfileData,
+} from "@/components/profile/ProfileEditModal";
+import imageCompression from "browser-image-compression";
 
 export default function ProfilePage() {
     const { data: session, status, update: updateSession } = useSession();
     const {
         currentUser,
         setCurrentUser,
-        lastFetched, // ✅ Get last fetched time
+        lastFetched,
         logout,
         isEditProfileOpen,
         onOpenEditProfile,
-        onCloseEditProfile
+        onCloseEditProfile,
     } = useUIStore();
 
-    // Prevent hydration mismatch
     const [isHydrated, setIsHydrated] = useState(false);
     const isFetching = useRef(false);
 
-    // Wait for Zustand to load from localStorage
+    // 1. Wait for Zustand hydration
     useEffect(() => {
         setIsHydrated(true);
     }, []);
 
+    // 2. Fetch Data Logic (With Caching)
     useEffect(() => {
-        // 1. Wait for hydration and auth
         if (!isHydrated || status !== "authenticated") return;
 
-        // 2. CACHE CHECK: Is data fresh? (e.g., fetched less than 5 mins ago)
+        // ✅ CACHE CHECK: If data is less than 5 minutes old, DO NOT FETCH
         const CACHE_DURATION = 5 * 60 * 1000; // 5 Minutes
-        const isDataFresh = currentUser?.isFullProfile && (Date.now() - lastFetched < CACHE_DURATION);
+        const isDataFresh =
+            currentUser?.isFullProfile && Date.now() - lastFetched < CACHE_DURATION;
 
-        // If fresh, STOP. Do NOT fetch.
         if (isDataFresh) {
             // console.log("✅ Using cached profile data");
             return;
         }
 
-        // 3. Prevent double fetching
         if (isFetching.current) return;
         isFetching.current = true;
 
         const fetchProfile = async () => {
             try {
-                // ✅ No timestamp param, allow browser caching if needed
                 const res = await fetch(`/api/user/profile`);
 
                 if (res.status === 401) {
@@ -61,7 +66,7 @@ export default function ProfilePage() {
                 }
                 if (res.ok) {
                     const data = await res.json();
-                    setCurrentUser(data); // This updates 'lastFetched' automatically in store
+                    setCurrentUser(data); // This updates 'lastFetched' in store automatically
                 }
             } catch (error) {
                 console.error("Profile fetch error", error);
@@ -71,11 +76,13 @@ export default function ProfilePage() {
         };
 
         fetchProfile();
-
     }, [status, isHydrated, currentUser, lastFetched, setCurrentUser, logout]);
 
-    // --- SAVE LOGIC (Compressed) ---
-    const handleSaveProfile = async (formData: ProfileData, file: File | null) => {
+    // --- SAVE LOGIC ---
+    const handleSaveProfile = async (
+        formData: ProfileData,
+        file: File | null
+    ) => {
         try {
             // @ts-ignore
             const userId = currentUser?.id || session?.user?.id;
@@ -83,56 +90,85 @@ export default function ProfilePage() {
 
             let uploadedImageUrl = formData.image;
 
+            // 1. Upload Image (if exists)
             if (file) {
                 let fileToUpload = file;
-                if (file.type.startsWith('image/')) {
+                if (file.type.startsWith("image/")) {
                     try {
-                        const options = { maxSizeMB: 1, maxWidthOrHeight: 1080, useWebWorker: true, initialQuality: 0.8 };
+                        const options = {
+                            maxSizeMB: 1,
+                            maxWidthOrHeight: 1080,
+                            useWebWorker: true,
+                            initialQuality: 0.8,
+                        };
                         fileToUpload = await imageCompression(file, options);
-                    } catch (e) { console.warn("Compression failed", e); }
+                    } catch (e) {
+                        console.warn("Compression failed", e);
+                    }
                 }
 
                 const uploadData = new FormData();
-                uploadData.append('file', fileToUpload);
-                const res = await fetch('/api/upload', { method: 'POST', body: uploadData });
+                uploadData.append("file", fileToUpload);
+                const res = await fetch("/api/upload", {
+                    method: "POST",
+                    body: uploadData,
+                });
                 if (res.ok) {
                     const d = await res.json();
-                    uploadedImageUrl = d.url || (d.key ? `${process.env.NEXT_PUBLIC_R2_DOMAIN}/${d.key}` : null);
+                    uploadedImageUrl =
+                        d.url ||
+                        (d.key ? `${process.env.NEXT_PUBLIC_R2_DOMAIN}/${d.key}` : null);
                 }
             }
 
-            const payload = { userId, ...formData, image: uploadedImageUrl, profileImage: uploadedImageUrl };
+            // 2. Prepare Payload
+            const payload = {
+                userId,
+                ...formData,
+                image: uploadedImageUrl,
+                profileImage: uploadedImageUrl,
+            };
 
-            const updateRes = await fetch('/api/user/profile', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+            // 3. API Call
+            const updateRes = await fetch("/api/user/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
             });
 
             if (updateRes.ok) {
+                // 4. Update Store Immediately (Optimistic Update)
                 const updatedUser: any = {
                     ...currentUser,
-                    ...formData,
+                    ...formData, // Spread form data to update flattened fields
                     img: uploadedImageUrl,
                     image: uploadedImageUrl,
-                    isFullProfile: true
+                    // Update address fields in store so they reflect immediately
+                    addressLine1: formData.addressLine1,
+                    addressLine2: formData.addressLine2,
+                    city: formData.city,
+                    district: formData.district,
+                    state: formData.state,
+                    pincode: formData.pincode,
+                    landmark: formData.landmark,
+                    isFullProfile: true,
                 };
-                setCurrentUser(updatedUser); // Updates localStorage immediately
+
+                setCurrentUser(updatedUser);
                 await updateSession({ name: formData.name, image: uploadedImageUrl });
                 onCloseEditProfile();
             }
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     // --- RENDER ---
 
-    // 1. Show nothing until hydrated (avoids flicker)
     if (!isHydrated) return null;
 
-    // 2. Fallback to session user if store is empty
     const userToShow = currentUser || (session?.user as any);
 
-    // 3. Only show loading if we TRULY have no data
     if (status === "loading" && !userToShow) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -141,24 +177,35 @@ export default function ProfilePage() {
         );
     }
 
-    if (status === "unauthenticated") return <div className="p-10 text-center">Please Login</div>;
+    if (status === "unauthenticated")
+        return <div className="p-10 text-center">Please Login</div>;
 
     const userAny = userToShow || {};
 
+    // ✅ ADDRESS MAPPING:
+    // We prioritize flattened fields (if already in store).
+    // If flat fields are empty, we look at addresses[0] (the latest address from API).
+    const primaryAddress =
+        userAny.addresses && userAny.addresses.length > 0
+            ? userAny.addresses[0]
+            : {};
+
     const profileData: ProfileData = {
-        name: userAny.name || '',
-        email: userAny.email || '',
-        phone: userAny.phone || '',
-        image: userAny.img || userAny.image || '',
-        dateOfBirth: userAny.dateOfBirth || userAny.dob || '',
-        preferredLanguage: userAny.preferredLanguage || 'English',
-        addressLine1: userAny.addressLine1 || userAny.line1 || '',
-        addressLine2: userAny.addressLine2 || userAny.line2 || '',
-        landmark: userAny.landmark || '',
-        city: userAny.city || '',
-        district: userAny.district || '',
-        state: userAny.state || '',
-        pincode: userAny.pincode || ''
+        name: userAny.name || "",
+        email: userAny.email || "",
+        phone: userAny.phone || "",
+        image: userAny.img || userAny.image || "",
+        dateOfBirth: userAny.dateOfBirth || userAny.dob || "",
+        preferredLanguage: userAny.preferredLanguage || "English",
+
+        // Check Flat Store Field -> Check Nested API Field -> Default Empty
+        addressLine1: userAny.addressLine1 || primaryAddress.line1 || "",
+        addressLine2: userAny.addressLine2 || primaryAddress.line2 || "",
+        landmark: userAny.landmark || primaryAddress.landmark || "",
+        city: userAny.city || primaryAddress.city || "",
+        district: userAny.district || primaryAddress.district || "",
+        state: userAny.state || primaryAddress.state || "",
+        pincode: userAny.pincode || primaryAddress.pincode || "",
     };
 
     return (
@@ -173,9 +220,22 @@ export default function ProfilePage() {
                 <ProfileStats />
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="flex flex-col">
-                        <MenuLink href="/profile/bookings" icon={<FaCalendarCheck className="text-blue-500" />} label="My Bookings" />
-                        <MenuLink href="/profile/orders" icon={<FaBoxOpen className="text-blue-600" />} label="My Orders" />
-                        <MenuLink href="/profile/settings" icon={<FaGear className="text-slate-600" />} label="Settings" isLast />
+                        <MenuLink
+                            href="/profile/bookings"
+                            icon={<FaCalendarCheck className="text-blue-500" />}
+                            label="My Bookings"
+                        />
+                        <MenuLink
+                            href="/profile/orders"
+                            icon={<FaBoxOpen className="text-blue-600" />}
+                            label="My Orders"
+                        />
+                        <MenuLink
+                            href="/profile/settings"
+                            icon={<FaGear className="text-slate-600" />}
+                            label="Settings"
+                            isLast
+                        />
                     </div>
                 </div>
                 <ProfileEditModal
@@ -191,7 +251,11 @@ export default function ProfilePage() {
 
 function MenuLink({ href, icon, label, isLast }: any) {
     return (
-        <Link href={href} className={`flex items-center justify-between p-5 hover:bg-gray-50 transition-colors ${!isLast ? "border-b border-gray-100" : ""}`}>
+        <Link
+            href={href}
+            className={`flex items-center justify-between p-5 hover:bg-gray-50 transition-colors ${!isLast ? "border-b border-gray-100" : ""
+                }`}
+        >
             <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-lg">
                     {icon}

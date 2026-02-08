@@ -7,34 +7,29 @@ import { useUIStore } from "@/lib/store";
 // Helper component to handle the sync logic inside the Provider
 function AuthSync({ children }: { children: React.ReactNode }) {
     const { data: session, status } = useSession();
-    const { setCurrentUser } = useUIStore();
+    const { currentUser, setCurrentUser } = useUIStore();
 
     useEffect(() => {
-        // Sync whenever the session exists (authenticated)
         if (status === 'authenticated' && session?.user) {
-
-            // ✅ UPDATED: Explicitly map the new fields from NextAuth to your Store
+            // ✅ Merging session data with existing store data
+            // This prevents overwriting 'district' or 'addressLine2'
             setCurrentUser({
+                ...currentUser,
                 id: session.user.id,
-                name: session.user.name || '',
-                email: session.user.email || '',
-
-                // ✅ FIX: Map 'image' (NextAuth) to 'img' (Your Store)
-                img: session.user.image || '',
-
-                // Now these pull correctly from the database via the session
-                phone: session.user.phone || '',
-                isPhoneVerified: session.user.isPhoneVerified || false,
-                isWorker: session.user.isWorker || false,
-                role: session.user.role || 'USER',
-                providerType: session.user.providerType ?? undefined,
-
-                // Initialize required fields that might be missing from session
-                isVerified: false,
-                isWebsite: true
-            });
+                name: session.user.name || currentUser?.name || '',
+                email: session.user.email || currentUser?.email || '',
+                img: session.user.image || currentUser?.img || '',
+                image: session.user.image || currentUser?.image || '',
+                phone: session.user.phone || currentUser?.phone || '',
+                isPhoneVerified: session.user.isPhoneVerified ?? currentUser?.isPhoneVerified ?? false,
+                isWorker: session.user.isWorker ?? currentUser?.isWorker ?? false,
+                role: session.user.role || currentUser?.role || 'USER',
+                providerType: session.user.providerType ?? currentUser?.providerType,
+                isWebsite: currentUser?.isWebsite ?? true,
+                isVerified: currentUser?.isVerified ?? false,
+            } as any);
         }
-    }, [session, status, setCurrentUser]);
+    }, [status, session, setCurrentUser]);
 
     return <>{children}</>;
 }
@@ -45,7 +40,10 @@ export default function AuthProvider({
     children: React.ReactNode
 }) {
     return (
-        <SessionProvider>
+        <SessionProvider
+            // ✅ STOP FLICKERING: Prevents session refresh when switching tabs
+            refetchOnWindowFocus={false}
+        >
             <AuthSync>
                 {children}
             </AuthSync>

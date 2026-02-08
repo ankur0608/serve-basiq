@@ -7,15 +7,15 @@ export default async function FeaturedProviders() {
   let services: any[] = [];
 
   try {
+    console.log("🔍 Fetching Featured Providers..."); // Log start
+
     services = await prisma.service.findMany({
       take: 3,
       orderBy: { createdAt: 'desc' },
       where: {
-        // During testing, if no data shows, make sure these match your DB
+        // ✅ Relaxed filter: Only checks if the SERVICE is verified
         isVerified: true,
-        user: {
-          isVerified: true
-        }
+        // user: { isVerified: true } // 👈 Commented out for testing
       },
       include: {
         category: { select: { name: true } },
@@ -29,6 +29,10 @@ export default async function FeaturedProviders() {
         }
       }
     });
+
+    console.log("✅ Featured Providers Found:", services.length); // Log count
+    if (services.length === 0) console.log("⚠️ No services found. Check DB 'isVerified' field.");
+
   } catch (error) {
     console.error("❌ Featured Providers Error:", error);
   }
@@ -65,7 +69,7 @@ export default async function FeaturedProviders() {
               location: service.city
                 ? `${service.city}${service.state ? `, ${service.state}` : ''}`
                 : (service.loc || "India"),
-              image: service.mainimg || service.serviceimg || service.user?.image || "https://images.unsplash.com/photo-1521791136064-7986c2923216?q=80&w=2069&auto=format&fit=crop",
+              image: service.mainimg || service.serviceimg || service.user?.image || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80",
               rating: Number(service.rating) || 5.0,
               isVerified: service.isVerified,
               providerName: service.user?.shopName || service.user?.name || "Expert Provider",
@@ -82,7 +86,7 @@ export default async function FeaturedProviders() {
           </div>
           <h3 className="text-lg font-bold text-slate-800">No Experts Found</h3>
           <p className="text-slate-500 text-sm text-center max-w-xs mt-1">
-            Tip: Check if your Services and Users are marked as <b>isVerified: true</b> in the database.
+            Tip: Ensure your Services have <b>isVerified: true</b> in the database.
           </p>
         </div>
       )}
