@@ -9,24 +9,28 @@ import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 
 // Components
-import BookingForm from './BookingForm';
+import RentalBookingForm from './RentalBookingForm';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
-import SuccessModal from '@/components/ui/SuccessModal'; // ✅ Import the new modal
+import SuccessModal from '@/components/ui/SuccessModal';
 
 interface Props {
-    serviceId: string;
-    serviceName: string;
-    price: number;
+    rentalId: string;
+    rentalName: string;
+    pricePerDay: number;
+    rentalImage?: string;
+    ownerLocation?: string; // ✅ Added ownerLocation prop
     currentUser: any;
     userAddresses: any[];
     defaultOpen?: boolean;
     onRequestClose?: () => void;
 }
 
-export default function BookingWrapper({
-    serviceId,
-    serviceName,
-    price,
+export default function RentalBookingWrapper({
+    rentalId,
+    rentalName,
+    pricePerDay,
+    rentalImage,
+    ownerLocation, // ✅ Receive it here
     currentUser,
     userAddresses,
     defaultOpen = false,
@@ -37,7 +41,7 @@ export default function BookingWrapper({
     // States
     const [isBookingOpen, setIsBookingOpen] = useState(defaultOpen);
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
-    const [isSuccessOpen, setIsSuccessOpen] = useState(false); // ✅ Success State
+    const [isSuccessOpen, setIsSuccessOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     const router = useRouter();
@@ -47,7 +51,9 @@ export default function BookingWrapper({
         setMounted(true);
     }, []);
 
-    // 1. Fetch Profile
+    // Determine if we need to fetch data (if user is authenticated but data is shallow/missing)
+    const shouldFetchProfile = status === "authenticated" && (!currentUser || !currentUser.addresses || currentUser.addresses.length === 0);
+
     const { data: fetchedUser, isLoading: isFetchingUser, refetch: refetchUser } = useQuery({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
@@ -55,27 +61,26 @@ export default function BookingWrapper({
             if (!res.ok) return null;
             return res.json();
         },
-        enabled: status === "authenticated" && !currentUser,
+        enabled: shouldFetchProfile,
         staleTime: 0,
     });
 
-    // 2. Merge Data
-    const activeUser = currentUser || fetchedUser || session?.user;
-    const effectiveAddresses = userAddresses?.length > 0 ? userAddresses : (fetchedUser?.addresses || []);
+    // Merge Data
+    const activeUser = fetchedUser || currentUser || session?.user;
+    const effectiveAddresses = fetchedUser?.addresses || userAddresses || [];
 
     const handleClose = () => {
         setIsBookingOpen(false);
         if (onRequestClose) onRequestClose();
     };
 
-    // ✅ HANDLE SUCCESS
     const handleBookingSuccess = () => {
-        setIsBookingOpen(false); // Close Form
-        setIsSuccessOpen(true);  // Open Success Modal
+        setIsBookingOpen(false);
+        setIsSuccessOpen(true);
     };
 
     const checkAndProceed = () => {
-        if (status === "loading" || (status === "authenticated" && !currentUser && isFetchingUser)) return;
+        if (status === "loading" || (status === "authenticated" && !activeUser && isFetchingUser)) return;
 
         if (!activeUser) {
             handleClose();
@@ -104,9 +109,9 @@ export default function BookingWrapper({
         checkAndProceed();
     };
 
-    if (defaultOpen && (status === "loading" || (status === "authenticated" && !currentUser && isFetchingUser))) {
+    if (defaultOpen && (status === "loading" || (shouldFetchProfile && isFetchingUser))) {
         return (
-            <div className="w-full h-full flex items-center justify-center bg-white">
+            <div className="w-full h-full flex items-center justify-center bg-white min-h-[300px]">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
             </div>
         );
@@ -120,7 +125,7 @@ export default function BookingWrapper({
                     onClick={handleProceedClick}
                     className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-slate-200"
                 >
-                    Proceed to Booking <FaArrowRight className="group-hover:translate-x-1 transition" />
+                    Request Rental <FaArrowRight className="group-hover:translate-x-1 transition" />
                 </button>
             )}
 
@@ -139,15 +144,16 @@ export default function BookingWrapper({
                 />
             )}
 
-            {/* 3. BOOKING FORM */}
+            {/* 3. RENTAL BOOKING FORM */}
             {mounted && isBookingOpen && activeUser && (
                 defaultOpen ? (
-                    // Inline Mode
                     <div className="w-full h-full">
-                        <BookingForm
-                            serviceId={serviceId}
-                            serviceName={serviceName}
-                            price={price}
+                        <RentalBookingForm
+                            rentalId={rentalId}
+                            rentalName={rentalName}
+                            pricePerDay={pricePerDay}
+                            rentalImage={rentalImage}
+                            ownerLocation={ownerLocation} // ✅ Pass it down
                             userId={activeUser?.id}
                             userAddresses={effectiveAddresses}
                             userDetails={activeUser}
@@ -158,18 +164,19 @@ export default function BookingWrapper({
                 ) : (
                     createPortal(
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                            <div className="relative w-full max-w-sm bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] max-h-[88dvh] md:max-h-[85vh]">
+                            <div className="relative w-full max-w-sm bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]">
                                 <button onClick={handleClose} className="absolute top-4 right-4 z-50 w-8 h-8 flex items-center justify-center bg-black/10 hover:bg-black/20 text-white rounded-full transition backdrop-blur-sm">
                                     <FaXmark size={14} />
                                 </button>
-                                <BookingForm
-                                    serviceId={serviceId}
-                                    serviceName={serviceName}
-                                    price={price}
+                                <RentalBookingForm
+                                    rentalId={rentalId}
+                                    rentalName={rentalName}
+                                    pricePerDay={pricePerDay}
+                                    rentalImage={rentalImage}
+                                    ownerLocation={ownerLocation} // ✅ Pass it down
                                     userId={activeUser?.id}
                                     userAddresses={effectiveAddresses}
                                     userDetails={activeUser}
-                                    // ✅ Pass success handler
                                     onSuccess={handleBookingSuccess}
                                     onRequestClose={handleClose}
                                 />
@@ -180,18 +187,18 @@ export default function BookingWrapper({
                 )
             )}
 
-            {/* 4. ✅ SUCCESS MODAL */}
+            {/* 4. SUCCESS MODAL */}
             {mounted && isSuccessOpen && (
                 <SuccessModal
                     isOpen={isSuccessOpen}
                     onClose={() => {
                         setIsSuccessOpen(false);
-                        if (onRequestClose) onRequestClose(); // Close parent wrapper if needed
+                        if (onRequestClose) onRequestClose();
                     }}
-                    title="Booking Confirmed!"
-                    message={`Your request for ${serviceName} has been received. The provider will contact you shortly.`}
-                    buttonText="View My Bookings"
-                    onButtonClick={() => router.push('/profile/bookings')} // Redirect to bookings page
+                    title="Rental Requested!"
+                    message={`Your request for ${rentalName} has been sent. The owner will review dates and approve shortly.`}
+                    buttonText="View My Rentals"
+                    onButtonClick={() => router.push('/profile/bookings')}
                 />
             )}
         </>

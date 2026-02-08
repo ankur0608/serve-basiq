@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
-import ServiceCard, { ServiceProps } from '@/components/ui/ServiceCard';
+import ServiceCard, { ServiceProps } from '@/components/ui/ServiceCard'; // Ensure this path matches your file structure
 import { FaArrowRight, FaShieldHalved } from 'react-icons/fa6';
 
 export default async function FeaturedProviders() {
@@ -8,23 +8,19 @@ export default async function FeaturedProviders() {
 
   try {
     services = await prisma.service.findMany({
-      take: 4, // Change this to 4 if you want to match the other page
+      take: 4,
       orderBy: { createdAt: 'desc' },
-      where: {
-        // ⚠️ IF YOU WANT TO SEE ALL 4: 
-        // Either set 'isVerified' to true for all 4 in DB, 
-        // or comment this line out temporarily to confirm data exists.
-        isVerified: true,
-      },
+      // where: { isVerified: true }, // Uncomment this when you have real verified data
       include: {
         category: { select: { name: true } },
+        subcategory: { select: { name: true } },
         user: {
           select: {
             name: true,
             image: true,
             isVerified: true,
             shopName: true,
-            profileImage: true // Added this as a fallback
+            profileImage: true
           }
         }
       }
@@ -58,7 +54,7 @@ export default async function FeaturedProviders() {
       {services && services.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {services.map((service) => {
-            // ✅ FIX: Priority logic for images to match your other pages
+            // Priority logic for images
             const mainImage =
               service.coverImg ||
               service.serviceimg ||
@@ -68,10 +64,13 @@ export default async function FeaturedProviders() {
               service.user?.profileImage ||
               "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80";
 
+            // ✅ FIX: Map database fields to the exact ServiceProps interface
             const formattedService: ServiceProps = {
               id: service.id,
               name: service.name,
-              category: service.category?.name || "General Service",
+              // FIX 1: Use 'categoryName' (as expected by ServiceCard), not 'category'
+              categoryName: service.category?.name || "General Service",
+              subcategoryName: service.subcategory?.name,
               price: Number(service.price) || 0,
               priceType: service.priceType || 'FIXED',
               location: service.city
@@ -79,9 +78,8 @@ export default async function FeaturedProviders() {
                 : (service.loc || "India"),
               image: mainImage,
               rating: Number(service.rating) || 5.0,
-              isVerified: service.isVerified,
-              providerName: service.user?.shopName || service.user?.name || "Expert Provider",
-              providerImage: service.user?.profileImage || service.user?.image || ""
+              // FIX 2: Add the required 'type' property
+              type: 'Service'
             };
 
             return <ServiceCard key={formattedService.id} service={formattedService} />;

@@ -12,7 +12,6 @@ export default function Error({
 }) {
 
     useEffect(() => {
-        // Ideally, log this error to a service like Sentry
         console.error('Application Error:', error);
     }, [error]);
 

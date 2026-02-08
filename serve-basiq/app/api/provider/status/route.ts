@@ -7,10 +7,10 @@ export async function POST(req: Request) {
 
     if (!userId) return NextResponse.json({ success: false, message: "User ID missing" }, { status: 400 });
 
+    // 1. Fetch User Only
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        // ❌ Services removed as requested
         addresses: true,
         kycDetails: true,
       },
@@ -18,49 +18,23 @@ export async function POST(req: Request) {
 
     if (!user) return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
 
-    // 1. Fetch Bookings
-    const bookings = await prisma.booking.findMany({
-      where: { service: { userId: userId } },
-      include: {
-        user: { select: { name: true, phone: true, image: true } },
-        service: { select: { name: true, price: true } },
-        address: true
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    // ❌ REMOVED: Bookings and Orders fetching logic
+    // ❌ REMOVED: Revenue calculation logic
 
-    // 2. Fetch Orders
-    const orders = await prisma.order.findMany({
-      where: { product: { userId: userId } },
-      include: {
-        user: { select: { name: true, phone: true, image: true } },
-        product: { select: { name: true, price: true, unit: true } },
-        address: true
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // 3. Calculate Stats
-    const bookingRevenue = bookings
-      .filter(b => b.status === 'COMPLETED')
-      .reduce((acc, curr) => acc + (curr.service.price || 0), 0);
-
-    const orderRevenue = orders
-      .filter(o => o.status === 'DELIVERED')
-      .reduce((acc, curr) => acc + (curr.totalPrice || 0), 0);
-
+    // 2. Return Default Stats
+    // Since we aren't fetching data, we return 0 to keep the UI valid
     const stats = {
-      revenue: bookingRevenue + orderRevenue,
-      jobsCompleted: bookings.filter(b => b.status === 'COMPLETED').length + orders.filter(o => o.status === 'DELIVERED').length,
-      pendingRequests: bookings.filter(b => b.status === 'REQUESTED').length + orders.filter(o => o.status === 'REQUESTED').length,
+      revenue: 0,
+      jobsCompleted: 0,
+      pendingRequests: 0,
       rating: 5.0
     };
 
     return NextResponse.json({
       success: true,
       user,
-      bookings,
-      orders,
+      bookings: [], // Return empty array so .map() in frontend doesn't break
+      orders: [],   // Return empty array so .map() in frontend doesn't break
       isSetupComplete: !!(user.kycDetails && user.kycDetails.status !== "NOT_STARTED"),
       stats,
     });

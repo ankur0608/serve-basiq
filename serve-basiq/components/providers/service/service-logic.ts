@@ -4,10 +4,6 @@ import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import imageCompression from 'browser-image-compression';
 
-/* =======================
-   Types
-======================= */
-
 export interface SubCategory {
     id: string;
     name: string;
@@ -27,11 +23,8 @@ export interface ServiceSettingsProps {
     userAddress: any;
     onComplete: () => void;
     showToast?: (msg: string, type: 'success' | 'error') => void;
+    preSelectedType?: 'SERVICE' | 'RENTAL';
 }
-
-/* =======================
-   Helpers
-======================= */
 
 const normalizeSubIds = (data: any): string[] => {
     const subs = data?.subcategory || data?.subcategories || [];
@@ -53,10 +46,6 @@ export async function uploadToBackend(file: File): Promise<string> {
     return data.url;
 }
 
-/* =======================
-   Hook
-======================= */
-
 export function useServiceForm({
     userId,
     serviceData,
@@ -64,14 +53,13 @@ export function useServiceForm({
     userAddress,
     onComplete,
     showToast,
+    preSelectedType
 }: ServiceSettingsProps) {
     const queryClient = useQueryClient();
 
-    /* =======================
-       Listing Type (ONE-TIME)
-    ======================= */
-
+    // Initialize listing type
     const [listingType, setListingType] = useState<'SERVICE' | 'RENTAL'>(() => {
+        if (preSelectedType) return preSelectedType;
         if (!serviceData) return 'SERVICE';
         return serviceData.listingType === 'RENTAL' ||
             serviceData.stock !== undefined ||
@@ -80,20 +68,13 @@ export function useServiceForm({
             : 'SERVICE';
     });
 
-    /* =======================
-       Steps + UI state
-    ======================= */
-
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [activeUploadField, setActiveUploadField] = useState<string | null>(null);
     const [gettingLoc, setGettingLoc] = useState(false);
 
-    /* =======================
-       Categories (React Query)
-    ======================= */
-
+    // ✅ FIXED: Optimized Caching Logic
     const { data: categories = [], isLoading: loadingCats } = useQuery({
         queryKey: ['categories', listingType],
         queryFn: async () => {
@@ -101,13 +82,14 @@ export function useServiceForm({
             if (!res.ok) throw new Error('Failed to fetch categories');
             return res.json();
         },
-        staleTime: 1000 * 60 * 5,
+        // ⚡ CACHING SETTINGS:
+        staleTime: Infinity,         // Data is never considered stale (never refetch automatically)
+        gcTime: 1000 * 60 * 60 * 24, // Keep in memory for 24 hours (even if component unmounts)
+        refetchOnWindowFocus: false, // Don't fetch when clicking back on the tab
+        refetchOnMount: false        // Don't fetch on mount if data is in cache
     });
 
-    /* =======================
-       Form State
-    ======================= */
-
+    // Initialize State
     const [form, setForm] = useState(() => ({
         name: serviceData?.name || '',
         desc: serviceData?.desc || '',
@@ -131,6 +113,13 @@ export function useServiceForm({
             (listingType === 'RENTAL' ? 'DAILY' : 'FIXED'),
         price: serviceData?.price || '',
 
+        // Rental Fields
+        itemCondition: serviceData?.itemCondition || 'New',
+        securityDeposit: serviceData?.securityDeposit || '',
+        minDuration: serviceData?.minDuration || '1 Hour',
+        maxDuration: serviceData?.maxDuration || '7 Days',
+        rentalMode: serviceData?.rentalMode || 'PICKUP',
+
         addressLine1: serviceData?.addressLine1 || userAddress?.line1 || '',
         city: serviceData?.city || userAddress?.city || '',
         state: serviceData?.state || userAddress?.state || '',
@@ -146,11 +135,6 @@ export function useServiceForm({
         closeTime: serviceData?.closeTime || '18:00',
     }));
 
-    /* =======================
-       Active SubCategories
-       (EDIT SAFE)
-    ======================= */
-
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(
             (c: Category) => c.id === form.categoryId
@@ -160,16 +144,11 @@ export function useServiceForm({
             return selectedCat.children || selectedCat.subcategories || [];
         }
 
-        // EDIT MODE FALLBACK
         const existing = serviceData?.subcategory || serviceData?.subcategories;
         if (!existing) return [];
 
         return Array.isArray(existing) ? existing : [existing];
     }, [categories, form.categoryId, serviceData]);
-
-    /* =======================
-       Handlers
-    ======================= */
 
     const handleChange = (field: string, value: any) => {
         setForm(prev =>
@@ -272,6 +251,12 @@ export function useServiceForm({
                 longitude: Number(form.longitude),
                 subCategoryIds: form.subCategoryIds,
                 [listingType === 'RENTAL' ? 'rentalImg' : 'serviceimg']: form.mainimg,
+                // Rental fields
+                itemCondition: form.itemCondition,
+                securityDeposit: Number(form.securityDeposit),
+                minDuration: form.minDuration,
+                maxDuration: form.maxDuration,
+                rentalMode: form.rentalMode
             };
 
             const endpoint =
@@ -289,7 +274,7 @@ export function useServiceForm({
 
             const data = await res.json();
             if (!data.success) throw new Error();
-
+queryClient.invalidateQueries({ queryKey: ['services', userId] });
             queryClient.invalidateQueries({ queryKey: ['services', userId] });
             showToast?.('Saved successfully', 'success');
             onComplete();
@@ -300,10 +285,6 @@ export function useServiceForm({
         }
     };
 
-    /* =======================
-       Return
-    ======================= */
-
     return {
         step,
         setStep,
@@ -311,15 +292,12 @@ export function useServiceForm({
         uploading,
         activeUploadField,
         gettingLoc,
-
         categories,
         loadingCats,
         activeSubCategories,
-
         form,
         listingType,
         setListingType,
-
         handleChange,
         toggleSubCategory,
         toggleDay,

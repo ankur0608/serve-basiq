@@ -100,30 +100,96 @@ enum CategoryType {
     RENTAL
 }
 
+enum RentalStatus {
+    REQUESTED // Customer sent request
+    APPROVED // Owner accepted
+    ACTIVE // Customer has the item (Picked up)
+    COMPLETED // Customer returned the item
+    CANCELLED // Request cancelled
+    OVERDUE // Date passed but not returned
+}
+
+// 2. Create the new RentalBooking model
+model RentalBooking {
+    id String @id @default(cuid())
+
+    // Relationships
+    userId String
+    user   User   @relation("RenterUser", fields: [userId], references: [id])
+
+    rentalId String
+    rental   Rental @relation(fields: [rentalId], references: [id])
+
+    addressId String?
+    address   Address? @relation(fields: [addressId], references: [id])
+
+    // Booking Details
+    startDate DateTime
+    endDate   DateTime
+    totalDays Int      @default(1)
+
+    // Cost Calculation
+    pricePerDay Float
+    totalPrice  Float
+
+    // Statuses
+    status        RentalStatus  @default(REQUESTED)
+    paymentStatus PaymentStatus @default(PENDING)
+    deliveryType  DeliveryType  @default(PICKUP)
+
+    // Meta
+    specialInstructions String?
+    createdAt           DateTime @default(now())
+    updatedAt           DateTime @updatedAt
+
+    // REMOVED THE DUPLICATE 'user' LINE THAT WAS HERE
+}
+
 model Rental {
     id String @id @default(uuid())
 
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
+    // --- Basic Info ---
     name      String
     desc      String
     rentalImg String
     coverImg  String?
     gallery   String[]
 
-    // ✅ 1. Main Category
+    // --- Category (Matches "Rental Category" dropdown) ---
     categoryId String?
     category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
 
-    // ✅ 2. Subcategory
     subCategoryId String?
     subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
 
+    // --- Pricing & Stock ---
     price     Float  @default(0)
     priceType String
     stock     Int    @default(1)
 
+    // ✅ NEW FIELDS FROM IMAGE -------------------------
+
+    // "Item Condition" (e.g., New, Used, Good)
+    itemCondition String? @default("Good")
+
+    // "Security Deposit (₹)"
+    securityDeposit Float? @default(0)
+
+    // "Min Rental Duration" (e.g., "1 Hour")
+    minDuration String?
+
+    // "Max Rental Duration" (e.g., "7 Days")
+    maxDuration String?
+
+    // "Rental Mode" (e.g., Pickup, Home Delivery, Both)
+    rentalMode String? @default("PICKUP")
+
+    // --------------------------------------------------
+
+    // --- Location ---
     addressLine1 String?
     addressLine2 String?
     city         String?
@@ -133,36 +199,14 @@ model Rental {
     longitude    Decimal?
     radiusKm     Int?     @default(10)
 
-    isVerified Boolean @default(false)
-
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
-    bookings  Booking[]
+    // --- System ---
+    isVerified     Boolean         @default(false)
+    createdAt      DateTime        @default(now())
+    updatedAt      DateTime        @updatedAt
+    bookings       Booking[]
+    rentalBookings RentalBooking[]
 }
 
-// model Category {
-//     id       String        @id @default(uuid())
-//     name     String        @unique
-//     type     CategoryType?
-//     image    String?
-//     // 1. Self-Relation (Parent/Child)
-//     parentId String?
-//     parent   Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
-//     children Category[]    @relation("CategoryHierarchy")
-
-//     // 2. Relations to Services
-//     services             Service[] @relation("MainCategory")
-//     serviceSubcategories Service[] @relation("ServiceSubcategories")
-
-//     // 3. Relations to Products
-//     products             Product[] @relation("ProductMainCategory")
-//     productSubcategories Product[] @relation("ProductSubcategories")
-
-//     rentals             Rental[] @relation("RentalMainCategory")
-//     rentalSubcategories Rental[] @relation("RentalSubcategories")
-//     createdAt           DateTime @default(now())
-//     updatedAt           DateTime @updatedAt
-// }
 model Category {
     id    String        @id @default(uuid())
     name  String        @unique
@@ -303,6 +347,7 @@ model User {
     orders           Order[]
     favoriteServices FavoriteService[]
     favoriteProducts FavoriteProduct[]
+    rentalBookings   RentalBooking[]   @relation("RenterUser")
 }
 
 model KycDetails {
@@ -348,22 +393,23 @@ model Account {
 }
 
 model Address {
-    id           String        @id @default(cuid())
-    userId       String
-    user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-    landmark     String?
-    type         String        @default("Home")
-    line1        String
-    line2        String
-    city         String
-    district     String?
-    state        String
-    pincode      String
-    country      String        @default("India")
-    requirements Requirement[]
-    createdAt    DateTime      @default(now())
-    bookings     Booking[]
-    orders       Order[]
+    id             String          @id @default(cuid())
+    userId         String
+    user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+    landmark       String?
+    type           String          @default("Home")
+    line1          String
+    line2          String
+    city           String
+    district       String?
+    state          String
+    pincode        String
+    country        String          @default("India")
+    requirements   Requirement[]
+    createdAt      DateTime        @default(now())
+    bookings       Booking[]
+    orders         Order[]
+    rentalBookings RentalBooking[]
 }
 
 model Requirement {
@@ -490,7 +536,6 @@ model Product {
     categories   Category[]
 }
 
-// ✅ NEW MODEL: FavoriteService
 model FavoriteService {
     id        String   @id @default(cuid())
     userId    String
@@ -502,7 +547,6 @@ model FavoriteService {
     @@unique([userId, serviceId]) // Prevent duplicate likes
 }
 
-// ✅ NEW MODEL: FavoriteProduct
 model FavoriteProduct {
     id        String   @id @default(cuid())
     userId    String

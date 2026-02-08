@@ -2,6 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { useUIStore } from "@/lib/store";
+import { useUserProfile } from "@/app/hook/useProfileQueries"; // ✅ Import the new hook
+import { useQueryClient } from "@tanstack/react-query";
 import {
     FaCalendarCheck,
     FaBoxOpen,
@@ -10,7 +12,7 @@ import {
     FaSpinner,
 } from "react-icons/fa6";
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { fullLogout } from "@/lib/logout";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
@@ -21,62 +23,40 @@ import imageCompression from "browser-image-compression";
 
 export default function ProfilePage() {
     const { data: session, status, update: updateSession } = useSession();
+    const queryClient = useQueryClient();
+
     const {
         currentUser,
         setCurrentUser,
-        lastFetched,
         logout,
         isEditProfileOpen,
         onOpenEditProfile,
         onCloseEditProfile,
     } = useUIStore();
 
+    // ✅ HOOK: Fetch User Profile (Replaces all the manual useEffect/fetch logic)
+    const { data: profileDataFromApi, isLoading, error } = useUserProfile();
+
     const [isHydrated, setIsHydrated] = useState(false);
-    const isFetching = useRef(false);
 
     // 1. Wait for Zustand hydration
     useEffect(() => {
         setIsHydrated(true);
     }, []);
 
-    // 2. Fetch Data Logic (With Caching)
+    // 2. Sync Hook Data to Zustand Store
     useEffect(() => {
-        if (!isHydrated || status !== "authenticated") return;
-
-        // ✅ CACHE CHECK: If data is less than 5 minutes old, DO NOT FETCH
-        const CACHE_DURATION = 5 * 60 * 1000; // 5 Minutes
-        const isDataFresh =
-            currentUser?.isFullProfile && Date.now() - lastFetched < CACHE_DURATION;
-
-        if (isDataFresh) {
-            // console.log("✅ Using cached profile data");
-            return;
+        if (profileDataFromApi) {
+            setCurrentUser(profileDataFromApi);
         }
+    }, [profileDataFromApi, setCurrentUser]);
 
-        if (isFetching.current) return;
-        isFetching.current = true;
-
-        const fetchProfile = async () => {
-            try {
-                const res = await fetch(`/api/user/profile`);
-
-                if (res.status === 401) {
-                    logout();
-                    return;
-                }
-                if (res.ok) {
-                    const data = await res.json();
-                    setCurrentUser(data); // This updates 'lastFetched' in store automatically
-                }
-            } catch (error) {
-                console.error("Profile fetch error", error);
-            } finally {
-                isFetching.current = false;
-            }
-        };
-
-        fetchProfile();
-    }, [status, isHydrated, currentUser, lastFetched, setCurrentUser, logout]);
+    // 3. Handle Unauthorized Error
+    useEffect(() => {
+        if (error?.message === "Unauthorized") {
+            logout();
+        }
+    }, [error, logout]);
 
     // --- SAVE LOGIC ---
     const handleSaveProfile = async (
@@ -140,10 +120,10 @@ export default function ProfilePage() {
                 // 4. Update Store Immediately (Optimistic Update)
                 const updatedUser: any = {
                     ...currentUser,
-                    ...formData, // Spread form data to update flattened fields
+                    ...formData,
                     img: uploadedImageUrl,
                     image: uploadedImageUrl,
-                    // Update address fields in store so they reflect immediately
+                    // Flattened updates
                     addressLine1: formData.addressLine1,
                     addressLine2: formData.addressLine2,
                     city: formData.city,
@@ -156,6 +136,10 @@ export default function ProfilePage() {
 
                 setCurrentUser(updatedUser);
                 await updateSession({ name: formData.name, image: uploadedImageUrl });
+
+                // ✅ VITAL: Tell React Query the data is dirty so it refetches next time
+                queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
+
                 onCloseEditProfile();
             }
         } catch (e) {
@@ -167,9 +151,11 @@ export default function ProfilePage() {
 
     if (!isHydrated) return null;
 
+    // Use store data if available (for instant load), otherwise fallback to session
     const userToShow = currentUser || (session?.user as any);
 
-    if (status === "loading" && !userToShow) {
+    // Show spinner only if we have NO data at all and are loading
+    if ((status === "loading" || isLoading) && !userToShow) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <FaSpinner className="animate-spin text-4xl text-slate-300" />
@@ -182,9 +168,7 @@ export default function ProfilePage() {
 
     const userAny = userToShow || {};
 
-    // ✅ ADDRESS MAPPING:
-    // We prioritize flattened fields (if already in store).
-    // If flat fields are empty, we look at addresses[0] (the latest address from API).
+    // Address fallback logic
     const primaryAddress =
         userAny.addresses && userAny.addresses.length > 0
             ? userAny.addresses[0]
@@ -197,8 +181,6 @@ export default function ProfilePage() {
         image: userAny.img || userAny.image || "",
         dateOfBirth: userAny.dateOfBirth || userAny.dob || "",
         preferredLanguage: userAny.preferredLanguage || "English",
-
-        // Check Flat Store Field -> Check Nested API Field -> Default Empty
         addressLine1: userAny.addressLine1 || primaryAddress.line1 || "",
         addressLine2: userAny.addressLine2 || primaryAddress.line2 || "",
         landmark: userAny.landmark || primaryAddress.landmark || "",

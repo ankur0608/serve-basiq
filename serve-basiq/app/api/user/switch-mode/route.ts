@@ -1,23 +1,38 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// Force Node runtime (Prisma + Edge is slow/unstable)
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   try {
-    const { userId, isWebsite } = await req.json();
+    // Parse request body once
+    const body = await req.json();
+    const userId: string | undefined = body?.userId;
+    const isWebsite: boolean | undefined = body?.isWebsite;
 
-    if (!userId) {
-      return NextResponse.json({ message: "User ID required" }, { status: 400 });
+    // Fast validation (avoid unnecessary DB hit)
+    if (!userId || typeof isWebsite !== "boolean") {
+      return NextResponse.json(
+        { message: "Invalid payload" },
+        { status: 400 }
+      );
     }
 
-    // Update the user's mode in the database
+    // Fast indexed update (primary key lookup)
     await prisma.user.update({
       where: { id: userId },
-      data: { isWebsite: isWebsite },
+      data: { isWebsite },
+      select: { id: true }, // prevents fetching full row
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Switch Mode Error:", error);
-    return NextResponse.json({ message: "Server Error" }, { status: 500 });
+
+    return NextResponse.json(
+      { message: "Server Error" },
+      { status: 500 }
+    );
   }
 }

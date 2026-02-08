@@ -163,7 +163,7 @@ export function ManagementView({
             {/* --- TAB TOGGLE --- */}
             {providerType === 'BOTH' && !isEditingService && !isCreatingService && (
                 <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
-                    <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all">Services & Rentals</button>
+                    <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all">Services</button>
                     <button onClick={() => setActiveView('products')} className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 transition-all">Products</button>
                 </div>
             )}

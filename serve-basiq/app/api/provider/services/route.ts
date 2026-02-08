@@ -18,10 +18,13 @@ export async function GET(req: Request) {
         const limitParam = searchParams.get('limit');
         const limit = limitParam ? parseInt(limitParam) : undefined;
 
-        // Dashboard logic: if userId is provided, show all their items (verified or not)
+        // ✅ LOGIC: 
+        // If userId is provided (Dashboard), show ALL their items.
+        // If no userId (Public Feed), show ONLY Verified items.
         const whereClause = userId ? { userId: userId } : { isVerified: true };
 
         const [services, rentals] = await Promise.all([
+            // 1. Fetch Services
             prisma.service.findMany({
                 where: whereClause,
                 take: limit,
@@ -33,6 +36,8 @@ export async function GET(req: Request) {
                 },
                 orderBy: { createdAt: 'desc' },
             }),
+
+            // 2. Fetch Rentals
             prisma.rental.findMany({
                 where: whereClause,
                 take: limit,
@@ -47,7 +52,8 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ services: services || [], rentals: rentals || [] });
     } catch (error: any) {
-        return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
+        console.error("GET Provider Services Error:", error);
+        return NextResponse.json({ error: "Failed to fetch listings" }, { status: 500 });
     }
 }
 

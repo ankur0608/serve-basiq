@@ -1,15 +1,25 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // 👇 ADD THIS BLOCK TO FIX THE ERROR
+  // Existing Server Actions Config
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb', // Increases the limit for uploads
+      bodySizeLimit: '10mb',
     },
   },
 
   images: {
     remotePatterns: [
+      // 👇 NEWLY ADDED DOMAINS
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      // 👇 YOUR EXISTING DOMAINS
       {
         protocol: 'https',
         hostname: '*.googleusercontent.com',

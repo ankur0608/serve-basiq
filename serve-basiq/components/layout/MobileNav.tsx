@@ -38,6 +38,11 @@ export default function MobileNav() {
       icon: FaScrewdriverWrench
     },
     {
+      href: "/rentals",
+      label: "Rentals",
+      icon: FaScrewdriverWrench
+    },
+    {
       href: "/products",
       label: "Products",
       icon: FaBoxOpen,
@@ -53,7 +58,7 @@ export default function MobileNav() {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe h-[70px] transition-transform duration-300">
       {/* Updated to grid-cols-4 for 4 items */}
-      <div className="grid grid-cols-4 h-full">
+      <div className="grid grid-cols-5 h-full">
         {links.map((link) => {
           // Check if the current path matches the link or starts with it (for nested pages like /services/123)
           const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));

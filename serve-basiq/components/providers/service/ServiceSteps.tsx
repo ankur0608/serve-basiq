@@ -1,15 +1,17 @@
+'use client';
+
 import { useState, useRef, useEffect } from 'react';
 import {
     Briefcase, ChevronRight, Loader2, Save, UploadCloud, Navigation,
     Trash2, Phone, Clock, Camera, Plus, Check, ChevronDown, BadgeIndianRupee,
-    Hammer, Truck // ✅ New Icons for Toggle
+    Hammer, Truck, Box, ShieldCheck, Hourglass, Settings
 } from 'lucide-react';
 import { Category, SubCategory } from './service-logic';
 
 const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
 
-// --- STEP 1: Basic Info (With Rental Switch) ---
+// --- STEP 1: Basic Info (With New Rental Fields) ---
 export const StepOneBasic = ({
     form, handleChange, categories, loadingCats, activeSubCategories,
     toggleSubCategory, setStep, listingType, setListingType
@@ -37,7 +39,7 @@ export const StepOneBasic = ({
                     type="button"
                     onClick={() => {
                         setListingType('SERVICE');
-                        handleChange('categoryId', ''); // Reset category
+                        handleChange('categoryId', '');
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${listingType === 'SERVICE'
                         ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200'
@@ -50,7 +52,7 @@ export const StepOneBasic = ({
                     type="button"
                     onClick={() => {
                         setListingType('RENTAL');
-                        handleChange('categoryId', ''); // Reset category
+                        handleChange('categoryId', '');
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${listingType === 'RENTAL'
                         ? 'bg-white text-orange-600 shadow-sm ring-1 ring-slate-200'
@@ -78,7 +80,7 @@ export const StepOneBasic = ({
                     </div>
                 </div>
 
-                {/* ✅ 2. CONDITIONAL INPUT: Experience vs Stock */}
+                {/* Experience vs Stock */}
                 <div>
                     {listingType === 'SERVICE' ? (
                         <>
@@ -115,11 +117,7 @@ export const StepOneBasic = ({
                     <select
                         className={`${inputClass} appearance-none cursor-pointer`}
                         value={form.categoryId}
-                        onChange={(e) => {
-                            handleChange('categoryId', e.target.value);
-                            const hasChildren = categories.find((c: Category) => c.id === e.target.value)?.children?.length > 0;
-                            if (hasChildren) setIsSubDropdownOpen(true);
-                        }}
+                        onChange={(e) => handleChange('categoryId', e.target.value)}
                         disabled={loadingCats}
                     >
                         <option value="">
@@ -135,7 +133,7 @@ export const StepOneBasic = ({
                 </div>
             </div>
 
-            {/* --- SUB-CATEGORY DROPDOWN (Single Select) --- */}
+            {/* --- SUB-CATEGORY DROPDOWN --- */}
             <div className="relative">
                 <label className={labelClass}>
                     {listingType === 'SERVICE' ? 'Sub-Service' : 'Sub-Item Type'}
@@ -143,11 +141,10 @@ export const StepOneBasic = ({
                 <div className="relative">
                     <select
                         className={`${inputClass} appearance-none cursor-pointer ${!form.categoryId ? 'opacity-50 bg-slate-100' : ''}`}
-                        value={form.subCategoryIds[0] || ""} // Selects the first (and only) ID
+                        value={form.subCategoryIds[0] || ""}
                         disabled={!form.categoryId || activeSubCategories.length === 0}
                         onChange={(e) => {
                             const val = e.target.value;
-                            // We save as [id] so your backend logic doesn't need to change
                             handleChange('subCategoryIds', val ? [val] : []);
                         }}
                     >
@@ -165,24 +162,109 @@ export const StepOneBasic = ({
                             </option>
                         ))}
                     </select>
-
-                    {/* Consistent Arrow Icon */}
                     <div className="absolute right-4 top-3.5 pointer-events-none text-slate-500">
-                        {loadingCats ? (
-                            <Loader2 className="animate-spin" size={16} />
-                        ) : (
-                            <ChevronDown size={16} />
-                        )}
+                        {loadingCats ? <Loader2 className="animate-spin" size={16} /> : <ChevronDown size={16} />}
                     </div>
                 </div>
-
-                {/* Helpful hint if a category has no subcategories */}
-                {form.categoryId && activeSubCategories.length === 0 && !loadingCats && (
-                    <p className="text-[10px] text-slate-400 mt-1 italic">
-                        * No sub-categories found for this selection.
-                    </p>
-                )}
             </div>
+
+            {/* --- ✅ NEW RENTAL FIELDS (Condition, Deposit, Durations) --- */}
+            {listingType === 'RENTAL' && (
+                <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 space-y-4 animate-in fade-in slide-in-from-top-2">
+
+                    {/* Row 1: Condition & Deposit */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelClass}>Item Condition</label>
+                            <div className="relative">
+                                <Box className="absolute left-3 top-3 text-slate-400" size={16} />
+                                <select
+                                    className={`${inputClass} pl-9 appearance-none`}
+                                    value={form.itemCondition}
+                                    onChange={e => handleChange('itemCondition', e.target.value)}
+                                >
+                                    <option value="New">New</option>
+                                    <option value="Like New">Like New</option>
+                                    <option value="Good">Good</option>
+                                    <option value="Fair">Fair</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className={labelClass}>Security Deposit (₹)</label>
+                            <div className="relative">
+                                <ShieldCheck className="absolute left-3 top-3 text-slate-400" size={16} />
+                                <input
+                                    type="number"
+                                    className={`${inputClass} pl-9`}
+                                    placeholder="0"
+                                    value={form.securityDeposit}
+                                    onChange={e => handleChange('securityDeposit', e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Durations */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelClass}>Min Duration</label>
+                            <div className="relative">
+                                <Hourglass className="absolute left-3 top-3 text-slate-400" size={16} />
+                                <select
+                                    className={`${inputClass} pl-9 appearance-none`}
+                                    value={form.minDuration}
+                                    onChange={e => handleChange('minDuration', e.target.value)}
+                                >
+                                    <option value="1 Hour">1 Hour</option>
+                                    <option value="1 Day">1 Day</option>
+                                    <option value="1 Week">1 Week</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className={labelClass}>Max Duration</label>
+                            <div className="relative">
+                                <Hourglass className="absolute left-3 top-3 text-slate-400" size={16} />
+                                <select
+                                    className={`${inputClass} pl-9 appearance-none`}
+                                    value={form.maxDuration}
+                                    onChange={e => handleChange('maxDuration', e.target.value)}
+                                >
+                                    <option value="7 Days">7 Days</option>
+                                    <option value="30 Days">30 Days</option>
+                                    <option value="Unlimited">Unlimited</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 3: Mode */}
+                    <div>
+                        <label className={labelClass}>Rental Mode</label>
+                        <div className="flex gap-4 mt-2">
+                            {['PICKUP', 'DELIVERY', 'BOTH'].map((mode) => (
+                                <label key={mode} className="flex items-center gap-2 cursor-pointer group">
+                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${form.rentalMode === mode ? 'border-orange-500' : 'border-slate-300'}`}>
+                                        {form.rentalMode === mode && <div className="w-2 h-2 rounded-full bg-orange-500" />}
+                                    </div>
+                                    <span className={`text-xs font-bold ${form.rentalMode === mode ? 'text-orange-600' : 'text-slate-500'} group-hover:text-orange-500 capitalize`}>
+                                        {mode.toLowerCase().replace('_', ' ')}
+                                    </span>
+                                    <input
+                                        type="radio"
+                                        name="rentalMode"
+                                        value={mode}
+                                        checked={form.rentalMode === mode}
+                                        onChange={() => handleChange('rentalMode', mode)}
+                                        className="hidden"
+                                    />
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Description & Phone */}
             <div className="space-y-4 pt-2">
@@ -191,7 +273,7 @@ export const StepOneBasic = ({
                     <textarea
                         className={inputClass}
                         rows={3}
-                        placeholder={listingType === 'SERVICE' ? "Describe your service..." : "Describe item condition..."}
+                        placeholder={listingType === 'SERVICE' ? "Describe your service..." : "Describe item features..."}
                         value={form.desc}
                         onChange={e => handleChange('desc', e.target.value)}
                     />
@@ -222,7 +304,7 @@ export const StepOneBasic = ({
     );
 };
 
-// --- STEP 2: Visuals (Same as before) ---
+// --- STEP 2: Visuals (Unchanged) ---
 export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, removeGalleryImg, setStep, handleChange }: any) => (
     <div className="space-y-6 animate-in slide-in-from-right duration-300">
         <div>
@@ -263,11 +345,10 @@ export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, rem
                         <img src={img} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
                         <button
                             onClick={() => handleChange('gallery', form.gallery.filter((_: string, index: number) => index !== i))}
-                            className="p-2 border rounded-lg hover:bg-red-50 text-slate-500 transition-colors"
+                            className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
                         >
-                            <Trash2 size={14} />
+                            <Trash2 size={12} />
                         </button>
-
                     </div>
                 ))}
                 <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
@@ -284,7 +365,7 @@ export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, rem
     </div>
 );
 
-// --- STEP 3: Schedule (Same as before) ---
+// --- STEP 3: Schedule (Unchanged) ---
 export const StepThreeSchedule = ({ form, handleChange, handleGetLocation, gettingLoc, toggleDay, setStep, DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }: any) => (
     <div className="space-y-5 animate-in slide-in-from-right duration-300">
         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm">
@@ -361,10 +442,9 @@ export const StepThreeSchedule = ({ form, handleChange, handleGetLocation, getti
     </div>
 );
 
-// --- STEP 4: Pricing (With Rental/Service Logic) ---
+// --- STEP 4: Pricing (Unchanged) ---
 export const StepFourPricing = ({ form, handleChange, loading, setStep, onComplete, serviceData, listingType }: any) => {
 
-    // ✅ Determine Pricing Options based on Listing Type
     const PRICING_OPTIONS = listingType === 'RENTAL'
         ? ['DAILY', 'MONTHLY', 'FIXED']
         : ['FIXED', 'HOURLY'];
@@ -435,7 +515,3 @@ export const StepFourPricing = ({ form, handleChange, loading, setStep, onComple
         </div>
     );
 };
-
-function onDelete(arg0: { id: any; type: any; }): void {
-    throw new Error('Function not implemented.');
-}

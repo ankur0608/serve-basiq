@@ -166,7 +166,7 @@ export function ManagementView({
                         onClick={() => setActiveView('settings')}
                         className="flex-1 py-3 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all"
                     >
-                        Services & Rentals
+                        Services
                     </button>
                     <button
                         onClick={() => setActiveView('products')}

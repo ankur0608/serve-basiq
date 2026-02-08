@@ -249,17 +249,13 @@ export default function ProviderDashboard() {
                             />
                         )}
 
-                        {/* 2. Operations / Requests */}
                         {activeView === 'requests' && (
                             <RequestsView
-                                bookings={bookings}
-                                orders={orders}
+
                                 showToast={showToast}
-                                onRefresh={refetchDashboard}
                                 providerType={providerType}
                             />
                         )}
-
                         {/* 3. Account Profile */}
                         {activeView === 'profile' && (
                             <ProfileView

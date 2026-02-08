@@ -44,12 +44,12 @@ const Navbar = () => {
                 <div className="flex md:hidden items-center justify-between h-14">
                     <Link href="/" className="flex items-center">
                         <Image
-                            src="/navbar.png"
+                            src="/mobnavbar.png"
                             alt="Servebasiq Logo"
                             width={170}
                             height={50}
                             priority
-                            className="h-24 w-auto"
+                            className="h-14 w-auto"
                         />
                     </Link>
 
@@ -117,12 +117,12 @@ const Navbar = () => {
                 <div className="hidden md:flex items-center justify-between h-16 gap-4">
                     <Link href="/" className="flex items-center">
                         <Image
-                            src="/navbar.png"
+                            src="/navbar.jpeg"
                             alt="Servebasiq Logo"
                             width={190}
                             height={100}
                             priority
-                            className="h-28 w-auto"
+                            className="h-16 w-auto"
                         />
                     </Link>
 
@@ -141,16 +141,20 @@ const Navbar = () => {
                         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
                             <Link href="/services" className="hover:text-blue-600 transition">Services</Link>
                             <Link href="/products" className="hover:text-blue-600 transition">Products</Link>
+                            <Link href="/rentals" className="hover:text-blue-600 transition">Rentals</Link>
+                            <Link href="/categories" className="hover:text-blue-600 transition">Categories</Link>
+
+
                         </div>
 
-                        <button className="flex items-center gap-1 text-sm text-gray-600">
+                        {/* <button className="flex items-center gap-1 text-sm text-gray-600">
                             <FaGlobe /> EN
-                        </button>
+                        </button> */}
 
-                        <button className="relative p-2 rounded-full hover:bg-gray-100">
+                        {/* <button className="relative p-2 rounded-full hover:bg-gray-100">
                             <FaRegBell className="text-gray-600" />
                             <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border border-white" />
-                        </button>
+                        </button> */}
 
                         <Link
                             href="/post-requirement"

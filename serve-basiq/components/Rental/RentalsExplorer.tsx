@@ -4,16 +4,30 @@ import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { FaArrowLeft, FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
-import { SearchX, Filter, MapPin } from 'lucide-react';
-import ServiceCard, { ServiceProps } from '@/components/ui/ServiceCard';
+import { Filter, MapPin, KeyRound } from 'lucide-react';
+import RentalCard from '@/components/ui/RentalCard';
 
 // --- TYPES ---
-interface ExplorerItem extends ServiceProps {
-    categoryId?: string | number;
+interface RentalItem {
+    id: string;
+    name: string;
     categoryName: string;
-    subcategoryId?: string | number;
-    subcategoryName?: string;
-    reviewCount?: number;
+    categoryId?: string;
+    subcategoryName: string;
+    subcategoryId?: string;
+    price: number;
+    priceType: string;
+    rating: number;
+    reviewCount: number;
+    location: string;
+    image: string;
+    type: 'Rental';
+    // Specific address fields
+    addressLine1?: string;
+    addressLine2?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
 }
 
 interface CategoryData {
@@ -22,8 +36,8 @@ interface CategoryData {
     children: { id: string; name: string }[];
 }
 
-// --- SKELETON LOADER (Exported) ---
-export function ExplorerSkeleton() {
+// --- SKELETON LOADER (Exported for use in Page) ---
+export function RentalSkeleton() {
     return (
         <div className="animate-pulse container mx-auto px-4 mt-8">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -43,61 +57,36 @@ export function ExplorerSkeleton() {
 }
 
 // --- MAIN COMPONENT ---
-export default function ServicesExplorer() {
+export default function RentalsExplorer() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
     // --- 1. State Management ---
     const [searchTerm, setSearchTerm] = useState('');
-    const [favorites, setFavorites] = useState<string[]>([]);
 
     // Filters State
-    const [selectedLocation, setSelectedLocation] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
+    const [selectedLocation, setSelectedLocation] = useState('');
     const [sortOption, setSortOption] = useState('');
 
     // --- 2. Data Fetching ---
 
-    // Current User Profile
-    const { data: currentUser } = useQuery({
-        queryKey: ['user', 'profile'],
+    // A. Fetch Rentals
+    const { data: apiResponse, isLoading: rentalsLoading } = useQuery({
+        queryKey: ['rentals', 'explorer'],
         queryFn: async () => {
-            const res = await fetch('/api/user/profile');
-            if (!res.ok) return null;
-            return res.json();
-        },
-        staleTime: 1000 * 60 * 5,
-    });
-
-    // User Favorites
-    useQuery({
-        queryKey: ['favorites', 'user'],
-        queryFn: async () => {
-            const res = await fetch('/api/user/favorites');
-            if (!res.ok) return { services: [], products: [] };
-            const data = await res.json();
-            setFavorites(data.services || []);
-            return data;
-        },
-        staleTime: 0,
-    });
-
-    // Fetch Services & Rentals
-    const { data: apiResponse, isLoading: servLoading } = useQuery({
-        queryKey: ['services', 'explorer'],
-        queryFn: async () => {
-            const res = await fetch('/api/provider/services?limit=100');
+            const res = await fetch('/api/rentals?limit=100');
             return res.json();
         },
         staleTime: 1000 * 60 * 1,
     });
 
-    // Fetch Categories (Services)
+    // B. Fetch Rental Categories
     const { data: categoriesData } = useQuery({
-        queryKey: ['categories', 'service'],
+        queryKey: ['categories', 'rental'],
         queryFn: async () => {
-            const res = await fetch('/api/categories?type=SERVICE');
+            const res = await fetch('/api/categories?type=RENTAL');
             const data = await res.json();
             return Array.isArray(data) ? data : [];
         },
@@ -105,73 +94,78 @@ export default function ServicesExplorer() {
     });
 
     // --- 3. Data Normalization ---
-    const rawItems: ExplorerItem[] = useMemo(() => {
+    const rentals: RentalItem[] = useMemo(() => {
         if (!apiResponse) return [];
-        const services = apiResponse.services || [];
-        // If you want to include rentals here too, you can map them similarly
-        // const rentals = apiResponse.rentals || []; 
 
-        const mapItem = (item: any, type: 'Service' | 'Rental') => ({
+        let rawData = [];
+        if (Array.isArray(apiResponse)) {
+            rawData = apiResponse;
+        } else if (apiResponse.data && Array.isArray(apiResponse.data)) {
+            rawData = apiResponse.data;
+        }
+
+        return rawData.map((item: any) => ({
             id: item.id,
             name: item.name,
             categoryId: item.category?.id,
-            categoryName: item.category?.name || "General",
+            categoryName: item.category?.name || "Other",
             subcategoryId: item.subcategory?.id,
-            subcategoryName: item.subcategory?.name,
+            subcategoryName: item.subcategory?.name || "General",
             price: Number(item.price) || 0,
-            priceType: item.priceType || 'FIXED',
+            priceType: item.priceType || 'DAILY',
             rating: Number(item.rating) || 0,
             reviewCount: item._count?.reviews || 0,
-            location: item.city || "Remote",
-            image: type === 'Service'
-                ? (item.serviceimg || item.mainimg || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80")
-                : (item.rentalImg || item.coverImg || "https://images.unsplash.com/photo-1503951458645-643d53633299?auto=format&fit=crop&q=80"),
-            type: type
-        });
+            location: item.city || item.user?.city || "Remote",
+            image: item.rentalImg || item.coverImg || "https://images.unsplash.com/photo-1580587771525-78b9dba3b91d?auto=format&fit=crop&q=80",
+            type: 'Rental',
 
-        return [
-            ...services.map((s: any) => mapItem(s, 'Service')),
-            // ...rentals.map((r: any) => mapItem(r, 'Rental')) // Uncomment if mixing types
-        ];
+            // Address mapping
+            addressLine1: item.addressLine1,
+            addressLine2: item.addressLine2,
+            city: item.city,
+            state: item.state,
+            pincode: item.pincode
+        }));
     }, [apiResponse]);
 
     // --- 4. Dynamic Filter Options ---
 
-    // Locations
-    const uniqueLocations = useMemo(() =>
-        [...new Set(rawItems.map(i => i.location).filter(Boolean))].sort(),
-        [rawItems]);
+    const uniqueLocations = useMemo(() => {
+        const locs = new Set(rentals.map(r => r.location).filter(Boolean));
+        return Array.from(locs).sort();
+    }, [rentals]);
 
-    // Categories
     const availableCategories = useMemo(() => {
         if (categoriesData && categoriesData.length > 0) return categoriesData;
-        return [];
-    }, [categoriesData]);
+        const uniqueCats = new Map();
+        rentals.forEach(item => {
+            if (item.categoryId && !uniqueCats.has(item.categoryId)) {
+                uniqueCats.set(item.categoryId, { id: item.categoryId, name: item.categoryName, children: [] });
+            }
+        });
+        return Array.from(uniqueCats.values());
+    }, [categoriesData, rentals]);
 
-    // Subcategories
     const availableSubcategories = useMemo(() => {
         if (!selectedCategory) return [];
         const cat = availableCategories.find((c: CategoryData) => String(c.id) === String(selectedCategory));
         return cat ? cat.children : [];
     }, [selectedCategory, availableCategories]);
 
-
     // --- 5. Filtering & Sorting Logic ---
     const filteredAndSortedItems = useMemo(() => {
-        let result = rawItems.filter(item => {
+        let result = rentals.filter(item => {
             const matchesSearch = searchTerm === '' ||
                 item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 item.categoryName.toLowerCase().includes(searchTerm.toLowerCase());
 
-            const matchesLocation = selectedLocation === '' || item.location === selectedLocation;
-
             const matchesCategory = selectedCategory === '' || String(item.categoryId) === String(selectedCategory);
             const matchesSubcategory = selectedSubcategory === '' || String(item.subcategoryId) === String(selectedSubcategory);
+            const matchesLocation = selectedLocation === '' || item.location === selectedLocation;
 
-            return matchesSearch && matchesLocation && matchesCategory && matchesSubcategory;
+            return matchesSearch && matchesCategory && matchesSubcategory && matchesLocation;
         });
 
-        // Sorting
         if (sortOption === 'price_asc') {
             result.sort((a, b) => a.price - b.price);
         } else if (sortOption === 'price_desc') {
@@ -179,60 +173,43 @@ export default function ServicesExplorer() {
         } else if (sortOption === 'rating') {
             result.sort((a, b) => b.rating - a.rating);
         } else if (sortOption === 'popular') {
-            result.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+            result.sort((a, b) => b.reviewCount - a.reviewCount);
         }
 
         return result;
-    }, [rawItems, searchTerm, selectedLocation, selectedCategory, selectedSubcategory, sortOption]);
-
-
-    // --- Handlers ---
-    const handleToggleFav = async (e: React.MouseEvent, id: string, type: string) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const isCurrentlyFav = favorites.includes(id);
-        const newFavorites = isCurrentlyFav ? favorites.filter(favId => favId !== id) : [...favorites, id];
-        setFavorites(newFavorites);
-
-        try {
-            await fetch('/api/favorites/toggle', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ itemId: id, type: type.toUpperCase() })
-            });
-        } catch (error) {
-            console.error(error);
-            setFavorites(favorites);
-        }
-    };
+    }, [rentals, searchTerm, selectedCategory, selectedSubcategory, selectedLocation, sortOption]);
 
     const resetFilters = () => {
         setSearchTerm('');
-        setSelectedLocation('');
         setSelectedCategory('');
         setSelectedSubcategory('');
+        setSelectedLocation('');
         setSortOption('');
-        router.push('/services');
+        router.push('/rentals');
     };
 
     return (
         <section className="min-h-screen bg-slate-50 text-slate-800 pb-20">
 
             {/* --- PAGE HEADER --- */}
-            <div className="bg-gradient-to-b from-blue-50 to-white pt-10 pb-20 px-4 border-b border-slate-200">
+            <div className="bg-gradient-to-b from-orange-50 to-white pt-10 pb-20 px-4 border-b border-slate-200">
                 <div className="container mx-auto max-w-6xl">
                     <div className="flex items-center gap-3 mb-4">
-                        <button onClick={() => router.back()} className="p-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-full transition shadow-sm">
+                        <button
+                            onClick={() => router.back()}
+                            className="p-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-full transition shadow-sm"
+                        >
                             <FaArrowLeft />
                         </button>
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">Find Expert Services</h1>
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">Rentals Nearby</h1>
                     </div>
-                    <p className="text-slate-500 max-w-xl text-lg font-medium">Connect with verified professionals for all your service and rental needs instantly.</p>
+                    <p className="text-slate-500 max-w-xl text-lg font-medium">
+                        Find equipment, vehicles, and spaces available for rent in your area.
+                    </p>
                 </div>
             </div>
 
-            {/* --- SEARCH & FILTERS CONTAINER --- */}
+            {/* --- SEARCH & FILTERS --- */}
             <div className="container mx-auto max-w-6xl px-4 -mt-10 relative z-10">
                 <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-4 md:p-6">
 
@@ -244,7 +221,7 @@ export default function ServicesExplorer() {
                             </div>
                             <input
                                 type="text"
-                                placeholder="Search for services, repairs, or experts..."
+                                placeholder="Search for tools, equipment, or vehicles..."
                                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium text-slate-900"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -260,10 +237,10 @@ export default function ServicesExplorer() {
                         </button>
                     </div>
 
-                    {/* Filter Row (4 Columns) */}
+                    {/* Filter Row */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
-                        {/* 1. Category Filter */}
+                        {/* Category */}
                         <div className="relative">
                             <select
                                 className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer"
@@ -281,7 +258,7 @@ export default function ServicesExplorer() {
                             <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                         </div>
 
-                        {/* 2. Subcategory Filter */}
+                        {/* Subcategory */}
                         <div className="relative">
                             <select
                                 className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -297,7 +274,7 @@ export default function ServicesExplorer() {
                             <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                         </div>
 
-                        {/* 3. Location Filter */}
+                        {/* Location */}
                         <div className="relative">
                             <select
                                 className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer"
@@ -305,14 +282,14 @@ export default function ServicesExplorer() {
                                 onChange={(e) => setSelectedLocation(e.target.value)}
                             >
                                 <option value="">All Locations</option>
-                                {uniqueLocations.map(loc => (
-                                    <option key={loc} value={loc!}>{loc}</option>
+                                {uniqueLocations.map((loc: string) => (
+                                    <option key={loc} value={loc}>{loc}</option>
                                 ))}
                             </select>
                             <MapPin className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                         </div>
 
-                        {/* 4. Sort Filter */}
+                        {/* Sort */}
                         <div className="relative">
                             <select
                                 className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer"
@@ -330,7 +307,7 @@ export default function ServicesExplorer() {
                     </div>
 
                     {/* Active Filters Summary */}
-                    {(selectedCategory || selectedLocation || selectedSubcategory || sortOption) && (
+                    {(selectedCategory || selectedSubcategory || selectedLocation || sortOption) && (
                         <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
                             <p className="text-xs font-bold text-slate-500">
                                 {filteredAndSortedItems.length} results found
@@ -345,31 +322,25 @@ export default function ServicesExplorer() {
 
             {/* --- RESULTS GRID --- */}
             <div className="container mx-auto max-w-6xl px-4 py-8">
-                {servLoading ? <ExplorerSkeleton /> : (
+                {rentalsLoading ? <RentalSkeleton /> : (
                     <div className="animate-in fade-in duration-500">
                         {filteredAndSortedItems.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
                                 <div className="p-4 bg-slate-50 rounded-full mb-4">
-                                    <SearchX className="text-slate-400" size={40} />
+                                    <KeyRound className="text-slate-400" size={40} />
                                 </div>
-                                <h4 className="text-xl font-bold text-slate-800">No services found</h4>
+                                <h4 className="text-xl font-bold text-slate-800">No rentals found</h4>
                                 <p className="text-slate-500 max-w-xs mx-auto mt-2">
                                     Try adjusting your filters or search for something else.
                                 </p>
                                 <button onClick={resetFilters} className="mt-6 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">
-                                    View All Services
+                                    View All Rentals
                                 </button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {filteredAndSortedItems.map((item) => (
-                                    <ServiceCard
-                                        key={item.id}
-                                        service={item}
-                                        isFav={favorites.includes(item.id)}
-                                        toggleFav={(e) => handleToggleFav(e!, item.id, item.type)}
-                                        currentUser={currentUser}
-                                    />
+                                    <RentalCard key={item.id} rental={item} />
                                 ))}
                             </div>
                         )}

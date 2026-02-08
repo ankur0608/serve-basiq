@@ -10,7 +10,7 @@ import { BadgeCheck, Store } from 'lucide-react';
 
 // Components
 import ProductWrapper from '@/components/products/ProductWrapper';
-import MobileVerificationModal from '@/components/auth/MobileVerificationModal'; // Adjust path as needed
+import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
 
 interface ProductCardProps {
     product: any;
@@ -27,13 +27,9 @@ export default function ProductCard({ product, isFav = false, toggleFav, current
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
 
-    // NOTE: If you have a custom Login Modal, add state for it here. 
-    // Otherwise, we use NextAuth's signIn() method.
-    // const [showLoginModal, setShowLoginModal] = useState(false); 
-
     if (!product) return null;
 
-    const { id, name, category, image, minOrder, price, unit, user } = product;
+    const { id, name, category, minOrder, price, unit, user } = product;
 
     // --- SMART USER RESOLUTION ---
     const effectiveUser = useMemo(() => {
@@ -58,14 +54,11 @@ export default function ProductCard({ product, isFav = false, toggleFav, current
 
         // 1. If Not Logged In -> Open Login (or redirect)
         if (!session) {
-            // If you have a modal: setShowLoginModal(true);
-            // Otherwise, redirect to login page with return URL
             signIn(undefined, { callbackUrl: window.location.pathname });
             return;
         }
 
         // 2. If Logged In but Not Verified -> Open Mobile Verification Modal
-        // Checking both flag and phone existence to be safe
         if (!effectiveUser?.isPhoneVerified) {
             setShowVerifyModal(true);
             return;
@@ -77,17 +70,40 @@ export default function ProductCard({ product, isFav = false, toggleFav, current
 
     // Helper: After verification success
     const handleVerificationSuccess = async () => {
-        // Refresh session to get new 'isVerified' status
-        await update();
+        await update(); // Refresh session
         setShowVerifyModal(false);
-        // Automatically open the request modal after verification
-        setShowRequestModal(true);
+        setShowRequestModal(true); // Open request modal
     };
 
-    // Display Helpers
-    const displayImage = image || product.productImage || 'https://via.placeholder.com/300';
-    const sellerName = product.supplier || user?.businessName || user?.name || "Verified Seller";
-    const categoryName = typeof category === 'string' ? category : (category?.name || 'General');
+    // --- ✅ ROBUST IMAGE LOGIC (Fixes the missing image issue) ---
+    const getValidImage = () => {
+        let rawImageList: string[] = [];
+
+        // 1. Try to get array from 'images' or 'gallery' (Arrays)
+        if (Array.isArray(product.images) && product.images.length > 0) {
+            rawImageList = product.images;
+        } else if (Array.isArray(product.gallery) && product.gallery.length > 0) {
+            rawImageList = product.gallery;
+        }
+        // 2. Try to get single string from 'image' or 'productImage' (Strings)
+        else if (product.image && typeof product.image === 'string' && product.image.trim() !== "") {
+            rawImageList = [product.image];
+        } else if (product.productImage && typeof product.productImage === 'string' && product.productImage.trim() !== "") {
+            rawImageList = [product.productImage];
+        }
+
+        // 3. Filter out broken placeholder domains
+        const validImages = rawImageList.filter(url => !url.includes('via.placeholder.com'));
+
+        // 4. Return first valid image OR a reliable Unsplash fallback
+        return validImages.length > 0
+            ? validImages[0]
+            : "https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80";
+    };
+
+    const displayImage = getValidImage();
+    const sellerName = product.supplier || user?.businessName || user?.shopName || user?.name || "Verified Seller";
+    const categoryName = typeof category === 'string' ? category : (product.categoryName || category?.name || 'General');
     const moqValue = minOrder || product.moq || 1;
 
     return (
@@ -96,13 +112,13 @@ export default function ProductCard({ product, isFav = false, toggleFav, current
                 href={`/products/${id}`}
                 className="group block bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden relative"
             >
-                {/* ... (Image Code same as before) ... */}
                 <div className="relative h-56 w-full overflow-hidden bg-gray-100">
                     <Image
                         src={displayImage}
                         alt={name || "Product Image"}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                     <span className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider">
                         {categoryName}
@@ -118,15 +134,16 @@ export default function ProductCard({ product, isFav = false, toggleFav, current
                 </div>
 
                 <div className="p-4">
-                    {/* ... (Details Code same as before) ... */}
                     <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
                         <Store size={12} className="text-slate-400" />
                         <span className="truncate max-w-[150px] font-medium">{sellerName}</span>
                         <BadgeCheck size={12} className="text-blue-500" />
                     </div>
+
                     <h3 className="font-bold text-slate-900 leading-tight mb-3 line-clamp-2 min-h-[40px] group-hover:text-blue-600 transition-colors">
                         {name}
                     </h3>
+
                     <div className="flex justify-between items-end mb-4">
                         <div>
                             <p className="text-xs text-slate-400 font-medium mb-0.5">Price</p>

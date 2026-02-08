@@ -3,48 +3,53 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user?.email) return new NextResponse("Unauthorized", { status: 401 });
 
-        // Fetch User with deeply nested favorites
+        // ✅ FIX: Check for ID, not Email. 
+        if (!session?.user?.id) {
+            // Return empty arrays instead of error so UI doesn't crash
+            return NextResponse.json({ services: [], products: [] });
+        }
+
         const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
+            where: { id: session.user.id }, // ✅ FIX: Lookup by ID
             include: {
                 favoriteServices: {
-                    include: {
-                        service: true // ✅ This fetches the NAME, IMAGE, PRICE
-                    }
+                    include: { service: true },
+                    orderBy: { createdAt: 'desc' }
                 },
                 favoriteProducts: {
-                    include: {
-                        product: true // ✅ This fetches the NAME, IMAGE, PRICE
-                    }
+                    include: { product: true },
+                    orderBy: { createdAt: 'desc' }
                 }
             }
         });
 
-        if (!user) return NextResponse.json({ services: [], products: [] });
+        if (!user) {
+            return NextResponse.json({ services: [], products: [] });
+        }
 
-        // Format the data so the frontend cards can read it easily
-        const services = user.favoriteServices.map(f => ({
+        // Format data
+        const services = user.favoriteServices.map((f) => ({
             ...f.service,
-            // Ensure image field matches what ServiceCard expects
-            image: f.service.serviceimg || f.service.mainimg || "",
+            image: f.service.serviceimg || f.service.mainimg || "/placeholder.jpg",
+            isFavorite: true
         }));
 
-        const products = user.favoriteProducts.map(f => ({
+        const products = user.favoriteProducts.map((f) => ({
             ...f.product,
-            // Ensure image field matches what ProductCard expects
-            image: f.product.productImage || "",
-            supplier: f.product.userId // Or fetch real supplier name
+            image: f.product.productImage || "/placeholder.jpg",
+            isFavorite: true
         }));
 
         return NextResponse.json({ services, products });
 
     } catch (error) {
-        console.error("Error fetching favorite details:", error);
-        return new NextResponse("Error", { status: 500 });
+        console.error("[FAVORITES_DETAILS_ERROR]", error);
+        return new NextResponse("Internal Server Error", { status: 500 });
     }
 }

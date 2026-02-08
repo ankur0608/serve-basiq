@@ -4,16 +4,33 @@ import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { FaArrowLeft, FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
-import { SearchX, Filter, MapPin } from 'lucide-react';
-import ServiceCard, { ServiceProps } from '@/components/ui/ServiceCard';
+import { Filter, PackageOpen, MapPin } from 'lucide-react';
+import ProductCard from '@/components/ui/ProductCard';
 
 // --- TYPES ---
-interface ExplorerItem extends ServiceProps {
-    categoryId?: string | number;
+interface ProductItem {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    minOrderQty: number;
+    unit: string;
+    images: string[];
+    categoryId?: string;
     categoryName: string;
-    subcategoryId?: string | number;
+    subcategoryId?: string;
     subcategoryName?: string;
-    reviewCount?: number;
+    rating: number;
+    reviewsCount: number;
+    inStock: boolean;
+    location: string;
+    provider: {
+        id: string;
+        name: string;
+        shopName: string;
+        image: string;
+        verified: boolean;
+    };
 }
 
 interface CategoryData {
@@ -22,14 +39,14 @@ interface CategoryData {
     children: { id: string; name: string }[];
 }
 
-// --- SKELETON LOADER (Exported) ---
-export function ExplorerSkeleton() {
+// --- SKELETON LOADER (Exported so page can use it too if needed) ---
+export function ProductsSkeleton() {
     return (
         <div className="animate-pulse container mx-auto px-4 mt-8">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {[...Array(8)].map((_, i) => (
-                    <div key={i} className="bg-white rounded-xl border h-72 flex flex-col overflow-hidden">
-                        <div className="h-36 bg-slate-200"></div>
+                    <div key={i} className="bg-white rounded-xl border h-80 flex flex-col overflow-hidden">
+                        <div className="h-40 bg-slate-200"></div>
                         <div className="p-3 gap-2 flex flex-col flex-1">
                             <div className="h-4 w-3/4 bg-slate-200 rounded"></div>
                             <div className="h-3 w-1/2 bg-slate-200 rounded"></div>
@@ -43,7 +60,7 @@ export function ExplorerSkeleton() {
 }
 
 // --- MAIN COMPONENT ---
-export default function ServicesExplorer() {
+export default function ProductsExplorer() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -52,9 +69,9 @@ export default function ServicesExplorer() {
     const [favorites, setFavorites] = useState<string[]>([]);
 
     // Filters State
-    const [selectedLocation, setSelectedLocation] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
+    const [selectedLocation, setSelectedLocation] = useState('');
     const [sortOption, setSortOption] = useState('');
 
     // --- 2. Data Fetching ---
@@ -75,29 +92,29 @@ export default function ServicesExplorer() {
         queryKey: ['favorites', 'user'],
         queryFn: async () => {
             const res = await fetch('/api/user/favorites');
-            if (!res.ok) return { services: [], products: [] };
+            if (!res.ok) return { products: [] };
             const data = await res.json();
-            setFavorites(data.services || []);
+            setFavorites(data.products || []);
             return data;
         },
         staleTime: 0,
     });
 
-    // Fetch Services & Rentals
-    const { data: apiResponse, isLoading: servLoading } = useQuery({
-        queryKey: ['services', 'explorer'],
+    // Fetch Products
+    const { data: apiResponse, isLoading: prodLoading } = useQuery({
+        queryKey: ['products', 'explorer'],
         queryFn: async () => {
-            const res = await fetch('/api/provider/services?limit=100');
+            const res = await fetch('/api/products/all?limit=100');
             return res.json();
         },
         staleTime: 1000 * 60 * 1,
     });
 
-    // Fetch Categories (Services)
+    // Fetch Categories
     const { data: categoriesData } = useQuery({
-        queryKey: ['categories', 'service'],
+        queryKey: ['categories', 'product'],
         queryFn: async () => {
-            const res = await fetch('/api/categories?type=SERVICE');
+            const res = await fetch('/api/categories?type=PRODUCT');
             const data = await res.json();
             return Array.isArray(data) ? data : [];
         },
@@ -105,48 +122,67 @@ export default function ServicesExplorer() {
     });
 
     // --- 3. Data Normalization ---
-    const rawItems: ExplorerItem[] = useMemo(() => {
-        if (!apiResponse) return [];
-        const services = apiResponse.services || [];
-        // If you want to include rentals here too, you can map them similarly
-        // const rentals = apiResponse.rentals || []; 
+    const rawItems: ProductItem[] = useMemo(() => {
+        if (!apiResponse || !apiResponse.products) return [];
 
-        const mapItem = (item: any, type: 'Service' | 'Rental') => ({
-            id: item.id,
-            name: item.name,
-            categoryId: item.category?.id,
-            categoryName: item.category?.name || "General",
-            subcategoryId: item.subcategory?.id,
-            subcategoryName: item.subcategory?.name,
-            price: Number(item.price) || 0,
-            priceType: item.priceType || 'FIXED',
-            rating: Number(item.rating) || 0,
-            reviewCount: item._count?.reviews || 0,
-            location: item.city || "Remote",
-            image: type === 'Service'
-                ? (item.serviceimg || item.mainimg || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80")
-                : (item.rentalImg || item.coverImg || "https://images.unsplash.com/photo-1503951458645-643d53633299?auto=format&fit=crop&q=80"),
-            type: type
+        return apiResponse.products.map((item: any) => {
+            let rawImageList: string[] = [];
+            if (Array.isArray(item.images) && item.images.length > 0) {
+                rawImageList = item.images;
+            } else if (item.image && typeof item.image === 'string' && item.image.trim() !== "") {
+                rawImageList = [item.image];
+            }
+            const validImages = rawImageList.filter(url => !url.includes('via.placeholder.com'));
+            if (validImages.length === 0) {
+                validImages.push("https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80");
+            }
+
+            return {
+                id: item.id,
+                name: item.name,
+                description: item.description,
+                price: Number(item.price) || 0,
+                minOrderQty: item.moq || 1,
+                unit: item.unit || 'pcs',
+                images: validImages,
+                categoryId: item.category?.id,
+                categoryName: item.category?.name || "General",
+                subcategoryId: item.subcategory?.id,
+                subcategoryName: item.subcategory?.name,
+                rating: item.rating || 0,
+                reviewsCount: item._count?.reviews || 0,
+                inStock: true,
+                location: item.city || item.user?.city || "Worldwide",
+                provider: {
+                    id: item.user?.id,
+                    name: item.user?.name,
+                    shopName: item.supplier || item.user?.shopName || "Seller",
+                    image: item.user?.profileImage || item.user?.image || "",
+                    verified: item.isVerified || false
+                }
+            };
         });
-
-        return [
-            ...services.map((s: any) => mapItem(s, 'Service')),
-            // ...rentals.map((r: any) => mapItem(r, 'Rental')) // Uncomment if mixing types
-        ];
     }, [apiResponse]);
 
     // --- 4. Dynamic Filter Options ---
 
     // Locations
-    const uniqueLocations = useMemo(() =>
-        [...new Set(rawItems.map(i => i.location).filter(Boolean))].sort(),
-        [rawItems]);
+    const uniqueLocations = useMemo(() => {
+        const locs = new Set(rawItems.map(i => i.location).filter(Boolean));
+        return Array.from(locs).sort();
+    }, [rawItems]);
 
     // Categories
     const availableCategories = useMemo(() => {
         if (categoriesData && categoriesData.length > 0) return categoriesData;
-        return [];
-    }, [categoriesData]);
+        const uniqueCats = new Map();
+        rawItems.forEach(item => {
+            if (item.categoryId && !uniqueCats.has(item.categoryId)) {
+                uniqueCats.set(item.categoryId, { id: item.categoryId, name: item.categoryName, children: [] });
+            }
+        });
+        return Array.from(uniqueCats.values());
+    }, [categoriesData, rawItems]);
 
     // Subcategories
     const availableSubcategories = useMemo(() => {
@@ -155,7 +191,6 @@ export default function ServicesExplorer() {
         return cat ? cat.children : [];
     }, [selectedCategory, availableCategories]);
 
-
     // --- 5. Filtering & Sorting Logic ---
     const filteredAndSortedItems = useMemo(() => {
         let result = rawItems.filter(item => {
@@ -163,12 +198,11 @@ export default function ServicesExplorer() {
                 item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 item.categoryName.toLowerCase().includes(searchTerm.toLowerCase());
 
-            const matchesLocation = selectedLocation === '' || item.location === selectedLocation;
-
             const matchesCategory = selectedCategory === '' || String(item.categoryId) === String(selectedCategory);
             const matchesSubcategory = selectedSubcategory === '' || String(item.subcategoryId) === String(selectedSubcategory);
+            const matchesLocation = selectedLocation === '' || item.location === selectedLocation;
 
-            return matchesSearch && matchesLocation && matchesCategory && matchesSubcategory;
+            return matchesSearch && matchesCategory && matchesSubcategory && matchesLocation;
         });
 
         // Sorting
@@ -179,15 +213,14 @@ export default function ServicesExplorer() {
         } else if (sortOption === 'rating') {
             result.sort((a, b) => b.rating - a.rating);
         } else if (sortOption === 'popular') {
-            result.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+            result.sort((a, b) => b.reviewsCount - a.reviewsCount);
         }
 
         return result;
-    }, [rawItems, searchTerm, selectedLocation, selectedCategory, selectedSubcategory, sortOption]);
-
+    }, [rawItems, searchTerm, selectedCategory, selectedSubcategory, selectedLocation, sortOption]);
 
     // --- Handlers ---
-    const handleToggleFav = async (e: React.MouseEvent, id: string, type: string) => {
+    const handleToggleFav = async (e: React.MouseEvent, id: string) => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -199,7 +232,7 @@ export default function ServicesExplorer() {
             await fetch('/api/favorites/toggle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ itemId: id, type: type.toUpperCase() })
+                body: JSON.stringify({ itemId: id, type: 'PRODUCT' })
             });
         } catch (error) {
             console.error(error);
@@ -209,11 +242,11 @@ export default function ServicesExplorer() {
 
     const resetFilters = () => {
         setSearchTerm('');
-        setSelectedLocation('');
         setSelectedCategory('');
         setSelectedSubcategory('');
+        setSelectedLocation('');
         setSortOption('');
-        router.push('/services');
+        router.push('/products');
     };
 
     return (
@@ -223,12 +256,17 @@ export default function ServicesExplorer() {
             <div className="bg-gradient-to-b from-blue-50 to-white pt-10 pb-20 px-4 border-b border-slate-200">
                 <div className="container mx-auto max-w-6xl">
                     <div className="flex items-center gap-3 mb-4">
-                        <button onClick={() => router.back()} className="p-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-full transition shadow-sm">
+                        <button
+                            onClick={() => router.back()}
+                            className="p-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-full transition shadow-sm"
+                        >
                             <FaArrowLeft />
                         </button>
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">Find Expert Services</h1>
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">Wholesale Market</h1>
                     </div>
-                    <p className="text-slate-500 max-w-xl text-lg font-medium">Connect with verified professionals for all your service and rental needs instantly.</p>
+                    <p className="text-slate-500 max-w-xl text-lg font-medium">
+                        Source high-quality products directly from verified manufacturers and distributors.
+                    </p>
                 </div>
             </div>
 
@@ -244,7 +282,7 @@ export default function ServicesExplorer() {
                             </div>
                             <input
                                 type="text"
-                                placeholder="Search for services, repairs, or experts..."
+                                placeholder="Search products, suppliers, or categories..."
                                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium text-slate-900"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -260,10 +298,10 @@ export default function ServicesExplorer() {
                         </button>
                     </div>
 
-                    {/* Filter Row (4 Columns) */}
+                    {/* Filter Row */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
-                        {/* 1. Category Filter */}
+                        {/* 1. Category */}
                         <div className="relative">
                             <select
                                 className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer"
@@ -281,7 +319,7 @@ export default function ServicesExplorer() {
                             <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                         </div>
 
-                        {/* 2. Subcategory Filter */}
+                        {/* 2. Subcategory */}
                         <div className="relative">
                             <select
                                 className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -297,7 +335,7 @@ export default function ServicesExplorer() {
                             <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                         </div>
 
-                        {/* 3. Location Filter */}
+                        {/* 3. Location */}
                         <div className="relative">
                             <select
                                 className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer"
@@ -305,14 +343,14 @@ export default function ServicesExplorer() {
                                 onChange={(e) => setSelectedLocation(e.target.value)}
                             >
                                 <option value="">All Locations</option>
-                                {uniqueLocations.map(loc => (
-                                    <option key={loc} value={loc!}>{loc}</option>
+                                {uniqueLocations.map((loc: string) => (
+                                    <option key={loc} value={loc}>{loc}</option>
                                 ))}
                             </select>
                             <MapPin className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                         </div>
 
-                        {/* 4. Sort Filter */}
+                        {/* 4. Sort */}
                         <div className="relative">
                             <select
                                 className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer"
@@ -330,7 +368,7 @@ export default function ServicesExplorer() {
                     </div>
 
                     {/* Active Filters Summary */}
-                    {(selectedCategory || selectedLocation || selectedSubcategory || sortOption) && (
+                    {(selectedCategory || selectedSubcategory || selectedLocation || sortOption) && (
                         <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
                             <p className="text-xs font-bold text-slate-500">
                                 {filteredAndSortedItems.length} results found
@@ -345,29 +383,29 @@ export default function ServicesExplorer() {
 
             {/* --- RESULTS GRID --- */}
             <div className="container mx-auto max-w-6xl px-4 py-8">
-                {servLoading ? <ExplorerSkeleton /> : (
+                {prodLoading ? <ProductsSkeleton /> : (
                     <div className="animate-in fade-in duration-500">
                         {filteredAndSortedItems.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
                                 <div className="p-4 bg-slate-50 rounded-full mb-4">
-                                    <SearchX className="text-slate-400" size={40} />
+                                    <PackageOpen className="text-slate-400" size={40} />
                                 </div>
-                                <h4 className="text-xl font-bold text-slate-800">No services found</h4>
+                                <h4 className="text-xl font-bold text-slate-800">No products found</h4>
                                 <p className="text-slate-500 max-w-xs mx-auto mt-2">
                                     Try adjusting your filters or search for something else.
                                 </p>
                                 <button onClick={resetFilters} className="mt-6 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">
-                                    View All Services
+                                    View All Products
                                 </button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {filteredAndSortedItems.map((item) => (
-                                    <ServiceCard
+                                    <ProductCard
                                         key={item.id}
-                                        service={item}
+                                        product={item}
                                         isFav={favorites.includes(item.id)}
-                                        toggleFav={(e) => handleToggleFav(e!, item.id, item.type)}
+                                        toggleFav={(e) => handleToggleFav(e!, item.id)}
                                         currentUser={currentUser}
                                     />
                                 ))}
