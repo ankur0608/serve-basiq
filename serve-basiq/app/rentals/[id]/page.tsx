@@ -12,7 +12,7 @@ import {
 } from 'react-icons/fa6';
 import { useSession } from 'next-auth/react';
 
-// ✅ CHANGED: Import the Rental specific wrapper
+// ✅ Import the Rental specific wrapper
 import RentalBookingWrapper from '@/components/Rental/RentalBookingWrapper';
 import AppImage from '@/components/ui/AppImage';
 import RatingForm from '@/components/Rating/RatingForm';
@@ -165,7 +165,7 @@ export default function RentalDetailsPage() {
                                 </p>
                             </div>
 
-                            {/* RENTAL STATS GRID (Adapted from Service Stats) */}
+                            {/* RENTAL STATS GRID */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                                     <p className="text-[10px] text-slate-400 font-bold uppercase">Condition</p>
@@ -287,10 +287,14 @@ export default function RentalDetailsPage() {
                         {/* Pricing & Booking Card */}
                         <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 sticky top-8">
                             <div className="mb-6">
-                                <p className="text-slate-400 text-sm font-medium">Rent per day</p>
+                                <p className="text-slate-400 text-sm font-medium">
+                                    {rental.priceType === 'FIXED' ? 'Fixed Price' : 'Starting from'}
+                                </p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-4xl font-black text-slate-900">₹{rental.price}</span>
-                                    <span className="text-slate-400 font-bold">/{rental.priceType?.toLowerCase() || 'day'}</span>
+                                    <span className="text-slate-400 font-bold">
+                                        /{rental.priceType?.toLowerCase() || 'day'}
+                                    </span>
                                 </div>
                             </div>
 
@@ -314,13 +318,18 @@ export default function RentalDetailsPage() {
                                 </div>
                             </div>
 
-                            {/* ✅ CHANGED: Use RentalBookingWrapper and pass ownerLocation */}
+                            {/* ✅ CHANGED: Updated Props to match new Wrapper */}
                             <RentalBookingWrapper
                                 rentalId={rental.id}
                                 rentalName={displayName}
-                                pricePerDay={rental.price}
                                 rentalImage={heroImage}
-                                ownerLocation={fullAddress} // ✅ PASSED ADDRESS HERE
+                                ownerLocation={fullAddress}
+
+                                // New Pricing Props
+                                dailyPrice={rental.dailyPrice}
+                                monthlyPrice={rental.monthlyPrice}
+                                fixedPrice={rental.fixedPrice}
+
                                 currentUser={session?.user || null}
                                 userAddresses={[]}
                             />

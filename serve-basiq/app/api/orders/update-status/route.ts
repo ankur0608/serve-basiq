@@ -10,7 +10,6 @@ export async function PATCH(req: Request) {
             return NextResponse.json({ success: false, message: 'Missing fields' }, { status: 400 });
         }
 
-        // ✅ Updated Valid Statuses based on your new Schema
         const validStatuses = [
             'REQUESTED',
             'ACCEPTED',

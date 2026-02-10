@@ -30,11 +30,12 @@ interface Props {
     onSuccess?: () => void;
 }
 
-// --- CONSTANTS ---
+// --- ✅ UPDATED CONSTANTS (MATCHING NEW ENUM) ---
 const TIMELINE_OPTIONS = [
+    { label: 'Urgent (ASAP)', value: 'URGENT' },
     { label: 'Immediate', value: 'IMMEDIATE' },
-    { label: 'In 2 Days', value: 'IN_2_DAYS' },
-    { label: '2 to 5 Days', value: 'TWO_TO_FIVE_DAYS' }
+    { label: 'Later', value: 'LATER' },
+    { label: 'Flexible', value: 'FLEXIBLE' }
 ];
 
 const UNIT_OPTIONS = [
@@ -42,15 +43,6 @@ const UNIT_OPTIONS = [
     { label: 'Kg', value: 'KG' },
     { label: 'Box', value: 'BOX' },
     { label: 'Liter', value: 'LITER' }
-];
-
-const BUDGET_OPTIONS = [
-    { label: 'Select Budget (Optional)', value: '' },
-    { label: 'Under ₹1,000', value: 'Under 1000' },
-    { label: '₹1,000 - ₹5,000', value: '1000 - 5000' },
-    { label: '₹5,000 - ₹10,000', value: '5000 - 10000' },
-    { label: '₹10,000 - ₹50,000', value: '10000 - 50000' },
-    { label: 'Above ₹50,000', value: 'Above 50000' }
 ];
 
 export default function ProductRequestForm({
@@ -77,6 +69,8 @@ export default function ProductRequestForm({
 
     const [addressId, setAddressId] = useState(addresses[0]?.id || '');
     const [notes, setNotes] = useState('');
+
+    // ✅ Updated Default State to match Enum
     const [timeline, setTimeline] = useState('IMMEDIATE');
 
     const deliveryType = 'DELIVERY';
@@ -106,7 +100,7 @@ export default function ProductRequestForm({
             line2: data.addressLine2,
             landmark: data.landmark,
             city: data.city,
-            district: data.district || '', // ✅ Added District Here
+            district: data.district || '',
             state: data.state,
             pincode: data.pincode,
             type: "Home",
@@ -165,7 +159,7 @@ export default function ProductRequestForm({
                 paymentMode,
                 addressId,
                 notes: finalNotes,
-                timeline,
+                timeline, // ✅ Sends the updated enum value
             };
 
             if (addressId.toString().startsWith('temp-') && selectedAddressObj) {
@@ -174,7 +168,7 @@ export default function ProductRequestForm({
                     line2: selectedAddressObj.line2,
                     landmark: selectedAddressObj.landmark,
                     city: selectedAddressObj.city,
-                    district: selectedAddressObj.district, // ✅ Pass district to API
+                    district: selectedAddressObj.district,
                     state: selectedAddressObj.state,
                     pincode: selectedAddressObj.pincode,
                     type: (selectedAddressObj.type || "HOME").toUpperCase(),
@@ -208,7 +202,6 @@ export default function ProductRequestForm({
         }
     };
 
-    // ✅ FIXED: Added district to both return paths
     const getModalInitialData = (): ProfileData => {
         const defaults = {
             dateOfBirth: userDetails?.dob || "",
@@ -225,7 +218,7 @@ export default function ProductRequestForm({
                 addressLine2: editingAddress.line2 || "",
                 landmark: editingAddress.landmark || "",
                 city: editingAddress.city || "",
-                district: editingAddress.district || "", // ✅ Added District
+                district: editingAddress.district || "",
                 state: editingAddress.state || "",
                 pincode: editingAddress.pincode || ""
             };
@@ -236,7 +229,7 @@ export default function ProductRequestForm({
             addressLine2: "",
             landmark: "",
             city: "",
-            district: "", // ✅ Added District
+            district: "",
             state: "",
             pincode: ""
         };
@@ -298,24 +291,6 @@ export default function ProductRequestForm({
                                     </select>
                                     <ChevronRight className="absolute right-3 top-4 rotate-90 text-slate-400 pointer-events-none" size={14} />
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* 2. BUDGET */}
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Budget Range</label>
-                            <div className="relative">
-                                <Coins className="absolute left-3 top-3.5 text-slate-400" size={18} />
-                                <select
-                                    value={budget}
-                                    onChange={(e) => setBudget(e.target.value)}
-                                    className="w-full pl-10 pr-8 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 appearance-none cursor-pointer"
-                                >
-                                    {BUDGET_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                                <ChevronRight className="absolute right-3 top-4 rotate-90 text-slate-400 pointer-events-none" size={14} />
                             </div>
                         </div>
 

@@ -24,10 +24,12 @@ interface BookingFormProps {
   onSuccess?: () => void;
 }
 
+// ✅ UPDATED: Matches your new Prisma Enum
 const TIMELINE_OPTIONS = [
+  { label: 'Urgent (ASAP)', value: 'URGENT' },
   { label: 'Immediate', value: 'IMMEDIATE' },
-  { label: 'In 2 Days', value: 'IN_2_DAYS' },
-  { label: '2 to 5 Days', value: 'TWO_TO_FIVE_DAYS' }
+  { label: 'Later', value: 'LATER' },
+  { label: 'Flexible', value: 'FLEXIBLE' }
 ];
 
 export default function BookingForm({
@@ -46,6 +48,7 @@ export default function BookingForm({
   const [addresses, setAddresses] = useState(initialAddresses || []);
   const [addressId, setAddressId] = useState(addresses.length === 1 ? addresses[0].id : '');
 
+  // Defaulting to IMMEDIATE, which is valid in your new Enum
   const [timeline, setTimeline] = useState('IMMEDIATE');
   const [instructions, setInstructions] = useState('');
 
@@ -71,7 +74,7 @@ export default function BookingForm({
       line2: data.addressLine2,
       landmark: data.landmark,
       city: data.city,
-      district: data.district || '', // ✅ Save district as well
+      district: data.district || '',
       state: data.state,
       pincode: data.pincode,
       type: "Home",
@@ -101,7 +104,7 @@ export default function BookingForm({
         userId,
         serviceId,
         addressId,
-        timeline,
+        timeline, // ✅ Sends the correct Enum value (e.g., 'URGENT')
         specialInstructions: instructions,
       };
 
@@ -111,7 +114,7 @@ export default function BookingForm({
           line2: selectedAddressObj.line2,
           landmark: selectedAddressObj.landmark,
           city: selectedAddressObj.city,
-          district: selectedAddressObj.district, // ✅ Include district in payload
+          district: selectedAddressObj.district,
           state: selectedAddressObj.state,
           pincode: selectedAddressObj.pincode,
           type: (selectedAddressObj.type || "HOME").toUpperCase(),
@@ -156,7 +159,7 @@ export default function BookingForm({
         addressLine2: editingAddress.line2 || "",
         landmark: editingAddress.landmark || "",
         city: editingAddress.city || "",
-        district: editingAddress.district || "", // ✅ ADDED THIS
+        district: editingAddress.district || "",
         state: editingAddress.state || "",
         pincode: editingAddress.pincode || ""
       };
@@ -171,7 +174,7 @@ export default function BookingForm({
       addressLine2: "",
       landmark: "",
       city: "",
-      district: "", // ✅ ADDED THIS
+      district: "",
       state: "",
       pincode: ""
     };

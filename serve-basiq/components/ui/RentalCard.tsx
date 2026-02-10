@@ -13,9 +13,15 @@ export interface RentalProps {
     image: string;
     location: string;
     rating: number;
+
+    // ✅ Price Fields (Make sure these match your API response)
     price: number;
     priceType: string;
-    // ✅ Add these fields to receive address data from API
+    dailyPrice?: number | null;
+    monthlyPrice?: number | null;
+    fixedPrice?: number | null;
+
+    // ✅ Address Fields
     addressLine1?: string;
     addressLine2?: string;
     city?: string;
@@ -36,15 +42,37 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
     const [showBooking, setShowBooking] = useState(false);
 
     const {
-        id, name, categoryName, image, location, rating = 0, price, priceType,
-        // Destructure address fields
+        id, name, categoryName, image, location, rating = 0,
+        price, priceType,
+        dailyPrice, monthlyPrice, fixedPrice,
         addressLine1, addressLine2, city, state, pincode
     } = rental;
 
-    // ✅ Construct the Owner Address String
+    // =========================================================================
+    // ✅ SMART PRICE LOGIC (Fixes the "0" issue)
+    // =========================================================================
+
+    // 1. Determine Effective Prices for the Booking Wrapper
+    // If the specific field (e.g., monthlyPrice) is null, but priceType IS 'MONTHLY', use the main 'price'.
+    const effectiveDailyPrice = dailyPrice ?? (priceType === 'DAILY' ? price : undefined);
+    const effectiveMonthlyPrice = monthlyPrice ?? (priceType === 'MONTHLY' ? price : undefined);
+    const effectiveFixedPrice = fixedPrice ?? (priceType === 'FIXED' ? price : undefined);
+
+    // 2. Determine Display Price for the Card
+    let displayPrice = 0;
+    if (priceType === 'DAILY') displayPrice = effectiveDailyPrice || 0;
+    else if (priceType === 'MONTHLY') displayPrice = effectiveMonthlyPrice || 0;
+    else if (priceType === 'FIXED') displayPrice = effectiveFixedPrice || 0;
+
+    // Final fallback: If logic failed but we have a main price, use it
+    if (displayPrice === 0 && price > 0) displayPrice = price;
+
+    // =========================================================================
+
+    // Construct the Owner Address String
     const ownerAddress = useMemo(() => {
         return [addressLine1, addressLine2, city, state, pincode]
-            .filter(part => part && part.trim() !== "") // Remove empty parts
+            .filter(part => part && part.trim() !== "")
             .join(", ");
     }, [addressLine1, addressLine2, city, state, pincode]);
 
@@ -75,21 +103,34 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
 
     return (
         <>
-            {/* ... (Your existing Card UI code remains same) ... */}
-
             <div onClick={handleDetailsClick} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow h-full">
-                {/* Image & Content Sections (No changes needed here) */}
+
+                {/* Image Section */}
                 <div className="relative h-44 w-full bg-gray-100 overflow-hidden">
                     <img src={image} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm text-white uppercase tracking-wide bg-orange-600">{categoryName}</span>
+                    <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm text-white uppercase tracking-wide bg-orange-600">
+                        {categoryName}
+                    </span>
                 </div>
+
+                {/* Content Section */}
                 <div className="p-3 flex flex-col gap-1 flex-1">
                     <h3 className="text-sm font-bold text-gray-900 truncate">{name}</h3>
+
                     <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                        <span className="flex items-center gap-1 truncate max-w-[65%]"><FaLocationDot size={10} className="text-gray-400" /> {location}</span>
-                        <span className="flex items-center gap-1 text-amber-500 font-bold bg-amber-50 px-1.5 rounded"><FaStar size={10} /> {rating > 0 ? rating.toFixed(1) : 'New'}</span>
+                        <span className="flex items-center gap-1 truncate max-w-[65%]">
+                            <FaLocationDot size={10} className="text-gray-400" /> {location}
+                        </span>
+                        <span className="flex items-center gap-1 text-amber-500 font-bold bg-amber-50 px-1.5 rounded">
+                            <FaStar size={10} /> {rating > 0 ? rating.toFixed(1) : 'New'}
+                        </span>
                     </div>
-                    <div className="text-sm font-bold text-gray-900 mt-2">₹{price} <span className="text-xs font-medium text-gray-400">/ {priceType?.toLowerCase() || 'day'}</span></div>
+
+                    {/* ✅ UPDATED PRICE DISPLAY */}
+                    <div className="text-sm font-bold text-gray-900 mt-2">
+                        ₹{displayPrice} <span className="text-xs font-medium text-gray-400">/ {priceType?.toLowerCase() || 'day'}</span>
+                    </div>
+
                     <div className="flex gap-2 mt-3 pt-2 border-t border-gray-50">
                         <button onClick={handleDetailsClick} className="flex-1 border border-gray-200 text-xs py-2 rounded-lg hover:bg-gray-50 text-gray-700 font-bold transition-colors">Details</button>
                         <button onClick={handleBookClick} className="flex-1 bg-slate-900 text-white text-xs py-2 rounded-lg hover:bg-slate-800 font-bold shadow-sm transition-colors">Book</button>
@@ -101,15 +142,22 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
             {showBooking && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowBooking(false)}>
                     <div className="relative w-full max-w-sm md:max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => setShowBooking(false)} className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all border border-white/20 shadow-sm"><FaXmark size={18} /></button>
+                        <button onClick={() => setShowBooking(false)} className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all border border-white/20 shadow-sm">
+                            <FaXmark size={18} />
+                        </button>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50">
                             <RentalBookingWrapper
                                 rentalId={id}
                                 rentalName={name}
-                                pricePerDay={price}
                                 rentalImage={image}
-                                ownerLocation={ownerAddress} // ✅ PASSED HERE
+                                ownerLocation={ownerAddress}
+
+                                // ✅ Pass Calculated Prices (numbers or undefined)
+                                dailyPrice={typeof effectiveDailyPrice === 'number' ? effectiveDailyPrice : undefined}
+                                monthlyPrice={typeof effectiveMonthlyPrice === 'number' ? effectiveMonthlyPrice : undefined}
+                                fixedPrice={typeof effectiveFixedPrice === 'number' ? effectiveFixedPrice : undefined}
+
                                 currentUser={effectiveUser}
                                 userAddresses={effectiveUser?.addresses || []}
                                 defaultOpen={true}

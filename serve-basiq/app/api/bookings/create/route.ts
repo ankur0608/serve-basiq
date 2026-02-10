@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// ✅ Updated Schema: Accepts optional address details for new addresses
+// ✅ Updated Schema: Now matches the new Timeline Enum values
 const BookingSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
   serviceId: z.string().min(1, "Service ID is required"),
   addressId: z.string().min(1, "Address is required"),
-  timeline: z.enum(['IMMEDIATE', 'IN_2_DAYS', 'TWO_TO_FIVE_DAYS']),
+
+  // 🔄 UPDATE: Changed to match your new Prisma Enum
+  timeline: z.enum(['URGENT', 'IMMEDIATE', 'LATER', 'FLEXIBLE']),
+
   specialInstructions: z.string().optional(),
-  // Optional: Only needed if addressId is temporary
+
+  // Optional: Only needed if addressId is temporary (starts with "temp-")
   newAddress: z.object({
     line1: z.string(),
     line2: z.string(),
@@ -26,11 +30,12 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log("📝 [API] Booking Request:", body);
 
+    // Validate input against the new schema
     const validation = BookingSchema.safeParse(body);
 
     if (!validation.success) {
       console.error("❌ Validation Failed:", validation.error.format());
-      return NextResponse.json({ success: false, message: "Invalid data" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Invalid data", errors: validation.error.format() }, { status: 400 });
     }
 
     const data = validation.data;
@@ -57,13 +62,13 @@ export async function POST(req: Request) {
           city: data.newAddress.city,
           state: data.newAddress.state,
           pincode: data.newAddress.pincode,
-          type: data.newAddress.type as any, // Ensure Enum match
-          country: "India", // Default or add to schema
+          type: data.newAddress.type as any,
+          country: "India",
         },
       });
 
       console.log("✅ Address Created with ID:", createdAddress.id);
-      finalAddressId = createdAddress.id; // Use the REAL ID
+      finalAddressId = createdAddress.id;
     }
 
     // 2. Create the Booking with the REAL Address ID
@@ -71,11 +76,12 @@ export async function POST(req: Request) {
       data: {
         userId: data.userId,
         serviceId: data.serviceId,
-        addressId: finalAddressId, // <--- Now guaranteed to be real
-        timeline: data.timeline,
-        specialInstructions: data.specialInstructions,
+        addressId: finalAddressId,
 
-        // ✅ FIXED: Changed 'PENDING' to 'REQUESTED' to match your Schema
+        // This will now successfully map because we validated it with Zod above
+        timeline: data.timeline,
+
+        specialInstructions: data.specialInstructions,
         status: 'REQUESTED',
       },
     });

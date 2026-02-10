@@ -318,7 +318,6 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                                     </div>
                                     <div>
                                         <p className="text-[10px] text-slate-400 font-bold uppercase">Direct Contact</p>
-                                        <p className="text-sm font-bold text-slate-900">+91 {service.altPhone || service.user.phone || 'N/A'}</p>
                                     </div>
                                 </div>
                                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">

@@ -7,6 +7,7 @@ const RequirementSchema = z.object({
     type: z.enum(['PRODUCT', 'SERVICE']),
     title: z.string().min(3, "Title is required"),
     description: z.string().min(10, "Description must be at least 10 chars"),
+    timeline: z.enum(['URGENT', 'IMMEDIATE', 'LATER', 'FLEXIBLE']),
 });
 
 export async function POST(req: Request) {
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
 
         const data = validation.data;
 
-        // 1. Check User (No address check needed)
+        // 1. Check User
         const user = await prisma.user.findUnique({
             where: { id: data.userId }
         });
@@ -39,7 +40,10 @@ export async function POST(req: Request) {
                 type: data.type,
                 title: data.title,
                 description: data.description,
-                status: "OPEN"
+                status: "OPEN",
+
+                // ✅ FIXED: You must include this field to save it to DB
+                timeline: data.timeline
             }
         });
 

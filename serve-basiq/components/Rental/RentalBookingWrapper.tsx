@@ -16,9 +16,14 @@ import SuccessModal from '@/components/ui/SuccessModal';
 interface Props {
     rentalId: string;
     rentalName: string;
-    pricePerDay: number;
     rentalImage?: string;
-    ownerLocation?: string; // ✅ Added ownerLocation prop
+    ownerLocation?: string;
+
+    // ✅ UPDATED: Accept specific prices instead of generic pricePerDay
+    dailyPrice?: number;
+    monthlyPrice?: number;
+    fixedPrice?: number;
+
     currentUser: any;
     userAddresses: any[];
     defaultOpen?: boolean;
@@ -28,9 +33,14 @@ interface Props {
 export default function RentalBookingWrapper({
     rentalId,
     rentalName,
-    pricePerDay,
     rentalImage,
-    ownerLocation, // ✅ Receive it here
+    ownerLocation,
+
+    // ✅ Destructure new price props
+    dailyPrice,
+    monthlyPrice,
+    fixedPrice,
+
     currentUser,
     userAddresses,
     defaultOpen = false,
@@ -51,7 +61,6 @@ export default function RentalBookingWrapper({
         setMounted(true);
     }, []);
 
-    // Determine if we need to fetch data (if user is authenticated but data is shallow/missing)
     const shouldFetchProfile = status === "authenticated" && (!currentUser || !currentUser.addresses || currentUser.addresses.length === 0);
 
     const { data: fetchedUser, isLoading: isFetchingUser, refetch: refetchUser } = useQuery({
@@ -65,7 +74,6 @@ export default function RentalBookingWrapper({
         staleTime: 0,
     });
 
-    // Merge Data
     const activeUser = fetchedUser || currentUser || session?.user;
     const effectiveAddresses = fetchedUser?.addresses || userAddresses || [];
 
@@ -151,9 +159,14 @@ export default function RentalBookingWrapper({
                         <RentalBookingForm
                             rentalId={rentalId}
                             rentalName={rentalName}
-                            pricePerDay={pricePerDay}
                             rentalImage={rentalImage}
-                            ownerLocation={ownerLocation} // ✅ Pass it down
+                            ownerLocation={ownerLocation}
+
+                            // ✅ Pass prices
+                            dailyPrice={dailyPrice}
+                            monthlyPrice={monthlyPrice}
+                            fixedPrice={fixedPrice}
+
                             userId={activeUser?.id}
                             userAddresses={effectiveAddresses}
                             userDetails={activeUser}
@@ -171,9 +184,14 @@ export default function RentalBookingWrapper({
                                 <RentalBookingForm
                                     rentalId={rentalId}
                                     rentalName={rentalName}
-                                    pricePerDay={pricePerDay}
                                     rentalImage={rentalImage}
-                                    ownerLocation={ownerLocation} // ✅ Pass it down
+                                    ownerLocation={ownerLocation}
+
+                                    // ✅ Pass prices
+                                    dailyPrice={dailyPrice}
+                                    monthlyPrice={monthlyPrice}
+                                    fixedPrice={fixedPrice}
+
                                     userId={activeUser?.id}
                                     userAddresses={effectiveAddresses}
                                     userDetails={activeUser}

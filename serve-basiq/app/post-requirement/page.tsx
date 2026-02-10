@@ -5,9 +5,12 @@ import { useUIStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import {
     Loader2, CheckCircle2, ChevronRight, ArrowLeft,
-    PenLine, FileText, Box, Wrench
+    PenLine, FileText, Box, Wrench, Clock, Zap, Calendar, CalendarClock
 } from 'lucide-react';
 import clsx from 'clsx';
+
+// ✅ FIXED: Updated types to match your Schema/DB Enum
+type TimelineType = 'URGENT' | 'IMMEDIATE' | 'LATER' | 'FLEXIBLE';
 
 export default function PostRequirementPage() {
     const { currentUser } = useUIStore();
@@ -21,6 +24,7 @@ export default function PostRequirementPage() {
         type: 'SERVICE' as 'SERVICE' | 'PRODUCT',
         title: '',
         description: '',
+        timeline: 'URGENT' as TimelineType, // ✅ Default to a valid enum value
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +50,9 @@ export default function PostRequirementPage() {
             if (data.success || res.ok) {
                 setStep(3); // Show Success Screen
             } else {
-                alert(data.message || 'Failed to post requirement');
+                // Show detailed error if validation fails
+                const errorMsg = data.errors?.timeline?._errors?.[0] || data.message || 'Failed to post requirement';
+                alert(errorMsg);
             }
         } catch (error) {
             console.error(error);
@@ -60,7 +66,6 @@ export default function PostRequirementPage() {
     const inputClass = "w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 outline-none focus:bg-white focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all text-sm font-medium text-slate-900 placeholder:text-slate-400";
     const labelClass = "text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2.5 ml-1";
 
-    // --- SUCCESS VIEW (Updated: Only "Back to Home") ---
     if (step === 3) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -73,7 +78,6 @@ export default function PostRequirementPage() {
                         We have received your requirement. Providers will contact you shortly.
                     </p>
                     <div className="space-y-3">
-                        {/* Only Home Button */}
                         <button
                             onClick={() => router.push('/')}
                             className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition"
@@ -90,7 +94,6 @@ export default function PostRequirementPage() {
         <div className="min-h-screen bg-[#F8F9FC] py-8 px-4 flex items-center justify-center">
             <div className="max-w-xl w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
                     <button onClick={() => router.back()} type="button" className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-sm group">
                         <ArrowLeft size={20} className="text-slate-600 group-hover:-translate-x-1 transition-transform" />
@@ -103,7 +106,7 @@ export default function PostRequirementPage() {
 
                 <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-4xl shadow-sm border border-slate-200 space-y-8">
 
-                    {/* TYPE SELECTION */}
+                    {/* Type Selection */}
                     <div>
                         <label className={labelClass}>I am looking for...</label>
                         <div className="grid grid-cols-2 gap-4">
@@ -147,13 +150,10 @@ export default function PostRequirementPage() {
                         </div>
                     </div>
 
-                    {/* INPUTS */}
                     <div className="space-y-6">
                         <div>
                             <label className={labelClass}>
-                                <div className="flex items-center gap-2">
-                                    <PenLine size={14} /> Title
-                                </div>
+                                <div className="flex items-center gap-2"><PenLine size={14} /> Title</div>
                             </label>
                             <input
                                 required
@@ -166,9 +166,7 @@ export default function PostRequirementPage() {
 
                         <div>
                             <label className={labelClass}>
-                                <div className="flex items-center gap-2">
-                                    <FileText size={14} /> Details
-                                </div>
+                                <div className="flex items-center gap-2"><FileText size={14} /> Details</div>
                             </label>
                             <textarea
                                 required
@@ -179,9 +177,48 @@ export default function PostRequirementPage() {
                                 placeholder="Describe exactly what you need..."
                             />
                         </div>
+
+                        {/* ✅ FIXED: Timeline Selection using correct values */}
+                        <div>
+                            <label className={labelClass}>
+                                <div className="flex items-center gap-2"><Clock size={14} /> When do you need this?</div>
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {[
+                                    { value: 'URGENT', label: 'Urgent', icon: Zap, sub: 'ASAP' },
+                                    { value: 'IMMEDIATE', label: 'Immediate', icon: Calendar, sub: 'Within 2 Days' },
+                                    { value: 'FLEXIBLE', label: 'Flexible', icon: CalendarClock, sub: 'No Hurry' },
+                                ].map((option) => (
+                                    <div
+                                        key={option.value}
+                                        onClick={() => setForm({ ...form, timeline: option.value as TimelineType })}
+                                        className={clsx(
+                                            "cursor-pointer p-3 rounded-xl border transition-all flex items-center gap-3",
+                                            form.timeline === option.value
+                                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                                                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        <div className={clsx(
+                                            "p-2 rounded-lg",
+                                            form.timeline === option.value ? "bg-slate-900 text-white" : "bg-white text-slate-400 border border-slate-100"
+                                        )}>
+                                            <option.icon size={16} />
+                                        </div>
+                                        <div>
+                                            <p className={clsx("text-sm font-bold", form.timeline === option.value ? "text-slate-900" : "text-slate-600")}>
+                                                {option.label}
+                                            </p>
+                                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+                                                {option.sub}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
 
-                    {/* SUBMIT BUTTON */}
                     <div className="pt-2">
                         <button
                             type="submit"

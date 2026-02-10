@@ -18,11 +18,7 @@ export async function POST(req: Request) {
 
     if (!user) return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
 
-    // ❌ REMOVED: Bookings and Orders fetching logic
-    // ❌ REMOVED: Revenue calculation logic
 
-    // 2. Return Default Stats
-    // Since we aren't fetching data, we return 0 to keep the UI valid
     const stats = {
       revenue: 0,
       jobsCompleted: 0,

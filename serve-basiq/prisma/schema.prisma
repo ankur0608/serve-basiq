@@ -88,9 +88,10 @@ enum PayoutMethod {
 }
 
 enum Timeline {
+    URGENT
     IMMEDIATE
-    IN_2_DAYS
-    TWO_TO_FIVE_DAYS
+    LATER
+    FLEXIBLE
 }
 
 enum CategoryType {
@@ -101,19 +102,31 @@ enum CategoryType {
 }
 
 enum RentalStatus {
-    REQUESTED // Customer sent request
-    APPROVED // Owner accepted
-    ACTIVE // Customer has the item (Picked up)
-    COMPLETED // Customer returned the item
-    CANCELLED // Request cancelled
-    OVERDUE // Date passed but not returned
+    REQUESTED
+    APPROVED
+    ACTIVE
+    COMPLETED
+    CANCELLED
+    OVERDUE
 }
 
-// 2. Create the new RentalBooking model
+enum RentalPricingModel {
+    DAILY
+    MONTHLY
+    FIXED
+}
+
+enum MinRentalDuration {
+    ONE_HOUR
+    ONE_DAY
+    SEVEN_DAYS
+    FIFTEEN_DAYS
+    THIRTY_DAYS
+}
+
 model RentalBooking {
     id String @id @default(cuid())
 
-    // Relationships
     userId String
     user   User   @relation("RenterUser", fields: [userId], references: [id])
 
@@ -123,88 +136,80 @@ model RentalBooking {
     addressId String?
     address   Address? @relation(fields: [addressId], references: [id])
 
-    // Booking Details
     startDate DateTime
     endDate   DateTime
     totalDays Int      @default(1)
 
-    // Cost Calculation
-    pricePerDay Float
-    totalPrice  Float
+    minDuration MinRentalDuration @default(ONE_DAY)
 
-    // Statuses
+    pricingModel       RentalPricingModel @default(DAILY)
+    dailyRentalPrice   Float?
+    monthlyRentalPrice Float?
+    fixedRentalPrice   Float?
+
+    totalPrice Float
+
     status        RentalStatus  @default(REQUESTED)
     paymentStatus PaymentStatus @default(PENDING)
     deliveryType  DeliveryType  @default(PICKUP)
 
-    // Meta
     specialInstructions String?
     createdAt           DateTime @default(now())
     updatedAt           DateTime @updatedAt
-
-    // REMOVED THE DUPLICATE 'user' LINE THAT WAS HERE
 }
 
 model Rental {
-    id String @id @default(uuid())
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-    userId String
-    user   User   @relation(fields: [userId], references: [id])
+  // --- Basic Info ---
+  name      String
+  desc      String
+  rentalImg String
+  coverImg  String?
+  gallery   String[]
 
-    // --- Basic Info ---
-    name      String
-    desc      String
-    rentalImg String
-    coverImg  String?
-    gallery   String[]
+  // --- Category ---
+  categoryId String?
+  category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
 
-    // --- Category (Matches "Rental Category" dropdown) ---
-    categoryId String?
-    category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
+  subCategoryId String?
+  subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
 
-    subCategoryId String?
-    subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
+  // --- Pricing & Stock ---
+  price     Float  @default(0)
+  priceType String
+  stock     Int    @default(1)
 
-    // --- Pricing & Stock ---
-    price     Float  @default(0)
-    priceType String
-    stock     Int    @default(1)
+  // ✅ ADD THESE NEW FIELDS TO FIX THE API ERROR
+  dailyPrice   Float?
+  monthlyPrice Float?
+  fixedPrice   Float?
 
-    // ✅ NEW FIELDS FROM IMAGE -------------------------
+  // --- New Fields From Previous Updates ---
+  itemCondition   String? @default("Good")
+  securityDeposit Float?  @default(0)
+  minDuration     String?
+  maxDuration     String?
+  rentalMode      String? @default("PICKUP")
 
-    // "Item Condition" (e.g., New, Used, Good)
-    itemCondition String? @default("Good")
+  // --- Location ---
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  pincode      String?
+  latitude     Decimal?
+  longitude    Decimal?
+  radiusKm     Int?     @default(10)
 
-    // "Security Deposit (₹)"
-    securityDeposit Float? @default(0)
-
-    // "Min Rental Duration" (e.g., "1 Hour")
-    minDuration String?
-
-    // "Max Rental Duration" (e.g., "7 Days")
-    maxDuration String?
-
-    // "Rental Mode" (e.g., Pickup, Home Delivery, Both)
-    rentalMode String? @default("PICKUP")
-
-    // --------------------------------------------------
-
-    // --- Location ---
-    addressLine1 String?
-    addressLine2 String?
-    city         String?
-    state        String?
-    pincode      String?
-    latitude     Decimal?
-    longitude    Decimal?
-    radiusKm     Int?     @default(10)
-
-    // --- System ---
-    isVerified     Boolean         @default(false)
-    createdAt      DateTime        @default(now())
-    updatedAt      DateTime        @updatedAt
-    bookings       Booking[]
-    rentalBookings RentalBooking[]
+  // --- System ---
+  isVerified     Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  bookings       Booking[]
+  rentalBookings RentalBooking[]
 }
 
 model Category {
@@ -428,6 +433,7 @@ model Requirement {
     updatedAt DateTime @updatedAt
     address   Address? @relation(fields: [addressId], references: [id])
     addressId String?
+    timeline  Timeline @default(IMMEDIATE)
 }
 
 model Otp {

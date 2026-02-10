@@ -10,12 +10,10 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const typeParam = searchParams.get('type');
 
-        // 1. Base filter: We only want PARENTS (Level 1 Categories)
         let whereClause: any = {
             parentId: null
         };
 
-        // 2. If a type is requested, filter by that Type OR 'BOTH'
         if (typeParam) {
             const type = typeParam.toUpperCase() as CategoryType;
             whereClause.AND = [

@@ -6,24 +6,24 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
-        const id = searchParams.get("id"); // ✅ Support Single ID fetch
+        const id = searchParams.get("id");
         const userId = searchParams.get("userId");
         const categoryId = searchParams.get("categoryId");
         const limit = searchParams.get("limit");
 
         const where: any = {};
 
-        if (id) where.id = id; // ✅ Prioritize ID
+        if (id) where.id = id;
         if (userId) where.userId = userId;
         if (categoryId) where.categoryId = categoryId;
 
         if (id) {
-            // Fetch Single Rental
             const rental = await prisma.rental.findUnique({
                 where: { id },
                 include: {
                     category: { select: { name: true } },
                     subcategory: { select: { id: true, name: true } },
+                    // ✅ We get the phone from the User relation here
                     user: {
                         select: {
                             id: true, name: true, image: true, phone: true,
@@ -35,7 +35,6 @@ export async function GET(req: Request) {
             return NextResponse.json(rental);
         }
 
-        // Fetch List
         const rentals = await prisma.rental.findMany({
             where,
             include: {
@@ -57,14 +56,13 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
 
-        // Destructure all fields including new ones
         const {
             id, userId, name, desc, rentalImg, coverImg, gallery,
             categoryId, subCategoryId, subCategoryIds,
             price, priceType, stock, radiusKm,
             latitude, longitude, addressLine1, addressLine2, city, state, pincode,
-            // ✅ New Rental Fields
-            itemCondition, securityDeposit, minDuration, maxDuration, rentalMode
+            // ❌ Removed altPhone from destructuring
+            itemCondition, securityDeposit, minDuration, rentalMode
         } = body;
 
         if (!userId || !name || !rentalImg || !price) {
@@ -82,14 +80,15 @@ export async function POST(req: Request) {
             latitude: latitude ? parseFloat(latitude) : null,
             longitude: longitude ? parseFloat(longitude) : null,
             addressLine1, addressLine2, city, state, pincode,
-            // Relations
+
+            // ❌ Removed altPhone from payload to fix the error
+
             category: categoryId ? { connect: { id: categoryId } } : undefined,
             subcategory: finalSubId ? { connect: { id: finalSubId } } : undefined,
-            // ✅ New Fields
+
             itemCondition,
             securityDeposit: securityDeposit ? parseFloat(securityDeposit) : 0,
             minDuration,
-            maxDuration,
             rentalMode
         };
 
@@ -104,7 +103,6 @@ export async function POST(req: Request) {
                 data: {
                     user: { connect: { id: userId } },
                     ...dataPayload,
-                    // Defaults if missing
                     stock: parseInt(stock) || 1,
                     radiusKm: parseInt(radiusKm) || 10
                 }

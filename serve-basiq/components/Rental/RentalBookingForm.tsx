@@ -1,20 +1,26 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     MapPin, Plus, Loader2, Pencil, CalendarDays, AlignLeft,
-    Truck, PackageOpen, IndianRupee
+    Truck, PackageOpen, IndianRupee, CalendarRange, Clock
 } from 'lucide-react';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
 
+// ✅ Updated Interface
 interface RentalFormProps {
     rentalId: string;
     rentalName: string;
-    pricePerDay: number;
+
+    // Split prices
+    dailyPrice?: number;
+    monthlyPrice?: number;
+    fixedPrice?: number;
+
     rentalImage?: string;
-    ownerLocation?: string; // ✅ Added ownerLocation prop
+    ownerLocation?: string;
     userId: string;
     userAddresses: any[];
     userDetails?: any;
@@ -25,9 +31,11 @@ interface RentalFormProps {
 export default function RentalBookingForm({
     rentalId,
     rentalName,
-    pricePerDay,
+    dailyPrice,
+    monthlyPrice,
+    fixedPrice,
     rentalImage,
-    ownerLocation, // ✅ Receive it here
+    ownerLocation,
     userId,
     userAddresses: initialAddresses,
     userDetails,
@@ -46,6 +54,21 @@ export default function RentalBookingForm({
     dayAfter.setDate(dayAfter.getDate() + 1);
     const [endDate, setEndDate] = useState(dayAfter.toISOString().split('T')[0]);
 
+    // --- Pricing Model State ---
+    // Determine which models are available
+    const availableModels = useMemo(() => {
+        const models = [];
+        if (dailyPrice && dailyPrice > 0) models.push({ id: 'DAILY', label: 'Daily', price: dailyPrice });
+        if (monthlyPrice && monthlyPrice > 0) models.push({ id: 'MONTHLY', label: 'Monthly', price: monthlyPrice });
+        if (fixedPrice && fixedPrice > 0) models.push({ id: 'FIXED', label: 'Fixed Price', price: fixedPrice });
+        return models;
+    }, [dailyPrice, monthlyPrice, fixedPrice]);
+
+    // Default to the first available model
+    const [pricingModel, setPricingModel] = useState<'DAILY' | 'MONTHLY' | 'FIXED'>(
+        (availableModels[0]?.id as any) || 'DAILY'
+    );
+
     // --- Delivery & Address State ---
     const [deliveryType, setDeliveryType] = useState<'PICKUP' | 'DELIVERY'>('PICKUP');
     const [addresses, setAddresses] = useState(initialAddresses || []);
@@ -57,20 +80,39 @@ export default function RentalBookingForm({
     const [editingAddress, setEditingAddress] = useState<any>(null);
 
     // --- CALCULATION LOGIC ---
-    const { totalDays, totalPrice } = useMemo(() => {
+    const { totalDays, totalPrice, activePrice } = useMemo(() => {
         const start = new Date(startDate);
         const end = new Date(endDate);
-
         const diffTime = end.getTime() - start.getTime();
         let days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
         if (days < 1 || isNaN(days)) days = 1;
+
+        let calculatedPrice = 0;
+        let unitPrice = 0;
+
+        switch (pricingModel) {
+            case 'DAILY':
+                unitPrice = dailyPrice || 0;
+                calculatedPrice = days * unitPrice;
+                break;
+            case 'MONTHLY':
+                unitPrice = monthlyPrice || 0;
+                // Simple logic: 1 month = 30 days block
+                const months = Math.max(1, Math.ceil(days / 30));
+                calculatedPrice = months * unitPrice;
+                break;
+            case 'FIXED':
+                unitPrice = fixedPrice || 0;
+                calculatedPrice = unitPrice; // Flat rate regardless of days
+                break;
+        }
 
         return {
             totalDays: days,
-            totalPrice: days * pricePerDay
+            totalPrice: calculatedPrice,
+            activePrice: unitPrice
         };
-    }, [startDate, endDate, pricePerDay]);
+    }, [startDate, endDate, pricingModel, dailyPrice, monthlyPrice, fixedPrice]);
 
     // --- HANDLERS ---
     const handleAddAddress = () => {
@@ -132,6 +174,7 @@ export default function RentalBookingForm({
                 startDate,
                 endDate,
                 deliveryType,
+                pricingModel, // ✅ Send selected model
                 addressId: deliveryType === 'DELIVERY' ? addressId : null,
                 notes: instructions,
             };
@@ -216,7 +259,7 @@ export default function RentalBookingForm({
                         <IndianRupee size={16} strokeWidth={3} />{totalPrice}
                     </div>
                     <span className="block text-[10px] font-medium text-slate-400">
-                        For {totalDays} Day{totalDays > 1 ? 's' : ''}
+                        {pricingModel === 'FIXED' ? 'Fixed Price' : `${totalDays} Day${totalDays > 1 ? 's' : ''}`}
                     </span>
                 </div>
             </div>
@@ -228,31 +271,52 @@ export default function RentalBookingForm({
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">From</label>
-                        <div className="relative">
-                            <input
-                                type="date"
-                                min={new Date().toISOString().split('T')[0]}
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="w-full px-3 py-3 border border-slate-200 rounded-xl bg-slate-50 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                            />
-                        </div>
+                        <input
+                            type="date"
+                            min={new Date().toISOString().split('T')[0]}
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-full px-3 py-3 border border-slate-200 rounded-xl bg-slate-50 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                        />
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">To</label>
-                        <div className="relative">
-                            <input
-                                type="date"
-                                min={startDate}
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="w-full px-3 py-3 border border-slate-200 rounded-xl bg-slate-50 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                            />
-                        </div>
+                        <input
+                            type="date"
+                            min={startDate}
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full px-3 py-3 border border-slate-200 rounded-xl bg-slate-50 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                        />
                     </div>
                 </div>
 
-                {/* 2. Delivery Mode Toggle */}
+                {/* 2. ✅ PRICING MODEL SELECTOR */}
+                {availableModels.length > 1 && (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Select Rate Plan</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {availableModels.map((model) => (
+                                <button
+                                    key={model.id}
+                                    type="button"
+                                    onClick={() => setPricingModel(model.id as any)}
+                                    className={clsx(
+                                        "py-2 px-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-1",
+                                        pricingModel === model.id
+                                            ? "bg-slate-900 text-white border-slate-900"
+                                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                                    )}
+                                >
+                                    <span>{model.label}</span>
+                                    <span className="opacity-80 font-medium">₹{model.price}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* 3. Delivery Mode Toggle */}
                 <div className="p-1 bg-slate-100 rounded-xl flex">
                     <button
                         type="button"
@@ -276,7 +340,7 @@ export default function RentalBookingForm({
                     </button>
                 </div>
 
-                {/* 3. Address (Conditional) */}
+                {/* 4. Address or Pickup Info */}
                 {deliveryType === 'DELIVERY' ? (
                     <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="flex justify-between items-center mb-2 ml-1">
@@ -339,33 +403,27 @@ export default function RentalBookingForm({
                         )}
                     </div>
                 ) : (
-                    // ✅ Pickup Info Box: Shows address OR fallback
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center animate-in fade-in zoom-in-95 duration-200">
                         <MapPin className="mx-auto text-slate-400 mb-2" size={24} />
                         <h4 className="text-sm font-bold text-slate-800">Owner Location</h4>
-
                         {ownerLocation ? (
-                            <p className="text-sm text-slate-700 mt-1 font-medium px-4">
-                                {ownerLocation}
-                            </p>
+                            <p className="text-sm text-slate-700 mt-1 font-medium px-4">{ownerLocation}</p>
                         ) : (
                             <p className="text-xs text-slate-500 mt-1">
-                                You will receive the exact pickup address and contact details after the owner approves your request.
+                                Address details shared after approval.
                             </p>
                         )}
                     </div>
                 )}
 
-                {/* 4. Instructions */}
+                {/* 5. Instructions */}
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">
-                        Notes for Owner
-                    </label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Notes for Owner</label>
                     <div className="relative group">
                         <AlignLeft className="absolute left-4 top-3.5 text-slate-400" size={18} />
                         <textarea
                             className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-slate-900 outline-none resize-none font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors"
-                            placeholder="E.g. I will come at 10 AM..."
+                            placeholder="E.g. I will pick up at 10 AM..."
                             rows={2}
                             value={instructions}
                             onChange={(e) => setInstructions(e.target.value)}
@@ -407,7 +465,6 @@ export default function RentalBookingForm({
                     isPhoneLocked={true}
                 />
             )}
-
         </div>
     );
 }

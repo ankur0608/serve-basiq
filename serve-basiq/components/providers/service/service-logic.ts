@@ -74,7 +74,7 @@ export function useServiceForm({
     const [activeUploadField, setActiveUploadField] = useState<string | null>(null);
     const [gettingLoc, setGettingLoc] = useState(false);
 
-    // ✅ FIXED: Optimized Caching Logic
+    // Optimized Caching Logic
     const { data: categories = [], isLoading: loadingCats } = useQuery({
         queryKey: ['categories', listingType],
         queryFn: async () => {
@@ -83,10 +83,10 @@ export function useServiceForm({
             return res.json();
         },
         // ⚡ CACHING SETTINGS:
-        staleTime: Infinity,         // Data is never considered stale (never refetch automatically)
-        gcTime: 1000 * 60 * 60 * 24, // Keep in memory for 24 hours (even if component unmounts)
-        refetchOnWindowFocus: false, // Don't fetch when clicking back on the tab
-        refetchOnMount: false        // Don't fetch on mount if data is in cache
+        staleTime: Infinity,
+        gcTime: 1000 * 60 * 60 * 24,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false
     });
 
     // Initialize State
@@ -99,7 +99,9 @@ export function useServiceForm({
         categoryId: serviceData?.categoryId || '',
         subCategoryIds: normalizeSubIds(serviceData),
 
+        // ✅ Automatically set phone from user profile
         altPhone: serviceData?.altPhone || userData?.phone || '',
+
         mainimg:
             serviceData?.serviceimg ||
             serviceData?.rentalImg ||
@@ -117,7 +119,7 @@ export function useServiceForm({
         itemCondition: serviceData?.itemCondition || 'New',
         securityDeposit: serviceData?.securityDeposit || '',
         minDuration: serviceData?.minDuration || '1 Hour',
-        maxDuration: serviceData?.maxDuration || '7 Days',
+        // maxDuration removed from state
         rentalMode: serviceData?.rentalMode || 'PICKUP',
 
         addressLine1: serviceData?.addressLine1 || userAddress?.line1 || '',
@@ -251,11 +253,11 @@ export function useServiceForm({
                 longitude: Number(form.longitude),
                 subCategoryIds: form.subCategoryIds,
                 [listingType === 'RENTAL' ? 'rentalImg' : 'serviceimg']: form.mainimg,
-                // Rental fields
+
+                // Rental fields (maxDuration removed)
                 itemCondition: form.itemCondition,
                 securityDeposit: Number(form.securityDeposit),
                 minDuration: form.minDuration,
-                maxDuration: form.maxDuration,
                 rentalMode: form.rentalMode
             };
 
@@ -274,7 +276,7 @@ export function useServiceForm({
 
             const data = await res.json();
             if (!data.success) throw new Error();
-queryClient.invalidateQueries({ queryKey: ['services', userId] });
+
             queryClient.invalidateQueries({ queryKey: ['services', userId] });
             showToast?.('Saved successfully', 'success');
             onComplete();

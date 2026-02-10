@@ -44,13 +44,14 @@ const Navbar = () => {
                 <div className="flex md:hidden items-center justify-between h-14">
                     <Link href="/" className="flex items-center">
                         <Image
-                            src="/mobnavbar.png"
+                            src="/mobile-navbar.png"
                             alt="Servebasiq Logo"
                             width={170}
                             height={50}
                             priority
                             className="h-14 w-auto"
                         />
+
                     </Link>
 
                     <div className="flex items-center gap-3">
@@ -117,12 +118,12 @@ const Navbar = () => {
                 <div className="hidden md:flex items-center justify-between h-16 gap-4">
                     <Link href="/" className="flex items-center">
                         <Image
-                            src="/navbar.jpeg"
+                            src="/navbar.png"
                             alt="Servebasiq Logo"
                             width={190}
                             height={100}
                             priority
-                            className="h-16 w-auto"
+                            className="h-22 w-auto"
                         />
                     </Link>
 
