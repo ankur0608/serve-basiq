@@ -21,8 +21,12 @@ export async function GET(request: Request) {
       include: {
         // ✅ Get all addresses, newest first
         addresses: { orderBy: { createdAt: 'desc' } },
-        orders: { take: 1 },
-        bookings: { take: 1 }
+        orders: { take: 5 }, // Increased limit slightly
+
+        // 🔴 FIX 1: Remove 'take: 1'. We need the full history to check for reviews.
+        bookings: {
+          orderBy: { createdAt: 'desc' }
+        }
       },
     });
 
@@ -62,11 +66,15 @@ export async function GET(request: Request) {
       landmark: val(primaryAddress.landmark),
       city: val(primaryAddress.city),
       state: val(primaryAddress.state),
-      district: val(primaryAddress.district), // Ensure this is returned
+      district: val(primaryAddress.district),
       pincode: val(primaryAddress.pincode),
       country: val(primaryAddress.country) || "India",
 
-      addresses: user.addresses, // Full list for other uses
+      addresses: user.addresses,
+
+      // 🔴 FIX 2: Actually send the bookings to the frontend
+      bookings: user.bookings,
+
       isFullProfile: true
     };
 

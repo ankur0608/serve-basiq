@@ -2,11 +2,11 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from 'next/image'; // using Next.js Image for optimization, or you can switch to <img> to match ServiceCard exactly if preferred
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FaHeart, FaRegHeart, FaPaperPlane, FaXmark, FaBoxOpen } from "react-icons/fa6";
-import { BadgeCheck, Store, ChevronRight } from 'lucide-react';
+import { Store } from 'lucide-react';
 
 // Components
 import ProductWrapper from '@/components/products/ProductWrapper';
@@ -46,7 +46,30 @@ export default function ProductCard({ product, isFav = false, toggleFav, current
         return null;
     }, [currentUser, session]);
 
-    // --- CLICK HANDLER ---
+    // --- IMAGE LOGIC ---
+    const getValidImage = () => {
+        let rawImageList: string[] = [];
+        if (Array.isArray(product.images) && product.images.length > 0) {
+            rawImageList = product.images;
+        } else if (Array.isArray(product.gallery) && product.gallery.length > 0) {
+            rawImageList = product.gallery;
+        } else if (product.image && typeof product.image === 'string' && product.image.trim() !== "") {
+            rawImageList = [product.image];
+        } else if (product.productImage && typeof product.productImage === 'string' && product.productImage.trim() !== "") {
+            rawImageList = [product.productImage];
+        }
+        const validImages = rawImageList.filter(url => !url.includes('via.placeholder.com'));
+        return validImages.length > 0
+            ? validImages[0]
+            : "https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80";
+    };
+
+    const displayImage = getValidImage();
+    const sellerName = product.supplier || user?.businessName || user?.shopName || user?.name || "Verified Seller";
+    const categoryName = typeof category === 'string' ? category : (product.categoryName || category?.name || 'Product');
+    const moqValue = minOrder || product.moq || 1;
+
+    // --- CLICK HANDLERS ---
     const handleRequestClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -76,112 +99,72 @@ export default function ProductCard({ product, isFav = false, toggleFav, current
         setShowRequestModal(true);
     };
 
-    // --- IMAGE LOGIC ---
-    const getValidImage = () => {
-        let rawImageList: string[] = [];
-        if (Array.isArray(product.images) && product.images.length > 0) {
-            rawImageList = product.images;
-        } else if (Array.isArray(product.gallery) && product.gallery.length > 0) {
-            rawImageList = product.gallery;
-        } else if (product.image && typeof product.image === 'string' && product.image.trim() !== "") {
-            rawImageList = [product.image];
-        } else if (product.productImage && typeof product.productImage === 'string' && product.productImage.trim() !== "") {
-            rawImageList = [product.productImage];
-        }
-        const validImages = rawImageList.filter(url => !url.includes('via.placeholder.com'));
-        return validImages.length > 0
-            ? validImages[0]
-            : "https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80";
-    };
-
-    const displayImage = getValidImage();
-    const sellerName = product.supplier || user?.businessName || user?.shopName || user?.name || "Verified Seller";
-    const categoryName = typeof category === 'string' ? category : (product.categoryName || category?.name || 'General');
-    const moqValue = minOrder || product.moq || 1;
-
     return (
         <>
-            {/* --- CARD UI --- */}
+            {/* --- CARD COMPONENT (Matched to ServiceCard Design) --- */}
             <div
                 onClick={handleDetailsClick}
-                className="group block bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer h-full flex flex-col"
+                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow"
             >
-                {/* Image Section */}
-                <div className="relative h-48 w-full bg-gray-100 overflow-hidden">
-                    <Image
+                {/* Image Area */}
+                <div className="relative h-36 w-full bg-gray-100 overflow-hidden">
+                    {/* Using <img> for exact match with ServiceCard, or Next/Image for perf */}
+                    <img
                         src={displayImage}
-                        alt={name || "Product Image"}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        alt={name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
 
-                    {/* Category Badge */}
-                    <span className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                    {/* Badge */}
+                    <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm text-white uppercase tracking-wide bg-emerald-600">
                         {categoryName}
                     </span>
 
-                    {/* Fav Button */}
+                    {/* Favorite Button */}
                     {toggleFav && (
                         <button
                             onClick={(e) => { e.stopPropagation(); toggleFav(e); }}
-                            className="absolute top-3 right-3 bg-white/90 backdrop-blur p-2 rounded-full shadow-sm hover:bg-white active:scale-90 transition-all z-10"
+                            className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full shadow hover:bg-white transition-colors z-10"
                         >
-                            {isFav ? <FaHeart className="text-red-500" size={14} /> : <FaRegHeart className="text-gray-400 hover:text-red-500" size={14} />}
+                            {isFav ? <FaHeart size={12} className="text-red-500" /> : <FaRegHeart size={12} className="text-gray-400" />}
                         </button>
                     )}
                 </div>
 
-                {/* Content Section */}
-                <div className="p-4 flex flex-col flex-1">
-                    {/* Seller Info */}
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
-                        <Store size={12} className="text-slate-400" />
-                        <span className="truncate max-w-[150px] font-medium">{sellerName}</span>
-                        <BadgeCheck size={12} className="text-blue-500" />
+                {/* Content Area */}
+                <div className="p-3 flex flex-col gap-1 flex-1">
+                    {/* Title */}
+                    <h3 className="text-sm font-semibold text-gray-900 truncate">{name}</h3>
+
+                    {/* Meta Row (Seller & MOQ) */}
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span className="truncate max-w-[60%] flex items-center gap-1">
+                            <Store size={10} /> {sellerName}
+                        </span>
+                        <span className="flex items-center gap-1 font-medium text-slate-600">
+                            <FaBoxOpen size={10} /> {moqValue} {unit}s
+                        </span>
                     </div>
 
-                    {/* Title */}
-                    <h3 className="font-bold text-slate-900 text-sm leading-snug mb-3 line-clamp-2 min-h-[40px] group-hover:text-blue-600 transition-colors">
-                        {name}
-                    </h3>
+                    {/* Price Row */}
+                    <div className="text-sm font-semibold text-gray-900 mt-0.5">
+                        ₹{price} <span className="text-xs font-normal text-gray-500">/ {unit}</span>
+                    </div>
 
-                    {/* Price & MOQ Row */}
-                    <div className="mt-auto pt-3 border-t border-gray-50">
-                        <div className="flex justify-between items-end mb-4">
-                            <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Price</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-lg font-black text-slate-900">₹{price}</span>
-                                    <span className="text-xs text-slate-500 font-medium">/ {unit}</span>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Min Order</p>
-                                <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                                    <FaBoxOpen size={10} className="text-slate-400" />
-                                    <span className="text-xs font-bold text-slate-700">
-                                        {moqValue} {unit}s
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2">
-                            {/* <button
-                                onClick={handleDetailsClick}
-                                className="flex-1 border border-gray-200 text-slate-600 py-2.5 rounded-lg font-bold text-xs hover:bg-gray-50 transition-colors"
-                            >
-                                Details
-                            </button> */}
-                            <button
-                                onClick={handleRequestClick}
-                                className="flex-[1.5] bg-slate-900 text-white py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-sm"
-                            >
-                                Get Quote <FaPaperPlane size={10} />
-                            </button>
-                        </div>
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mt-2 pt-1">
+                        <button
+                            onClick={handleDetailsClick}
+                            className="flex-1 border border-gray-300 text-xs py-1.5 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition-colors"
+                        >
+                            Details
+                        </button>
+                        <button
+                            onClick={handleRequestClick}
+                            className="flex-1 bg-black text-white text-xs py-1.5 rounded-lg hover:bg-gray-800 font-medium shadow-sm transition-colors flex items-center justify-center gap-1"
+                        >
+                            Quote <FaPaperPlane size={10} />
+                        </button>
                     </div>
                 </div>
             </div>
@@ -194,21 +177,26 @@ export default function ProductCard({ product, isFav = false, toggleFav, current
                 userId={effectiveUser?.id || ""}
             />
 
-            {/* --- 2. REQUEST QUOTE MODAL --- */}
+            {/* --- 2. REQUEST QUOTE MODAL (Styled like Booking Modal) --- */}
             {showRequestModal && (
                 <div
                     className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
                     onClick={(e) => { e.stopPropagation(); setShowRequestModal(false); }}
                 >
-                    <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                    <div
+                        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Close Button matching ServiceCard style */}
                         <button
                             onClick={() => setShowRequestModal(false)}
-                            className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition z-20"
+                            className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all border border-white/20 shadow-sm"
+                            title="Close"
                         >
-                            <FaXmark size={18} />
+                            <FaXmark size={20} />
                         </button>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50">
                             <ProductWrapper
                                 productId={id}
                                 productName={name}

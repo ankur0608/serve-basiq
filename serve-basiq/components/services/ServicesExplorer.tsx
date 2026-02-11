@@ -3,10 +3,15 @@
 import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { FaArrowLeft, FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
-import { SearchX, Filter, MapPin, X, SlidersHorizontal } from 'lucide-react';
+import Image from 'next/image';
+
+// Icons
+import { FaArrowLeft, FaScrewdriverWrench } from 'react-icons/fa6';
+import { SearchX } from 'lucide-react';
+
+// Components
 import ServiceCard, { ServiceProps } from '@/components/ui/ServiceCard';
-import CategoryGrid from '../ui/CategoryGrid';
+import ServiceFilters, { CategoryData } from './ServiceFilters';
 
 // --- TYPES ---
 interface ExplorerItem extends ServiceProps {
@@ -15,12 +20,6 @@ interface ExplorerItem extends ServiceProps {
     subcategoryId?: string | number;
     subcategoryName?: string;
     reviewCount?: number;
-}
-
-interface CategoryData {
-    id: string;
-    name: string;
-    children: { id: string; name: string }[];
 }
 
 // --- SKELETON LOADER ---
@@ -132,14 +131,14 @@ export default function ServicesExplorer() {
         [...new Set(rawItems.map(i => i.location).filter(Boolean))].sort(),
         [rawItems]);
 
-    const availableCategories = useMemo(() => {
+    const availableCategories: CategoryData[] = useMemo(() => {
         if (categoriesData && categoriesData.length > 0) return categoriesData;
         return [];
     }, [categoriesData]);
 
     const availableSubcategories = useMemo(() => {
         if (!selectedCategory) return [];
-        const cat = availableCategories.find((c: CategoryData) => String(c.id) === String(selectedCategory));
+        const cat = availableCategories.find((c) => String(c.id) === String(selectedCategory));
         return cat ? cat.children : [];
     }, [selectedCategory, availableCategories]);
 
@@ -186,6 +185,15 @@ export default function ServicesExplorer() {
         }
     };
 
+    const handleCategoryClick = (id: string) => {
+        if (selectedCategory === id) {
+            setSelectedCategory('');
+        } else {
+            setSelectedCategory(id);
+        }
+        setSelectedSubcategory('');
+    }
+
     const resetFilters = () => {
         setSearchTerm('');
         setSelectedLocation('');
@@ -196,171 +204,94 @@ export default function ServicesExplorer() {
         router.push('/services');
     };
 
-    // --- RENDER HELPERS: Dropdowns (Reusable) ---
-    const CategorySelect = () => (
-        <div className="relative">
-            <select
-                className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer"
-                value={selectedCategory}
-                onChange={(e) => {
-                    setSelectedCategory(e.target.value);
-                    setSelectedSubcategory('');
-                }}
-            >
-                <option value="">All Categories</option>
-                {availableCategories.map((cat: CategoryData) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-            </select>
-            <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
-        </div>
-    );
-
-    const SubcategorySelect = () => (
-        <div className="relative">
-            <select
-                className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                value={selectedSubcategory}
-                onChange={(e) => setSelectedSubcategory(e.target.value)}
-                disabled={!selectedCategory || availableSubcategories.length === 0}
-            >
-                <option value="">All Subcategories</option>
-                {availableSubcategories.map((sub: any) => (
-                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                ))}
-            </select>
-            <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
-        </div>
-    );
-
-    const LocationSelect = () => (
-        <div className="relative">
-            <select
-                className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer"
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-            >
-                <option value="">All Locations</option>
-                {uniqueLocations.map(loc => (
-                    <option key={loc} value={loc!}>{loc}</option>
-                ))}
-            </select>
-            <MapPin className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
-        </div>
-    );
-
-    const SortSelect = () => (
-        <div className="relative">
-            <select
-                className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 focus:border-transparent appearance-none cursor-pointer"
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
-            >
-                <option value="">Sort By: Default</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="rating">Top Rated</option>
-                <option value="popular">Most Popular</option>
-            </select>
-            <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
-        </div>
-    );
-
     return (
         <section className="min-h-screen bg-slate-50 text-slate-800 pb-20">
 
-            {/* --- PAGE HEADER (Visible on Desktop only) --- */}
-            {/* ADDED: hidden md:block */}
-            <div className="hidden md:block bg-gradient-to-b from-blue-50 to-white pt-10 pb-20 px-4 border-b border-slate-200">
-                <div className="container mx-auto max-w-6xl">
-                    <div className="flex items-center gap-3 mb-4">
-                        <button onClick={() => router.back()} className="p-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-full transition shadow-sm">
-                            <FaArrowLeft />
-                        </button>
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">Find Expert Services</h1>
-                    </div>
-                    <p className="text-slate-500 max-w-xl text-lg font-medium">Connect with verified professionals for all your service and rental needs instantly.</p>
-                </div>
-            </div>
-            <CategoryGrid
-                type="SERVICE"
-                title="Top Service Categories"
-                subtitle="Find the best experts near you"
-            />
             {/* --- SEARCH & FILTERS CONTAINER --- */}
-            {/* UPDATED: mt-4 for mobile, -mt-10 for desktop */}
-            <div className="container mx-auto max-w-6xl px-4 mt-4 md:-mt-10 relative z-10">
-                <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-4 md:p-6">
+            <div className="container mx-auto max-w-6xl px-4 mt-8 relative z-10">
+                <ServiceFilters
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    selectedCategory={selectedCategory}
+                    setSelectedCategory={setSelectedCategory}
+                    selectedSubcategory={selectedSubcategory}
+                    setSelectedSubcategory={setSelectedSubcategory}
+                    selectedLocation={selectedLocation}
+                    setSelectedLocation={setSelectedLocation}
+                    sortOption={sortOption}
+                    setSortOption={setSortOption}
+                    showMobileFilters={showMobileFilters}
+                    setShowMobileFilters={setShowMobileFilters}
+                    availableCategories={availableCategories}
+                    availableSubcategories={availableSubcategories}
+                    uniqueLocations={uniqueLocations}
+                    resetFilters={resetFilters}
+                    resultCount={filteredAndSortedItems.length}
+                />
+            </div>
 
-                    {/* --- MOBILE VIEW (Visible on sm/md, Hidden on lg/desktop) --- */}
-                    <div className="md:hidden flex gap-2">
-                        {/* Mobile Search Input */}
-                        <div className="relative flex-1">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                <FaMagnifyingGlass />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Search services..."
-                                className="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium text-slate-900 text-sm"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        {/* Mobile Filter Button */}
-                        <button
-                            onClick={() => setShowMobileFilters(true)}
-                            className="bg-slate-900 text-white p-3 rounded-xl flex items-center justify-center min-w-[50px] active:scale-95 transition"
-                        >
-                            <Filter size={20} />
-                        </button>
-                    </div>
+            {/* --- POPULAR CATEGORIES --- */}
+            <div className="container mx-auto max-w-6xl px-4 mt-10">
+                <div className="flex justify-between items-end mb-6 px-1">
+                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <FaScrewdriverWrench className="text-brand-500" /> Popular Services
+                    </h2>
+                    <button
+                        onClick={resetFilters}
+                        className="text-xs font-bold text-slate-500 hover:text-brand-600 uppercase tracking-wide"
+                    >
+                        View All
+                    </button>
+                </div>
 
-
-                    {/* --- DESKTOP VIEW (Hidden on mobile, Block on md) --- */}
-                    <div className="hidden md:block">
-                        {/* Search Row */}
-                        <div className="flex gap-2 mb-4">
-                            <div className="relative flex-1">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                                    <FaMagnifyingGlass />
+                {/* Updated grid: grid-cols-2 on mobile (for 4 items), md:grid-cols-6 on desktop (for 6 items) */}
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    {availableCategories.length > 0 ? (
+                        // We iterate 6 items, but hide index 4 & 5 on mobile using CSS
+                        availableCategories.slice(0, 6).map((cat: any, index: number) => (
+                            <div
+                                onClick={() => handleCategoryClick(cat.id)}
+                                key={cat.id}
+                                // LOGIC: if index > 3 (meaning 5th or 6th item), add 'hidden md:flex'
+                                className={`
+                    ${index > 3 ? 'hidden md:flex' : 'flex'} 
+                    border p-4 rounded-xl text-center transition cursor-pointer active:scale-95 group flex-col items-center justify-center h-32
+                    ${String(selectedCategory) === String(cat.id)
+                                        ? 'bg-slate-900 border-slate-900 shadow-md'
+                                        : 'bg-white border-gray-100 hover:shadow-md'
+                                    }
+                `}
+                            >
+                                <div className="w-24 h-12 mb-3 relative group-hover:scale-110 transition flex items-center justify-center">
+                                    {cat.image ? (
+                                        <img
+                                            src={cat.image}
+                                            alt={cat.name}
+                                            // fill
+                                            className="object-contain"
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                        />
+                                    ) : (
+                                        <div className={`
+                        w-full h-full rounded-lg flex items-center justify-center text-xl
+                        ${String(selectedCategory) === String(cat.id) ? 'bg-slate-800 text-white' : 'bg-blue-50 text-blue-600'}
+                    `}>
+                                            <FaScrewdriverWrench />
+                                        </div>
+                                    )}
                                 </div>
-                                <input
-                                    type="text"
-                                    placeholder="Search for services, repairs, or experts..."
-                                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium text-slate-900"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                                {searchTerm && (
-                                    <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-red-500">
-                                        <FaXmark />
-                                    </button>
-                                )}
+
+                                <div className={`
+                    text-xs font-bold uppercase tracking-wide line-clamp-2
+                    ${String(selectedCategory) === String(cat.id) ? 'text-white' : 'text-slate-700'}
+                `}>
+                                    {cat.name}
+                                </div>
                             </div>
-                            <button className="bg-slate-900 text-white px-6 md:px-8 rounded-xl font-bold hover:bg-slate-800 transition">
-                                Search
-                            </button>
-                        </div>
-
-                        {/* Filter Row (4 Columns) */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <CategorySelect />
-                            <SubcategorySelect />
-                            <LocationSelect />
-                            <SortSelect />
-                        </div>
-                    </div>
-
-                    {/* Active Filters Summary (Shared) */}
-                    {(selectedCategory || selectedLocation || selectedSubcategory || sortOption) && (
-                        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                            <p className="text-xs font-bold text-slate-500">
-                                {filteredAndSortedItems.length} results found
-                            </p>
-                            <button onClick={resetFilters} className="text-xs font-bold text-red-500 hover:text-red-600 hover:underline">
-                                Clear All Filters
-                            </button>
+                        ))
+                    ) : (
+                        <div className="col-span-full text-center text-gray-400 text-sm py-8">
+                            No service categories found.
                         </div>
                     )}
                 </div>
@@ -399,89 +330,6 @@ export default function ServicesExplorer() {
                     </div>
                 )}
             </div>
-
-            {/* --- MOBILE FILTER MODAL (CENTERED) --- */}
-            {showMobileFilters && (
-                // UPDATED: items-center instead of items-end
-                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-                    {/* Backdrop */}
-                    <div
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-                        onClick={() => setShowMobileFilters(false)}
-                    />
-
-                    {/* Modal Content */}
-                    {/* UPDATED: rounded-2xl everywhere, zoom-in animation */}
-                    <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-slate-100">
-                            <h3 className="text-lg font-bold text-slate-900">Filters</h3>
-                            <button
-                                onClick={() => setShowMobileFilters(false)}
-                                className="p-2 hover:bg-slate-100 rounded-full text-slate-500"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-
-                            {/* <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase">Search</label>
-                                <div className="relative">
-                                    <FaMagnifyingGlass className="absolute left-3 top-3.5 text-slate-400 text-sm" />
-                                    <input
-                                        type="text"
-                                        placeholder="Keywords..."
-                                        className="w-full pl-9 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                            </div> */}
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase">Category</label>
-                                <CategorySelect />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase">Subcategory</label>
-                                <SubcategorySelect />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase">Location</label>
-                                <LocationSelect />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase">Sort By</label>
-                                <SortSelect />
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
-                            <button
-                                onClick={resetFilters}
-                                className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50"
-                            >
-                                Reset
-                            </button>
-                            <button
-                                onClick={() => setShowMobileFilters(false)}
-                                className="flex-[2] py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800"
-                            >
-                                Apply Filters
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
         </section>
     );
 }

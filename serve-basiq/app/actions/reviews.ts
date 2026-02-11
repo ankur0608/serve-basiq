@@ -9,94 +9,87 @@ import { uploadToR2 } from "@/lib/r2";
 export async function submitServiceReview(formData: FormData) {
     console.log("🚀 [Action] submitServiceReview started");
 
-    // 1. Get Session
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-        console.warn("⚠️ [Action] Aborted: User not authenticated");
         return { success: false, error: "You must be logged in to post a review." };
     }
-    console.log(`👤 [Action] User Authenticated: ${session.user.id}`);
 
     try {
-        // 2. Extract Data from FormData
         const serviceId = formData.get("serviceId") as string;
         const rating = Number(formData.get("rating"));
         const comment = formData.get("comment") as string;
 
-        console.log(`📝 [Action] Review Data: Service=${serviceId}, Rating=${rating}`);
+        // 1. Fetch Booking AND Service Owner ID
+        const booking = await prisma.booking.findFirst({
+            where: {
+                userId: session.user.id,
+                serviceId: serviceId,
+                status: "COMPLETED",
+            },
+            include: {
+                service: true, // Needed to get the Provider's ID
+            }
+        });
 
-        // Extract files
+        if (!booking || !booking.service) {
+            return {
+                success: false,
+                error: "You can only review services you have booked and completed."
+            };
+        }
+
         const files = formData.getAll("images") as File[];
         const uploadedImageUrls: string[] = [];
 
-        // 3. Upload Images to R2
+        // 2. Upload Images (Upload happens BEFORE transaction to keep DB lock time short)
         if (files && files.length > 0) {
-            console.log(`📂 [Action] Found ${files.length} images to upload`);
-
             for (const file of files) {
-                // Skip invalid files
                 if (!file || file.size === 0) continue;
-
-                console.log(`⬆️ [Action] Uploading file: ${file.name} (${file.size} bytes)`);
-
-                // Prepare file for upload
                 const arrayBuffer = await file.arrayBuffer();
                 const buffer = Buffer.from(arrayBuffer);
                 const sanitizedFileName = file.name.replace(/\s+/g, '-').replace(/[()]/g, '');
                 const key = `uploads/reviews/${Date.now()}-${sanitizedFileName}`;
-
-                // Upload using your helper
                 const url = await uploadToR2(key, buffer, file.type);
-
-                if (url) {
-                    console.log(`✅ [Action] Upload success: ${url}`);
-                    uploadedImageUrls.push(url);
-                } else {
-                    console.error(`❌ [Action] Upload returned no URL for ${file.name}`);
-                }
+                if (url) uploadedImageUrls.push(url);
             }
-        } else {
-            console.log("📂 [Action] No images provided, skipping upload.");
         }
 
-        // 4. Database Transaction
-        console.log("💾 [Action] Starting Database Transaction...");
-
+        // 3. Database Transaction with INCREASED TIMEOUTS
         await prisma.$transaction(async (tx) => {
-            // A. Create the new review
-            const newReview = await tx.review.create({
+            // Create Review
+            await tx.review.create({
                 data: {
-                    rating: rating,
-                    comment: comment,
-                    serviceId: serviceId,
+                    rating,
+                    comment,
+                    serviceId,
                     authorId: session.user.id,
+                    userId: booking.service.userId, // The Service Provider ID
                     images: uploadedImageUrls,
                 },
             });
-            console.log(`✅ [DB] Review created with ID: ${newReview.id}`);
 
-            // B. Calculate the new average rating
+            // Recalculate Average
             const avgData = await tx.review.aggregate({
                 where: { serviceId },
                 _avg: { rating: true },
             });
-            console.log(`📊 [DB] New Average Rating Calculated: ${avgData._avg.rating}`);
 
-            // C. Update the Service record
+            // Update Service
             await tx.service.update({
                 where: { id: serviceId },
                 data: { rating: avgData._avg.rating || rating },
             });
-            console.log("🔄 [DB] Service rating updated");
+        }, {
+            maxWait: 5000, // Wait max 5s for a connection
+            timeout: 10000 // Allow transaction to run for 10s
         });
 
-        console.log("🎉 [Action] Review process completed successfully!");
         revalidatePath(`/services/${serviceId}`);
         return { success: true };
 
     } catch (error: any) {
-        console.error("🔥 [Action] CRITICAL ERROR:", error);
-        return { success: false, error: "Failed to submit review." };
+        console.error("🔥 [Action] ERROR:", error);
+        return { success: false, error: "Failed to submit review. Please try again." };
     }
 }

@@ -65,7 +65,7 @@ export default function RentalsExplorer() {
 
     // --- 1. State Management ---
     const [searchTerm, setSearchTerm] = useState('');
-    const [showMobileFilters, setShowMobileFilters] = useState(false); // NEW: Mobile Modal State
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
 
     // Filters State
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
@@ -93,7 +93,7 @@ export default function RentalsExplorer() {
         staleTime: 1000 * 60 * 60,
     });
 
-    // --- 3. Data Normalization ---
+    // --- 3. Data Normalization (FIXED PRICE LOGIC HERE) ---
     const rentals: RentalItem[] = useMemo(() => {
         if (!apiResponse) return [];
         let rawData = [];
@@ -104,20 +104,36 @@ export default function RentalsExplorer() {
         }
 
         return rawData.map((item: any) => {
-            const displayPrice = item.dailyPrice || item.fixedPrice || item.monthlyPrice || 0;
-            const displayType = item.dailyPrice ? 'DAILY' : (item.fixedPrice ? 'FIXED' : 'MONTHLY');
+            const genericPrice = Number(item.price) || 0;
+            const type = item.priceType || 'DAILY';
+
+            // --- FIX: Fallback to generic price if specific is missing ---
+            const effectiveDaily = Number(item.dailyPrice) || (type === 'DAILY' ? genericPrice : 0);
+            const effectiveMonthly = Number(item.monthlyPrice) || (type === 'MONTHLY' ? genericPrice : 0);
+            const effectiveFixed = Number(item.fixedPrice) || (type === 'FIXED' ? genericPrice : 0);
+
+            // Determine what to show on card
+            const displayPrice = effectiveDaily || effectiveFixed || effectiveMonthly || genericPrice;
+            const displayType = effectiveDaily ? 'DAILY' : (effectiveFixed ? 'FIXED' : 'MONTHLY');
+
             return {
                 id: item.id,
                 name: item.name,
-                categoryId: item.category?.id,
+                // ✅ FIX: Prioritize the scalar ID first, then the relation
+                categoryId: item.categoryId || item.category?.id,
                 categoryName: item.category?.name || "Other",
-                subcategoryId: item.subcategory?.id,
+
+                // ✅ FIX: Same for subcategory
+                subcategoryId: item.subCategoryId || item.subcategory?.id, // Note: Prisma usually camelCases foreign keys (subCategoryId) or relation fields
                 subcategoryName: item.subcategory?.name || "General",
-                dailyPrice: Number(item.dailyPrice) || 0,
-                monthlyPrice: Number(item.monthlyPrice) || 0,
-                fixedPrice: Number(item.fixedPrice) || 0,
-                price: Number(displayPrice),
+                // Use our calculated effective prices
+                dailyPrice: effectiveDaily,
+                monthlyPrice: effectiveMonthly,
+                fixedPrice: effectiveFixed,
+
+                price: displayPrice,
                 priceType: displayType,
+
                 rating: Number(item.rating) || 0,
                 reviewCount: item._count?.reviews || 0,
                 location: item.city || item.user?.city || "Remote",
@@ -281,13 +297,11 @@ export default function RentalsExplorer() {
             </div>
 
             {/* --- SEARCH & FILTERS CONTAINER --- */}
-            {/* UPDATED: mt-4 for mobile, -mt-10 for desktop */}
             <div className="container mx-auto max-w-6xl px-4 mt-4 md:-mt-10 relative z-10">
                 <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-4 md:p-6">
 
-                    {/* --- MOBILE VIEW (Visible on sm/md, Hidden on lg/desktop) --- */}
+                    {/* --- MOBILE VIEW --- */}
                     <div className="md:hidden flex gap-2">
-                        {/* Mobile Search Input */}
                         <div className="relative flex-1">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                 <FaMagnifyingGlass />
@@ -300,7 +314,6 @@ export default function RentalsExplorer() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        {/* Mobile Filter Button */}
                         <button
                             onClick={() => setShowMobileFilters(true)}
                             className="bg-slate-900 text-white p-3 rounded-xl flex items-center justify-center min-w-[50px] active:scale-95 transition"
@@ -309,7 +322,7 @@ export default function RentalsExplorer() {
                         </button>
                     </div>
 
-                    {/* --- DESKTOP VIEW (Hidden on mobile, Block on md) --- */}
+                    {/* --- DESKTOP VIEW --- */}
                     <div className="hidden md:block">
                         {/* Search Row */}
                         <div className="flex gap-2 mb-4">
@@ -335,7 +348,7 @@ export default function RentalsExplorer() {
                             </button>
                         </div>
 
-                        {/* Filter Row (4 Columns) */}
+                        {/* Filter Row */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <CategorySelect />
                             <SubcategorySelect />
@@ -386,19 +399,14 @@ export default function RentalsExplorer() {
                 )}
             </div>
 
-            {/* --- MOBILE FILTER MODAL (CENTERED) --- */}
+            {/* --- MOBILE FILTER MODAL --- */}
             {showMobileFilters && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-                    {/* Backdrop */}
                     <div
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
                         onClick={() => setShowMobileFilters(false)}
                     />
-
-                    {/* Modal Content */}
                     <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-
-                        {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-900">Filters</h3>
                             <button
@@ -408,37 +416,24 @@ export default function RentalsExplorer() {
                                 <X size={20} />
                             </button>
                         </div>
-
-                        {/* Body */}
                         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-                            <div className="space-y-2">
-                                <div className="relative">
-                               
-                                </div>
-                            </div>
-
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase">Category</label>
                                 <CategorySelect />
                             </div>
-
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase">Subcategory</label>
                                 <SubcategorySelect />
                             </div>
-
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase">Location</label>
                                 <LocationSelect />
                             </div>
-
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase">Sort By</label>
                                 <SortSelect />
                             </div>
                         </div>
-
-                        {/* Footer */}
                         <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
                             <button
                                 onClick={resetFilters}
@@ -456,7 +451,6 @@ export default function RentalsExplorer() {
                     </div>
                 </div>
             )}
-
         </section>
     );
 }

@@ -2,15 +2,28 @@
 
 import { useState, useRef } from "react";
 import { FaStar, FaCamera, FaXmark } from "react-icons/fa6";
-import { submitServiceReview } from "@/app/actions/reviews";
 import Image from "next/image";
 
-export default function RatingForm({ serviceId }: { serviceId: string }) {
+// Import all your review actions
+import { submitServiceReview } from "@/app/actions/reviews";
+import { submitProductReview } from "@/app/actions/productReviews";
+import { submitRentalReview } from "@/app/actions/rentalReviews";
+
+interface RatingFormProps {
+    serviceId?: string;
+    productId?: string;
+    rentalId?: string;
+}
+
+export default function RatingForm({ serviceId, productId, rentalId }: RatingFormProps) {
     const [rating, setRating] = useState(0);
     const [hover, setHover] = useState(0);
     const [comment, setComment] = useState("");
     const [images, setImages] = useState<File[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // Determine which ID is active
+    const activeId = serviceId || productId || rentalId;
 
     // Ref to trigger the hidden file input
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,31 +49,45 @@ export default function RatingForm({ serviceId }: { serviceId: string }) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (rating === 0) return alert("Please select a star rating!");
+        if (!activeId) return alert("Error: No ID provided for review.");
 
         setLoading(true);
 
         try {
-            // 1. Create FormData
             const formData = new FormData();
-            formData.append("serviceId", serviceId);
+
+            // ⚠️ IMPORTANT: We use the key "serviceId" for all types here because
+            // the Server Actions provided in previous steps all expect formData.get("serviceId").
+            // If you changed your Server Actions to expect "productId" or "rentalId", update the key here.
+            formData.append("serviceId", activeId);
+
             formData.append("rating", rating.toString());
             formData.append("comment", comment);
 
-            // 2. Append all images with the same key "images"
             images.forEach((image) => {
                 formData.append("images", image);
             });
 
-            // 3. Call Server Action
-            const res = await submitServiceReview(formData);
+            let res;
 
-            if (res.success) {
+            // 1. Call the correct action based on props
+            if (serviceId) {
+                res = await submitServiceReview(formData);
+            } else if (productId) {
+                res = await submitProductReview(formData);
+            } else if (rentalId) {
+                res = await submitRentalReview(formData);
+            } else {
+                throw new Error("Unknown review type");
+            }
+
+            if (res?.success) {
                 setRating(0);
                 setComment("");
-                setImages([]); // Clear images
+                setImages([]);
                 alert("Review submitted successfully!");
             } else {
-                alert(res.error || "Something went wrong.");
+                alert(res?.error || "Something went wrong.");
             }
         } catch (error) {
             console.error(error);
@@ -69,6 +96,8 @@ export default function RatingForm({ serviceId }: { serviceId: string }) {
             setLoading(false);
         }
     };
+
+    if (!activeId) return null;
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
@@ -134,7 +163,6 @@ export default function RatingForm({ serviceId }: { serviceId: string }) {
                     <div className="flex flex-wrap gap-2">
                         {images.map((file, index) => (
                             <div key={index} className="relative w-20 h-20 group">
-                                {/* Use URL.createObjectURL for local preview */}
                                 <Image
                                     src={URL.createObjectURL(file)}
                                     alt="Preview"

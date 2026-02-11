@@ -17,30 +17,30 @@ export async function GET(req: Request) {
         if (userId) where.userId = userId;
         if (categoryId) where.categoryId = categoryId;
 
+        // Common include object for reusability
+        const includeObj = {
+            // ✅ FIX 1: Select ID along with Name
+            category: { select: { id: true, name: true } },
+            subcategory: { select: { id: true, name: true } },
+            user: {
+                select: {
+                    id: true, name: true, image: true, phone: true,
+                    isVerified: true, shopName: true
+                }
+            }
+        };
+
         if (id) {
             const rental = await prisma.rental.findUnique({
                 where: { id },
-                include: {
-                    category: { select: { name: true } },
-                    subcategory: { select: { id: true, name: true } },
-                    // ✅ We get the phone from the User relation here
-                    user: {
-                        select: {
-                            id: true, name: true, image: true, phone: true,
-                            isVerified: true, shopName: true
-                        }
-                    },
-                }
+                include: includeObj
             });
             return NextResponse.json(rental);
         }
 
         const rentals = await prisma.rental.findMany({
             where,
-            include: {
-                category: { select: { name: true } },
-                subcategory: { select: { id: true, name: true } },
-            },
+            include: includeObj,
             orderBy: { createdAt: "desc" },
             take: limit ? parseInt(limit) : undefined,
         });
@@ -58,31 +58,39 @@ export async function POST(req: Request) {
 
         const {
             id, userId, name, desc, rentalImg, coverImg, gallery,
-            categoryId, subCategoryId, subCategoryIds,
+            categoryId, subCategoryId, subCategoryIds, // Input IDs
             price, priceType, stock, radiusKm,
             latitude, longitude, addressLine1, addressLine2, city, state, pincode,
-            // ❌ Removed altPhone from destructuring
             itemCondition, securityDeposit, minDuration, rentalMode
         } = body;
 
-        if (!userId || !name || !rentalImg || !price) {
-            return NextResponse.json({ success: false, message: "Missing fields" }, { status: 400 });
+        // ✅ FIX 2: Validate Category is present
+        if (!userId || !name || !rentalImg || !price || !categoryId) {
+            return NextResponse.json({ success: false, message: "Missing required fields (Name, Image, Price, Category)" }, { status: 400 });
         }
 
-        const finalSubId = subCategoryId || (Array.isArray(subCategoryIds) ? subCategoryIds[0] : null);
+        const finalSubId = subCategoryId || (Array.isArray(subCategoryIds) && subCategoryIds.length > 0 ? subCategoryIds[0] : null);
+        const numericPrice = parseFloat(price);
+        const selectedPriceType = priceType || 'DAILY';
+
+        const pricePayload = {
+            price: numericPrice,
+            priceType: selectedPriceType,
+            dailyPrice: selectedPriceType === 'DAILY' ? numericPrice : undefined,
+            monthlyPrice: selectedPriceType === 'MONTHLY' ? numericPrice : undefined,
+            fixedPrice: selectedPriceType === 'FIXED' ? numericPrice : undefined,
+        };
 
         const dataPayload = {
             name, desc, rentalImg, coverImg, gallery,
-            price: parseFloat(price),
-            priceType: priceType || 'DAILY',
+            ...pricePayload,
             stock: parseInt(stock),
             radiusKm: parseInt(radiusKm),
             latitude: latitude ? parseFloat(latitude) : null,
             longitude: longitude ? parseFloat(longitude) : null,
             addressLine1, addressLine2, city, state, pincode,
 
-            // ❌ Removed altPhone from payload to fix the error
-
+            // ✅ FIX 3: Ensure we don't try to connect empty strings
             category: categoryId ? { connect: { id: categoryId } } : undefined,
             subcategory: finalSubId ? { connect: { id: finalSubId } } : undefined,
 

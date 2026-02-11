@@ -159,57 +159,58 @@ model RentalBooking {
 }
 
 model Rental {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+    id     String @id @default(uuid())
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
 
-  // --- Basic Info ---
-  name      String
-  desc      String
-  rentalImg String
-  coverImg  String?
-  gallery   String[]
+    // --- Basic Info ---
+    name      String
+    desc      String
+    rentalImg String
+    coverImg  String?
+    gallery   String[]
 
-  // --- Category ---
-  categoryId String?
-  category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
+    // --- Category ---
+    categoryId String?
+    category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
 
-  subCategoryId String?
-  subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
+    subCategoryId String?
+    subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
 
-  // --- Pricing & Stock ---
-  price     Float  @default(0)
-  priceType String
-  stock     Int    @default(1)
+    // --- Pricing & Stock ---
+    price     Float  @default(0)
+    priceType String
+    stock     Int    @default(1)
 
-  // ✅ ADD THESE NEW FIELDS TO FIX THE API ERROR
-  dailyPrice   Float?
-  monthlyPrice Float?
-  fixedPrice   Float?
+    // ✅ ADD THESE NEW FIELDS TO FIX THE API ERROR
+    dailyPrice   Float?
+    monthlyPrice Float?
+    fixedPrice   Float?
 
-  // --- New Fields From Previous Updates ---
-  itemCondition   String? @default("Good")
-  securityDeposit Float?  @default(0)
-  minDuration     String?
-  maxDuration     String?
-  rentalMode      String? @default("PICKUP")
+    // --- New Fields From Previous Updates ---
+    itemCondition   String? @default("Good")
+    securityDeposit Float?  @default(0)
+    minDuration     String?
+    maxDuration     String?
+    rentalMode      String? @default("PICKUP")
 
-  // --- Location ---
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  state        String?
-  pincode      String?
-  latitude     Decimal?
-  longitude    Decimal?
-  radiusKm     Int?     @default(10)
+    // --- Location ---
+    addressLine1 String?
+    addressLine2 String?
+    city         String?
+    state        String?
+    pincode      String?
+    latitude     Decimal?
+    longitude    Decimal?
+    radiusKm     Int?     @default(10)
 
-  // --- System ---
-  isVerified     Boolean         @default(false)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  bookings       Booking[]
-  rentalBookings RentalBooking[]
+    // --- System ---
+    isVerified     Boolean         @default(false)
+    createdAt      DateTime        @default(now())
+    updatedAt      DateTime        @updatedAt
+    bookings       Booking[]
+    rentalBookings RentalBooking[]
+    reviews        Review[]
 }
 
 model Category {
@@ -501,9 +502,22 @@ model Review {
     comment String?
     images  String[]
 
-    serviceId String
-    service   Service @relation(fields: [serviceId], references: [id])
+    // The User ID of the OWNER (Service Provider OR Product Supplier OR Rental Owner)
+    userId String
 
+    // Service Relation
+    serviceId String?
+    service   Service? @relation(fields: [serviceId], references: [id])
+
+    // Product Relation 
+    productId String?
+    product   Product? @relation(fields: [productId], references: [id])
+
+    // Rental Relation (NEW)
+    rentalId String?
+    rental   Rental? @relation(fields: [rentalId], references: [id])
+
+    // The Customer who wrote the review
     authorId String
     author   User   @relation(fields: [authorId], references: [id])
 
@@ -540,6 +554,7 @@ model Product {
     orders       Order[]
     favoritedBy  FavoriteProduct[]
     categories   Category[]
+    reviews      Review[]
 }
 
 model FavoriteService {

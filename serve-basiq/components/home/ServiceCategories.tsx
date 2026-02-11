@@ -38,12 +38,12 @@ export default function ServiceCategories({ categories }: CategoryProps) {
               className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex flex-col items-center justify-center h-32"
             >
               {/* Image Container */}
-              <div className="w-12 h-12 mb-3 relative group-hover:scale-110 transition flex items-center justify-center">
+              <div className="w-24 h-12 mb-3 relative group-hover:scale-110 transition flex items-center justify-center">
                 {cat.image ? (
-                  <Image
+                  <img
                     src={cat.image}
                     alt={cat.name}
-                    fill
+                    // fill
                     className="object-contain"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />

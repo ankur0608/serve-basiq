@@ -5,13 +5,15 @@ import {
     FaArrowLeft, FaLocationDot, FaStar,
     FaShieldHalved, FaPhone,
     FaInstagram, FaFacebook, FaYoutube, FaGlobe,
-    FaCircleCheck
+    FaCircleCheck, FaLock
 } from 'react-icons/fa6';
 import BookingWrapper from '@/components/booking/BookingWrapper';
 import AppImage from '@/components/ui/AppImage';
 import RatingForm from '@/components/Rating/RatingForm';
 import { Session } from 'next-auth';
+import { useServicePageData } from '@/app/hook/useServicePageData'; // 👈 Import the new hook
 
+// --- TYPES ---
 interface ServiceDetailViewProps {
     service: {
         id: string;
@@ -19,22 +21,15 @@ interface ServiceDetailViewProps {
         desc: string;
         price: number;
         priceType: string;
-        
-        // Image Fields (Checking all possible keys from API)
         coverImg?: string | null;
         serviceimg?: string | null;
         rentalImg?: string | null;
         mainimg?: string | null;
-        
         rating: number | string;
-
-        // Socials
         instagramUrl?: string | null;
         facebookUrl?: string | null;
         youtubeUrl?: string | null;
         websiteUrl?: string | null;
-
-        // Address Fields
         addressLine1?: string | null;
         addressLine2?: string | null;
         city?: string | null;
@@ -42,7 +37,6 @@ interface ServiceDetailViewProps {
         pincode?: string | null;
         landmark?: string | null;
         loc?: string | null;
-
         experience?: string | number | null;
         radiusKm?: number | null;
         isVerified?: boolean;
@@ -51,7 +45,6 @@ interface ServiceDetailViewProps {
         openTime?: string | null;
         closeTime?: string | null;
         gallery: string[];
-
         user: {
             id: string;
             name?: string | null;
@@ -65,31 +58,37 @@ interface ServiceDetailViewProps {
             youtubeUrl?: string | null;
             websiteUrl?: string | null;
         };
-
         category: { name: string } | null;
-        subcategory?: { name: string } | null; // Added Subcategory
+        subcategory?: { name: string } | null;
         reviews: any[];
     };
     loggedInUser: any;
     session: Session | null;
 }
 
-export default function ServiceDetailView({ service, loggedInUser, session }: ServiceDetailViewProps) {
+export default function ServiceDetailView({ service, loggedInUser: initialUser, session }: ServiceDetailViewProps) {
     const displayName = service.user.shopName || service.name;
 
-    // ✅ IMPROVED IMAGE LOGIC: Check all possible image fields for the Hero Section
-    const heroImage = 
-        service.coverImg || 
-        service.serviceimg || 
-        service.rentalImg || 
-        service.mainimg || 
+    // --- 📡 DATA FETCHING: Using Custom Hook ---
+    const { currentUser, eligibility, isEligibilityLoading } = useServicePageData({
+        serviceId: service.id,
+        initialUser,
+        session
+    });
+
+    // --- 🖼️ IMAGE LOGIC ---
+    const heroImage =
+        service.coverImg ||
+        service.serviceimg ||
+        service.rentalImg ||
+        service.mainimg ||
         "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2071&auto=format&fit=crop";
 
     const providerImage = service.user.profileImage || service.user.image || "";
     const ratingValue = Number(service.rating) || 5.0;
     const isVerified = service.isVerified || service.user.isVerified;
 
-    // ✅ ADDRESS FORMATTING
+    // --- 📍 ADDRESS FORMATTING ---
     const addressParts = [
         service.addressLine1,
         service.addressLine2,
@@ -110,16 +109,22 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
         { name: 'Website', icon: <FaGlobe size={20} />, url: service.websiteUrl || service.user.websiteUrl, styleClass: "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-600 hover:text-white" },
     ].filter(s => s.url && s.url.trim() !== "" && s.url !== "null");
 
+
+    // --- 🔍 HELPER: CHECK IF ALREADY REVIEWED (For UI Messaging) ---
+    const alreadyReviewed = session && service.reviews.some(
+        (r: any) => r.authorId === currentUser?.id
+    );
+
     return (
         <div className="pb-40 bg-slate-50 min-h-screen">
             {/* HERO SECTION */}
             <div className="h-[40vh] md:h-[50vh] bg-slate-900 relative overflow-hidden">
-                <AppImage 
-                    src={heroImage} 
-                    alt={displayName} 
-                    type="banner" 
-                    className="w-full h-full object-cover opacity-80" 
-                    priority={true} 
+                <AppImage
+                    src={heroImage}
+                    alt={displayName}
+                    type="banner"
+                    className="w-full h-full object-cover opacity-80"
+                    priority={true}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-transparent"></div>
                 <Link href="/services" className="absolute top-8 left-8 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition z-20">
@@ -130,7 +135,7 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
             <div className="max-w-6xl mx-auto px-4 -mt-32 relative z-10">
                 <div className="grid lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
-                        
+
                         {/* MAIN INFO CARD */}
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                             <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
@@ -152,8 +157,6 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                                         <span className="leading-relaxed">{fullAddress}</span>
                                     </p>
                                 </div>
-                                
-                                {/* Ratings Badge */}
                                 <div className="flex flex-col items-end">
                                     <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-2xl border border-amber-100">
                                         <FaStar className="text-amber-500" />
@@ -163,7 +166,7 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                                 </div>
                             </div>
 
-                            {/* Socials Connection */}
+                            {/* Socials */}
                             {socials.length > 0 && (
                                 <div className="mb-8 p-4 bg-slate-50 rounded-3xl border border-slate-100">
                                     <h4 className="font-bold text-slate-900 text-sm mb-3">Professional Socials</h4>
@@ -208,29 +211,26 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                             </div>
                         </div>
 
-                        {/* GALLERY SECTION */}
+                        {/* GALLERY */}
                         {service.gallery && service.gallery.length > 0 && (
                             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                                 <h3 className="text-xl font-bold text-slate-900 mb-6">Work Gallery</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     {service.gallery.map((img, i) => (
                                         <div key={i} className="h-48 w-full relative group">
-                                            <AppImage 
-                                                src={img} 
-                                                alt={`Gallery ${i}`} 
-                                                type="gallery" 
-                                                className="w-full h-full object-cover rounded-2xl group-hover:opacity-90 transition cursor-pointer" 
-                                            />
+                                            <AppImage src={img} alt={`Gallery ${i}`} type="gallery" className="w-full h-full object-cover rounded-2xl group-hover:opacity-90 transition cursor-pointer" />
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
-                        {/* REVIEWS & REVIEW IMAGES SECTION */}
+                        {/* REVIEWS & RATINGS */}
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                             <h3 className="text-2xl font-black text-slate-900 mb-8">Reviews & Ratings</h3>
                             <div className="grid md:grid-cols-2 gap-10">
+
+                                {/* 1. List of Reviews */}
                                 <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                                     {service.reviews.length > 0 ? (
                                         service.reviews.map((review) => (
@@ -248,20 +248,14 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                                                         </div>
                                                     </div>
                                                 </div>
-
                                                 <p className="text-slate-600 text-sm italic mb-3">"{review.comment}"</p>
-
-                                                {/* ✅ Review Attached Images */}
+                                                {/* Review Images */}
                                                 {review.images && review.images.length > 0 && (
                                                     <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                                                         {review.images.map((img: string, idx: number) => (
-                                                            <div key={idx} className="h-16 w-16 flex-shrink-0 rounded-lg overflow-hidden border border-slate-200 shadow-sm relative hover:scale-105 transition-transform">
-                                                                <AppImage
-                                                                    src={img}
-                                                                    alt={`Review attachment ${idx}`}
-                                                                    type="gallery"
-                                                                    className="w-full h-full object-cover"
-                                                                />
+                                                            // ⚠️ FIX: Added 'relative' here to contain the AppImage ⚠️
+                                                            <div key={idx} className="relative h-16 w-16 flex-shrink-0 rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:scale-105 transition-transform">
+                                                                <AppImage src={img} alt="review-img" type="gallery" className="w-full h-full object-cover" />
                                                             </div>
                                                         ))}
                                                     </div>
@@ -273,14 +267,44 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                                     )}
                                 </div>
 
+                                {/* 2. Conditional Rating Form */}
                                 <div>
-                                    {session ? <RatingForm serviceId={service.id} /> : (
+                                    {!session ? (
+                                        // Case 1: Not Logged In
                                         <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100 text-center sticky top-24">
-                                            <p className="text-blue-800 text-sm font-medium">Log in to rate this service.</p>
+                                            <p className="text-blue-800 text-sm font-medium">Log in to view eligibility.</p>
                                             <Link href="/login" className="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition">
                                                 Login Now
                                             </Link>
                                         </div>
+                                    ) : isEligibilityLoading ? (
+                                        // Case 2: Loading State
+                                        <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 text-center sticky top-24 animate-pulse">
+                                            <div className="h-4 bg-slate-200 rounded w-3/4 mx-auto mb-2"></div>
+                                            <div className="h-3 bg-slate-200 rounded w-1/2 mx-auto"></div>
+                                        </div>
+                                    ) : eligibility?.canReview ? (
+                                        // Case 3: Eligible to Review
+                                        <RatingForm serviceId={service.id} />
+                                    ) : (
+                                        // Case 4: Not Eligible
+                                        alreadyReviewed ? (
+                                            <div className="p-6 rounded-2xl bg-green-50 border border-green-100 text-center sticky top-24">
+                                                <FaCircleCheck className="mx-auto text-green-500 text-2xl mb-2" />
+                                                <p className="text-green-800 text-sm font-bold">Thanks for your review!</p>
+                                                <p className="text-green-600 text-xs mt-1">You have already reviewed this service.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center sticky top-24">
+                                                <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                                                    <FaLock />
+                                                </div>
+                                                <p className="text-slate-800 text-sm font-bold">Verified Purchase Only</p>
+                                                <p className="text-slate-500 text-xs mt-2 leading-relaxed">
+                                                    You can only leave a review after you have booked this service and the job is marked as <strong>Completed</strong>.
+                                                </p>
+                                            </div>
+                                        )
                                     )}
                                 </div>
                             </div>
@@ -310,7 +334,7 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                                     <span className="text-slate-400 font-bold">{service.priceType === 'HOURLY' ? '/hour' : '/fixed'}</span>
                                 </div>
                             </div>
-                            
+
                             <div className="space-y-4 mb-6">
                                 <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
                                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
@@ -329,13 +353,13 @@ export default function ServiceDetailView({ service, loggedInUser, session }: Se
                                     </ul>
                                 </div>
                             </div>
-                            
-                            <BookingWrapper 
-                                serviceId={service.id} 
-                                serviceName={displayName!} 
-                                price={service.price} 
-                                currentUser={loggedInUser} 
-                                userAddresses={loggedInUser?.addresses || []} 
+
+                            <BookingWrapper
+                                serviceId={service.id}
+                                serviceName={displayName!}
+                                price={service.price}
+                                currentUser={currentUser}
+                                userAddresses={currentUser?.addresses || []}
                             />
                         </div>
                     </div>
