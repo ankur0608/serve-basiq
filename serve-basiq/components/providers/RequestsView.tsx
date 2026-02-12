@@ -4,8 +4,9 @@ import { useState, useMemo, useEffect } from 'react';
 import {
     Loader2, Calendar, Clock, MapPin,
     CheckCircle2, XCircle, Filter, Package,
-    Truck, Briefcase, ShoppingBag, ArrowRight,
-    User as UserIcon, BoxSelect, KeyRound
+    Truck, Briefcase, ShoppingBag,
+    User as UserIcon, BoxSelect, KeyRound,
+    AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '@/lib/store';
@@ -20,7 +21,6 @@ interface RequestsViewProps {
 type TabType = 'ALL' | 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 type ViewMode = 'SERVICES' | 'PRODUCTS';
 
-// --- Helper: Currency Formatter ---
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
         style: 'currency',
@@ -40,14 +40,12 @@ const RequestCard = ({
     isProcessing: boolean;
 }) => {
 
-    // Status Color Logic
     const getStatusColor = (status: string) => {
         const map: Record<string, string> = {
             'REQUESTED': 'bg-amber-100 text-amber-700 border-amber-200',
             'PENDING': 'bg-amber-100 text-amber-700 border-amber-200',
             'ACCEPTED': 'bg-blue-100 text-blue-700 border-blue-200',
             'APPROVED': 'bg-blue-100 text-blue-700 border-blue-200',
-            'CONFIRMED': 'bg-blue-100 text-blue-700 border-blue-200',
             'IN_PROGRESS': 'bg-purple-100 text-purple-700 border-purple-200',
             'ACTIVE': 'bg-purple-100 text-purple-700 border-purple-200',
             'SHIPPED': 'bg-indigo-100 text-indigo-700 border-indigo-200',
@@ -55,6 +53,8 @@ const RequestCard = ({
             'COMPLETED': 'bg-emerald-100 text-emerald-700 border-emerald-200',
             'CANCELLED': 'bg-red-50 text-red-600 border-red-100',
             'REJECTED': 'bg-red-50 text-red-600 border-red-100',
+            'OVERDUE': 'bg-red-100 text-red-700 border-red-200',
+            'RETURNED': 'bg-emerald-100 text-emerald-700 border-emerald-200',
         };
         return map[status] || 'bg-slate-100 text-slate-600 border-slate-200';
     };
@@ -62,7 +62,6 @@ const RequestCard = ({
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full relative group">
 
-            {/* Loading Overlay */}
             {isProcessing && (
                 <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
                     <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
@@ -70,11 +69,8 @@ const RequestCard = ({
                 </div>
             )}
 
-            {/* --- Header: Status, Type & ID --- */}
             <div className="px-5 py-3 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-2">
-
-                    {/* ✅ TYPE BADGE: Distinguish Rental vs Service */}
                     {data.type === 'RENTAL' ? (
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200 flex items-center gap-1">
                             <KeyRound size={10} /> RENTAL
@@ -88,29 +84,21 @@ const RequestCard = ({
                             <Package size={10} /> ORDER
                         </span>
                     )}
-  
-                    {/* Status Badge */}
+
                     <span className={clsx("px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border", getStatusColor(data.displayStatus))}>
                         {data.displayStatus.replace('_', ' ')}
                     </span>
                 </div>
-
                 <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
                     #{data.id.slice(-6).toUpperCase()}
                 </div>
             </div>
 
-            {/* --- Body: Content --- */}
             <div className="p-5 flex-1">
-                {/* User Info Row */}
                 <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                            {data.img ? (
-                                <img src={data.img} alt="User" className="w-full h-full object-cover" />
-                            ) : (
-                                <UserIcon size={18} className="text-slate-400" />
-                            )}
+                            {data.img ? <img src={data.img} alt="User" className="w-full h-full object-cover" /> : <UserIcon size={18} className="text-slate-400" />}
                         </div>
                         <div>
                             <h4 className="text-sm font-bold text-slate-900 leading-tight">{data.user?.name || "Guest User"}</h4>
@@ -130,7 +118,6 @@ const RequestCard = ({
                     </div>
                 </div>
 
-                {/* Item Details */}
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-4">
                     <div className="flex gap-3">
                         <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
@@ -158,9 +145,8 @@ const RequestCard = ({
                 </div>
             </div>
 
-            {/* --- Footer: Actions --- */}
             <div className="p-4 pt-0 mt-auto">
-                {/* PENDING ACTIONS */}
+                {/* 1. PENDING REQUESTS (All Types) */}
                 {['REQUESTED', 'PENDING'].includes(data.displayStatus) && (
                     <div className="grid grid-cols-2 gap-3">
                         <button
@@ -171,7 +157,9 @@ const RequestCard = ({
                             Reject
                         </button>
                         <button
-                            onClick={() => onAction(data.id, data.type === 'RENTAL' ? 'APPROVED' : 'ACCEPTED', data.type === 'RENTAL')}
+                            // ✅ FIXED: Now strictly sends 'ACCEPTED' for Rentals too.
+                            // 'APPROVED' was causing the API crash because it's not in your DB Schema.
+                            onClick={() => onAction(data.id, 'ACCEPTED', data.type === 'RENTAL')}
                             disabled={isProcessing}
                             className="py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 shadow-md shadow-slate-200 transition-transform active:scale-95 flex items-center justify-center gap-2"
                         >
@@ -180,29 +168,29 @@ const RequestCard = ({
                     </div>
                 )}
 
-                {/* SERVICE & RENTAL WORKFLOW */}
+                {/* 2. SERVICES & RENTALS */}
                 {(data.type === 'BOOKING' || data.type === 'RENTAL') && (
                     <>
-                        {(data.displayStatus === 'ACCEPTED' || data.displayStatus === 'APPROVED') && (
+                        {['ACCEPTED', 'APPROVED', 'IN_PROGRESS', 'ACTIVE'].includes(data.displayStatus) && (
                             <button
-                                onClick={() => onAction(data.id, data.type === 'RENTAL' ? 'ACTIVE' : 'IN_PROGRESS', data.type === 'RENTAL')}
-                                className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 shadow-md shadow-blue-100 flex items-center justify-center gap-2 transition-all"
-                            >
-                                <Truck size={16} /> {data.type === 'RENTAL' ? 'Mark Picked Up / Active' : 'Start Job / On Way'}
-                            </button>
-                        )}
-                        {(data.displayStatus === 'IN_PROGRESS' || data.displayStatus === 'ACTIVE') && (
-                            <button
+                                // ✅ FIXED: Returns are mapped to 'COMPLETED' (Schema compliant)
                                 onClick={() => onAction(data.id, 'COMPLETED', data.type === 'RENTAL')}
                                 className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 shadow-md shadow-emerald-100 flex items-center justify-center gap-2 transition-all"
                             >
-                                <CheckCircle2 size={16} /> {data.type === 'RENTAL' ? 'Mark Returned / Completed' : 'Mark Completed'}
+                                <CheckCircle2 size={16} />
+                                {data.type === 'RENTAL' ? 'Mark Returned & Completed' : 'Mark Job Completed'}
                             </button>
+                        )}
+
+                        {data.displayStatus === 'OVERDUE' && (
+                            <div className="w-full py-2.5 rounded-xl bg-red-100 text-red-700 font-bold text-xs border border-red-200 text-center flex items-center justify-center gap-2">
+                                <AlertTriangle size={14} /> Overdue - Mark Completed when returned
+                            </div>
                         )}
                     </>
                 )}
 
-                {/* PRODUCT WORKFLOW */}
+                {/* 3. PRODUCT WORKFLOW */}
                 {data.type === 'ORDER' && (
                     <>
                         {data.displayStatus === 'ACCEPTED' && (
@@ -224,8 +212,8 @@ const RequestCard = ({
                     </>
                 )}
 
-                {/* COMPLETED / CANCELLED STATE */}
-                {['COMPLETED', 'DELIVERED', 'CANCELLED', 'REJECTED'].includes(data.displayStatus) && (
+                {/* 4. CLOSED STATE */}
+                {['COMPLETED', 'DELIVERED', 'CANCELLED', 'REJECTED', 'RETURNED'].includes(data.displayStatus) && (
                     <div className="w-full py-2.5 rounded-xl bg-slate-50 text-slate-400 font-bold text-xs border border-slate-100 text-center flex items-center justify-center gap-2 cursor-not-allowed">
                         {['CANCELLED', 'REJECTED'].includes(data.displayStatus) ? (
                             <><XCircle size={14} /> Request Closed</>
@@ -239,40 +227,24 @@ const RequestCard = ({
     );
 };
 
-// --- MAIN COMPONENT ---
-export default function RequestsView({
-    showToast,
-    providerType
-}: RequestsViewProps) {
-
+export default function RequestsView({ showToast, providerType }: RequestsViewProps) {
     const { currentUser } = useUIStore();
-
-    // Initialize View Mode
-    const [viewMode, setViewMode] = useState<ViewMode>(
-        providerType === 'PRODUCT' ? 'PRODUCTS' : 'SERVICES'
-    );
-
-    // Fetch Data
+    const [viewMode, setViewMode] = useState<ViewMode>(providerType === 'PRODUCT' ? 'PRODUCTS' : 'SERVICES');
     const { data, isLoading, refetch } = useProviderRequests(currentUser?.id, providerType);
-
     const bookings = data?.bookings || [];
     const orders = data?.orders || [];
-
     const [activeTab, setActiveTab] = useState<TabType>('PENDING');
     const [processingId, setProcessingId] = useState<string | null>(null);
 
-    // Sync viewMode
     useEffect(() => {
         if (providerType === 'PRODUCT') setViewMode('PRODUCTS');
         else if (providerType === 'SERVICE') setViewMode('SERVICES');
     }, [providerType]);
 
-    // 1. SELECT & NORMALIZE DATA
     const currentData = useMemo(() => {
         if (viewMode === 'SERVICES') {
             return bookings.map((b: any) => {
                 const isRental = !!b.rental;
-
                 return {
                     ...b,
                     type: isRental ? 'RENTAL' : 'BOOKING',
@@ -282,7 +254,7 @@ export default function RequestsView({
                     price: isRental ? b.totalPrice : (b.service?.price || 0),
                     img: b.user?.profileImage || b.user?.image || "",
                     timeSlot: isRental
-                        ? `${b.totalDays} Day(s) • ${new Date(b.startDate).toLocaleDateString()} - ${new Date(b.endDate).toLocaleDateString()}`
+                        ? `${b.totalDays || 1} Day(s) • ${new Date(b.startDate).toLocaleDateString()} - ${new Date(b.endDate).toLocaleDateString()}`
                         : (b.openTime ? `${b.openTime} - ${b.closeTime}` : "Scheduled"),
                     paymentStatus: 'PENDING'
                 };
@@ -302,35 +274,32 @@ export default function RequestsView({
         }
     }, [viewMode, bookings, orders]);
 
-    // 2. FILTER & SORT
     const filteredRequests = useMemo(() => {
         const sorted = [...currentData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
         return sorted.filter((i: any) => {
             const s = i.displayStatus;
             if (activeTab === 'ALL') return true;
-            if (activeTab === 'PENDING') return s === 'PENDING' || s === 'REQUESTED';
-            if (activeTab === 'CANCELLED') return s === 'CANCELLED' || s === 'RETURNED' || s === 'REJECTED';
-            if (activeTab === 'COMPLETED') return s === 'COMPLETED' || s === 'DELIVERED';
-            if (activeTab === 'ACTIVE') return ['ACCEPTED', 'APPROVED', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'IN_PROGRESS', 'ACTIVE'].includes(s);
+            if (activeTab === 'PENDING') return ['PENDING', 'REQUESTED'].includes(s);
+            if (activeTab === 'CANCELLED') return ['CANCELLED', 'REJECTED', 'RETURNED'].includes(s);
+            if (activeTab === 'COMPLETED') return ['COMPLETED', 'DELIVERED', 'RETURNED'].includes(s);
+            // Added APPROVED and RETURNED to Active/Completed logic just in case legacy data exists
+            if (activeTab === 'ACTIVE') return ['ACCEPTED', 'APPROVED', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'IN_PROGRESS', 'ACTIVE', 'OVERDUE'].includes(s);
             return false;
         });
     }, [currentData, activeTab]);
 
-    // 3. API ACTION HANDLER
     const handleUpdateStatus = async (id: string, newStatus: string, isRental: boolean) => {
         setProcessingId(id);
-
-        // Choose endpoint
         let endpoint = '';
-        let bodyKey = '';
+        let bodyKey = 'bookingId'; // Default key
 
         if (viewMode === 'SERVICES') {
             if (isRental) {
-                // Ensure this route exists or map it correctly
+                // ✅ RENTALS go to the dedicated rental API
                 endpoint = '/api/rentals/update-status';
                 bodyKey = 'bookingId';
             } else {
+                // ✅ SERVICES go to the booking API
                 endpoint = '/api/bookings/update-status';
                 bodyKey = 'bookingId';
             }
@@ -345,17 +314,15 @@ export default function RequestsView({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ [bodyKey]: id, status: newStatus })
             });
-
             const data = await res.json();
-
             if (data.success) {
-                showToast(`Status updated`, "success");
+                showToast(`Status updated to ${newStatus}`, "success");
                 refetch();
             } else {
-                showToast(data.message || "Failed", "error");
+                showToast(data.message || "Update failed", "error");
             }
         } catch (error) {
-            showToast("Network error", "error");
+            showToast("Network error occurred", "error");
         } finally {
             setProcessingId(null);
         }
@@ -369,38 +336,17 @@ export default function RequestsView({
         { id: 'ALL', label: 'All', icon: Filter },
     ];
 
-    if (isLoading) {
-        return (
-            <div className="h-96 flex flex-col items-center justify-center text-slate-400">
-                <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
-                <p className="text-sm font-medium">Loading requests...</p>
-            </div>
-        );
-    }
+    if (isLoading) return <div className="h-96 flex flex-col items-center justify-center text-slate-400"><Loader2 className="animate-spin text-blue-600 mb-2" size={32} /><p className="text-sm font-medium">Loading requests...</p></div>;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-
-            {/* --- TOP HEADER & TOGGLE --- */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 {providerType === 'BOTH' ? (
                     <div className="bg-slate-100 p-1 rounded-xl flex gap-1 w-full md:w-auto">
-                        <button
-                            onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }}
-                            className={clsx(
-                                "flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2",
-                                viewMode === 'SERVICES' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                            )}
-                        >
-                            <Briefcase size={16} className={viewMode === 'SERVICES' ? "text-blue-600" : ""} /> Services
+                        <button onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }} className={clsx("flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2", viewMode === 'SERVICES' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
+                            <Briefcase size={16} className={viewMode === 'SERVICES' ? "text-blue-600" : ""} /> Services & Rentals
                         </button>
-                        <button
-                            onClick={() => { setViewMode('PRODUCTS'); setActiveTab('PENDING'); }}
-                            className={clsx(
-                                "flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2",
-                                viewMode === 'PRODUCTS' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                            )}
-                        >
+                        <button onClick={() => { setViewMode('PRODUCTS'); setActiveTab('PENDING'); }} className={clsx("flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2", viewMode === 'PRODUCTS' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
                             <ShoppingBag size={16} className={viewMode === 'PRODUCTS' ? "text-purple-600" : ""} /> Products
                         </button>
                     </div>
@@ -408,36 +354,27 @@ export default function RequestsView({
                     <div>
                         <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                             {viewMode === 'SERVICES' ? <Briefcase className="text-blue-600" /> : <ShoppingBag className="text-purple-600" />}
-                            {viewMode === 'SERVICES' ? 'Service Bookings' : 'Product Orders'}
+                            {viewMode === 'SERVICES' ? 'Bookings & Rentals' : 'Product Orders'}
                         </h2>
                         <p className="text-slate-500 text-sm font-medium mt-1">Manage and track your incoming requests.</p>
                     </div>
                 )}
             </div>
 
-            {/* --- TAB BAR --- */}
             <div className="border-b border-slate-200">
                 <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
                     {statusTabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={clsx(
-                                "px-4 py-2.5 text-sm font-bold transition-all flex items-center gap-2 border-b-2 whitespace-nowrap",
-                                activeTab === tab.id
-                                    ? "border-slate-900 text-slate-900 bg-slate-50/50 rounded-t-lg"
-                                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg"
-                            )}
-                        >
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={clsx("px-4 py-2.5 text-sm font-bold transition-all flex items-center gap-2 border-b-2 whitespace-nowrap", activeTab === tab.id ? "border-slate-900 text-slate-900 bg-slate-50/50 rounded-t-lg" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg")}>
                             <tab.icon size={16} className={activeTab === tab.id ? (viewMode === 'SERVICES' ? "text-blue-600" : "text-purple-600") : ""} />
                             {tab.label}
                             <span className={clsx("ml-1 px-1.5 py-0.5 rounded-full text-[10px]", activeTab === tab.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}>
                                 {currentData.filter((i: any) => {
+                                    const s = i.displayStatus;
                                     if (tab.id === 'ALL') return true;
-                                    if (tab.id === 'PENDING') return ['PENDING', 'REQUESTED'].includes(i.displayStatus);
-                                    if (tab.id === 'CANCELLED') return ['CANCELLED', 'REJECTED', 'RETURNED'].includes(i.displayStatus);
-                                    if (tab.id === 'COMPLETED') return ['COMPLETED', 'DELIVERED'].includes(i.displayStatus);
-                                    if (tab.id === 'ACTIVE') return ['ACCEPTED', 'APPROVED', 'CONFIRMED', 'SHIPPED', 'IN_PROGRESS', 'ACTIVE'].includes(i.displayStatus);
+                                    if (tab.id === 'PENDING') return ['PENDING', 'REQUESTED'].includes(s);
+                                    if (tab.id === 'CANCELLED') return ['CANCELLED', 'REJECTED', 'RETURNED'].includes(s);
+                                    if (tab.id === 'COMPLETED') return ['COMPLETED', 'DELIVERED', 'RETURNED'].includes(s);
+                                    if (tab.id === 'ACTIVE') return ['ACCEPTED', 'APPROVED', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'IN_PROGRESS', 'ACTIVE', 'OVERDUE'].includes(s);
                                     return false;
                                 }).length}
                             </span>
@@ -446,7 +383,6 @@ export default function RequestsView({
                 </div>
             </div>
 
-            {/* --- CONTENT GRID --- */}
             <div className="min-h-100">
                 {filteredRequests.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-80 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
@@ -454,19 +390,12 @@ export default function RequestsView({
                             <Filter size={32} className="text-slate-300" />
                         </div>
                         <h3 className="font-bold text-slate-700 text-lg">No requests found</h3>
-                        <p className="text-sm mt-1 text-slate-500">
-                            There are no {activeTab.toLowerCase()} requests at the moment.
-                        </p>
+                        <p className="text-sm mt-1 text-slate-500">There are no {activeTab.toLowerCase()} requests at the moment.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {filteredRequests.map((req: any) => (
-                            <RequestCard
-                                key={req.id}
-                                data={req}
-                                onAction={handleUpdateStatus}
-                                isProcessing={processingId === req.id}
-                            />
+                            <RequestCard key={req.id} data={req} onAction={handleUpdateStatus} isProcessing={processingId === req.id} />
                         ))}
                     </div>
                 )}

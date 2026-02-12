@@ -9,7 +9,8 @@ const RentalBookingSchema = z.object({
   rentalId: z.string().min(1, "Rental ID is required"),
   startDate: z.string().or(z.date()),
   endDate: z.string().or(z.date()),
-  addressId: z.string().optional(),
+  // Allow null for Pickup scenarios
+  addressId: z.string().optional().nullable(),
   deliveryType: z.enum(['PICKUP', 'DELIVERY']).default('PICKUP'),
   pricingModel: z.enum(['DAILY', 'MONTHLY', 'FIXED']).default('DAILY'),
   minDuration: z.enum(['ONE_HOUR', 'ONE_DAY', 'SEVEN_DAYS', 'FIFTEEN_DAYS', 'THIRTY_DAYS']).default('ONE_DAY'),
@@ -48,7 +49,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "End date must be after start date" }, { status: 400 });
     }
 
-    // ✅ FIX 1: Explicitly type this variable so it accepts null
+    // 2. Handle Address Logic
+    // Explicitly define type to allow null assignment
     let finalAddressId: string | null | undefined = data.addressId;
 
     if (data.deliveryType === 'DELIVERY') {
@@ -56,7 +58,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Address is required for delivery" }, { status: 400 });
       }
 
-      // Handle "New Address" logic
+      // Create new address if temp ID is sent
       if (finalAddressId.startsWith("temp-")) {
         if (!data.newAddress) {
           return NextResponse.json({ success: false, message: "New address details missing" }, { status: 400 });
@@ -77,21 +79,19 @@ export async function POST(req: Request) {
         finalAddressId = createdAddress.id;
       }
     } else {
-      // ✅ FIX 1: Now valid because we typed finalAddressId as string | null
+      // For Pickup, address is explicitly null
       finalAddressId = null;
     }
 
-    // 4. Fetch Rental Item & Prices
-    // ✅ FIX 2: This select will only work AFTER you update schema.prisma and run `npx prisma generate`
+    // 3. Fetch Rental Item & Prices
     const rentalItem = await prisma.rental.findUnique({
       where: { id: data.rentalId },
       select: {
         id: true,
-        // Ensure these exist in your Rental model!
         dailyPrice: true,
         monthlyPrice: true,
         fixedPrice: true,
-        price: true // Fallback
+        price: true
       }
     });
 
@@ -99,13 +99,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Rental item not found" }, { status: 404 });
     }
 
-    // 5. Calculate Price based on Model
+    // 4. Calculate Price
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
 
     let finalTotalPrice = 0;
-    
-    // Default to the generic 'price' if specific ones are missing
+
+    // Fallback logic
     let appliedDailyPrice = rentalItem.dailyPrice ?? rentalItem.price;
     let appliedMonthlyPrice = rentalItem.monthlyPrice ?? (rentalItem.price * 30);
     let appliedFixedPrice = rentalItem.fixedPrice ?? rentalItem.price;
@@ -123,13 +123,18 @@ export async function POST(req: Request) {
         break;
     }
 
-    // 6. Check Availability
+    // 5. Check Availability (Using rentalBooking model)
+    // We check against 'ACCEPTED' and 'IN_PROGRESS' because those mean the item is currently busy.
+    // Assuming your RentalStatus enum uses these values.
     const conflict = await prisma.rentalBooking.findFirst({
       where: {
         rentalId: data.rentalId,
-        status: { in: ['APPROVED', 'ACTIVE'] },
-        OR: [
-          { startDate: { lte: end }, endDate: { gte: start } }
+        // Statuses that block the calendar
+        status: { in: ['ACCEPTED', 'IN_PROGRESS'] },
+        // Overlap Logic: (StartA <= EndB) and (EndA >= StartB)
+        AND: [
+          { startDate: { lte: end } },
+          { endDate: { gte: start } }
         ]
       }
     });
@@ -138,24 +143,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Item is already booked for these dates" }, { status: 409 });
     }
 
-    // 7. Create Booking
+    // 6. Create Rental Booking (Using rentalBooking model)
     const newBooking = await prisma.rentalBooking.create({
       data: {
         userId: session.user.id,
         rentalId: data.rentalId,
-        addressId: finalAddressId,
+        addressId: finalAddressId, // This can be null now
+
         startDate: start,
         endDate: end,
         totalDays: diffDays,
+
         pricingModel: data.pricingModel,
         minDuration: data.minDuration,
-        
-        // Save Snapshot
+
+        // Save price snapshots if fields exist in schema
         dailyRentalPrice: appliedDailyPrice,
         monthlyRentalPrice: appliedMonthlyPrice,
         fixedRentalPrice: appliedFixedPrice,
-        
+
         totalPrice: finalTotalPrice,
+
         status: 'REQUESTED',
         paymentStatus: 'PENDING',
         deliveryType: data.deliveryType,
@@ -163,7 +171,7 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log("🎉 Booking Created:", newBooking.id);
+    console.log("🎉 Rental Booking Created:", newBooking.id);
 
     return NextResponse.json({
       success: true,
