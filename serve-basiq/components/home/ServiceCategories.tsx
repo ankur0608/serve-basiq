@@ -1,6 +1,8 @@
+'use client';
+
 import Link from 'next/link';
-import Image from 'next/image';
-import { FaScrewdriverWrench } from 'react-icons/fa6';
+import { useRouter } from 'next/navigation';
+import { FaScrewdriverWrench, FaArrowLeft } from 'react-icons/fa6';
 
 interface Category {
   id: string;
@@ -13,13 +15,30 @@ interface CategoryProps {
 }
 
 export default function ServiceCategories({ categories }: CategoryProps) {
+  const router = useRouter();
+
+  // We take the first 6 categories
+  const displayCategories = categories.slice(0, 6);
+
   return (
     <div>
       {/* Header Section */}
-      <div className="flex justify-between items-end mb-6 px-1">
-        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <FaScrewdriverWrench className="text-brand-500" /> Popular Services
-        </h2>
+      <div className="flex justify-between items-center mb-4 md:mb-6 px-1">
+        <div className="flex items-center gap-3">
+          {/* Back Button */}
+          <button
+            onClick={() => router.back()}
+            className="p-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-full transition shadow-sm active:scale-95"
+            aria-label="Go back"
+          >
+            <FaArrowLeft size={16} />
+          </button>
+
+          <h2 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
+            Popular Services
+          </h2>
+        </div>
+
         <Link
           href="/categories"
           className="text-xs font-bold text-slate-500 hover:text-brand-600 uppercase tracking-wide"
@@ -28,35 +47,36 @@ export default function ServiceCategories({ categories }: CategoryProps) {
         </Link>
       </div>
 
-      {/* Grid Section: Changed to grid-cols-3 to match ProductCategories (3 per row) */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-        {categories.length > 0 ? (
-          categories.map((cat) => (
+      <div className="grid grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
+        {displayCategories.length > 0 ? (
+          displayCategories.map((cat, index) => (
             <Link
               href={`/services/category/${cat.id}`}
               key={cat.id}
-              className="bg-white border border-gray-100 p-4 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex flex-col items-center justify-center h-32"
+              className={`
+                bg-white border border-gray-100 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex-col items-center justify-center
+                p-2 md:p-4 
+                h-24 md:h-32
+                ${index > 3 ? 'hidden md:flex' : 'flex'}
+              `}
             >
-              {/* Image Container */}
-              <div className="w-24 h-12 mb-3 relative group-hover:scale-110 transition flex items-center justify-center">
+              {/* Image Container - Smaller on mobile */}
+              <div className="w-full h-8 md:h-12 mb-2 relative group-hover:scale-110 transition flex items-center justify-center">
                 {cat.image ? (
                   <img
                     src={cat.image}
                     alt={cat.name}
-                    // fill
-                    className="object-contain"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-contain max-h-full max-w-full"
                   />
                 ) : (
-                  // Styled Fallback Icon (Blue/Brand theme for Services)
-                  <div className="w-full h-full bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-xl">
+                  <div className="w-full h-full bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg md:text-xl">
                     <FaScrewdriverWrench />
                   </div>
                 )}
               </div>
 
-              {/* Category Name */}
-              <div className="text-xs font-bold text-slate-700 uppercase tracking-wide line-clamp-2">
+              {/* Category Name - Smaller text on mobile */}
+              <div className="text-[10px] md:text-xs font-bold text-slate-700 uppercase tracking-wide line-clamp-2 leading-tight">
                 {cat.name}
               </div>
             </Link>

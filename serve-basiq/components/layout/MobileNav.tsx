@@ -1,12 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react"; // ✅ Import hooks
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   FaHouse,
   FaBoxOpen,
   FaUser,
-  FaScrewdriverWrench // Added for Services
+  FaScrewdriverWrench
 } from "react-icons/fa6";
 import { IconType } from "react-icons";
 import clsx from "clsx";
@@ -24,43 +25,61 @@ export default function MobileNav() {
   const currentUser = useUIStore((state) => state.currentUser);
   const onOpenLogin = useUIStore((state) => state.onOpenLogin);
 
+  // ✅ State to track visibility
+  const [isVisible, setIsVisible] = useState(true);
+
+  // ✅ Intersection Observer Logic
+  useEffect(() => {
+    // 1. Find the footer element
+    const footerElement = document.getElementById("main-footer");
+
+    if (!footerElement) return;
+
+    // 2. Create the observer
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // If footer is intersecting (visible), hide nav.
+        // If footer is NOT intersecting (scrolled up), show nav.
+        setIsVisible(!entry.isIntersecting);
+      },
+      {
+        root: null, // viewport
+        threshold: 0, // Trigger as soon as even 1 pixel of footer is visible
+        rootMargin: "0px" // Exact viewport edge
+      }
+    );
+
+    // 3. Start observing
+    observer.observe(footerElement);
+
+    // 4. Cleanup on unmount
+    return () => {
+      if (footerElement) observer.unobserve(footerElement);
+    };
+  }, [pathname]); // Re-run if path changes
+
   if (pathname.startsWith("/auth")) return null;
 
   const links: NavLink[] = [
-    {
-      href: "/",
-      label: "Home",
-      icon: FaHouse
-    },
-    {
-      href: "/services",
-      label: "Services",
-      icon: FaScrewdriverWrench
-    },
-    {
-      href: "/rentals",
-      label: "Rentals",
-      icon: FaScrewdriverWrench
-    },
-    {
-      href: "/products",
-      label: "Products",
-      icon: FaBoxOpen,
-      badge: "Shop" // Optional badge for products
-    },
-    {
-      href: "/profile",
-      label: "Profile",
-      icon: FaUser
-    },
+    { href: "/", label: "Home", icon: FaHouse },
+    { href: "/services", label: "Services", icon: FaScrewdriverWrench },
+    { href: "/rentals", label: "Rentals", icon: FaScrewdriverWrench },
+    { href: "/products", label: "Products", icon: FaBoxOpen, badge: "Shop" },
+    { href: "/profile", label: "Profile", icon: FaUser },
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe h-[70px] transition-transform duration-300">
-      {/* Updated to grid-cols-4 for 4 items */}
+    <nav
+      className={clsx(
+        "md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[60]",
+        "shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe h-[70px]",
+        "transition-transform duration-300 ease-in-out", // Smooth animation
+        // ✅ Apply the transform based on visibility
+        !isVisible ? "translate-y-[110%]" : "translate-y-0"
+      )}
+    >
       <div className="grid grid-cols-5 h-full">
         {links.map((link) => {
-          // Check if the current path matches the link or starts with it (for nested pages like /services/123)
           const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
 
           return (
@@ -83,7 +102,7 @@ export default function MobileNav() {
 
               <div
                 className={clsx(
-                  "text-xl transition-colors duration-200", // Increased icon size slightly
+                  "text-xl transition-colors duration-200",
                   isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"
                 )}
               >

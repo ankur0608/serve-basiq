@@ -103,11 +103,10 @@ enum CategoryType {
 
 enum RentalStatus {
     REQUESTED
-    APPROVED
-    ACTIVE
+    ACCEPTED
+    IN_PROGRESS
     COMPLETED
     CANCELLED
-    OVERDUE
 }
 
 enum RentalPricingModel {

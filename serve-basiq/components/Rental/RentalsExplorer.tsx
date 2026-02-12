@@ -2,41 +2,16 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { FaArrowLeft, FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
+import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
 import { Filter, MapPin, KeyRound, X, SlidersHorizontal } from 'lucide-react';
+
+// Hooks
+import { useRentalsExplorer, CategoryData } from '@/app/hook/useRentalsExplorer';
+
+// Components
 import RentalCard from '@/components/ui/RentalCard';
-
-// --- TYPES ---
-interface RentalItem {
-    id: string;
-    name: string;
-    categoryName: string;
-    categoryId?: string;
-    subcategoryName: string;
-    subcategoryId?: string;
-    dailyPrice?: number;
-    monthlyPrice?: number;
-    fixedPrice?: number;
-    price: number;
-    priceType: string;
-    rating: number;
-    reviewCount: number;
-    location: string;
-    image: string;
-    type: 'Rental';
-    addressLine1?: string;
-    addressLine2?: string;
-    city?: string;
-    state?: string;
-    pincode?: string;
-}
-
-interface CategoryData {
-    id: string;
-    name: string;
-    children: { id: string; name: string }[];
-}
+// Make sure this path matches where you saved the RentalCategories component from the previous step
+import RentalCategories from './RentalCategories';
 
 // --- SKELETON LOADER ---
 export function RentalSkeleton() {
@@ -63,7 +38,15 @@ export default function RentalsExplorer() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // --- 1. State Management ---
+    // 1. Use Custom Hook
+    const {
+        currentUser,
+        rawRentals,
+        rawCategories,
+        isLoading
+    } = useRentalsExplorer();
+
+    // 2. Local State
     const [searchTerm, setSearchTerm] = useState('');
     const [showMobileFilters, setShowMobileFilters] = useState(false);
 
@@ -73,107 +56,33 @@ export default function RentalsExplorer() {
     const [selectedLocation, setSelectedLocation] = useState('');
     const [sortOption, setSortOption] = useState('');
 
-    // --- 2. Data Fetching ---
-    const { data: apiResponse, isLoading: rentalsLoading } = useQuery({
-        queryKey: ['rentals', 'explorer'],
-        queryFn: async () => {
-            const res = await fetch('/api/rentals?limit=100');
-            return res.json();
-        },
-        staleTime: 1000 * 60 * 1,
-    });
-
-    const { data: categoriesData } = useQuery({
-        queryKey: ['categories', 'rental'],
-        queryFn: async () => {
-            const res = await fetch('/api/categories?type=RENTAL');
-            const data = await res.json();
-            return Array.isArray(data) ? data : [];
-        },
-        staleTime: 1000 * 60 * 60,
-    });
-
-    // --- 3. Data Normalization (FIXED PRICE LOGIC HERE) ---
-    const rentals: RentalItem[] = useMemo(() => {
-        if (!apiResponse) return [];
-        let rawData = [];
-        if (Array.isArray(apiResponse)) {
-            rawData = apiResponse;
-        } else if (apiResponse.data && Array.isArray(apiResponse.data)) {
-            rawData = apiResponse.data;
-        }
-
-        return rawData.map((item: any) => {
-            const genericPrice = Number(item.price) || 0;
-            const type = item.priceType || 'DAILY';
-
-            // --- FIX: Fallback to generic price if specific is missing ---
-            const effectiveDaily = Number(item.dailyPrice) || (type === 'DAILY' ? genericPrice : 0);
-            const effectiveMonthly = Number(item.monthlyPrice) || (type === 'MONTHLY' ? genericPrice : 0);
-            const effectiveFixed = Number(item.fixedPrice) || (type === 'FIXED' ? genericPrice : 0);
-
-            // Determine what to show on card
-            const displayPrice = effectiveDaily || effectiveFixed || effectiveMonthly || genericPrice;
-            const displayType = effectiveDaily ? 'DAILY' : (effectiveFixed ? 'FIXED' : 'MONTHLY');
-
-            return {
-                id: item.id,
-                name: item.name,
-                // ✅ FIX: Prioritize the scalar ID first, then the relation
-                categoryId: item.categoryId || item.category?.id,
-                categoryName: item.category?.name || "Other",
-
-                // ✅ FIX: Same for subcategory
-                subcategoryId: item.subCategoryId || item.subcategory?.id, // Note: Prisma usually camelCases foreign keys (subCategoryId) or relation fields
-                subcategoryName: item.subcategory?.name || "General",
-                // Use our calculated effective prices
-                dailyPrice: effectiveDaily,
-                monthlyPrice: effectiveMonthly,
-                fixedPrice: effectiveFixed,
-
-                price: displayPrice,
-                priceType: displayType,
-
-                rating: Number(item.rating) || 0,
-                reviewCount: item._count?.reviews || 0,
-                location: item.city || item.user?.city || "Remote",
-                image: item.rentalImg || item.coverImg || "https://images.unsplash.com/photo-1580587771525-78b9dba3b91d?auto=format&fit=crop&q=80",
-                type: 'Rental',
-                addressLine1: item.addressLine1,
-                addressLine2: item.addressLine2,
-                city: item.city,
-                state: item.state,
-                pincode: item.pincode
-            };
-        });
-    }, [apiResponse]);
-
-    // --- 4. Dynamic Filter Options ---
+    // 3. Derived Data
     const uniqueLocations = useMemo(() => {
-        const locs = new Set(rentals.map(r => r.location).filter(Boolean));
+        const locs = new Set(rawRentals.map(r => r.location).filter(Boolean));
         return Array.from(locs).sort();
-    }, [rentals]);
+    }, [rawRentals]);
 
     const availableCategories = useMemo(() => {
-        if (categoriesData && categoriesData.length > 0) return categoriesData;
+        if (rawCategories.length > 0) return rawCategories;
+        // Fallback: Extract from rentals if API empty
         const uniqueCats = new Map();
-        rentals.forEach(item => {
+        rawRentals.forEach(item => {
             if (item.categoryId && !uniqueCats.has(item.categoryId)) {
                 uniqueCats.set(item.categoryId, { id: item.categoryId, name: item.categoryName, children: [] });
             }
         });
         return Array.from(uniqueCats.values());
-    }, [categoriesData, rentals]);
+    }, [rawCategories, rawRentals]);
 
     const availableSubcategories = useMemo(() => {
         if (!selectedCategory) return [];
-        const cat = availableCategories.find((c: CategoryData) => String(c.id) === String(selectedCategory));
+        const cat = availableCategories.find((c: any) => String(c.id) === String(selectedCategory));
         return cat ? cat.children : [];
     }, [selectedCategory, availableCategories]);
 
-    // --- 5. Filtering & Sorting Logic ---
+    // 4. Filtering Logic
     const filteredAndSortedItems = useMemo(() => {
-        let result = rentals.filter(item => {
+        let result = rawRentals.filter(item => {
             const matchesSearch = searchTerm === '' ||
                 item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 item.categoryName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -193,7 +102,7 @@ export default function RentalsExplorer() {
             result.sort((a, b) => b.reviewCount - a.reviewCount);
         }
         return result;
-    }, [rentals, searchTerm, selectedCategory, selectedSubcategory, selectedLocation, sortOption]);
+    }, [rawRentals, searchTerm, selectedCategory, selectedSubcategory, selectedLocation, sortOption]);
 
     const resetFilters = () => {
         setSearchTerm('');
@@ -205,7 +114,7 @@ export default function RentalsExplorer() {
         router.push('/rentals');
     };
 
-    // --- RENDER HELPERS: Dropdowns (Reusable) ---
+    // --- RENDER HELPERS ---
     const CategorySelect = () => (
         <div className="relative">
             <select
@@ -217,7 +126,7 @@ export default function RentalsExplorer() {
                 }}
             >
                 <option value="">All Categories</option>
-                {availableCategories.map((cat: CategoryData) => (
+                {availableCategories.map((cat: any) => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
             </select>
@@ -276,28 +185,15 @@ export default function RentalsExplorer() {
     );
 
     return (
-        <section className="min-h-screen bg-slate-50 text-slate-800 pb-20">
+        <section className="min-h-screen bg-slate-50 text-slate-800 pb-20 pt-4 md:pt-6">
 
-            {/* --- PAGE HEADER (Hidden on Mobile) --- */}
-            <div className="hidden md:block bg-gradient-to-b from-orange-50 to-white pt-10 pb-20 px-4 border-b border-slate-200">
-                <div className="container mx-auto max-w-6xl">
-                    <div className="flex items-center gap-3 mb-4">
-                        <button
-                            onClick={() => router.back()}
-                            className="p-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-full transition shadow-sm"
-                        >
-                            <FaArrowLeft />
-                        </button>
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">Rentals Nearby</h1>
-                    </div>
-                    <p className="text-slate-500 max-w-xl text-lg font-medium">
-                        Find equipment, vehicles, and spaces available for rent in your area.
-                    </p>
-                </div>
+            {/* --- 1. POPULAR CATEGORIES (Added Here) --- */}
+            <div className="container mx-auto max-w-6xl px-4">
+                <RentalCategories categories={availableCategories} />
             </div>
 
-            {/* --- SEARCH & FILTERS CONTAINER --- */}
-            <div className="container mx-auto max-w-6xl px-4 mt-4 md:-mt-10 relative z-10">
+            {/* --- 2. SEARCH & FILTERS CONTAINER --- */}
+            <div className="container mx-auto max-w-6xl px-4 mt-6 relative z-10">
                 <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-4 md:p-6">
 
                     {/* --- MOBILE VIEW --- */}
@@ -324,7 +220,6 @@ export default function RentalsExplorer() {
 
                     {/* --- DESKTOP VIEW --- */}
                     <div className="hidden md:block">
-                        {/* Search Row */}
                         <div className="flex gap-2 mb-4">
                             <div className="relative flex-1">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
@@ -348,7 +243,6 @@ export default function RentalsExplorer() {
                             </button>
                         </div>
 
-                        {/* Filter Row */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <CategorySelect />
                             <SubcategorySelect />
@@ -371,9 +265,9 @@ export default function RentalsExplorer() {
                 </div>
             </div>
 
-            {/* --- RESULTS GRID --- */}
+            {/* --- 3. RESULTS GRID --- */}
             <div className="container mx-auto max-w-6xl px-4 py-8">
-                {rentalsLoading ? <RentalSkeleton /> : (
+                {isLoading ? <RentalSkeleton /> : (
                     <div className="animate-in fade-in duration-500">
                         {filteredAndSortedItems.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">

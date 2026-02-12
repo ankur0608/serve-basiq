@@ -1,8 +1,8 @@
-'use client';
+'use client'; // Needed for useRouter
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FaBoxOpen, FaArrowLeft } from 'react-icons/fa6';
+import { FaTruck, FaArrowLeft } from 'react-icons/fa6'; // Added ArrowLeft
 
 interface Category {
     id: string;
@@ -10,11 +10,11 @@ interface Category {
     image?: string | null;
 }
 
-interface ProductCategoriesProps {
+interface RentalCategoriesProps {
     categories: Category[];
 }
 
-export default function ProductCategories({ categories }: ProductCategoriesProps) {
+export default function RentalCategories({ categories }: RentalCategoriesProps) {
     const router = useRouter();
 
     // Take only the first 6 categories
@@ -35,25 +35,33 @@ export default function ProductCategories({ categories }: ProductCategoriesProps
                     </button>
 
                     <h2 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
-                        Wholesale Products
+                        Popular Rentals
                     </h2>
                 </div>
 
                 <Link
                     href="/categories"
-                    className="text-xs font-bold text-slate-500 hover:text-blue-600 uppercase tracking-wide"
+                    className="text-xs font-bold text-slate-500 hover:text-orange-600 uppercase tracking-wide"
                 >
                     View All
                 </Link>
             </div>
 
+            {/* GRID CONFIGURATION:
+          - grid-cols-4: Mobile (4 items in 1 row)
+          - md:grid-cols-6: Desktop (6 items in 1 row)
+          - gap-2: Tighter gap on mobile
+      */}
             <div className="grid grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
                 {displayCategories.length > 0 ? (
                     displayCategories.map((cat, index) => (
                         <Link
-                            // Updated to link by ID for correct filtering
-                            href={`/products?category=${cat.id}`}
+                            href={`/rentals?category=${cat.id}`}
                             key={cat.id}
+                            // LOGIC:
+                            // 1. "hidden md:flex": Hides the 5th & 6th item on mobile (index > 3)
+                            // 2. "flex": Ensures items are visible otherwise
+                            // 3. "h-24 md:h-32": Shorter height on mobile
                             className={`
                 bg-white border border-gray-100 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex-col items-center justify-center
                 p-2 md:p-4 
@@ -70,8 +78,8 @@ export default function ProductCategories({ categories }: ProductCategoriesProps
                                         className="object-contain max-h-full max-w-full"
                                     />
                                 ) : (
-                                    <div className="w-full h-full bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg md:text-xl">
-                                        <FaBoxOpen />
+                                    <div className="w-full h-full bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-lg md:text-xl">
+                                        <FaTruck />
                                     </div>
                                 )}
                             </div>
@@ -84,7 +92,7 @@ export default function ProductCategories({ categories }: ProductCategoriesProps
                     ))
                 ) : (
                     <div className="col-span-full text-center text-gray-400 text-sm py-8">
-                        No product categories found.
+                        No rental categories found.
                     </div>
                 )}
             </div>

@@ -5,11 +5,12 @@ import { useUIStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import {
     Loader2, CheckCircle2, ChevronRight, ArrowLeft,
-    PenLine, FileText, Box, Wrench, Clock, Zap, Calendar, CalendarClock
+    PenLine, FileText, Box, Wrench, Clock, Zap, Calendar, CalendarClock,
+    ChevronDown // ✅ Added ChevronDown for the dropdown
 } from 'lucide-react';
 import clsx from 'clsx';
 
-// ✅ FIXED: Updated types to match your Schema/DB Enum
+// ✅ Types
 type TimelineType = 'URGENT' | 'IMMEDIATE' | 'LATER' | 'FLEXIBLE';
 
 export default function PostRequirementPage() {
@@ -19,13 +20,26 @@ export default function PostRequirementPage() {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
 
+    // ✅ Dropdown State
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
     // Form State
     const [form, setForm] = useState({
         type: 'SERVICE' as 'SERVICE' | 'PRODUCT',
         title: '',
         description: '',
-        timeline: 'URGENT' as TimelineType, // ✅ Default to a valid enum value
+        timeline: 'URGENT' as TimelineType,
     });
+
+    // ✅ Timeline Options Configuration
+    const timelineOptions = [
+        { value: 'URGENT', label: 'Urgent', icon: Zap, sub: 'ASAP' },
+        { value: 'IMMEDIATE', label: 'Immediate', icon: Calendar, sub: 'Within 2 Days' },
+        { value: 'FLEXIBLE', label: 'Flexible', icon: CalendarClock, sub: 'No Hurry' },
+    ];
+
+    // Get currently selected option object for display
+    const selectedOption = timelineOptions.find(opt => opt.value === form.timeline) || timelineOptions[0];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,7 +64,6 @@ export default function PostRequirementPage() {
             if (data.success || res.ok) {
                 setStep(3); // Show Success Screen
             } else {
-                // Show detailed error if validation fails
                 const errorMsg = data.errors?.timeline?._errors?.[0] || data.message || 'Failed to post requirement';
                 alert(errorMsg);
             }
@@ -178,44 +191,79 @@ export default function PostRequirementPage() {
                             />
                         </div>
 
-                        {/* ✅ FIXED: Timeline Selection using correct values */}
-                        <div>
+                        {/* ✅ FIXED: Custom Dropdown for Timeline */}
+                        <div className="relative">
                             <label className={labelClass}>
                                 <div className="flex items-center gap-2"><Clock size={14} /> When do you need this?</div>
                             </label>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                {[
-                                    { value: 'URGENT', label: 'Urgent', icon: Zap, sub: 'ASAP' },
-                                    { value: 'IMMEDIATE', label: 'Immediate', icon: Calendar, sub: 'Within 2 Days' },
-                                    { value: 'FLEXIBLE', label: 'Flexible', icon: CalendarClock, sub: 'No Hurry' },
-                                ].map((option) => (
-                                    <div
-                                        key={option.value}
-                                        onClick={() => setForm({ ...form, timeline: option.value as TimelineType })}
-                                        className={clsx(
-                                            "cursor-pointer p-3 rounded-xl border transition-all flex items-center gap-3",
-                                            form.timeline === option.value
-                                                ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                                                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                                        )}
-                                    >
-                                        <div className={clsx(
-                                            "p-2 rounded-lg",
-                                            form.timeline === option.value ? "bg-slate-900 text-white" : "bg-white text-slate-400 border border-slate-100"
-                                        )}>
-                                            <option.icon size={16} />
-                                        </div>
-                                        <div>
-                                            <p className={clsx("text-sm font-bold", form.timeline === option.value ? "text-slate-900" : "text-slate-600")}>
-                                                {option.label}
-                                            </p>
-                                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
-                                                {option.sub}
-                                            </p>
-                                        </div>
+
+                            {/* Dropdown Trigger */}
+                            <div
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className={clsx(
+                                    "cursor-pointer w-full flex items-center justify-between border rounded-xl px-4 py-3 transition-all",
+                                    isDropdownOpen ? "border-slate-900 ring-2 ring-slate-900 bg-white" : "border-slate-200 bg-slate-50/50 hover:bg-slate-50"
+                                )}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={clsx(
+                                        "p-2 rounded-lg",
+                                        isDropdownOpen ? "bg-slate-100 text-slate-900" : "bg-white text-slate-500 border border-slate-200"
+                                    )}>
+                                        <selectedOption.icon size={18} />
                                     </div>
-                                ))}
+                                    <div className="text-left">
+                                        <p className="text-sm font-bold text-slate-900">{selectedOption.label}</p>
+                                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{selectedOption.sub}</p>
+                                    </div>
+                                </div>
+                                <ChevronDown
+                                    size={18}
+                                    className={clsx("text-slate-400 transition-transform duration-200", isDropdownOpen && "rotate-180")}
+                                />
                             </div>
+
+                            {/* Dropdown Options List */}
+                            {isDropdownOpen && (
+                                <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-white border border-slate-200 rounded-2xl shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                    {timelineOptions.map((option) => (
+                                        <div
+                                            key={option.value}
+                                            onClick={() => {
+                                                setForm({ ...form, timeline: option.value as TimelineType });
+                                                setIsDropdownOpen(false);
+                                            }}
+                                            className={clsx(
+                                                "p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors border-b last:border-0 border-slate-50",
+                                                form.timeline === option.value && "bg-slate-50"
+                                            )}
+                                        >
+                                            <div className={clsx(
+                                                "p-2 rounded-lg",
+                                                form.timeline === option.value ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400"
+                                            )}>
+                                                <option.icon size={16} />
+                                            </div>
+                                            <div>
+                                                <p className={clsx("text-sm font-bold", form.timeline === option.value ? "text-slate-900" : "text-slate-600")}>
+                                                    {option.label}
+                                                </p>
+                                                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+                                                    {option.sub}
+                                                </p>
+                                            </div>
+                                            {form.timeline === option.value && (
+                                                <CheckCircle2 size={16} className="ml-auto text-emerald-500" />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Backdrop to close when clicking outside */}
+                            {isDropdownOpen && (
+                                <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                            )}
                         </div>
                     </div>
 
@@ -223,7 +271,7 @@ export default function PostRequirementPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-slate-200 hover:bg-black hover:shadow-2xl hover:shadow-slate-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]"
+                            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-slate-200 hover:bg-black hover:shadow-2xl hover:shadow-slate-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98] relative z-0"
                         >
                             {loading ? <Loader2 className="animate-spin" /> : <>Post Requirement <ChevronRight className="group-hover:translate-x-1 transition" /></>}
                         </button>
