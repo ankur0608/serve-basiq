@@ -202,7 +202,7 @@ export function ManagementView({
                 <div>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">My Services & Rentals</h2>
+                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">My Services</h2>
                             <p className="text-slate-500 text-sm mt-1">Manage your service offerings, rentals, and pricing.</p>
                         </div>
                         <button onClick={handleCreateNew} className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-black transition shadow-lg active:scale-95">

@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaScrewdriverWrench, FaArrowLeft } from 'react-icons/fa6';
 
+// --- UPDATED INTERFACE ---
+// We added '?' to image to allow 'undefined' (which solves the error)
 interface Category {
   id: string;
   name: string;
-  image: string | null;
+  image?: string | null;
 }
 
 interface CategoryProps {

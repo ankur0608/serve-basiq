@@ -103,7 +103,7 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                         onClick={() => setActiveView('settings')}
                         className="flex-1 py-3 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all"
                     >
-                        Services & Rentals
+                        Services
                     </button>
                     <button
                         onClick={() => setActiveView('products')}

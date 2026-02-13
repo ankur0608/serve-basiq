@@ -157,8 +157,6 @@ const RequestCard = ({
                             Reject
                         </button>
                         <button
-                            // ✅ FIXED: Now strictly sends 'ACCEPTED' for Rentals too.
-                            // 'APPROVED' was causing the API crash because it's not in your DB Schema.
                             onClick={() => onAction(data.id, 'ACCEPTED', data.type === 'RENTAL')}
                             disabled={isProcessing}
                             className="py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 shadow-md shadow-slate-200 transition-transform active:scale-95 flex items-center justify-center gap-2"
@@ -173,7 +171,6 @@ const RequestCard = ({
                     <>
                         {['ACCEPTED', 'APPROVED', 'IN_PROGRESS', 'ACTIVE'].includes(data.displayStatus) && (
                             <button
-                                // ✅ FIXED: Returns are mapped to 'COMPLETED' (Schema compliant)
                                 onClick={() => onAction(data.id, 'COMPLETED', data.type === 'RENTAL')}
                                 className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 shadow-md shadow-emerald-100 flex items-center justify-center gap-2 transition-all"
                             >
@@ -282,7 +279,6 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
             if (activeTab === 'PENDING') return ['PENDING', 'REQUESTED'].includes(s);
             if (activeTab === 'CANCELLED') return ['CANCELLED', 'REJECTED', 'RETURNED'].includes(s);
             if (activeTab === 'COMPLETED') return ['COMPLETED', 'DELIVERED', 'RETURNED'].includes(s);
-            // Added APPROVED and RETURNED to Active/Completed logic just in case legacy data exists
             if (activeTab === 'ACTIVE') return ['ACCEPTED', 'APPROVED', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'IN_PROGRESS', 'ACTIVE', 'OVERDUE'].includes(s);
             return false;
         });
@@ -291,15 +287,13 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
     const handleUpdateStatus = async (id: string, newStatus: string, isRental: boolean) => {
         setProcessingId(id);
         let endpoint = '';
-        let bodyKey = 'bookingId'; // Default key
+        let bodyKey = 'bookingId';
 
         if (viewMode === 'SERVICES') {
             if (isRental) {
-                // ✅ RENTALS go to the dedicated rental API
                 endpoint = '/api/rentals/update-status';
                 bodyKey = 'bookingId';
             } else {
-                // ✅ SERVICES go to the booking API
                 endpoint = '/api/bookings/update-status';
                 bodyKey = 'bookingId';
             }
@@ -342,12 +336,29 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 {providerType === 'BOTH' ? (
-                    <div className="bg-slate-100 p-1 rounded-xl flex gap-1 w-full md:w-auto">
-                        <button onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }} className={clsx("flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2", viewMode === 'SERVICES' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
-                            <Briefcase size={16} className={viewMode === 'SERVICES' ? "text-blue-600" : ""} /> Services & Rentals
+                    <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
+                        <button
+                            onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }}
+                            className={clsx(
+                                "flex-1 px-16 py-3 text-sm font-bold rounded-lg transition-all",
+                                viewMode === 'SERVICES'
+                                    ? "bg-slate-900 text-white shadow-md"
+                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                            )}
+                        >
+                            Services
                         </button>
-                        <button onClick={() => { setViewMode('PRODUCTS'); setActiveTab('PENDING'); }} className={clsx("flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2", viewMode === 'PRODUCTS' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
-                            <ShoppingBag size={16} className={viewMode === 'PRODUCTS' ? "text-purple-600" : ""} /> Products
+
+                        <button
+                            onClick={() => { setViewMode('PRODUCTS'); setActiveTab('PENDING'); }}
+                            className={clsx(
+                                "flex-1 px-16 py-3 text-sm font-bold rounded-lg transition-all",
+                                viewMode === 'PRODUCTS'
+                                    ? "bg-slate-900 text-white shadow-md"
+                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                            )}
+                        >
+                            Products
                         </button>
                     </div>
                 ) : (

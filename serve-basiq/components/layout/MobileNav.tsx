@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react"; // ✅ Import hooks
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,38 +25,29 @@ export default function MobileNav() {
   const currentUser = useUIStore((state) => state.currentUser);
   const onOpenLogin = useUIStore((state) => state.onOpenLogin);
 
-  // ✅ State to track visibility
   const [isVisible, setIsVisible] = useState(true);
 
-  // ✅ Intersection Observer Logic
   useEffect(() => {
-    // 1. Find the footer element
     const footerElement = document.getElementById("main-footer");
-
     if (!footerElement) return;
 
-    // 2. Create the observer
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // If footer is intersecting (visible), hide nav.
-        // If footer is NOT intersecting (scrolled up), show nav.
         setIsVisible(!entry.isIntersecting);
       },
       {
-        root: null, // viewport
-        threshold: 0, // Trigger as soon as even 1 pixel of footer is visible
-        rootMargin: "0px" // Exact viewport edge
+        root: null,
+        threshold: 0,
+        rootMargin: "0px"
       }
     );
 
-    // 3. Start observing
     observer.observe(footerElement);
 
-    // 4. Cleanup on unmount
     return () => {
       if (footerElement) observer.unobserve(footerElement);
     };
-  }, [pathname]); // Re-run if path changes
+  }, [pathname]);
 
   if (pathname.startsWith("/auth")) return null;
 
@@ -73,9 +64,11 @@ export default function MobileNav() {
       className={clsx(
         "md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[60]",
         "shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe h-[70px]",
-        "transition-transform duration-300 ease-in-out", // Smooth animation
-        // ✅ Apply the transform based on visibility
-        !isVisible ? "translate-y-[110%]" : "translate-y-0"
+        // Animation classes
+        "transition-all duration-500 ease-in-out",
+        !isVisible
+          ? "translate-y-[140%] opacity-0 pointer-events-none" // Hides deep enough to cover the badge & fades out background
+          : "translate-y-0 opacity-100"
       )}
     >
       <div className="grid grid-cols-5 h-full">
@@ -95,7 +88,13 @@ export default function MobileNav() {
               className="flex flex-col items-center justify-center space-y-1 relative transition group hover:text-blue-600"
             >
               {link.badge && (
-                <div className="absolute -top-3 bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shadow-sm animate-bounce">
+                <div
+                  className={clsx(
+                    "absolute -top-3 bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shadow-sm animate-bounce",
+                    // Double check to ensure badge fades out instantly if nav is hiding
+                    !isVisible && "opacity-0"
+                  )}
+                >
                   {link.badge}
                 </div>
               )}

@@ -6,11 +6,12 @@ import { useRouter } from 'next/navigation';
 import { useProviderDashboard } from '@/app/hook/useProviderDashboard';
 import {
     LayoutGrid, ClipboardList, Package, UserCircle,
-    BellRing, ArrowLeft, Loader2, AlertTriangle, Hexagon, LogOut, Settings, TrendingUp
+    BellRing, ArrowLeft, Loader2, AlertTriangle, Settings
 } from 'lucide-react';
 import clsx from 'clsx';
 
 // --- IMPORTS ---
+// Assuming ProfileView is now the new component you created
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
 import { DashboardHomeView, ProfileView } from '@/components/providers/GeneralViews';
 import { AddProductView } from '@/components/providers/AddProductView';
@@ -18,7 +19,7 @@ import { ManagementView } from '@/components/providers/Management';
 import { VerificationView } from '@/components/providers/VerificationView';
 import RequestsView from '@/components/providers/RequestsView';
 import { RestrictionModal } from '@/components/providers/RestrictionModal';
-import { ProductsView } from '@/components/providers/ProductsView'; // Ensure path is correct
+import { ProductsView } from '@/components/providers/ProductsView';
 
 export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
@@ -32,10 +33,8 @@ export default function ProviderDashboard() {
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
 
-    // Modal State
+    // Modal State (Restriction only, Type modal moved to ProfileView)
     const [showRestrictionModal, setShowRestrictionModal] = useState(false);
-    const [showTypeModal, setShowTypeModal] = useState(false);
-    const [updatingType, setUpdatingType] = useState(false);
 
     // ✅ SAFE DATA EXTRACTION
     const bookings = dashboardData?.bookings || [];
@@ -83,27 +82,6 @@ export default function ProviderDashboard() {
         }
     };
 
-    const handleUpdateType = async (newType: string) => {
-        if (!currentUser?.id) return;
-        setUpdatingType(true);
-        try {
-            const res = await fetch('/api/user/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUser.id, providerType: newType })
-            });
-            if (res.ok) {
-                showToast(`Switched to ${newType} mode`, 'success');
-                setShowTypeModal(false);
-                refetchDashboard();
-            }
-        } catch (error) {
-            showToast("Error updating type", "error");
-        } finally {
-            setUpdatingType(false);
-        }
-    };
-
     const displayName = userData?.name || currentUser?.name || "Provider";
     const displayImg = userData?.profileImage || userData?.img || "https://i.pravatar.cc/150";
     const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -143,33 +121,6 @@ export default function ProviderDashboard() {
                 onSetup={() => { setShowRestrictionModal(false); handleViewChange('edit-profile'); }}
             />
 
-            {showTypeModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-bold text-lg">Account Mode</h3>
-                            <button onClick={() => setShowTypeModal(false)} className="text-slate-400 hover:text-slate-600"><LogOut size={20} className="rotate-180" /></button>
-                        </div>
-                        <div className="space-y-2">
-                            {['SERVICE', 'PRODUCT', 'BOTH'].map((type) => (
-                                <button
-                                    key={type}
-                                    disabled={updatingType}
-                                    onClick={() => handleUpdateType(type)}
-                                    className={clsx(
-                                        "w-full p-3 rounded-xl text-left font-bold text-sm border transition-all flex justify-between items-center",
-                                        providerType === type ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
-                                    )}
-                                >
-                                    <span>{type === 'BOTH' ? 'Hybrid (Both)' : type + ' Only'}</span>
-                                    {providerType === type && <Hexagon size={16} fill="currentColor" />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {toast && (
                 <div className={clsx("fixed top-5 right-5 z-[110] animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-75 bg-white",
                     toast.type === 'success' ? "border-emerald-500 text-emerald-700" : "border-red-500 text-red-700")}>
@@ -180,7 +131,7 @@ export default function ProviderDashboard() {
             {/* --- SIDEBAR (Desktop) --- */}
             <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-sm">
                 <div className="flex items-center gap-3 h-20 px-8 border-b border-slate-100">
-                    <div className="bg-blue-600 text-white p-2 rounded-xl"><Hexagon size={24} fill="currentColor" /></div>
+                    <div className="bg-blue-600 text-white p-2 rounded-xl"><Settings size={24} /></div>
                     <div>
                         <h1 className="text-slate-900 font-black text-xl leading-none">ServeBasiq</h1>
                         <p className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter mt-1">Provider Admin</p>
@@ -213,9 +164,10 @@ export default function ProviderDashboard() {
                                 <h2 className="text-xl font-bold text-slate-900 capitalize">
                                     {activeView === 'settings' ? 'Service Management' : activeView.replace('-', ' ')}
                                 </h2>
-                                <button onClick={() => setShowTypeModal(true)} className="px-2 py-1 bg-slate-100 rounded-lg text-[10px] font-black text-slate-500 border hover:bg-slate-200 flex items-center gap-1">
+                                {/* Display-only badge since logic is now in ProfileView */}
+                                {/* <div className="px-2 py-1 bg-slate-100 rounded-lg text-[10px] font-black text-slate-500 border flex items-center gap-1 cursor-default">
                                     <Settings size={12} /> {providerType}
-                                </button>
+                                </div> */}
                             </div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{currentDate}</p>
                         </div>
@@ -251,12 +203,12 @@ export default function ProviderDashboard() {
 
                         {activeView === 'requests' && (
                             <RequestsView
-
                                 showToast={showToast}
                                 providerType={providerType}
                             />
                         )}
-                        {/* 3. Account Profile */}
+
+                        {/* 3. Account Profile - Using the NEW ProfileView with internal modal logic */}
                         {activeView === 'profile' && (
                             <ProfileView
                                 stats={{ stats: safeStats }}
@@ -276,7 +228,7 @@ export default function ProviderDashboard() {
                                             userId={currentUser.id}
                                             setSelectedProduct={setSelectedProduct}
                                             showToast={showToast}
-                                            providerType={providerType} // Pass for consistency
+                                            providerType={providerType}
                                         />
                                     )}
                                 </div>
@@ -294,14 +246,13 @@ export default function ProviderDashboard() {
                         {/* 5. Products Specific Tab (for Hybrid Providers) */}
                         {activeView === 'products' && (
                             <div className="space-y-6">
-                                {/* ✅ CLEANED UP: No hardcoded buttons here anymore */}
                                 {currentUser?.id && (
                                     <ProductsView
                                         setActiveView={handleViewChange}
                                         userId={currentUser.id}
                                         setSelectedProduct={setSelectedProduct}
                                         showToast={showToast}
-                                        providerType={providerType} // ✅ Passing prop for internal toggle
+                                        providerType={providerType}
                                     />
                                 )}
                             </div>

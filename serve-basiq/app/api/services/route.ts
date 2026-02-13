@@ -19,7 +19,7 @@ export async function GET(req: Request) {
         const services = await prisma.service.findMany({
             where,
             include: {
-                category: { select: { name: true } },
+                category: { select: { id: true, name: true } },
                 subcategory: { select: { id: true, name: true } },
                 user: {
                     select: {
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     }
 }
 
-// ✅ POST: Create/Update Service (Removed Rental Logic)
+// ✅ POST: Create/Update Service
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -50,23 +50,19 @@ export async function POST(req: Request) {
             userId,
             name,
             desc,
-            serviceimg, // ✅ Specific to Service
+            serviceimg,
             coverImg,
             gallery,
             categoryId,
             subCategoryId,
-            subCategoryIds,
+            subCategoryIds, // Frontend might send this array
             price,
             priceType,
-
-            // ✅ Service Specific Fields
             experience,
             workingDays,
             openTime,
             closeTime,
             altPhone,
-
-            // Location
             radiusKm,
             latitude,
             longitude,
@@ -79,45 +75,50 @@ export async function POST(req: Request) {
 
         // Validation
         if (!userId || !name || !serviceimg || !price) {
-            console.error("❌ Missing Fields:", { userId, name, serviceimg, price });
             return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
         }
 
-        const finalSubId = subCategoryId || (Array.isArray(subCategoryIds) ? subCategoryIds[0] : null);
+        // Handle Subcategory Logic
+        const finalSubId = subCategoryId || (Array.isArray(subCategoryIds) && subCategoryIds.length > 0 ? subCategoryIds[0] : null);
 
         // Prepare Data Payload
-        const dataPayload = {
+        const dataPayload: any = {
             name,
             desc,
-            serviceimg, // ✅ Saving Service Image
+            serviceimg,
             coverImg,
             gallery,
             price: parseFloat(price),
             priceType: priceType || 'FIXED',
-
             experience: experience ? parseInt(experience) : 0,
-
-            // Location
-            radiusKm: parseInt(radiusKm),
+            radiusKm: parseInt(radiusKm) || 10,
             latitude: latitude ? parseFloat(latitude) : null,
             longitude: longitude ? parseFloat(longitude) : null,
             addressLine1, addressLine2, city, state, pincode,
-
-            // Contact & Timings
             altPhone,
             workingDays: workingDays || [],
             openTime,
             closeTime,
-
-            // Relations
-            category: categoryId ? { connect: { id: categoryId } } : undefined,
-            subcategory: finalSubId ? { connect: { id: finalSubId } } : undefined,
         };
+
+        // ✅ FIX 2: Handle Relations robustly for Update vs Create
+        // Only add connection logic if IDs are actually provided
+        if (categoryId) {
+            dataPayload.category = { connect: { id: categoryId } };
+        }
+
+        if (finalSubId) {
+            dataPayload.subcategory = { connect: { id: finalSubId } };
+        }
 
         let service;
 
         if (id) {
             // ✅ UPDATE Service
+            // If updating, we might need to disconnect old relations if they changed, 
+            // but `connect` usually overwrites specific 1-to-many relations in Prisma 
+            // if it's a single relation field. 
+            // Ensure your schema allows updating this way.
             service = await prisma.service.update({
                 where: { id },
                 data: dataPayload
@@ -128,8 +129,6 @@ export async function POST(req: Request) {
                 data: {
                     user: { connect: { id: userId } },
                     ...dataPayload,
-                    // Defaults
-                    radiusKm: parseInt(radiusKm) || 10,
                 }
             });
         }

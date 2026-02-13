@@ -4,14 +4,15 @@ import { useState, useRef, useEffect } from 'react';
 import {
     Briefcase, ChevronRight, Loader2, ChevronDown,
     Hammer, Truck, Box, ShieldCheck, Hourglass, Save, UploadCloud, Navigation,
-    Trash2, Clock, Camera, Plus, Check, BadgeIndianRupee
+    Trash2, Clock, Camera, Plus, Check, BadgeIndianRupee, XCircle
 } from 'lucide-react';
 import { Category, SubCategory } from '../service-logic';
+import { useImageUpload } from "@/app/hook/useImageUpload"; // ✅ Import the new hook
 
 const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
 
-// --- STEP 1: Basic Info ---
+// --- STEP 1: Basic Info (UNCHANGED) ---
 export const StepOneBasic = ({
     form, handleChange, categories, loadingCats, activeSubCategories,
     toggleSubCategory, setStep, listingType, onBack
@@ -159,7 +160,7 @@ export const StepOneBasic = ({
                 </div>
             </div>
 
-            {/* --- ✅ NEW RENTAL FIELDS --- */}
+            {/* --- RENTAL FIELDS --- */}
             {listingType === 'RENTAL' && (
                 <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 space-y-4 animate-in fade-in slide-in-from-top-2">
 
@@ -196,7 +197,7 @@ export const StepOneBasic = ({
                         </div>
                     </div>
 
-                    {/* Row 2: Min Duration Only (Max removed) */}
+                    {/* Row 2: Min Duration Only */}
                     <div>
                         <label className={labelClass}>Min Rental Duration</label>
                         <div className="relative">
@@ -240,7 +241,7 @@ export const StepOneBasic = ({
                 </div>
             )}
 
-            {/* Description Only (Phone removed) */}
+            {/* Description Only */}
             <div className="pt-2">
                 <div>
                     <label className={labelClass}>Description</label>
@@ -266,68 +267,173 @@ export const StepOneBasic = ({
     );
 };
 
-// --- STEP 2: Visuals ---
-export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, removeGalleryImg, setStep, handleChange }: any) => (
-    <div className="space-y-6 animate-in slide-in-from-right duration-300">
+// --- HELPER COMPONENT FOR IMAGE UPLOAD ---
+const SingleImageUploader = ({
+    label,
+    image,
+    onChange,
+    aspect = "video", // 'video' | 'banner'
+    required = false
+}: {
+    label: string,
+    image: string,
+    onChange: (key: string) => void,
+    aspect?: string,
+    required?: boolean
+}) => {
+
+    // ✅ Use the hook internally for this specific field
+    const { isUploading, handleImageUpload, uploadError } = useImageUpload({
+        onUploadSuccess: (key, url) => onChange(url) // Update parent form with new URL
+    });
+
+    const heightClass = aspect === 'banner' ? 'h-32' : 'aspect-video';
+
+    return (
         <div>
-            <label className={labelClass}>Main Image <span className="text-red-500">*</span></label>
-            <div className="relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
-                <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'mainimg')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                {form.mainimg ? (
-                    <img src={form.mainimg} className="w-full h-full object-cover" alt="Main Service" />
-                ) : (
-                    <div className="text-center text-slate-400 group-hover:text-blue-500 transition-colors">
-                        <UploadCloud className="mx-auto mb-2" size={32} />
-                        <span className="text-xs font-bold uppercase tracking-wide">Click to Upload Thumbnail</span>
-                    </div>
-                )}
-                {activeUploadField === 'mainimg' && (
+            <label className={labelClass}>
+                {label} {required && <span className="text-red-500">*</span>}
+            </label>
+            <div className={`relative ${heightClass} rounded-xl bg-slate-50 border-2 border-dashed ${uploadError ? 'border-red-400 bg-red-50' : 'border-slate-300'} overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer`}>
+
+                {/* File Input */}
+                <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
+                />
+
+                {/* Loading State */}
+                {isUploading && (
                     <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
                         <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
                         <span className="text-xs font-bold text-blue-600">Uploading...</span>
                     </div>
                 )}
-            </div>
-        </div>
 
-        <div>
-            <label className={labelClass}>Cover Banner (Optional)</label>
-            <div className="relative h-28 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden flex flex-col items-center justify-center hover:border-blue-300 transition-colors">
-                <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'coverImg')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                {form.coverImg ? <img src={form.coverImg} className="w-full h-full object-cover" alt="Cover" /> : <div className="flex items-center gap-2 text-slate-400"><Camera size={20} /><span className="text-xs font-bold">Upload Cover</span></div>}
-                {activeUploadField === 'coverImg' && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>}
-            </div>
-        </div>
-
-        <div>
-            <label className={labelClass}>Gallery</label>
-            <div className="grid grid-cols-4 gap-3">
-                {form.gallery.map((img: string, i: number) => (
-                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 shadow-sm">
-                        <img src={img} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
-                        <button
-                            onClick={() => handleChange('gallery', form.gallery.filter((_: string, index: number) => index !== i))}
-                            className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                            <Trash2 size={12} />
-                        </button>
+                {/* Preview or Placeholder */}
+                {image ? (
+                    <>
+                        <img src={image} className="w-full h-full object-cover" alt="Uploaded content" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-0">
+                            <p className="text-white text-xs font-bold flex items-center gap-2">
+                                <Camera size={16} /> Change Photo
+                            </p>
+                        </div>
+                    </>
+                ) : (
+                    <div className="text-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                        <UploadCloud className="mx-auto mb-2" size={32} />
+                        <span className="text-xs font-bold uppercase tracking-wide">
+                            {uploadError ? "Upload Failed" : "Click to Upload"}
+                        </span>
+                        {uploadError && <p className="text-[10px] text-red-500 mt-1">{uploadError}</p>}
                     </div>
-                ))}
-                <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
-                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'gallery')} className="absolute inset-0 opacity-0 cursor-pointer" />
-                    {activeUploadField === 'gallery' ? <Loader2 className="animate-spin text-blue-500" size={20} /> : <Plus className="text-slate-400" size={24} />}
+                )}
+            </div>
+        </div>
+    );
+};
+
+// --- STEP 2: Visuals (REFACTORED WITH NEW HOOK) ---
+export const StepTwoVisuals = ({ form, setStep, handleChange }: any) => {
+
+    // ✅ Hook for Gallery (Append Mode)
+    const {
+        isUploading: isGalleryUploading,
+        handleImageUpload: handleGalleryUpload
+    } = useImageUpload({
+        onUploadSuccess: (key, url) => {
+            // Append new image to existing gallery array
+            handleChange('gallery', [...form.gallery, url]);
+        }
+    });
+
+    const removeGalleryImg = (indexToRemove: number) => {
+        const newGallery = form.gallery.filter((_: string, i: number) => i !== indexToRemove);
+        handleChange('gallery', newGallery);
+    };
+
+    return (
+        <div className="space-y-6 animate-in slide-in-from-right duration-300">
+
+            {/* 1. Main Image (Smart Component) */}
+            <SingleImageUploader
+                label="Main Image"
+                image={form.mainimg}
+                onChange={(url) => handleChange('mainimg', url)}
+                required
+            />
+
+            {/* 2. Cover Image (Smart Component) */}
+            <SingleImageUploader
+                label="Cover Banner (Optional)"
+                image={form.coverImg}
+                onChange={(url) => handleChange('coverImg', url)}
+                aspect="banner"
+            />
+
+            {/* 3. Gallery Section */}
+            <div>
+                <label className={labelClass}>Gallery</label>
+                <div className="grid grid-cols-4 gap-3">
+                    {/* Existing Images */}
+                    {form.gallery.map((img: string, i: number) => (
+                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 shadow-sm bg-white">
+                            <img src={img} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
+                            <button
+                                type="button"
+                                onClick={() => removeGalleryImg(i)}
+                                className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shadow-sm"
+                            >
+                                <Trash2 size={12} />
+                            </button>
+                        </div>
+                    ))}
+
+                    {/* Upload Button */}
+                    <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleGalleryUpload}
+                            disabled={isGalleryUploading}
+                            className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        {isGalleryUploading ? (
+                            <Loader2 className="animate-spin text-blue-500" size={20} />
+                        ) : (
+                            <Plus className="text-slate-400" size={24} />
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div className="flex gap-3 pt-4 border-t border-slate-100 mt-4">
-            <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">Back</button>
-            <button type="button" onClick={() => setStep(3)} disabled={!form.mainimg} className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed">Next <ChevronRight size={18} /></button>
+            {/* Navigation Buttons */}
+            <div className="flex gap-3 pt-4 border-t border-slate-100 mt-4">
+                <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition"
+                >
+                    Back
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    disabled={!form.mainimg}
+                    className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Next <ChevronRight size={18} />
+                </button>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
-// --- STEP 3: Schedule ---
+// --- STEP 3: Schedule (UNCHANGED) ---
 export const StepThreeSchedule = ({ form, handleChange, handleGetLocation, gettingLoc, toggleDay, setStep, DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }: any) => (
     <div className="space-y-5 animate-in slide-in-from-right duration-300">
         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm">
@@ -404,7 +510,7 @@ export const StepThreeSchedule = ({ form, handleChange, handleGetLocation, getti
     </div>
 );
 
-// --- STEP 4: Pricing ---
+// --- STEP 4: Pricing (UNCHANGED) ---
 export const StepFourPricing = ({ form, handleChange, loading, setStep, onComplete, serviceData, listingType }: any) => {
 
     const PRICING_OPTIONS = listingType === 'RENTAL'
