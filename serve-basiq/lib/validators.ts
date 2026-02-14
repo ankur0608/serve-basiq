@@ -1,31 +1,43 @@
 import { z } from "zod";
 
 // --- ENUMS ---
-const GenderEnum = z.enum(["MALE", "FEMALE", "OTHER"]);
+// const GenderEnum = z.enum(["MALE", "FEMALE", "OTHER"]);
 const PriceTypeEnum = z.enum(["FIXED", "HOURLY"]);
 const PayoutMethodEnum = z.enum(["BANK", "UPI"]);
 
-// --- 1. USER ONBOARDING SCHEMA ---
-export const onboardSchema = z.object({
-    fullName: z.string().min(2, "Name is too short"),
-    email: z.string().email("Invalid email"),
-    phone: z.string().optional(),
-    profileImage: z.string().url("Profile image is required"),
-    gender: GenderEnum.optional(),
-    dob: z.coerce.date().optional(),
-    preferredLanguage: z.string().default("English"),
+export const GenderEnum = z.enum(["MALE", "FEMALE", "OTHER"]);
 
-    // Address
-    addressLine1: z.string().min(5, "Address is required"),
-    addressLine2: z.string().optional(),
-    landmark: z.string().optional(),
-    city: z.string().min(2, "City is required"),
-    state: z.string().min(2, "State is required"),
-    pincode: z.string().regex(/^\d{6}$/, "Invalid Pincode"),
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
+// --- YOUR BASE SCHEMA ---
+export const onboardSchema = z.object({
+  fullName: z.string().min(2, "Name is too short (min 2 chars)"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(), // kept optional per your schema, though UI might force it
+  profileImage: z.string().url("Profile image is required"),
+  gender: GenderEnum.optional(),
+  dob: z.coerce.date().optional(), // coerce handles "YYYY-MM-DD" strings
+  preferredLanguage: z.string().default("English"),
+
+  // Address
+  addressLine1: z.string().min(5, "Address Line 1 is required (min 5 chars)"),
+  addressLine2: z.string().optional(),
+  landmark: z.string().optional(),
+  city: z.string().min(2, "City is required"),
+  state: z.string().min(2, "State is required"),
+  pincode: z.string().regex(/^\d{6}$/, "Pincode must be exactly 6 digits"),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
+// --- EXTENDED PROVIDER SCHEMA ---
+// We extend the base schema to include the provider-specific 'type' field
+export const providerOnboardSchema = onboardSchema.extend({
+  providerType: z.enum(["BOTH", "SERVICE", "PRODUCT"]).refine(
+    val => val !== undefined,
+    { message: "Please select a valid service type" }
+  ),
+  // For providers, we usually enforce location, but we respect your optional base
+  latitude: z.number().refine(val => val !== 0, "Location is required for providers").optional(),
+});
 // --- 2. SERVICE SETTINGS SCHEMA ---
 export const serviceSettingsSchema = z.object({
     // Basic Details

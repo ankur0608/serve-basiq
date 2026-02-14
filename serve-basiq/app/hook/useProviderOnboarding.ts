@@ -1,53 +1,66 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { onboardSchema } from "@/lib/validators";
-import { useUIStore, User } from "@/lib/store"; // Added User import
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import imageCompression from 'browser-image-compression';
+import { onboardSchema } from "@/lib/validators";
+import { useUIStore, User } from "@/lib/store";
 
+// --- CONFIGURATION ---
+const MAX_FRONTEND_SIZE_MB = 10; // Initial check before compression
+const COMPRESSION_OPTIONS = {
+    maxSizeMB: 0.8,          // Target ~800KB
+    maxWidthOrHeight: 1200,  // Resize 4K images down to 1200px
+    useWebWorker: true,      // Run in background thread
+    fileType: "image/webp"   // Convert to WebP for better compression
+};
+
+// --- UTILITY: Upload & Compress ---
 async function uploadToBackend(file: File): Promise<string> {
-    // 1. Compression Options
-    const options = {
-        maxSizeMB: 0.8,          // Max size roughly 800KB
-        maxWidthOrHeight: 1200, // Resizes large images
-        useWebWorker: true,
-    };
+    // 1. Basic Frontend Validation
+    if (file.size > MAX_FRONTEND_SIZE_MB * 1024 * 1024) {
+        throw new Error(`File is too large. Please select an image under ${MAX_FRONTEND_SIZE_MB}MB.`);
+    }
+    if (!file.type.startsWith("image/")) {
+        throw new Error("Invalid file type. Please upload an image.");
+    }
 
     try {
-        // 2. Compress the file
-        const compressedFile = await imageCompression(file, options);
-        console.log(`Compressed from ${file.size / 1024}KB to ${compressedFile.size / 1024}KB`);
+        // 2. Compress Image
+        console.log(`📉 Compressing ${file.name} (${(file.size / 1024).toFixed(2)}KB)...`);
+        const compressedFile = await imageCompression(file, COMPRESSION_OPTIONS);
+        console.log(`✅ Compressed to ${(compressedFile.size / 1024).toFixed(2)}KB`);
 
-        // 3. Prepare FormData with the smaller file
+        // 3. Prepare Upload
         const formData = new FormData();
         formData.append("file", compressedFile, file.name);
 
-        // 4. Send to your working API
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-
-        if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            throw new Error(errorData.message || "Upload failed");
-        }
+        // 4. Send to Backend
+        const res = await fetch("/api/upload", { 
+            method: "POST", 
+            body: formData 
+        });
 
         const data = await res.json();
 
-        // Return the URL from your R2 helper
-        if (data.url) return data.url;
-
-        // Fallback to ImageKit if you use that for transformations
-        if (data.key) {
-            const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
-            if (urlEndpoint) return `${urlEndpoint.replace(/\/$/, "")}/${data.key}`;
+        if (!res.ok) {
+            throw new Error(data.message || data.error || "Upload failed");
         }
 
-        throw new Error("Upload successful but no valid URL returned");
-    } catch (error) {
-        console.error("Compression or Upload Error:", error);
-        throw error;
+        // 5. Resolve URL
+        if (data.url) return data.url;
+        if (data.key && process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT) {
+            return `${process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT.replace(/\/$/, "")}/${data.key}`;
+        }
+
+        throw new Error("Upload successful but server returned no URL.");
+
+    } catch (error: any) {
+        console.error("Upload Error:", error);
+        throw new Error(error.message || "Failed to process image.");
     }
 }
 
+// --- HOOK ---
 export function useProviderOnboarding() {
     const router = useRouter();
     const queryClient = useQueryClient();
@@ -56,7 +69,7 @@ export function useProviderOnboarding() {
     const [uploading, setUploading] = useState(false);
     const [gettingLoc, setGettingLoc] = useState(false);
     const [imgPreview, setImgPreview] = useState<string | null>(null);
-    const [errors, setErrors] = useState<any>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [form, setForm] = useState({
         fullName: "",
@@ -66,22 +79,23 @@ export function useProviderOnboarding() {
         addressLine2: "",
         landmark: "",
         city: "",
+        district: "",
         state: "",
         pincode: "",
         latitude: 0,
         longitude: 0,
-        providerType: "BOTH", // Matches the default in your logic
+        providerType: "BOTH",
     });
 
-    // --- 1. FETCH PROFILE DATA ---
+    // --- FETCH PROFILE ---
     const { isLoading: isFetchingProfile } = useQuery({
         queryKey: ["userProfile", currentUser?.id],
         queryFn: async () => {
-            const res = await fetch(`/api/user/profile?identifier=${currentUser?.id}`);
+            if (!currentUser?.id) return null;
+            const res = await fetch(`/api/user/profile?identifier=${currentUser.id}`);
             if (!res.ok) throw new Error("Failed to fetch profile");
             const data = await res.json();
 
-            // Sync fetched data to local form state
             const addr = data.addresses?.find((a: any) => a.type === 'Home') || data.addresses?.[0];
 
             setForm((prev) => ({
@@ -98,68 +112,59 @@ export function useProviderOnboarding() {
                 pincode: addr?.pincode || prev.pincode,
             }));
 
-            if (data.img || data.profileImage) {
+            if (data.profileImage || data.img) {
                 setImgPreview(data.profileImage || data.img);
             }
-
             return data;
         },
         enabled: !!currentUser?.id,
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 300000, // 5 mins
     });
 
-    // --- 2. SUBMIT MUTATION ---
+    // --- SUBMIT MUTATION ---
     const onboardingMutation = useMutation({
         mutationFn: async (payload: any) => {
             const res = await fetch("/api/provider/onboard", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    userId: currentUser?.id,
-                    ...payload,
-                }),
+                body: JSON.stringify({ userId: currentUser?.id, ...payload }),
             });
-
             const data = await res.json();
             if (!res.ok) throw data;
             return data;
         },
         onSuccess: () => {
-            // ✅ FIX: Ensure TS knows currentUser exists and satisfies the 'User' interface
             if (currentUser) {
                 const updatedUser: User = {
                     ...currentUser,
-                    id: currentUser.id, // Explicitly pass to satisfy required 'id'
                     isWorker: true,
                     isWebsite: false,
-                    providerType: form.providerType, // Allowed by your interface (string | Union)
+                    providerType: form.providerType,
                 };
                 setCurrentUser(updatedUser);
             }
-
             queryClient.invalidateQueries({ queryKey: ["userProfile", currentUser?.id] });
             router.push("/provider/dashboard?new=true");
         },
         onError: (error: any) => {
-            if (error.issues) {
-                const formattedErrors: any = {};
-                error.issues.forEach((issue: any) => {
+            if (error.details) {
+                const formattedErrors: Record<string, string> = {};
+                error.details.forEach((issue: any) => {
                     formattedErrors[issue.path[0]] = issue.message;
                 });
                 setErrors(formattedErrors);
                 window.scrollTo({ top: 0, behavior: "smooth" });
             } else {
-                alert(error.message || "Something went wrong.");
+                alert(error.message || "Registration failed. Please try again.");
             }
         },
     });
 
     // --- HANDLERS ---
-
     const handleChange = useCallback((field: string, value: any) => {
         setForm((prev) => ({ ...prev, [field]: value }));
         if (errors[field]) {
-            setErrors((prev: any) => {
+            setErrors((prev) => {
                 const newErrors = { ...prev };
                 delete newErrors[field];
                 return newErrors;
@@ -168,10 +173,7 @@ export function useProviderOnboarding() {
     }, [errors]);
 
     const handleGetLocation = useCallback(() => {
-        if (!navigator.geolocation) {
-            alert("Geolocation is not supported");
-            return;
-        }
+        if (!navigator.geolocation) return alert("Geolocation not supported");
         setGettingLoc(true);
         navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -183,7 +185,7 @@ export function useProviderOnboarding() {
                 setGettingLoc(false);
             },
             () => {
-                alert("Unable to retrieve location");
+                alert("Location access denied.");
                 setGettingLoc(false);
             },
             { enableHighAccuracy: true }
@@ -196,23 +198,26 @@ export function useProviderOnboarding() {
 
         try {
             setUploading(true);
-            // This now handles both compression and the API call
             const url = await uploadToBackend(file);
             setImgPreview(url);
+            // Clear error if exists
+            if (errors.profileImage) {
+                 setErrors(prev => {
+                     const n = {...prev};
+                     delete n.profileImage;
+                     return n;
+                 });
+            }
         } catch (err: any) {
-            alert(err.message || "Image upload failed");
+            alert(err.message);
         } finally {
             setUploading(false);
         }
-    }, []);
+    }, [errors]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        if (!currentUser) {
-            router.push("/login");
-            return;
-        }
+        if (!currentUser) return router.push("/login");
 
         try {
             const payload = {
@@ -220,16 +225,18 @@ export function useProviderOnboarding() {
                 profileImage: imgPreview || "",
                 phone: form.altPhone,
             };
-
+            
+            // Validate against schema before network request
             onboardSchema.parse(payload);
             onboardingMutation.mutate(payload);
         } catch (error: any) {
             if (error.issues) {
-                const formattedErrors: any = {};
+                const formattedErrors: Record<string, string> = {};
                 error.issues.forEach((issue: any) => {
                     formattedErrors[issue.path[0]] = issue.message;
                 });
                 setErrors(formattedErrors);
+                window.scrollTo({ top: 0, behavior: "smooth" });
             }
         }
     };

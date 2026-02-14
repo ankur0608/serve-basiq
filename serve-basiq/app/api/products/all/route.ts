@@ -6,37 +6,55 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const catFilter = searchParams.get('cat');
-    const search = searchParams.get('search');
-    const limit = parseInt(searchParams.get('limit') || '100'); // Increased default limit
 
-    // ✅ 1. REMOVED 'isVerified: true' so you can see all test data
+    // --- PAGINATION PARAMS ---
+    const limit = parseInt(searchParams.get('limit') || '12');
+    const cursor = searchParams.get('cursor');
+
+    // --- FILTER PARAMS ---
+    const catFilter = searchParams.get('cat');
+    const categoryId = searchParams.get('categoryId');
+    const subcategoryId = searchParams.get('subcategoryId');
+    const search = searchParams.get('search');
+
     const whereClause: any = {};
 
-    // Category Filter
-    if (catFilter && catFilter !== 'All') {
+    // 1. ID-Based Filters
+    if (categoryId) whereClause.categoryId = categoryId;
+    if (subcategoryId) whereClause.subCategoryId = subcategoryId;
+
+    // 2. Legacy Name-Based Filter
+    if (!categoryId && catFilter && catFilter !== 'All') {
       whereClause.OR = [
         { category: { name: catFilter } },
-        { subcategory: { name: catFilter } } // Added subcategory search support
+        { subcategory: { name: catFilter } }
       ];
     }
 
-    // Search Filter
+    // 3. Search Filter
     if (search) {
-      whereClause.AND = [
-        {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { desc: { contains: search, mode: 'insensitive' } },
-          ]
-        }
-      ];
+      const searchCondition = {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { desc: { contains: search, mode: 'insensitive' } },
+        ]
+      };
+
+      if (whereClause.AND) {
+        // @ts-ignore
+        whereClause.AND.push(searchCondition);
+      } else {
+        whereClause.AND = [searchCondition];
+      }
     }
 
+    // --- DB QUERY ---
     const products = await prisma.product.findMany({
       where: whereClause,
       orderBy: { createdAt: 'desc' },
-      take: limit,
+      take: limit + 1,
+      cursor: cursor ? { id: cursor } : undefined,
+      skip: cursor ? 1 : 0,
       include: {
         user: {
           select: { id: true, shopName: true, name: true, isVerified: true, profileImage: true, image: true }
@@ -44,17 +62,27 @@ export async function GET(request: Request) {
         category: {
           select: { id: true, name: true }
         },
-        subcategory: { // ✅ Added Subcategory Include
+        subcategory: {
           select: { id: true, name: true }
+        },
+        _count: {
+          select: { reviews: true }
         }
       }
     });
 
-    // Formatting for Frontend
+    // --- CURSOR LOGIC ---
+    let nextCursor = undefined;
+    if (products.length > limit) {
+      const nextItem = products.pop();
+      nextCursor = nextItem?.id; // Last item ID
+    }
+
+    // --- FORMATTING ---
     const formattedProducts = products.map(product => ({
       id: product.id,
       name: product.name,
-      description: product.desc, // Frontend expects 'description', DB has 'desc'
+      description: product.desc,
 
       category: {
         id: product.category?.id,
@@ -69,12 +97,12 @@ export async function GET(request: Request) {
       minOrderQty: Number(product.moq) || 1,
       unit: product.unit || "Pcs",
 
-      // ✅ Fix Image Logic: Check gallery first, then single image
+      // Image Logic
       images: product.gallery.length > 0
         ? product.gallery
         : (product.productImage ? [product.productImage] : []),
 
-      // For fallback/legacy support if frontend expects single string
+      // Fallback Image
       image: product.productImage || (product.gallery.length > 0 ? product.gallery[0] : ""),
 
       provider: {
@@ -85,12 +113,18 @@ export async function GET(request: Request) {
         verified: product.user?.isVerified || false
       },
 
-      rating: 0, // Default if not in DB
-      reviewsCount: 0,
-      stock: 100 // Default to show as in-stock
+      // ✅ FIX: Hardcode to 0 because 'rating' field does not exist in DB yet
+      rating: 0,
+
+      reviewsCount: product._count?.reviews || 0,
+      stock: 100
     }));
 
-    return NextResponse.json({ success: true, products: formattedProducts });
+    return NextResponse.json({
+      success: true,
+      products: formattedProducts,
+      nextCursor
+    });
 
   } catch (error) {
     console.error("API Error:", error);

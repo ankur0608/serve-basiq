@@ -1,74 +1,99 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadToR2 } from "@/lib/r2";
 
+// --- CONFIGURATION ---
+const MAX_UPLOAD_SIZE = 2 * 1024 * 1024; // 2 MB Limit (Post-compression)
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/jpg"
+];
+
 export async function POST(req: NextRequest) {
   try {
-    // 🔍 LOG 1: Request Entry
-    console.log("🚀 [API] Upload request hit");
-    console.log(`   - Headers Content-Type: ${req.headers.get("content-type")}`);
+    console.log("🚀 [API] Upload request received");
 
-    // Parse Form Data
+    // 1. Parse FormData
     const formData = await req.formData();
-    console.log("📦 [API] FormData parsed successfully");
-
     const file = formData.get("file") as File;
 
     if (!file) {
-      console.error("❌ [API] Error: 'file' key missing in FormData");
-      return NextResponse.json({ error: "File missing" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "No file provided" },
+        { status: 400 }
+      );
     }
 
-    // 🔍 LOG 2: File Inspection
-    console.log("📂 [API] File Details Received:");
-    console.log(`   - Name: ${file.name}`);
-    console.log(`   - Size: ${file.size} bytes`);
-    console.log(`   - Type: ${file.type}`);
+    // 🔍 Log image size
+    const fileSizeInMB = (file.size / 1024 / 1024).toFixed(2);
+    console.log(`📏 [API] Image Size: ${file.size} bytes (${fileSizeInMB} MB)`);
 
-    // Convert to Buffer
-    console.log("🔄 [API] Converting file to ArrayBuffer...");
+    // 2. 🛡️ STRICT VALIDATION: File Size
+    if (file.size > MAX_UPLOAD_SIZE) {
+      console.warn(
+        `⚠️ [API] File too large: ${file.size} bytes (${fileSizeInMB} MB)`
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: `File size exceeds the limit of ${MAX_UPLOAD_SIZE / (1024 * 1024)
+            }MB. Please compress your image.`
+        },
+        { status: 413 }
+      );
+    }
+
+    // 3. 🛡️ STRICT VALIDATION: File Type
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      console.warn(`⚠️ [API] Invalid MIME type: ${file.type}`);
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid file type. Only JPEG, PNG, and WebP are allowed."
+        },
+        { status: 415 }
+      );
+    }
+
+    console.log(
+      `📂 [API] Processing: ${file.name} (${file.size} bytes | ${fileSizeInMB} MB)`
+    );
+
+    // 4. Convert & Upload
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    console.log(`✅ [API] Buffer created. Length: ${buffer.length}`);
 
-    // Sanitize Key
-    const sanitizedFileName = file.name.replace(/\s+/g, '-').replace(/[()]/g, '');
-    const key = `uploads/services/${Date.now()}-${sanitizedFileName}`;
-    console.log(`🔑 [API] Generated R2 Key: ${key}`);
+    // Sanitize filename
+    const timestamp = Date.now();
+    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "");
+    const key = `uploads/services/${timestamp}-${safeName}`;
 
-    // 🔍 LOG 3: R2 Handover
-    console.log(`⬆️ [API] Calling uploadToR2 helper...`);
-    const startTime = Date.now();
+    console.log(`⬆️ [API] Uploading to R2: ${key}`);
+    console.log(`📦 [API] Final Upload Size: ${buffer.length} bytes`);
 
-    // Call your R2 helper
-    // Note: Ensure uploadToR2 returns the public URL or Key correctly
-    const result = await uploadToR2(key, buffer, file.type);
+    const url = await uploadToR2(key, buffer, file.type);
 
-    const duration = Date.now() - startTime;
-    console.log(`⏱️ [API] R2 Upload operation took ${duration}ms`);
+    console.log("✅ [API] Upload success");
 
-    // 🔍 LOG 4: Success & Response
-    console.log("✅ [API] Upload successful. Result from helper:", result);
-
-    // Depending on what your frontend expects, you might return just the key or the full URL
-    // If uploadToR2 returns the full URL (as per your previous code), pass that back
     return NextResponse.json({
       success: true,
       key: key,
-      url: result // sending the result from uploadToR2 back to frontend
+      url: url
     });
 
   } catch (error: any) {
-    // 🔍 LOG 5: Critical Failure
-    console.error("🔥 [API] CRITICAL UPLOAD FAILURE");
-    console.error("   - Error Name:", error.name);
-    console.error("   - Error Message:", error.message);
-    console.error("   - Stack:", error.stack);
+    console.error("🔥 [API] Upload Error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Internal Server Error",
-        errorDetails: JSON.stringify(error, Object.getOwnPropertyNames(error))
+        message: "Internal Server Error during file upload",
+        debug:
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : undefined
       },
       { status: 500 }
     );

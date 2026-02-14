@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
-import { PackageOpen } from 'lucide-react';
+import { PackageOpen, Loader2 } from 'lucide-react';
 
 // Hooks
 import { useProductsExplorer } from '@/app/hook/useProductsExplorer';
@@ -38,26 +38,53 @@ export default function ProductsExplorer() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // 1. Use Custom Hook for Data & API logic
+    // 1. Local View State (UI Controls)
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
+    const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
+    const [selectedLocation, setSelectedLocation] = useState('');
+    const [sortOption, setSortOption] = useState('');
+
+    // 2. Use Custom Hook (Infinite Scroll)
     const {
         currentUser,
         favorites,
         toggleFavorite,
         rawProducts,
         rawCategories,
-        isLoading
-    } = useProductsExplorer();
+        isLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage
+    } = useProductsExplorer({
+        category: selectedCategory,
+        subcategory: selectedSubcategory,
+        search: searchTerm
+    });
 
-    // 2. Local View State (UI Controls)
-    const [searchTerm, setSearchTerm] = useState('');
+    // 3. Intersection Observer for Infinite Scroll
+    const observerTarget = useRef(null);
 
-    // Filters State
-    const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
-    const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
-    const [selectedLocation, setSelectedLocation] = useState('');
-    const [sortOption, setSortOption] = useState('');
+    const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+        const [target] = entries;
+        if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-    // 3. Derived Data (Dropdown Options)
+    useEffect(() => {
+        const element = observerTarget.current;
+        const option = { threshold: 0.1 };
+
+        const observer = new IntersectionObserver(handleObserver, option);
+        if (element) observer.observe(element);
+
+        return () => {
+            if (element) observer.unobserve(element);
+        };
+    }, [handleObserver]);
+
+    // 4. Derived Data (Dropdown Options)
     const uniqueLocations = useMemo(() => {
         const locs = new Set(rawProducts.map(i => i.location).filter(Boolean));
         return Array.from(locs).sort();
@@ -65,14 +92,8 @@ export default function ProductsExplorer() {
 
     const availableCategories = useMemo(() => {
         if (rawCategories.length > 0) return rawCategories;
-        const uniqueCats = new Map();
-        rawProducts.forEach(item => {
-            if (item.categoryId && !uniqueCats.has(item.categoryId)) {
-                uniqueCats.set(item.categoryId, { id: item.categoryId, name: item.categoryName, children: [] });
-            }
-        });
-        return Array.from(uniqueCats.values());
-    }, [rawCategories, rawProducts]);
+        return [];
+    }, [rawCategories]);
 
     const availableSubcategories = useMemo(() => {
         if (!selectedCategory) return [];
@@ -80,18 +101,16 @@ export default function ProductsExplorer() {
         return cat ? cat.children : [];
     }, [selectedCategory, availableCategories]);
 
-    // 4. Filtering & Sorting Logic
+    // 5. Client-Side Filtering & Sorting
     const filteredAndSortedItems = useMemo(() => {
-        let result = rawProducts.filter(item => {
-            const matchesSearch = searchTerm === '' ||
-                item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.categoryName.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = selectedCategory === '' || String(item.categoryId) === String(selectedCategory);
-            const matchesSubcategory = selectedSubcategory === '' || String(item.subcategoryId) === String(selectedSubcategory);
-            const matchesLocation = selectedLocation === '' || item.location === selectedLocation;
-            return matchesSearch && matchesCategory && matchesSubcategory && matchesLocation;
-        });
+        let result = [...rawProducts];
 
+        // Filter Location locally (unless API handles it)
+        if (selectedLocation) {
+            result = result.filter(item => item.location === selectedLocation);
+        }
+
+        // Sort
         if (sortOption === 'price_asc') {
             result.sort((a, b) => a.price - b.price);
         } else if (sortOption === 'price_desc') {
@@ -102,7 +121,7 @@ export default function ProductsExplorer() {
             result.sort((a, b) => b.reviewsCount - a.reviewsCount);
         }
         return result;
-    }, [rawProducts, searchTerm, selectedCategory, selectedSubcategory, selectedLocation, sortOption]);
+    }, [rawProducts, selectedLocation, sortOption]);
 
     const resetFilters = () => {
         setSearchTerm('');
@@ -124,7 +143,7 @@ export default function ProductsExplorer() {
             {/* --- 2. MAIN LAYOUT --- */}
             <div className="container mx-auto max-w-7xl px-4 relative z-10">
 
-                {/* Mobile Filters (Hidden on Desktop) */}
+                {/* Mobile Filters */}
                 <ProductFiltersMobile
                     searchTerm={searchTerm} setSearchTerm={setSearchTerm}
                     selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
@@ -138,7 +157,7 @@ export default function ProductsExplorer() {
                 {/* Desktop Grid Layout */}
                 <div className="flex flex-col md:flex-row gap-6 lg:gap-8 mt-2">
 
-                    {/* Left Sidebar (Desktop Only) */}
+                    {/* Left Sidebar */}
                     <aside className="hidden md:block w-[260px] shrink-0">
                         <ProductFiltersDesktop
                             selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
@@ -177,7 +196,7 @@ export default function ProductsExplorer() {
                         </div>
 
                         {/* Results Grid */}
-                        {isLoading ? <div className="h-64 flex items-center justify-center">Loading...</div> : (
+                        {isLoading ? <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div> : (
                             <div className="animate-in fade-in duration-500">
                                 {filteredAndSortedItems.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
@@ -193,17 +212,29 @@ export default function ProductsExplorer() {
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                        {filteredAndSortedItems.map((item) => (
-                                            <ProductCard
-                                                key={item.id}
-                                                product={item}
-                                                isFav={favorites.includes(item.id)}
-                                                toggleFav={(e) => toggleFavorite(e!, item.id)}
-                                                currentUser={currentUser}
-                                            />
-                                        ))}
-                                    </div>
+                                    <>
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                                            {filteredAndSortedItems.map((item) => (
+                                                <ProductCard
+                                                    key={item.id}
+                                                    product={item}
+                                                    isFav={favorites.includes(item.id)}
+                                                    toggleFav={(e) => toggleFavorite(e!, item.id)}
+                                                    currentUser={currentUser}
+                                                />
+                                            ))}
+                                        </div>
+
+                                        {/* --- INFINITE SCROLL LOADER --- */}
+                                        <div ref={observerTarget} className="flex justify-center py-8 min-h-[50px]">
+                                            {isFetchingNextPage && (
+                                                <Loader2 className="animate-spin text-slate-400" size={32} />
+                                            )}
+                                            {!hasNextPage && filteredAndSortedItems.length > 0 && (
+                                                <p className="text-slate-400 text-sm font-medium">No more products to show</p>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         )}

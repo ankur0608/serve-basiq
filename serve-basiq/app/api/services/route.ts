@@ -3,24 +3,40 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = 'force-dynamic';
 
-// ✅ GET: Fetch Services (Not Rentals)
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
+
+        // --- PAGINATION ---
+        const limit = parseInt(searchParams.get("limit") || "12");
+        const cursor = searchParams.get("cursor");
+
+        // --- FILTERS ---
         const userId = searchParams.get("userId");
         const categoryId = searchParams.get("categoryId");
-        const limit = searchParams.get("limit");
+        const subcategoryId = searchParams.get("subcategoryId");
+        const search = searchParams.get("search");
 
         const where: any = {};
 
+        // Only include filters if they have a value
         if (userId) where.userId = userId;
         if (categoryId) where.categoryId = categoryId;
+        if (subcategoryId) where.subCategoryId = subcategoryId;
+
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { desc: { contains: search, mode: 'insensitive' } },
+            ];
+        }
 
         const services = await prisma.service.findMany({
             where,
             include: {
                 category: { select: { id: true, name: true } },
                 subcategory: { select: { id: true, name: true } },
+                _count: { select: { reviews: true } },
                 user: {
                     select: {
                         id: true, name: true, image: true, phone: true,
@@ -28,17 +44,32 @@ export async function GET(req: Request) {
                     }
                 }
             },
+            take: limit + 1,
+            cursor: cursor ? { id: cursor } : undefined,
+            skip: cursor ? 1 : 0,
             orderBy: { createdAt: "desc" },
-            take: limit ? parseInt(limit) : undefined,
         });
 
-        return NextResponse.json(services);
-    } catch (error) {
-        console.error("Error fetching services:", error);
-        return NextResponse.json({ success: false, message: "Failed to fetch services" }, { status: 500 });
+        let nextCursor = undefined;
+        if (services.length > limit) {
+            const nextItem = services.pop();
+            nextCursor = nextItem?.id;
+        }
+
+        // We return { items: [...] } to match your useInfiniteQuery logic
+        return NextResponse.json({
+            items: services,
+            nextCursor
+        });
+
+    } catch (error: any) {
+        console.error("API ERROR:", error.message);
+        return NextResponse.json({
+            success: false,
+            message: "Failed to fetch services",
+        }, { status: 500 });
     }
 }
-
 // ✅ POST: Create/Update Service
 export async function POST(req: Request) {
     try {

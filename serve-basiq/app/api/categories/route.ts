@@ -52,3 +52,47 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Failed to fetch categories" }, { status: 500 });
     }
 }
+
+
+// import { NextResponse } from "next/server";
+// import { parseCategoryType } from "@/lib/validators/category";
+// import { getRootCategoriesPaginated } from "@/app/services/category.service";
+
+// export const dynamic = "force-dynamic";
+
+// export async function GET(req: Request) {
+//     const start = process.hrtime.bigint(); // high precision timer
+
+//     try {
+//         const { searchParams } = new URL(req.url);
+//         const typeParam = searchParams.get("type");
+
+//         const type = parseCategoryType(typeParam);
+
+//         const categories = await getRootCategoriesPaginated(type);
+
+//         const end = process.hrtime.bigint();
+//         const durationMs = Number(end - start) / 1_000_000;
+
+//         console.log(
+//             `[API] GET /api/categories completed in ${durationMs.toFixed(2)} ms`
+//         );
+
+//         return NextResponse.json(categories, {
+//             status: 200,
+//         });
+//     } catch (error) {
+//         const end = process.hrtime.bigint();
+//         const durationMs = Number(end - start) / 1_000_000;
+
+//         console.error(
+//             `[API ERROR] GET /api/categories failed in ${durationMs.toFixed(2)} ms`,
+//             error
+//         );
+
+//         return NextResponse.json(
+//             { error: "Failed to fetch categories" },
+//             { status: 500 }
+//         );
+//     }
+// }

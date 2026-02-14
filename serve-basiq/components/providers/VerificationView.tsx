@@ -3,7 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Check, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import clsx from 'clsx';
-import StepOneProfile from './StepOneProfile';
+
+// ✅ Imports for the 3 individual steps
+import StepOnePersonal from './StepOneProfile';
+import StepTwoAddress from './StepTwoAddress';
 import StepThreeKYC from './StepThreeKYC';
 
 interface Props {
@@ -19,23 +22,35 @@ export function VerificationView({
     showToast,
     onBack
 }: Props) {
-    const [step, setStep] = useState<1 | 2>(1);
+    // State to track the current step of the wizard [1 -> 2 -> 3]
+    const [step, setStep] = useState<1 | 2 | 3>(1);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    // Central Form State containing all data for 3 steps
     const [form, setForm] = useState({
+        // --- STEP 1: Personal ---
         fullName: '',
         email: '',
         phone: '',
         gender: 'MALE',
         dob: '',
         preferredLanguage: 'English',
+        providerType: 'BOTH',
+        instagramUrl: '',
+        facebookUrl: '',
+        youtubeUrl: '',
+        websiteUrl: '',
+
+        // --- STEP 2: Address ---
+        // Home
         addressLine1: '',
         addressLine2: '',
         landmark: '',
         city: '',
         state: '',
         pincode: '',
+        // Business
         shopName: '',
         bizAddressLine1: '',
         bizAddressLine2: '',
@@ -43,10 +58,8 @@ export function VerificationView({
         bizState: '',
         bizPincode: '',
         sameAsPersonal: false,
-        instagramUrl: '',
-        facebookUrl: '',
-        youtubeUrl: '',
-        websiteUrl: '',
+
+        // --- STEP 3: KYC ---
         idProofType: 'Aadhaar',
         idProofNumber: '',
         idProofImg: '',
@@ -54,6 +67,7 @@ export function VerificationView({
         gstNumber: '',
     });
 
+    // Populate form with existing user data on load
     useEffect(() => {
         if (!existingData) return;
         const kyc = existingData.kycDetails || {};
@@ -66,24 +80,29 @@ export function VerificationView({
             email: existingData.email || '',
             phone: existingData.phone || '',
             gender: existingData.gender || 'MALE',
+            providerType: existingData.providerType || 'BOTH',
             dob: existingData.dob ? new Date(existingData.dob).toISOString().split('T')[0] : '',
             preferredLanguage: existingData.preferredLanguage || 'English',
-            shopName: existingData.shopName || '',
+
             instagramUrl: existingData.instagramUrl || '',
             facebookUrl: existingData.facebookUrl || '',
             youtubeUrl: existingData.youtubeUrl || '',
             websiteUrl: existingData.websiteUrl || '',
+
             addressLine1: home?.line1 || '',
             addressLine2: home?.line2 || '',
             landmark: home?.landmark || '',
             city: home?.city || '',
             state: home?.state || '',
             pincode: home?.pincode || '',
+
+            shopName: existingData.shopName || '',
             bizAddressLine1: work?.line1 || '',
             bizAddressLine2: work?.line2 || '',
             bizCity: work?.city || '',
             bizState: work?.state || '',
             bizPincode: work?.pincode || '',
+
             idProofType: kyc.idProofType || 'Aadhaar',
             idProofNumber: kyc.idProofNumber || '',
             idProofImg: kyc.idProofFrontImg || '',
@@ -98,6 +117,7 @@ export function VerificationView({
             errors[field] ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-white hover:border-slate-300'
         );
 
+    // Update form field and auto-sync business address if checkbox is active
     const updateField = useCallback((field: string, value: any) => {
         setErrors(e => ({ ...e, [field]: '' }));
         setForm(prev => {
@@ -106,46 +126,62 @@ export function VerificationView({
                 if (field === 'addressLine1') next.bizAddressLine1 = value;
                 if (field === 'city') next.bizCity = value;
                 if (field === 'pincode') next.bizPincode = value;
+                if (field === 'state') next.bizState = value;
             }
             return next;
         });
     }, []);
 
+    // Validation Logic
     const validateStep = () => {
         const e: Record<string, string> = {};
-        if (step === 1) {
+
+        if (step === 1) { // Personal
             if (!form.fullName) e.fullName = 'Required';
             if (!form.phone || form.phone.length < 10) e.phone = '10 digits required';
-            if (!form.shopName) e.shopName = 'Required';
-            if (!form.addressLine1) e.addressLine1 = 'Required';
         }
-        if (step === 2) {
+
+        if (step === 2) { // Address
+            if (!form.addressLine1) e.addressLine1 = 'Required';
+            if (!form.shopName) e.shopName = 'Required';
+            if (!form.bizAddressLine1) e.bizAddressLine1 = 'Required';
+        }
+
+        if (step === 3) { // KYC
             if (!form.idProofNumber) e.idProofNumber = 'Required';
             if (!form.idProofImg) e.idProofImg = 'Document required';
             if (form.gstRegistered && !form.gstNumber) e.gstNumber = 'Required';
         }
+
         setErrors(e);
         return Object.keys(e).length === 0;
     };
 
-    // ✅ FIX 1: Ensure handleNext prevents default events
     const handleNext = (e?: React.MouseEvent) => {
-        e?.preventDefault(); // Stop form submission triggers
-
+        e?.preventDefault();
         if (!validateStep()) {
             showToast('Please complete required fields', 'error');
             return;
         }
-        setStep(2);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (step < 3) {
+            setStep(s => (s + 1) as 1 | 2 | 3);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     };
 
-    // ✅ FIX 2: Ensure handleSubmit ONLY runs API call on Step 2
+    const handleBackStep = () => {
+        if (step > 1) {
+            setStep(s => (s - 1) as 1 | 2 | 3);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            onBack();
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // 🛑 CRITICAL CHECK: If we are not on the final step, treat 'Submit' (or Enter key) as 'Next'
-        if (step !== 2) {
+        if (step !== 3) {
             handleNext();
             return;
         }
@@ -158,6 +194,16 @@ export function VerificationView({
         setLoading(true);
 
         try {
+            // Update Provider Status if needed
+            if (form.providerType !== existingData?.providerType) {
+                await fetch('/api/user/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, providerType: form.providerType })
+                });
+            }
+
+            // Submit Data
             const res = await fetch('/api/provider/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -179,23 +225,36 @@ export function VerificationView({
         }
     };
 
+    // Helper for Header Text
+    const getHeaderInfo = () => {
+        if (step === 1) return { title: 'Profile Details', sub: 'Basic contact information' };
+        if (step === 2) return { title: 'Business Address', sub: 'Location and shop details' };
+        return { title: 'KYC Documents', sub: 'Upload identity proof' };
+    };
+
     return (
         <div className="max-w-4xl mx-auto px-4 pb-20 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* STEPPER */}
+
+            {/* --- WIZARD STEPPER UI --- */}
             <div className="flex flex-col items-center">
-                <div className="relative w-full max-w-xs mb-6 mt-4">
+                <div className="relative w-full max-w-sm mb-6 mt-4">
+                    {/* Background Line */}
                     <div className="absolute top-1/2 w-full h-1 bg-slate-100 -translate-y-1/2 rounded-full" />
+
+                    {/* Active Progress Line */}
                     <div
                         className="absolute top-1/2 h-1 bg-slate-900 transition-all duration-500 rounded-full"
-                        style={{ width: step === 1 ? '0%' : '100%' }}
+                        style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }}
                     />
+
+                    {/* Step Circles */}
                     <div className="relative flex justify-between">
-                        {[1, 2].map(s => (
+                        {[1, 2, 3].map(s => (
                             <div
                                 key={s}
                                 className={clsx(
-                                    'w-10 h-10 rounded-full flex items-center justify-center font-bold ring-4 ring-white z-10',
-                                    step >= s ? 'bg-slate-900 text-white' : 'bg-white border text-slate-400'
+                                    'w-10 h-10 rounded-full flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors duration-300',
+                                    step >= s ? 'bg-slate-900 text-white shadow-lg' : 'bg-white border-2 border-slate-200 text-slate-300'
                                 )}
                             >
                                 {step > s ? <Check size={18} /> : s}
@@ -204,29 +263,24 @@ export function VerificationView({
                     </div>
                 </div>
 
-                <h2 className="text-2xl font-black text-slate-900">
-                    {step === 1 ? 'Profile Details' : 'KYC Documents'}
-                </h2>
-                <p className="text-slate-500 text-sm mt-1">
-                    {step === 1 ? 'Verify your contact and business location' : 'Upload identity proof to verify account'}
-                </p>
+                <h2 className="text-2xl font-black text-slate-900">{getHeaderInfo().title}</h2>
+                <p className="text-slate-500 text-sm mt-1">{getHeaderInfo().sub}</p>
             </div>
 
-            {/* FORM */}
+            {/* --- FORM CONTENT --- */}
             <form
                 onSubmit={handleSubmit}
-                // Optional: Helper to prevent Enter key on Step 1, though the handleSubmit fix covers this
                 onKeyDown={(e) => {
-                    if (e.key === 'Enter' && step !== 2) {
+                    // Prevent accidental submission on Steps 1 & 2
+                    if (e.key === 'Enter' && step !== 3) {
                         e.preventDefault();
                     }
                 }}
                 className="space-y-6"
             >
                 {step === 1 && (
-                    <StepOneProfile
+                    <StepOnePersonal
                         form={form}
-                        setForm={setForm}
                         updateField={updateField}
                         errors={errors}
                         getInputClass={getInputClass}
@@ -234,6 +288,15 @@ export function VerificationView({
                 )}
 
                 {step === 2 && (
+                    <StepTwoAddress
+                        form={form}
+                        updateField={updateField}
+                        setForm={setForm}
+                        getInputClass={getInputClass}
+                    />
+                )}
+
+                {step === 3 && (
                     <StepThreeKYC
                         form={form}
                         updateField={updateField}
@@ -243,20 +306,21 @@ export function VerificationView({
                     />
                 )}
 
+                {/* --- NAVIGATION BUTTONS --- */}
                 <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
                     <button
                         type="button"
-                        onClick={() => (step === 1 ? onBack() : setStep(1))}
-                        className="px-6 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                        onClick={handleBackStep}
+                        className="px-6 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                     >
                         {step === 1 ? 'Cancel' : <><ArrowLeft size={18} /> Back</>}
                     </button>
 
-                    {step === 1 ? (
+                    {step < 3 ? (
                         <button
                             type="button"
                             onClick={handleNext}
-                            className="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl flex items-center gap-2 hover:bg-slate-800"
+                            className="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
                         >
                             Next Step <ArrowRight size={18} />
                         </button>
@@ -264,7 +328,7 @@ export function VerificationView({
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl flex items-center gap-2 hover:bg-emerald-700 disabled:opacity-60"
+                            className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl flex items-center gap-2 hover:bg-emerald-700 disabled:opacity-60 transition-all shadow-lg shadow-emerald-200"
                         >
                             {loading ? <Loader2 className="animate-spin" /> : <><Check size={18} /> Submit Verification</>}
                         </button>

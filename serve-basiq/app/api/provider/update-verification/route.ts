@@ -2,30 +2,41 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
-    console.log("\n================= 🔐 VERIFICATION SUBMIT START (2-STEP) =================");
+    console.log("\n================= 🔐 VERIFICATION SUBMIT START (3-STEP) =================");
 
     try {
         const body = await req.json();
+
+        // 🔍 LOG: See exactly what the frontend is sending
+        console.log("📥 RECEIVED BODY:", JSON.stringify(body, null, 2));
+
         const {
-            userId, fullName, email, phone, gender, dob, preferredLanguage,
+            userId,
+            providerType,
+            fullName, email, phone, gender, dob, preferredLanguage,
             addressLine1, addressLine2, landmark, city, state, pincode,
             shopName, bizAddressLine1, bizAddressLine2, bizCity, bizState, bizPincode,
             instagramUrl, facebookUrl, youtubeUrl, websiteUrl,
-            // Removed Banking Fields: bankAccountHolder, bankAccountNumber, bankIfsc, bankName, upiId, preferredPayoutMethod
-
-            // KYC Fields
-            idProofType,
-            idProofNumber,
-            idProofImg,
-            gstRegistered,
-            gstNumber
+            idProofType, idProofNumber, idProofImg, gstRegistered, gstNumber
         } = body;
 
         if (!userId) {
             return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
         }
 
+        // ✅ Date Handling: Ensure empty string doesn't crash Date constructor
+        const validDob = dob && dob !== "" ? new Date(dob) : null;
+
         await prisma.$transaction(async (tx) => {
+
+            // 🔍 LOG: See what we are about to save to the User table
+            console.log("📝 UPDATING USER:", {
+                userId,
+                name: fullName,
+                dob: validDob,
+                language: preferredLanguage
+            });
+
             console.log("⛓️ 1. Updating Core User Profile...");
             await tx.user.update({
                 where: { id: userId },
@@ -33,16 +44,16 @@ export async function POST(req: Request) {
                     name: fullName,
                     email,
                     phone,
+                    providerType: providerType || "BOTH",
                     shopName,
                     gender,
-                    dob: dob ? new Date(dob) : null,
-                    preferredLanguage,
+                    dob: validDob, // ✅ Fixed Date Logic
+                    preferredLanguage: preferredLanguage || "English", // ✅ Default fallback
                     instagramUrl,
                     facebookUrl,
                     youtubeUrl,
                     websiteUrl,
                     isVerified: false,
-                    // Banking fields removed from update
                 },
             });
 
@@ -73,8 +84,27 @@ export async function POST(req: Request) {
             });
 
             console.log("⛓️ 3. Standardizing Address Logic...");
-            const homeData = { line1: addressLine1, line2: addressLine2 || "", landmark: landmark || "", city, state, pincode: String(pincode), country: "India" };
-            const workData = { line1: bizAddressLine1, line2: bizAddressLine2 || "", city: bizCity, state: bizState, pincode: String(bizPincode), landmark: "", country: "India" };
+
+            // Prepare address objects
+            const homeData = {
+                line1: addressLine1,
+                line2: addressLine2 || "",
+                landmark: landmark || "",
+                city,
+                state: state || "",
+                pincode: String(pincode),
+                country: "India"
+            };
+
+            const workData = {
+                line1: bizAddressLine1,
+                line2: bizAddressLine2 || "",
+                city: bizCity,
+                state: bizState || "",
+                pincode: String(bizPincode),
+                landmark: "",
+                country: "India"
+            };
 
             // Home Address Logic
             const existingHome = await tx.address.findFirst({ where: { userId, type: "Home" } });

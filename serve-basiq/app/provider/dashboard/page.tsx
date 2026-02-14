@@ -11,10 +11,13 @@ import {
 import clsx from 'clsx';
 
 // --- IMPORTS ---
-// Assuming ProfileView is now the new component you created
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
-import { DashboardHomeView, ProfileView } from '@/components/providers/GeneralViews';
-import { AddProductView } from '@/components/providers/AddProductView';
+// 1. Remove ProfileView from here
+import { DashboardHomeView } from '@/components/providers/GeneralViews';
+// 2. Import it from its own file
+import ProfileView from '@/components/providers/ProfileView';
+
+import { AddProductView } from '@/components/providers/product/AddProductView';
 import { ManagementView } from '@/components/providers/Management';
 import { VerificationView } from '@/components/providers/VerificationView';
 import RequestsView from '@/components/providers/RequestsView';
@@ -33,7 +36,7 @@ export default function ProviderDashboard() {
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
 
-    // Modal State (Restriction only, Type modal moved to ProfileView)
+    // Modal State
     const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
     // ✅ SAFE DATA EXTRACTION
@@ -49,7 +52,8 @@ export default function ProviderDashboard() {
             revenue: 0,
             jobsCompleted: 0,
             pendingRequests: 0,
-            rating: 0
+            rating: 0,
+            service: { shopName: '' } // Ensure nested objects exist to prevent crashes
         };
     }, [dashboardData]);
 
@@ -164,10 +168,6 @@ export default function ProviderDashboard() {
                                 <h2 className="text-xl font-bold text-slate-900 capitalize">
                                     {activeView === 'settings' ? 'Service Management' : activeView.replace('-', ' ')}
                                 </h2>
-                                {/* Display-only badge since logic is now in ProfileView */}
-                                {/* <div className="px-2 py-1 bg-slate-100 rounded-lg text-[10px] font-black text-slate-500 border flex items-center gap-1 cursor-default">
-                                    <Settings size={12} /> {providerType}
-                                </div> */}
                             </div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{currentDate}</p>
                         </div>
@@ -208,10 +208,10 @@ export default function ProviderDashboard() {
                             />
                         )}
 
-                        {/* 3. Account Profile - Using the NEW ProfileView with internal modal logic */}
+                        {/* 3. Account Profile - Using the NEW ProfileView */}
                         {activeView === 'profile' && (
                             <ProfileView
-                                stats={{ stats: safeStats }}
+                                stats={safeStats} // Pass safeStats directly, not nested
                                 user={userData}
                                 onEdit={() => handleViewChange('edit-profile')}
                             />
