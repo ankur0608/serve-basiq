@@ -6,6 +6,7 @@ import {
     FaCalendarDays,
     FaUserTie,
     FaClock,
+    FaPhone,
 } from "react-icons/fa6";
 import clsx from "clsx";
 import { FaCircleCheck } from 'react-icons/fa6';
@@ -15,11 +16,13 @@ const getStatusBadge = (status: string) => {
     switch (status) {
         case "DELIVERED":
         case "COMPLETED":
+        case "APPROVED":
             return "bg-green-100 text-green-700 border-green-200";
         case "SHIPPED":
         case "CONFIRMED":
             return "bg-orange-100 text-orange-700 border-orange-200";
         case "CANCELLED":
+        case "REJECTED":
             return "bg-red-100 text-red-700 border-red-200";
         default:
             return "bg-blue-50 text-blue-600 border-blue-100";
@@ -27,6 +30,7 @@ const getStatusBadge = (status: string) => {
 };
 
 const formatDate = (dateString: string) => {
+    if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("en-IN", {
         day: "numeric",
         month: "short",
@@ -53,17 +57,36 @@ export default function ActivityTabs({
     return (
         <div className="space-y-4">
             {data.map((item) => {
-                // Normalize Data fields based on type
                 const isOrder = type === "orders";
-                const title = isOrder ? item.product?.name : item.service?.name;
-                const image = isOrder
-                    ? item.product?.productImage
-                    : item.service?.mainimg; // Assuming images exist
-                const providerName = isOrder
-                    ? item.product?.user?.shopName || item.product?.user?.name
-                    : item.service?.user?.shopName || item.service?.user?.name;
-                const price = isOrder ? item.totalPrice : item.service?.price;
-                const idLabel = isOrder ? "#ORD" : "#BKG";
+                const isRental = item.type === "RENTAL";
+
+                // ✅ FIX 1: Robust Title Logic
+                const title = item.title ||
+                    item.product?.name ||
+                    item.service?.name ||
+                    item.rental?.name;
+
+                // ✅ FIX 2: Robust Image Logic (Check rentalImg)
+                const image = item.image ||
+                    item.product?.productImage ||
+                    item.service?.mainimg ||
+                    item.rental?.rentalImg ||
+                    item.rental?.coverImg;
+
+                // ✅ FIX 3: Robust Price Logic (Check totalPrice)
+                const price = item.price ||
+                    item.totalPrice ||
+                    item.service?.price ||
+                    0;
+
+                // Provider Details
+                const providerName = item.bookingOwner?.name ||
+                    item.bookingOwner?.shopName ||
+                    "Unknown Provider";
+
+                const providerPhone = item.bookingOwner?.phone;
+
+                const idLabel = isOrder ? "#ORD" : (isRental ? "#RNT" : "#BKG");
                 const itemId = item.id.slice(-4).toUpperCase();
 
                 return (
@@ -71,17 +94,26 @@ export default function ActivityTabs({
                         key={item.id}
                         className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col md:flex-row gap-5 items-start md:items-center group"
                     >
-                        {/* Left: Icon / Image Placeholder */}
-                        <div
-                            className={clsx(
-                                "w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold shrink-0 border",
-                                isOrder
-                                    ? "bg-green-50 text-green-600 border-green-100"
-                                    : "bg-blue-50 text-blue-600 border-blue-100",
+                        {/* Left: Image or Fallback Icon */}
+                        <div className="relative w-14 h-14 shrink-0">
+                            {image ? (
+                                <img
+                                    src={image}
+                                    alt={title}
+                                    className="w-full h-full object-cover rounded-2xl border border-gray-100"
+                                />
+                            ) : (
+                                <div
+                                    className={clsx(
+                                        "w-full h-full rounded-2xl flex items-center justify-center text-xl font-bold border",
+                                        isOrder
+                                            ? "bg-green-50 text-green-600 border-green-100"
+                                            : "bg-blue-50 text-blue-600 border-blue-100",
+                                    )}
+                                >
+                                    {title?.substring(0, 2).toUpperCase()}
+                                </div>
                             )}
-                        >
-                            {/* Use first 2 letters of title as fallback icon */}
-                            {title?.substring(0, 2).toUpperCase()}
                         </div>
 
                         {/* Middle: Details */}
@@ -96,10 +128,25 @@ export default function ActivityTabs({
                                         </span>
                                     </h4>
                                     <div className="text-sm text-gray-500 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                                        <span className="flex items-center gap-1.5">
-                                            <FaUserTie className="text-gray-400 text-xs" />{" "}
-                                            {providerName || "Unknown Seller"}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="flex items-center gap-1.5">
+                                                <FaUserTie className="text-gray-400 text-xs" />{" "}
+                                                {providerName}
+                                            </span>
+
+                                            {/* Call Button */}
+                                            {providerPhone && (
+                                                <a
+                                                    href={`tel:${providerPhone}`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                                                    title="Call Provider"
+                                                >
+                                                    <FaPhone size={10} />
+                                                </a>
+                                            )}
+                                        </div>
+
                                         <span className="flex items-center gap-1.5">
                                             {item.status === "DELIVERED" ||
                                                 item.status === "COMPLETED" ? (
@@ -109,7 +156,7 @@ export default function ActivityTabs({
                                             )}
                                             <span className="font-medium text-slate-700">
                                                 {item.status === "DELIVERED" ? "Delivered: " : "ETA: "}{" "}
-                                                {formatDate(item.updatedAt)}
+                                                {formatDate(item.updatedAt || item.createdAt)}
                                             </span>
                                         </span>
                                     </div>

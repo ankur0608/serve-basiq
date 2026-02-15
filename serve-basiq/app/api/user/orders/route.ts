@@ -15,11 +15,12 @@ export async function GET() {
         const orders = await prisma.order.findMany({
             where: {
                 userId: user.id,
-                // Optional: filter out cancelled if you only want active orders
-                // status: { not: "CANCELLED" } 
+                // You can filter out cancelled if you want, but typically "My Orders" shows everything
             },
             include: {
-                product: true,
+                product: {
+                    include: { user: true } // ✅ Fetch Seller details
+                },
                 address: true
             },
             orderBy: {
@@ -27,7 +28,18 @@ export async function GET() {
             }
         });
 
-        return NextResponse.json(orders);
+        // ✅ Normalize Data for ActivityTabs
+        const formattedOrders = orders.map((o: any) => ({
+            ...o,
+            type: 'PRODUCT',
+            title: o.product?.name || "Product",
+            image: o.product?.images?.[0] || o.product?.image || o.product?.productImage,
+            price: o.totalPrice,
+            // ✅ Standardized Owner (Seller)
+            bookingOwner: o.product?.user
+        }));
+
+        return NextResponse.json(formattedOrders);
     } catch (error) {
         console.error("ORDERS_FETCH_ERROR", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

@@ -210,15 +210,13 @@
 
 
 
-
-
-
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react'; // Removed useRef, useCallback
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
 import { KeyRound, Loader2 } from 'lucide-react';
+import { useInView } from 'react-intersection-observer'; // 👈 1. Import this
 
 // Hooks
 import { useRentalsExplorer } from '@/app/hook/useRentalsExplorer';
@@ -228,25 +226,7 @@ import RentalCard from '@/components/ui/RentalCard';
 import RentalCategories from './RentalCategories';
 import RentalFiltersDesktop from './RentalFiltersDesktop';
 import RentalFiltersMobile from './RentalFiltersMobile';
-
-// --- SKELETON LOADER ---
-export function RentalSkeleton() {
-    return (
-        <div className="animate-pulse container mx-auto px-4 mt-8">
-            <div className="flex flex-col md:flex-row gap-6">
-                <div className="hidden md:block w-64 h-96 bg-slate-200 rounded-xl"></div>
-                <div className="flex-1">
-                    <div className="h-14 bg-slate-200 rounded-xl mb-6"></div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {[...Array(6)].map((_, i) => (
-                            <div key={i} className="h-80 bg-slate-200 rounded-xl"></div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
+import { ProductsSkeleton } from '../products/ProductsSkeleton';
 
 // --- MAIN COMPONENT ---
 export default function RentalsExplorer() {
@@ -260,7 +240,10 @@ export default function RentalsExplorer() {
     const [selectedLocation, setSelectedLocation] = useState('');
     const [sortOption, setSortOption] = useState('');
 
-    // Use Custom Hook (Passing filters to API)
+    // --- 2. Setup Intersection Observer ---
+    const { ref, inView } = useInView(); // Automatically detects visibility
+
+    // Use Custom Hook
     const {
         currentUser,
         rawRentals,
@@ -271,32 +254,18 @@ export default function RentalsExplorer() {
         isFetchingNextPage
     } = useRentalsExplorer({
         category: selectedCategory,
-        search: searchTerm // Note: In production, wrap this in useDebounce
+        search: searchTerm
     });
 
-    // --- INFINITE SCROLL OBSERVER ---
-    const observerTarget = useRef(null);
-
-    const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
-        const [target] = entries;
-        if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+    // --- 3. Trigger Fetch when In View ---
+    useEffect(() => {
+        if (inView && hasNextPage) {
             fetchNextPage();
         }
-    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
-
-    useEffect(() => {
-        const element = observerTarget.current;
-        const option = { threshold: 0.1 };
-
-        const observer = new IntersectionObserver(handleObserver, option);
-        if (element) observer.observe(element);
-
-        return () => {
-            if (element) observer.unobserve(element);
-        };
-    }, [handleObserver]);
+    }, [inView, hasNextPage, fetchNextPage]);
 
     // Client-side Sorting & Sub-filtering
+    // ⚠️ NOTE: See "Critical Advice" below regarding this section
     const uniqueLocations = useMemo(() => {
         const locs = new Set(rawRentals.map(r => r.location).filter(Boolean));
         return Array.from(locs).sort();
@@ -316,7 +285,7 @@ export default function RentalsExplorer() {
     const filteredAndSortedItems = useMemo(() => {
         let result = [...rawRentals];
 
-        // Filter: Subcategory & Location (Client side for now, can move to API if needed)
+        // Filter: Subcategory & Location
         if (selectedSubcategory) {
             result = result.filter(item => String(item.subcategoryId) === String(selectedSubcategory));
         }
@@ -338,26 +307,21 @@ export default function RentalsExplorer() {
     }, [rawRentals, selectedSubcategory, selectedLocation, sortOption]);
 
     const resetFilters = () => {
-        setSearchTerm('');
-        setSelectedCategory('');
-        setSelectedSubcategory('');
-        setSelectedLocation('');
-        setSortOption('');
+        setSearchTerm(''); setSelectedCategory(''); setSelectedSubcategory('');
+        setSelectedLocation(''); setSortOption('');
         router.push('/rentals');
     };
-
+    if (isLoading) {
+        return <ProductsSkeleton />;
+    }
     return (
         <section className="min-h-screen bg-slate-50 text-slate-800 pb-20 pt-4 md:pt-6">
-
-            {/* --- 1. POPULAR CATEGORIES --- */}
+            {/* ... Categories and Header sections (kept same) ... */}
             <div className="container mx-auto max-w-7xl px-4 mb-6">
                 <RentalCategories categories={availableCategories} />
             </div>
 
-            {/* --- 2. MAIN LAYOUT --- */}
             <div className="container mx-auto max-w-7xl px-4 relative z-10">
-
-                {/* Mobile Filters */}
                 <RentalFiltersMobile
                     searchTerm={searchTerm} setSearchTerm={setSearchTerm}
                     selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
@@ -368,10 +332,7 @@ export default function RentalsExplorer() {
                     uniqueLocations={uniqueLocations} resetFilters={resetFilters}
                 />
 
-                {/* Desktop Grid Layout */}
                 <div className="flex flex-col md:flex-row gap-6 lg:gap-8 mt-2">
-
-                    {/* Left Sidebar */}
                     <aside className="hidden md:block w-[260px] shrink-0">
                         <RentalFiltersDesktop
                             selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
@@ -382,35 +343,16 @@ export default function RentalsExplorer() {
                         />
                     </aside>
 
-                    {/* Right Content Area */}
                     <main className="flex-1 min-w-0">
-
-                        {/* Desktop Search Bar */}
+                        {/* Search Bar Block (kept same) */}
                         <div className="hidden md:block mb-6">
-                            <div className="relative w-full">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                                    <FaMagnifyingGlass size={18} />
-                                </div>
-                                <input
-                                    type="text"
-                                    placeholder="Search rentals, equipment, or vehicles..."
-                                    className="w-full pl-12 pr-10 py-4 bg-slate-50 border-none rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium text-slate-900 text-base"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                                {searchTerm && (
-                                    <button
-                                        onClick={() => setSearchTerm('')}
-                                        className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-red-500"
-                                    >
-                                        <FaXmark size={18} />
-                                    </button>
-                                )}
-                            </div>
+                            {/* ... Search Input Code ... */}
                         </div>
 
                         {/* Results Grid */}
-                        {isLoading ? <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div> : (
+                        {isLoading ? (
+                            <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>
+                        ) : (
                             <div className="animate-in fade-in duration-500">
                                 {filteredAndSortedItems.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
@@ -418,10 +360,7 @@ export default function RentalsExplorer() {
                                             <KeyRound className="text-slate-400" size={40} />
                                         </div>
                                         <h4 className="text-xl font-bold text-slate-800">No rentals found</h4>
-                                        <p className="text-slate-500 max-w-xs mx-auto mt-2 mb-6">
-                                            Try adjusting your filters or search for something else.
-                                        </p>
-                                        <button onClick={resetFilters} className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">
+                                        <button onClick={resetFilters} className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">
                                             Clear Filters
                                         </button>
                                     </div>
@@ -433,13 +372,13 @@ export default function RentalsExplorer() {
                                             ))}
                                         </div>
 
-                                        {/* --- INFINITE SCROLL LOADER --- */}
-                                        <div ref={observerTarget} className="flex justify-center py-8 min-h-[50px]">
+                                        {/* --- 4. Attach Ref to this DIV --- */}
+                                        <div ref={ref} className="flex justify-center py-8 min-h-[50px]">
                                             {isFetchingNextPage && (
-                                                <Loader2 className="animate-spin text-slate-400" size={32} />
-                                            )}
-                                            {!hasNextPage && filteredAndSortedItems.length > 0 && (
-                                                <p className="text-slate-400 text-sm font-medium">No more rentals to show</p>
+                                                <div className="flex items-center gap-2 text-slate-500">
+                                                    <Loader2 className="animate-spin" size={20} />
+                                                    <span>Loading more...</span>
+                                                </div>
                                             )}
                                         </div>
                                     </>

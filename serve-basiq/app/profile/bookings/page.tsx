@@ -1,33 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useUIStore } from '@/lib/store';
 import { FaArrowLeft, FaCalendarCheck, FaMagnifyingGlass } from 'react-icons/fa6';
 import Link from 'next/link';
 import ActivityTabs from '@/components/profile/ActivityTabs';
+import { useActiveBookings } from '@/app/hook/useProfileQueries'; // ✅ Import the hook
 
 export default function MyBookingsPage() {
     const { currentUser } = useUIStore();
-    const [bookings, setBookings] = useState([]);
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchBookings = async () => {
-            if (!currentUser?.id) return;
-            try {
-                const res = await fetch(`/api/user/bookings/active`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setBookings(data);
-                }
-            } catch (error) {
-                console.error("Failed to load bookings", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchBookings();
-    }, [currentUser?.id]);
+    // ✅ Use React Query Hook
+    const { data: bookings = [], isLoading } = useActiveBookings();
 
     return (
         <div className="min-h-screen bg-slate-50/50 pb-20">
@@ -43,9 +26,9 @@ export default function MyBookingsPage() {
                         </Link>
                         <div>
                             <h1 className="text-lg font-bold text-slate-900 leading-tight">My Bookings</h1>
-                            {!loading && (
+                            {!isLoading && (
                                 <p className="text-xs text-slate-500 font-medium">
-                                    Manage your appointments
+                                    Manage your appointments & rentals
                                 </p>
                             )}
                         </div>
@@ -54,7 +37,7 @@ export default function MyBookingsPage() {
             </header>
 
             <main className="max-w-4xl mx-auto px-4 py-8">
-                {loading ? (
+                {isLoading ? (
                     <BookingSkeleton />
                 ) : bookings.length > 0 ? (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -65,7 +48,7 @@ export default function MyBookingsPage() {
                                     <FaCalendarCheck className="text-2xl" />
                                 </div>
                                 <div>
-                                    <p className="text-blue-100 text-sm font-medium">Active Appointments</p>
+                                    <p className="text-blue-100 text-sm font-medium">Active Activities</p>
                                     <h3 className="text-3xl font-bold">{bookings.length}</h3>
                                 </div>
                             </div>
@@ -79,9 +62,9 @@ export default function MyBookingsPage() {
                 ) : (
                     <EmptyState
                         title="No Bookings Found"
-                        description="You haven't booked any services yet. Explore our marketplace to get started."
-                        actionLink="/services" // Update this link to your actual services page
-                        actionText="Find Services"
+                        description="You haven't booked any services, products, or rentals yet."
+                        actionLink="/services"
+                        actionText="Explore Marketplace"
                     />
                 )}
             </main>
@@ -89,7 +72,8 @@ export default function MyBookingsPage() {
     );
 }
 
-// Sub-components for cleaner code
+// --- Sub-components (Same as before) ---
+
 function BookingSkeleton() {
     return (
         <div className="space-y-4">
@@ -101,6 +85,7 @@ function BookingSkeleton() {
                         <div className="flex-1 space-y-2 py-2">
                             <div className="h-4 bg-slate-100 rounded w-3/4" />
                             <div className="h-3 bg-slate-100 rounded w-1/2" />
+                            <div className="h-3 bg-slate-100 rounded w-1/4 mt-2" />
                         </div>
                     </div>
                 ))}

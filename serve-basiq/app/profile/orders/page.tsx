@@ -1,32 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useUIStore } from '@/lib/store';
 import { FaArrowLeft, FaBagShopping, FaBoxOpen } from 'react-icons/fa6';
 import Link from 'next/link';
 import ActivityTabs from '@/components/profile/ActivityTabs';
+import { useUserOrders } from '@/app/hook/useProfileQueries'; // ✅ Import Hook
 
 export default function MyOrdersPage() {
     const { currentUser } = useUIStore();
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                const res = await fetch(`/api/user/orders`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setOrders(data);
-                }
-            } catch (error) {
-                console.error("Failed to load orders", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchOrders();
-    }, []);
+    // ✅ Use React Query Hook
+    const { data: orders = [], isLoading } = useUserOrders();
 
     return (
         <div className="min-h-screen bg-slate-50/50 pb-20">
@@ -42,7 +26,7 @@ export default function MyOrdersPage() {
                         </Link>
                         <div>
                             <h1 className="text-lg font-bold text-slate-900 leading-tight">My Orders</h1>
-                            {!loading && (
+                            {!isLoading && (
                                 <p className="text-xs text-slate-500 font-medium">
                                     Track your purchases
                                 </p>
@@ -53,7 +37,7 @@ export default function MyOrdersPage() {
             </header>
 
             <main className="max-w-4xl mx-auto px-4 py-8">
-                {loading ? (
+                {isLoading ? (
                     <OrderSkeleton />
                 ) : orders.length > 0 ? (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -71,7 +55,7 @@ export default function MyOrdersPage() {
                             </div>
                         </div>
 
-                        {/* List Container */}
+                        {/* List Container - Data is now normalized for ActivityTabs */}
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                             <ActivityTabs data={orders} type="orders" />
                         </div>
@@ -80,7 +64,7 @@ export default function MyOrdersPage() {
                     <EmptyState
                         title="No Orders Yet"
                         description="Looks like you haven't bought anything yet. Check out our store for great deals!"
-                        actionLink="/products" // Update to your shop link
+                        actionLink="/products"
                         actionText="Start Shopping"
                     />
                 )}

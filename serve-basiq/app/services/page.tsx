@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
-import ServicesExplorer, { ExplorerSkeleton } from '@/components/services/ServicesExplorer';
+import ServicesExplorer from '@/components/services/ServicesExplorer';
+import { ProductsSkeleton } from '@/components/products/ProductsSkeleton';
 
 export const metadata = {
   title: 'Explore Services | Servebasiq',
@@ -8,7 +9,7 @@ export const metadata = {
 
 export default function ServicesPage() {
   return (
-    <Suspense fallback={<ExplorerSkeleton />}>
+    <Suspense fallback={<ProductsSkeleton />}>
       <ServicesExplorer />
     </Suspense>
   );

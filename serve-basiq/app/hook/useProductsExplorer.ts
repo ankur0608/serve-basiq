@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // --- SHARED TYPES ---
 export interface ProductItem {
@@ -34,24 +34,17 @@ export interface CategoryData {
     children: { id: string; name: string }[];
 }
 
-// Helper to normalize a list of products
+// Normalizer
 const normalizeProducts = (data: any[]): ProductItem[] => {
     if (!Array.isArray(data)) return [];
-
     return data.map((item: any) => {
         let rawImageList: string[] = [];
-        if (Array.isArray(item.images) && item.images.length > 0) {
-            rawImageList = item.images;
-        } else if (item.image && typeof item.image === 'string' && item.image.trim() !== "") {
-            rawImageList = [item.image];
-        } else if (item.productImage) {
-            rawImageList = [item.productImage];
-        }
+        if (Array.isArray(item.images) && item.images.length > 0) rawImageList = item.images;
+        else if (item.image) rawImageList = [item.image];
+        else if (item.productImage) rawImageList = [item.productImage];
 
         const validImages = rawImageList.filter(url => !url.includes('via.placeholder.com'));
-        if (validImages.length === 0) {
-            validImages.push("https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80");
-        }
+        if (validImages.length === 0) validImages.push("https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80");
 
         return {
             id: item.id,
@@ -84,12 +77,32 @@ interface UseProductsExplorerProps {
     category?: string;
     subcategory?: string;
     search?: string;
+    location?: string; // Added
+    sort?: string;     // Added
 }
 
-export function useProductsExplorer({ category, subcategory, search }: UseProductsExplorerProps = {}) {
-    const [favorites, setFavorites] = useState<string[]>([]);
+export function useProductsExplorer({
+    category,
+    subcategory,
+    search = "",
+    location,
+    sort
+}: UseProductsExplorerProps = {}) {
+    const queryClient = useQueryClient();
 
-    // 1. Fetch User Profile
+    // --- 1. Debounce Search Term ---
+    // This prevents API calls on every keystroke. 
+    // It waits 500ms after the user stops typing.
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500); // 500ms delay
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    // --- 2. Fetch User Profile ---
     const { data: currentUser } = useQuery({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
@@ -97,10 +110,10 @@ export function useProductsExplorer({ category, subcategory, search }: UseProduc
             if (!res.ok) return null;
             return res.json();
         },
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 10, // Keep fresh for 10 mins
     });
 
-    // 2. Fetch Favorites
+    // --- 3. Fetch Favorites ---
     const { data: favData } = useQuery({
         queryKey: ['favorites', 'user'],
         queryFn: async () => {
@@ -108,17 +121,10 @@ export function useProductsExplorer({ category, subcategory, search }: UseProduc
             if (!res.ok) return { products: [] };
             return res.json();
         },
-        staleTime: 0,
+        staleTime: 1000 * 60 * 5,
     });
 
-    // Sync local favorites
-    useEffect(() => {
-        if (favData?.products) {
-            setFavorites(favData.products);
-        }
-    }, [favData]);
-
-    // 3. INFINITE Query for Products
+    // --- 4. INFINITE Query for Products ---
     const {
         data,
         fetchNextPage,
@@ -126,66 +132,87 @@ export function useProductsExplorer({ category, subcategory, search }: UseProduc
         isFetchingNextPage,
         isLoading
     } = useInfiniteQuery({
-        queryKey: ['products', 'infinite', category, subcategory, search],
+        // Include ALL filters in the key. 
+        // Using 'debouncedSearch' instead of 'search' is key to preventing spam.
+        queryKey: ['products', 'infinite', category, subcategory, debouncedSearch, location, sort],
+
         queryFn: async ({ pageParam = undefined }) => {
             const params = new URLSearchParams();
             params.append('limit', '12');
+
             if (pageParam) params.append('cursor', pageParam as string);
+
+            // Pass filters to Backend
             if (category) params.append('categoryId', category);
             if (subcategory) params.append('subcategoryId', subcategory);
-            if (search) params.append('search', search);
+            if (debouncedSearch) params.append('search', debouncedSearch);
+            if (location) params.append('location', location);
+            if (sort) params.append('sort', sort);
 
             const res = await fetch(`/api/products/all?${params.toString()}`);
+            if (!res.ok) throw new Error("Failed to fetch products");
             return res.json();
         },
-        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+        getNextPageParam: (lastPage: any) => lastPage.nextCursor ?? undefined,
         initialPageParam: undefined,
+        staleTime: 1000 * 60 * 2, // Data remains "fresh" for 2 minutes. No immediate refetch.
+        refetchOnWindowFocus: false, // Don't refetch when user switches tabs
     });
 
     // Flatten pages
     const rawProducts = useMemo(() => {
         if (!data) return [];
-        // The API returns { products: [...], nextCursor: ... }
-        const allItems = data.pages.flatMap((page: any) => page.products || []);
+        const allItems = data.pages.flatMap((page: any) => page.products || page.items || []);
         return normalizeProducts(allItems);
     }, [data]);
 
-    // 4. Fetch Categories
+    // --- 5. Fetch Categories ---
     const { data: categoriesData } = useQuery({
         queryKey: ['categories', 'product'],
         queryFn: async () => {
             const res = await fetch('/api/categories?type=PRODUCT');
-            const data = await res.json();
-            return Array.isArray(data) ? data : [];
+            return res.json();
         },
-        staleTime: 1000 * 60 * 60,
+        staleTime: 1000 * 60 * 60, // 1 Hour
     });
 
-    // --- Action: Toggle Favorite ---
-    const toggleFavorite = async (e: React.MouseEvent, id: string) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const isCurrentlyFav = favorites.includes(id);
-        const newFavorites = isCurrentlyFav ? favorites.filter(favId => favId !== id) : [...favorites, id];
-        setFavorites(newFavorites);
-
-        try {
+    // --- Action: Toggle Favorite (Optimistic Update) ---
+    const toggleMutation = useMutation({
+        mutationFn: async ({ id }: { id: string }) => {
             await fetch('/api/favorites/toggle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ itemId: id, type: 'PRODUCT' })
             });
-        } catch (error) {
-            console.error(error);
-            setFavorites(favorites);
+        },
+        onMutate: async ({ id }) => {
+            await queryClient.cancelQueries({ queryKey: ['favorites', 'user'] });
+            const previousFavs = queryClient.getQueryData(['favorites', 'user']);
+
+            queryClient.setQueryData(['favorites', 'user'], (old: any) => {
+                const list = old?.products || [];
+                return {
+                    ...old,
+                    products: list.includes(id) ? list.filter((x: string) => x !== id) : [...list, id]
+                };
+            });
+            return { previousFavs };
+        },
+        onError: (err, vars, context) => {
+            queryClient.setQueryData(['favorites', 'user'], context?.previousFavs);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['favorites', 'user'] });
         }
-    };
+    });
 
     return {
         currentUser,
-        favorites,
-        toggleFavorite,
+        favorites: favData?.products || [],
+        toggleFavorite: (e: React.MouseEvent, id: string) => {
+            e.preventDefault(); e.stopPropagation();
+            toggleMutation.mutate({ id });
+        },
         rawProducts,
         rawCategories: (categoriesData || []) as CategoryData[],
         isLoading,

@@ -15,22 +15,31 @@ export async function GET() {
         const userId = user.id;
 
         const [
-            activeBookings,
-            activeOrders,
+            activeBookings, // Services
+            activeOrders,   // Products
+            activeRentals,  // ✅ RENTALS (New)
             cancelledBookings,
-            cancelledOrders
+            cancelledOrders,
+            cancelledRentals // ✅ CANCELLED RENTALS (New)
         ] = await Promise.all([
+            // Count Active
             prisma.booking.count({ where: { userId, status: { not: "CANCELLED" } } }),
             prisma.order.count({ where: { userId, status: { not: "CANCELLED" } } }),
+            prisma.rentalBooking.count({ where: { userId, status: { not: "CANCELLED" } } }), // ✅ Add this
+
+            // Count Cancelled
             prisma.booking.count({ where: { userId, status: "CANCELLED" } }),
-            prisma.order.count({ where: { userId, status: "CANCELLED" } })
+            prisma.order.count({ where: { userId, status: "CANCELLED" } }),
+            prisma.rentalBooking.count({ where: { userId, status: "CANCELLED" } }) // ✅ Add this
         ]);
 
         return NextResponse.json({
-            bookings: activeBookings + activeOrders,
-            cancellations: cancelledBookings + cancelledOrders,
+            // Sum up ALL three types
+            bookings: activeBookings + activeOrders + activeRentals,
+            cancellations: cancelledBookings + cancelledOrders + cancelledRentals,
         });
     } catch (error) {
+        console.error("STATS_ERROR", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

@@ -1,10 +1,16 @@
 'use client';
 
 import { Filter, MapPin } from 'lucide-react';
-import { CategoryData } from './ServicesExplorer';
+
+// 👇 Define the interface here directly to avoid import errors
+export interface CategoryData {
+    id: string;
+    name: string;
+    children: { id: string; name: string }[];
+    image?: string;
+}
 
 interface DesktopFiltersProps {
-    // Note: SearchTerm is removed from here because the search bar is now in the main area
     selectedCategory: string;
     setSelectedCategory: (val: string) => void;
     selectedSubcategory: string;

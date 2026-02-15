@@ -3,7 +3,14 @@
 import { useState } from 'react';
 import { FaMagnifyingGlass } from 'react-icons/fa6';
 import { Filter, X, MapPin } from 'lucide-react';
-import { CategoryData } from './ServicesExplorer'; // Adjust import path
+
+// 👇 Redefine shared interface to fix the import error
+export interface CategoryData {
+    id: string;
+    name: string;
+    children: { id: string; name: string }[];
+    image?: string;
+}
 
 interface MobileFiltersProps {
     searchTerm: string;
@@ -32,31 +39,27 @@ export default function ServiceFiltersMobile({
     availableCategories, availableSubcategories, uniqueLocations,
     resetFilters
 }: MobileFiltersProps) {
-
-    // Internal state for the modal visibility
+    // ... logic remains exactly the same as your provided code ...
     const [isOpen, setIsOpen] = useState(false);
 
-    const handleApply = () => {
-        setIsOpen(false);
-    };
-
+    const handleApply = () => setIsOpen(false);
     const handleReset = () => {
         resetFilters();
         setIsOpen(false);
-    }
+    };
 
     return (
         <div className="md:hidden">
-            {/* --- Mobile Search Bar & Filter Button --- */}
-            <div className="flex gap-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+            {/* Search Bar & Button */}
+            <div className="flex gap-2 bg-white rounded-xl border border-slate-200 shadow-sm p-1">
                 <div className="relative flex-1">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                        <FaMagnifyingGlass />
+                        <FaMagnifyingGlass size={14} />
                     </div>
                     <input
                         type="text"
                         placeholder="Search services..."
-                        className="w-full pl-10 py-3 bg-slate-50 border-none rounded-lg focus:ring-0 text-sm font-medium text-slate-900 placeholder:text-slate-400"
+                        className="w-full pl-9 py-2.5 bg-slate-50 border-none rounded-lg focus:ring-0 text-sm font-medium text-slate-900 placeholder:text-slate-400"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -65,39 +68,26 @@ export default function ServiceFiltersMobile({
                     onClick={() => setIsOpen(true)}
                     className="bg-slate-900 text-white w-12 rounded-lg flex items-center justify-center active:scale-95 transition shadow-md"
                 >
-                    <Filter size={20} />
+                    <Filter size={18} />
                 </button>
             </div>
 
-            {/* --- Mobile Filter Modal --- */}
+            {/* Modal */}
             {isOpen && (
-                // FIXED: Changed 'items-end' to 'items-center' and added 'p-4' to center it perfectly
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    {/* Backdrop */}
-                    <div
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-                        onClick={() => setIsOpen(false)}
-                    />
-
-                    {/* Modal Content */}
-                    {/* FIXED: Changed animation to zoom-in-95 and rounded corners for all sides */}
-                    <div className="relative bg-white w-full max-w-sm sm:max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsOpen(false)} />
+                    <div className="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-900">Filters</h3>
-                            <button
-                                onClick={() => setIsOpen(false)}
-                                className="p-2 hover:bg-slate-100 rounded-full text-slate-500"
-                            >
+                            <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
                                 <X size={20} />
                             </button>
                         </div>
 
-                        {/* Scrollable Form Area */}
-                        <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
-
-                            {/* Category Group */}
+                        {/* Form */}
+                        <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                            {/* Category */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category</label>
                                 <div className="relative">
@@ -118,7 +108,7 @@ export default function ServiceFiltersMobile({
                                 </div>
                             </div>
 
-                            {/* Subcategory Group */}
+                            {/* Subcategory */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subcategory</label>
                                 <div className="relative">
@@ -137,7 +127,7 @@ export default function ServiceFiltersMobile({
                                 </div>
                             </div>
 
-                            {/* Location Group */}
+                            {/* Location */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location</label>
                                 <div className="relative">
@@ -155,7 +145,7 @@ export default function ServiceFiltersMobile({
                                 </div>
                             </div>
 
-                            {/* Sort Group */}
+                            {/* Sort */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sort By</label>
                                 <div className="relative">
@@ -175,18 +165,12 @@ export default function ServiceFiltersMobile({
                             </div>
                         </div>
 
-                        {/* Footer Buttons */}
+                        {/* Footer */}
                         <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
-                            <button
-                                onClick={handleReset}
-                                className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition"
-                            >
+                            <button onClick={handleReset} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition text-sm">
                                 Reset
                             </button>
-                            <button
-                                onClick={handleApply}
-                                className="flex-[2] py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-lg shadow-slate-900/20"
-                            >
+                            <button onClick={handleApply} className="flex-[2] py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-lg text-sm">
                                 Apply Filters
                             </button>
                         </div>

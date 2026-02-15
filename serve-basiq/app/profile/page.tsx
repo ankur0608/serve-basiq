@@ -2,8 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useUIStore } from "@/lib/store";
-import { useUserProfile } from "@/app/hook/useProfileQueries"; // ✅ Import the new hook
-import { useQueryClient } from "@tanstack/react-query";
+import { useUserProfile, useUpdateProfile } from "@/app/hook/useProfileQueries";
 import {
     FaCalendarCheck,
     FaBoxOpen,
@@ -16,14 +15,10 @@ import { useEffect, useState } from "react";
 import { fullLogout } from "@/lib/logout";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
-import ProfileEditModal, {
-    ProfileData,
-} from "@/components/profile/ProfileEditModal";
-import imageCompression from "browser-image-compression";
+import ProfileEditModal, { ProfileData } from "@/components/profile/ProfileEditModal";
 
 export default function ProfilePage() {
-    const { data: session, status, update: updateSession } = useSession();
-    const queryClient = useQueryClient();
+    const { data: session, status } = useSession();
 
     const {
         currentUser,
@@ -34,127 +29,39 @@ export default function ProfilePage() {
         onCloseEditProfile,
     } = useUIStore();
 
-    // ✅ HOOK: Fetch User Profile (Replaces all the manual useEffect/fetch logic)
+    // 1. Fetch Data
     const { data: profileDataFromApi, isLoading, error } = useUserProfile();
+
+    // ✅ FIX 1: Use 'mutateAsync' instead of 'mutate' to get a Promise
+    const { mutateAsync: updateProfile, isPending: isSaving } = useUpdateProfile();
 
     const [isHydrated, setIsHydrated] = useState(false);
 
-    // 1. Wait for Zustand hydration
+    // Wait for Zustand hydration
     useEffect(() => {
         setIsHydrated(true);
     }, []);
 
-    // 2. Sync Hook Data to Zustand Store
+    // Sync Hook Data to Zustand Store
     useEffect(() => {
         if (profileDataFromApi) {
             setCurrentUser(profileDataFromApi);
         }
     }, [profileDataFromApi, setCurrentUser]);
 
-    // 3. Handle Unauthorized Error
+    // Handle Unauthorized Error
     useEffect(() => {
         if (error?.message === "Unauthorized") {
             logout();
         }
     }, [error, logout]);
 
-    // --- SAVE LOGIC ---
-    const handleSaveProfile = async (
-        formData: ProfileData,
-        file: File | null
-    ) => {
-        try {
-            // @ts-ignore
-            const userId = currentUser?.id || session?.user?.id;
-            if (!userId) return;
-
-            let uploadedImageUrl = formData.image;
-
-            // 1. Upload Image (if exists)
-            if (file) {
-                let fileToUpload = file;
-                if (file.type.startsWith("image/")) {
-                    try {
-                        const options = {
-                            maxSizeMB: 1,
-                            maxWidthOrHeight: 1080,
-                            useWebWorker: true,
-                            initialQuality: 0.8,
-                        };
-                        fileToUpload = await imageCompression(file, options);
-                    } catch (e) {
-                        console.warn("Compression failed", e);
-                    }
-                }
-
-                const uploadData = new FormData();
-                uploadData.append("file", fileToUpload);
-                const res = await fetch("/api/upload", {
-                    method: "POST",
-                    body: uploadData,
-                });
-                if (res.ok) {
-                    const d = await res.json();
-                    uploadedImageUrl =
-                        d.url ||
-                        (d.key ? `${process.env.NEXT_PUBLIC_R2_DOMAIN}/${d.key}` : null);
-                }
-            }
-
-            // 2. Prepare Payload
-            const payload = {
-                userId,
-                ...formData,
-                image: uploadedImageUrl,
-                profileImage: uploadedImageUrl,
-            };
-
-            // 3. API Call
-            const updateRes = await fetch("/api/user/profile", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-
-            if (updateRes.ok) {
-                // 4. Update Store Immediately (Optimistic Update)
-                const updatedUser: any = {
-                    ...currentUser,
-                    ...formData,
-                    img: uploadedImageUrl,
-                    image: uploadedImageUrl,
-                    // Flattened updates
-                    addressLine1: formData.addressLine1,
-                    addressLine2: formData.addressLine2,
-                    city: formData.city,
-                    district: formData.district,
-                    state: formData.state,
-                    pincode: formData.pincode,
-                    landmark: formData.landmark,
-                    isFullProfile: true,
-                };
-
-                setCurrentUser(updatedUser);
-                await updateSession({ name: formData.name, image: uploadedImageUrl });
-
-                // ✅ VITAL: Tell React Query the data is dirty so it refetches next time
-                queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
-
-                onCloseEditProfile();
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
     // --- RENDER ---
 
     if (!isHydrated) return null;
 
-    // Use store data if available (for instant load), otherwise fallback to session
     const userToShow = currentUser || (session?.user as any);
 
-    // Show spinner only if we have NO data at all and are loading
     if ((status === "loading" || isLoading) && !userToShow) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -168,7 +75,6 @@ export default function ProfilePage() {
 
     const userAny = userToShow || {};
 
-    // Address fallback logic
     const primaryAddress =
         userAny.addresses && userAny.addresses.length > 0
             ? userAny.addresses[0]
@@ -220,11 +126,15 @@ export default function ProfilePage() {
                         />
                     </div>
                 </div>
+
                 <ProfileEditModal
                     isOpen={isEditProfileOpen}
                     onClose={onCloseEditProfile}
                     initialData={profileData}
-                    onSave={handleSaveProfile}
+                    // ✅ FIX 2: Pass an async function that awaits the mutation
+                    onSave={async (formData, file) => {
+                        await updateProfile({ formData, file, currentUser: userAny });
+                    }}
                 />
             </div>
         </div>
