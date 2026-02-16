@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { Check, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import clsx from 'clsx';
 
-// ✅ Imports for the 3 individual steps
+// ✅ Imports for the 4 individual steps
 import StepOnePersonal from './StepOneProfile';
+import StepSocial from './StepSocial'; // New Import
 import StepTwoAddress from './StepTwoAddress';
 import StepThreeKYC from './StepThreeKYC';
 
@@ -22,12 +23,12 @@ export function VerificationView({
     showToast,
     onBack
 }: Props) {
-    // State to track the current step of the wizard [1 -> 2 -> 3]
-    const [step, setStep] = useState<1 | 2 | 3>(1);
+    // State to track 4 steps: 1=Personal, 2=Social, 3=Address, 4=KYC
+    const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Central Form State containing all data for 3 steps
+    // Central Form State
     const [form, setForm] = useState({
         // --- STEP 1: Personal ---
         fullName: '',
@@ -37,20 +38,22 @@ export function VerificationView({
         dob: '',
         preferredLanguage: 'English',
         providerType: 'BOTH',
+
+        // --- STEP 2: Social (Moved here) ---
         instagramUrl: '',
         facebookUrl: '',
         youtubeUrl: '',
         websiteUrl: '',
 
-        // --- STEP 2: Address ---
-        // Home
+        // --- STEP 3: Address (Was Step 2) ---
         addressLine1: '',
         addressLine2: '',
         landmark: '',
         city: '',
         state: '',
         pincode: '',
-        // Business
+
+        // Business Address
         shopName: '',
         bizAddressLine1: '',
         bizAddressLine2: '',
@@ -59,7 +62,7 @@ export function VerificationView({
         bizPincode: '',
         sameAsPersonal: false,
 
-        // --- STEP 3: KYC ---
+        // --- STEP 4: KYC (Was Step 3) ---
         idProofType: 'Aadhaar',
         idProofNumber: '',
         idProofImg: '',
@@ -117,11 +120,11 @@ export function VerificationView({
             errors[field] ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-white hover:border-slate-300'
         );
 
-    // Update form field and auto-sync business address if checkbox is active
     const updateField = useCallback((field: string, value: any) => {
         setErrors(e => ({ ...e, [field]: '' }));
         setForm(prev => {
             const next = { ...prev, [field]: value };
+            // Auto-sync business address logic
             if (prev.sameAsPersonal) {
                 if (field === 'addressLine1') next.bizAddressLine1 = value;
                 if (field === 'city') next.bizCity = value;
@@ -141,13 +144,15 @@ export function VerificationView({
             if (!form.phone || form.phone.length < 10) e.phone = '10 digits required';
         }
 
-        if (step === 2) { // Address
+        // Step 2 is Social (Optional) - No validation needed usually
+
+        if (step === 3) { // Address (previously Step 2)
             if (!form.addressLine1) e.addressLine1 = 'Required';
             if (!form.shopName) e.shopName = 'Required';
             if (!form.bizAddressLine1) e.bizAddressLine1 = 'Required';
         }
 
-        if (step === 3) { // KYC
+        if (step === 4) { // KYC (previously Step 3)
             if (!form.idProofNumber) e.idProofNumber = 'Required';
             if (!form.idProofImg) e.idProofImg = 'Document required';
             if (form.gstRegistered && !form.gstNumber) e.gstNumber = 'Required';
@@ -163,15 +168,15 @@ export function VerificationView({
             showToast('Please complete required fields', 'error');
             return;
         }
-        if (step < 3) {
-            setStep(s => (s + 1) as 1 | 2 | 3);
+        if (step < 4) {
+            setStep(s => (s + 1) as 1 | 2 | 3 | 4);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
     const handleBackStep = () => {
         if (step > 1) {
-            setStep(s => (s - 1) as 1 | 2 | 3);
+            setStep(s => (s - 1) as 1 | 2 | 3 | 4);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
             onBack();
@@ -181,7 +186,7 @@ export function VerificationView({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (step !== 3) {
+        if (step !== 4) {
             handleNext();
             return;
         }
@@ -225,12 +230,15 @@ export function VerificationView({
         }
     };
 
-    // Helper for Header Text
     const getHeaderInfo = () => {
         if (step === 1) return { title: 'Profile Details', sub: 'Basic contact information' };
-        if (step === 2) return { title: 'Business Address', sub: 'Location and shop details' };
+        if (step === 2) return { title: 'Social Profiles', sub: 'Connect your online presence' }; // New Header
+        if (step === 3) return { title: 'Business Address', sub: 'Location and shop details' };
         return { title: 'KYC Documents', sub: 'Upload identity proof' };
     };
+
+    // Calculate progress percentage for 4 steps (0, 33, 66, 100)
+    const progressPercent = step === 1 ? '0%' : step === 2 ? '33%' : step === 3 ? '66%' : '100%';
 
     return (
         <div className="max-w-4xl mx-auto px-4 pb-20 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -244,12 +252,12 @@ export function VerificationView({
                     {/* Active Progress Line */}
                     <div
                         className="absolute top-1/2 h-1 bg-slate-900 transition-all duration-500 rounded-full"
-                        style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }}
+                        style={{ width: progressPercent }}
                     />
 
                     {/* Step Circles */}
                     <div className="relative flex justify-between">
-                        {[1, 2, 3].map(s => (
+                        {[1, 2, 3, 4].map(s => (
                             <div
                                 key={s}
                                 className={clsx(
@@ -271,8 +279,8 @@ export function VerificationView({
             <form
                 onSubmit={handleSubmit}
                 onKeyDown={(e) => {
-                    // Prevent accidental submission on Steps 1 & 2
-                    if (e.key === 'Enter' && step !== 3) {
+                    // Prevent accidental submission on Steps 1, 2 & 3
+                    if (e.key === 'Enter' && step !== 4) {
                         e.preventDefault();
                     }
                 }}
@@ -288,6 +296,14 @@ export function VerificationView({
                 )}
 
                 {step === 2 && (
+                    <StepSocial
+                        form={form}
+                        updateField={updateField}
+                        getInputClass={getInputClass}
+                    />
+                )}
+
+                {step === 3 && (
                     <StepTwoAddress
                         form={form}
                         updateField={updateField}
@@ -296,7 +312,7 @@ export function VerificationView({
                     />
                 )}
 
-                {step === 3 && (
+                {step === 4 && (
                     <StepThreeKYC
                         form={form}
                         updateField={updateField}
@@ -316,7 +332,7 @@ export function VerificationView({
                         {step === 1 ? 'Cancel' : <><ArrowLeft size={18} /> Back</>}
                     </button>
 
-                    {step < 3 ? (
+                    {step < 4 ? (
                         <button
                             type="button"
                             onClick={handleNext}

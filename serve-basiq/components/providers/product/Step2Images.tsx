@@ -1,57 +1,78 @@
 import AppImage from '@/components/ui/AppImage';
 import { UploadCloud, Loader2, Trash2, Plus, ChevronRight } from 'lucide-react';
 import { ProductForm } from './AddProductView';
-import imageCompression from 'browser-image-compression'; // ✅ Import library
+import imageCompression from 'browser-image-compression';
 
 interface Step2Props {
     form: ProductForm;
     uploading: boolean;
     activeUploadField: 'main' | 'gallery' | null;
-    handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>, target: 'main' | 'gallery') => void;
+    handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>, target: 'main') => void; 
+    handleGalleryUpload: (files: File[]) => void;
     removeGalleryImg: (index: number) => void;
     setStep: (step: number) => void;
 }
 
-export function Step2Images({ form, uploading, activeUploadField, handleImageUpload, removeGalleryImg, setStep }: Step2Props) {
+export function Step2Images({ form, uploading, activeUploadField, handleImageUpload, handleGalleryUpload, removeGalleryImg, setStep }: Step2Props) {
     const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 
-    // ✅ New Handler: Compresses image before sending to parent
-    const handleCompressedUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'main' | 'gallery') => {
+    // Options for compression
+    const compressionOptions = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+    };
+
+    // --- 1. Handler for Main Image (Single - Keep as is but with compression) ---
+    const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Compression Options
-        const options = {
-            maxSizeMB: 1,          // Max size in MB
-            maxWidthOrHeight: 1920, // Resize if larger than this
-            useWebWorker: true,    // Run in background thread
-            fileType: file.type    // Preserve original format (e.g., image/png)
-        };
+        try {
+            const compressedFile = await imageCompression(file, compressionOptions);
+            // Create a new File object
+            const newFile = new File([compressedFile], file.name, { type: file.type });
+
+            // Create synthetic event
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(newFile);
+            const syntheticEvent = { target: { files: dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>;
+
+            handleImageUpload(syntheticEvent, 'main');
+        } catch (error) {
+            console.error("Compression failed", error);
+            handleImageUpload(e, 'main'); // Fallback
+        }
+    };
+
+    // --- 2. Handler for Gallery (Multiple) ---
+    const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        // Convert FileList to Array
+        const fileArray = Array.from(files);
 
         try {
-            // Compress the file
-            const compressedFile = await imageCompression(file, options);
+            // Compress all images in parallel
+            const compressedFiles = await Promise.all(
+                fileArray.map(async (file) => {
+                    try {
+                        const compressedBlob = await imageCompression(file, compressionOptions);
+                        // Convert Blob back to File to preserve name/type for the uploader
+                        return new File([compressedBlob], file.name, { type: file.type });
+                    } catch (err) {
+                        console.warn(`Failed to compress ${file.name}, using original.`);
+                        return file;
+                    }
+                })
+            );
 
-            // Create a new FileList using DataTransfer (Hack to mimic standard Event behavior)
-            const dataTransfer = new DataTransfer();
-            // Ensure we pass a File object (compressedFile is usually a File/Blob)
-            const newFile = new File([compressedFile], file.name, { type: file.type });
-            dataTransfer.items.add(newFile);
-
-            // Mock the event object expected by handleImageUpload
-            const syntheticEvent = {
-                target: {
-                    files: dataTransfer.files
-                }
-            } as React.ChangeEvent<HTMLInputElement>;
-
-            // Call original handler with compressed file
-            handleImageUpload(syntheticEvent, target);
+            // Pass the array of prepared files to the parent
+            handleGalleryUpload(compressedFiles);
 
         } catch (error) {
-            console.error("Image compression failed, falling back to original:", error);
-            // Fallback: Upload original file if compression fails
-            handleImageUpload(e, target);
+            console.error("Batch processing failed", error);
         }
     };
 
@@ -64,8 +85,9 @@ export function Step2Images({ form, uploading, activeUploadField, handleImageUpl
                     <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleCompressedUpload(e, 'main')} // ✅ Use new handler
+                        onChange={handleMainImageChange} // Use the specific main handler
                         className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        disabled={uploading}
                     />
                     {form.productImage ? (
                         <AppImage
@@ -81,7 +103,7 @@ export function Step2Images({ form, uploading, activeUploadField, handleImageUpl
                         </div>
                     )}
                     {uploading && activeUploadField === 'main' && (
-                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-20">
                             <Loader2 className="animate-spin text-blue-600" />
                         </div>
                     )}
@@ -92,6 +114,7 @@ export function Step2Images({ form, uploading, activeUploadField, handleImageUpl
             <div>
                 <label className={labelClass}>Gallery (Optional)</label>
                 <div className="grid grid-cols-4 gap-2">
+                    {/* Existing Images */}
                     {form.gallery.map((img, i) => (
                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-100">
                             <AppImage
@@ -115,13 +138,18 @@ export function Step2Images({ form, uploading, activeUploadField, handleImageUpl
                         <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleCompressedUpload(e, 'gallery')} // ✅ Use new handler
-                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            multiple={true} // ✅ Enable Multiple Selection
+                            onChange={handleGalleryChange} // ✅ Use new batch handler
+                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                            disabled={uploading}
                         />
                         {uploading && activeUploadField === 'gallery' ? (
                             <Loader2 className="animate-spin text-blue-400" size={16} />
                         ) : (
-                            <Plus className="text-slate-400" size={20} />
+                            <div className="flex flex-col items-center">
+                                <Plus className="text-slate-400" size={20} />
+                                <span className="text-[10px] text-slate-400 font-medium">Add Files</span>
+                            </div>
                         )}
                     </div>
                 </div>

@@ -31,8 +31,13 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
                     </div>
                     <div>
                         <p className="font-bold text-slate-900 text-sm">{p.name}</p>
-                        <p className="text-[10px] text-slate-400 line-clamp-1">{p.desc || 'No description'}</p>
-                    </div>
+                        <p className="text-[10px] text-slate-400">
+                            {p.desc
+                                ? p.desc.length > 50
+                                    ? p.desc.slice(0, 50) + "..."
+                                    : p.desc
+                                : "No description provided"}
+                        </p>                    </div>
                 </div>
             </td>
             <td className="py-4 align-middle">

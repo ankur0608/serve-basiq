@@ -337,45 +337,89 @@ const SingleImageUploader = ({
     );
 };
 
-// --- STEP 2: Visuals (REFACTORED WITH NEW HOOK) ---
-export const StepTwoVisuals = ({ form, setStep, handleChange }: any) => {
-
-    // ✅ Hook for Gallery (Append Mode)
-    const {
-        isUploading: isGalleryUploading,
-        handleImageUpload: handleGalleryUpload
-    } = useImageUpload({
-        onUploadSuccess: (key, url) => {
-            // Append new image to existing gallery array
-            handleChange('gallery', [...form.gallery, url]);
-        }
-    });
-
-    const removeGalleryImg = (indexToRemove: number) => {
-        const newGallery = form.gallery.filter((_: string, i: number) => i !== indexToRemove);
-        handleChange('gallery', newGallery);
-    };
+// --- STEP 2: Visuals ---
+// Note: Ensure handleImageUpload and activeUploadField are passed from the useServiceForm hook to this component
+export const StepTwoVisuals = ({
+    form,
+    setStep,
+    handleChange,
+    handleImageUpload, // ✅ Passed from hook
+    activeUploadField, // ✅ Passed from hook
+    removeGalleryImg   // ✅ Passed from hook
+}: any) => {
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
 
-            {/* 1. Main Image (Smart Component) */}
-            <SingleImageUploader
-                label="Main Image"
-                image={form.mainimg}
-                onChange={(url) => handleChange('mainimg', url)}
-                required
-            />
+            {/* 1. Main Image */}
+            <div>
+                <label className={labelClass}>
+                    Main Image <span className="text-red-500">*</span>
+                </label>
+                <div className="relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'mainimg')}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
 
-            {/* 2. Cover Image (Smart Component) */}
-            <SingleImageUploader
-                label="Cover Banner (Optional)"
-                image={form.coverImg}
-                onChange={(url) => handleChange('coverImg', url)}
-                aspect="banner"
-            />
+                    {/* Loading Overlay */}
+                    {activeUploadField === 'mainimg' && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                            <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
+                            <span className="text-xs font-bold text-blue-600">Uploading...</span>
+                        </div>
+                    )}
 
-            {/* 3. Gallery Section */}
+                    {/* Content */}
+                    {form.mainimg ? (
+                        <>
+                            <img src={form.mainimg} className="w-full h-full object-cover" alt="Main Service" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-0">
+                                <p className="text-white text-xs font-bold flex items-center gap-2">
+                                    <Camera size={16} /> Change Photo
+                                </p>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                            <UploadCloud className="mx-auto mb-2" size={32} />
+                            <span className="text-xs font-bold uppercase tracking-wide">Click to Upload</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* 2. Cover Image */}
+            <div>
+                <label className={labelClass}>
+                    Cover Banner (Optional)
+                </label>
+                <div className="relative h-32 rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'coverImg')}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
+                    {activeUploadField === 'coverImg' && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                            <Loader2 className="animate-spin text-blue-600" size={24} />
+                        </div>
+                    )}
+                    {form.coverImg ? (
+                        <img src={form.coverImg} className="w-full h-full object-cover" alt="Cover" />
+                    ) : (
+                        <div className="flex items-center gap-2 text-slate-400 group-hover:text-blue-500">
+                            <Camera size={20} />
+                            <span className="text-xs font-bold">Upload Cover</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* 3. Gallery Section - MULTI UPLOAD ENABLED */}
             <div>
                 <label className={labelClass}>Gallery</label>
                 <div className="grid grid-cols-4 gap-3">
@@ -386,7 +430,7 @@ export const StepTwoVisuals = ({ form, setStep, handleChange }: any) => {
                             <button
                                 type="button"
                                 onClick={() => removeGalleryImg(i)}
-                                className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shadow-sm"
+                                className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shadow-sm z-10"
                             >
                                 <Trash2 size={12} />
                             </button>
@@ -398,11 +442,12 @@ export const StepTwoVisuals = ({ form, setStep, handleChange }: any) => {
                         <input
                             type="file"
                             accept="image/*"
-                            onChange={handleGalleryUpload}
-                            disabled={isGalleryUploading}
+                            multiple // ✅ THIS ENABLES MULTIPLE SELECTION
+                            onChange={(e) => handleImageUpload(e, 'gallery')}
+                            disabled={activeUploadField === 'gallery'}
                             className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
                         />
-                        {isGalleryUploading ? (
+                        {activeUploadField === 'gallery' ? (
                             <Loader2 className="animate-spin text-blue-500" size={20} />
                         ) : (
                             <Plus className="text-slate-400" size={24} />

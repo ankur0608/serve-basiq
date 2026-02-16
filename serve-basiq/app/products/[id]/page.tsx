@@ -4,7 +4,7 @@ import Link from 'next/link';
 import {
   FaArrowLeft, FaLocationDot, FaStar,
   FaShieldHalved, FaBoxOpen, FaTruckFast,
-  FaCircleCheck, FaStore, FaRotateLeft, FaCube,
+  FaCircleCheck, FaStore, FaCube,
   FaInstagram, FaFacebook, FaYoutube, FaGlobe
 } from 'react-icons/fa6';
 import { getServerSession } from "next-auth";
@@ -12,6 +12,7 @@ import { authOptions } from "@/lib/auth";
 import ProductWrapper from '@/components/products/ProductWrapper';
 import AppImage from '@/components/ui/AppImage';
 import SupplierProfileModal from '@/components/products/SupplierProfileModal';
+import RatingForm from '@/components/Rating/RatingForm';
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ interface Props {
 
 export default async function ProductDetail({ params }: Props) {
   const { id } = await params;
+  const session = await getServerSession(authOptions);
 
   // 1. DATABASE FETCH
   const product = await prisma.product.findUnique({
@@ -49,7 +51,51 @@ export default async function ProductDetail({ params }: Props) {
 
   if (!product) return notFound();
 
-  const session = await getServerSession(authOptions);
+  // 2. LOGIC: STRICT CHECK REVIEW ELIGIBILITY
+  let canReview = false;
+  let reviewMessage = "Login to leave a review.";
+
+  if (session?.user?.id) {
+    const userId = session.user.id;
+
+    // A. User cannot review their own product
+    if (product.userId === userId) {
+      canReview = false;
+      reviewMessage = "You cannot review your own product.";
+    } else {
+      // B. Check if User bought the product AND it is DELIVERED
+      // We explicitly check for 'DELIVERED' status to prevent reviews on cancelled/pending orders
+      const hasDeliveredOrder = await prisma.order.findFirst({
+        where: {
+          userId: userId,
+          productId: id,
+          status: 'DELIVERED'
+        }
+      });
+
+      // C. Check if User has already reviewed
+      const existingReview = await prisma.review.findFirst({
+        where: {
+          authorId: userId,
+          productId: id
+        }
+      });
+
+      if (!hasDeliveredOrder) {
+        canReview = false;
+        reviewMessage = "You must purchase and receive this item to review it.";
+      } else if (existingReview) {
+        canReview = false;
+        reviewMessage = "You have already reviewed this product.";
+      } else {
+        // Only if all checks pass
+        canReview = true;
+        reviewMessage = "";
+      }
+    }
+  }
+
+  // 3. FETCH LOGGED IN USER DATA (For Checkout/Wrapper)
   let loggedInUser = null;
   if (session?.user?.id) {
     loggedInUser = await prisma.user.findUnique({
@@ -73,7 +119,8 @@ export default async function ProductDetail({ params }: Props) {
   const calculatedRating = product.reviews.length > 0
     ? product.reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / product.reviews.length
     : 0;
-  const ratingValue = (product as any).rating ? Number((product as any).rating) : calculatedRating;
+
+  const ratingValue = calculatedRating;
   const reviewCount = product._count?.reviews || 0;
 
   const socials = [
@@ -86,7 +133,7 @@ export default async function ProductDetail({ params }: Props) {
   return (
     <div className="pb-40 bg-slate-50 min-h-screen">
 
-      {/* --- HERO BANNER (Matches Service Page Image 1) --- */}
+      {/* --- HERO BANNER --- */}
       <div className="h-[40vh] md:h-[50vh] w-full bg-slate-900 relative overflow-hidden">
         <AppImage
           src={mainImg}
@@ -103,7 +150,7 @@ export default async function ProductDetail({ params }: Props) {
         </Link>
       </div>
 
-      {/* --- FLOATING CONTENT (Matches Service Page Image 2 & 3) --- */}
+      {/* --- FLOATING CONTENT --- */}
       <div className="max-w-6xl mx-auto px-4 -mt-32 relative z-10">
         <div className="grid lg:grid-cols-3 gap-8">
 
@@ -156,12 +203,12 @@ export default async function ProductDetail({ params }: Props) {
               )}
 
               {/* Description */}
-              <div className="border-t border-slate-100 pt-8">
+              {/* <div className="border-t border-slate-100 pt-8">
                 <h3 className="text-xl font-bold text-slate-900 mb-4">Description</h3>
                 <p className="text-slate-600 leading-relaxed whitespace-pre-line">
                   {product.desc}
                 </p>
-              </div>
+              </div> */}
 
               {/* Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
@@ -216,7 +263,38 @@ export default async function ProductDetail({ params }: Props) {
 
             {/* 3. REVIEWS CARD */}
             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
-              <h3 className="text-2xl font-black text-slate-900 mb-8">Reviews & Ratings</h3>
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black text-slate-900">Reviews & Ratings</h3>
+                <span className="text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{reviewCount} reviews</span>
+              </div>
+
+              {/* === RATING FORM OR NOTICE === */}
+              <div className="mb-8">
+                {canReview ? (
+                  <div className="mb-8 border border-blue-100 bg-blue-50/50 p-6 rounded-2xl">
+                    <RatingForm productId={product.id} />
+                  </div>
+                ) : (
+                  <div className="p-6 bg-slate-50 border border-slate-100 rounded-2xl text-center">
+                    <p className="text-slate-500 font-medium text-sm flex flex-col gap-2 items-center">
+                      {/* Icon based on reason */}
+                      {reviewMessage.includes("own") ? <FaStore className="text-slate-300 text-2xl" /> :
+                        reviewMessage.includes("purchase") ? <FaBoxOpen className="text-slate-300 text-2xl" /> :
+                          reviewMessage.includes("already") ? <FaStar className="text-slate-300 text-2xl" /> : null}
+
+                      {reviewMessage}
+                    </p>
+                    {/* Optional Call to Action if not logged in */}
+                    {reviewMessage.includes("Login") && (
+                      <Link href="/login" className="mt-3 inline-block text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 hover:bg-blue-100">
+                        Login Now
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Review List */}
               <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                 {product.reviews && product.reviews.length > 0 ? (
                   product.reviews.map((review) => (
@@ -238,7 +316,7 @@ export default async function ProductDetail({ params }: Props) {
                     </div>
                   ))
                 ) : (
-                  <p className="text-slate-400 italic text-sm">No reviews yet.</p>
+                  <p className="text-slate-400 italic text-sm text-center py-8">No reviews yet. Be the first to review!</p>
                 )}
               </div>
             </div>
@@ -295,10 +373,9 @@ export default async function ProductDetail({ params }: Props) {
                   )}
                 </div>
               </div>
-              <div>
-                <SupplierProfileModal supplier={product.user} /></div>
-
+              <SupplierProfileModal supplier={product.user} />
             </div>
+
             {/* Action Buttons */}
             <ProductWrapper
               productId={product.id}

@@ -10,65 +10,146 @@ const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
 
 // --- STEP 2: Visuals ---
-export const StepTwoVisuals = ({ form, handleImageUpload, activeUploadField, removeGalleryImg, setStep, handleChange }: any) => (
-    <div className="space-y-6 animate-in slide-in-from-right duration-300">
-        <div>
-            <label className={labelClass}>Main Image <span className="text-red-500">*</span></label>
-            <div className="relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
-                <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'mainimg')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                {form.mainimg ? (
-                    <img src={form.mainimg} className="w-full h-full object-cover" alt="Main Service" />
-                ) : (
-                    <div className="text-center text-slate-400 group-hover:text-blue-500 transition-colors">
-                        <UploadCloud className="mx-auto mb-2" size={32} />
-                        <span className="text-xs font-bold uppercase tracking-wide">Click to Upload Thumbnail</span>
-                    </div>
-                )}
-                {activeUploadField === 'mainimg' && (
-                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
-                        <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
-                        <span className="text-xs font-bold text-blue-600">Uploading...</span>
-                    </div>
-                )}
-            </div>
-        </div>
+// --- STEP 2: Visuals ---
+// Note: Ensure handleImageUpload and activeUploadField are passed from the useServiceForm hook to this component
+export const StepTwoVisuals = ({
+    form,
+    setStep,
+    handleChange,
+    handleImageUpload, // ✅ Passed from hook
+    activeUploadField, // ✅ Passed from hook
+    removeGalleryImg   // ✅ Passed from hook
+}: any) => {
 
-        <div>
-            <label className={labelClass}>Cover Banner (Optional)</label>
-            <div className="relative h-28 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden flex flex-col items-center justify-center hover:border-blue-300 transition-colors">
-                <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'coverImg')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                {form.coverImg ? <img src={form.coverImg} className="w-full h-full object-cover" alt="Cover" /> : <div className="flex items-center gap-2 text-slate-400"><Camera size={20} /><span className="text-xs font-bold">Upload Cover</span></div>}
-                {activeUploadField === 'coverImg' && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>}
-            </div>
-        </div>
+    return (
+        <div className="space-y-6 animate-in slide-in-from-right duration-300">
 
-        <div>
-            <label className={labelClass}>Gallery</label>
-            <div className="grid grid-cols-4 gap-3">
-                {form.gallery.map((img: string, i: number) => (
-                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 shadow-sm">
-                        <img src={img} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
-                        <button
-                            onClick={() => handleChange('gallery', form.gallery.filter((_: string, index: number) => index !== i))}
-                            className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                            <Trash2 size={12} />
-                        </button>
-                    </div>
-                ))}
-                <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
-                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'gallery')} className="absolute inset-0 opacity-0 cursor-pointer" />
-                    {activeUploadField === 'gallery' ? <Loader2 className="animate-spin text-blue-500" size={20} /> : <Plus className="text-slate-400" size={24} />}
+            {/* 1. Main Image */}
+            <div>
+                <label className={labelClass}>
+                    Main Image <span className="text-red-500">*</span>
+                </label>
+                <div className="relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'mainimg')}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
+
+                    {/* Loading Overlay */}
+                    {activeUploadField === 'mainimg' && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                            <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
+                            <span className="text-xs font-bold text-blue-600">Uploading...</span>
+                        </div>
+                    )}
+
+                    {/* Content */}
+                    {form.mainimg ? (
+                        <>
+                            <img src={form.mainimg} className="w-full h-full object-cover" alt="Main Service" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-0">
+                                <p className="text-white text-xs font-bold flex items-center gap-2">
+                                    <Camera size={16} /> Change Photo
+                                </p>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                            <UploadCloud className="mx-auto mb-2" size={32} />
+                            <span className="text-xs font-bold uppercase tracking-wide">Click to Upload</span>
+                        </div>
+                    )}
                 </div>
             </div>
-        </div>
 
-        <div className="flex gap-3 pt-4 border-t border-slate-100 mt-4">
-            <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">Back</button>
-            <button type="button" onClick={() => setStep(3)} disabled={!form.mainimg} className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed">Next <ChevronRight size={18} /></button>
+            {/* 2. Cover Image */}
+            <div>
+                <label className={labelClass}>
+                    Cover Banner (Optional)
+                </label>
+                <div className="relative h-32 rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'coverImg')}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
+                    {activeUploadField === 'coverImg' && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                            <Loader2 className="animate-spin text-blue-600" size={24} />
+                        </div>
+                    )}
+                    {form.coverImg ? (
+                        <img src={form.coverImg} className="w-full h-full object-cover" alt="Cover" />
+                    ) : (
+                        <div className="flex items-center gap-2 text-slate-400 group-hover:text-blue-500">
+                            <Camera size={20} />
+                            <span className="text-xs font-bold">Upload Cover</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* 3. Gallery Section - MULTI UPLOAD ENABLED */}
+            <div>
+                <label className={labelClass}>Gallery</label>
+                <div className="grid grid-cols-4 gap-3">
+                    {/* Existing Images */}
+                    {form.gallery.map((img: string, i: number) => (
+                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 shadow-sm bg-white">
+                            <img src={img} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
+                            <button
+                                type="button"
+                                onClick={() => removeGalleryImg(i)}
+                                className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shadow-sm z-10"
+                            >
+                                <Trash2 size={12} />
+                            </button>
+                        </div>
+                    ))}
+
+                    {/* Upload Button */}
+                    <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            multiple // ✅ THIS ENABLES MULTIPLE SELECTION
+                            onChange={(e) => handleImageUpload(e, 'gallery')}
+                            disabled={activeUploadField === 'gallery'}
+                            className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        {activeUploadField === 'gallery' ? (
+                            <Loader2 className="animate-spin text-blue-500" size={20} />
+                        ) : (
+                            <Plus className="text-slate-400" size={24} />
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex gap-3 pt-4 border-t border-slate-100 mt-4">
+                <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition"
+                >
+                    Back
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    disabled={!form.mainimg}
+                    className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Next <ChevronRight size={18} />
+                </button>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 // --- STEP 3: Schedule ---
 export const StepThreeSchedule = ({ form, handleChange, handleGetLocation, gettingLoc, toggleDay, setStep, DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }: any) => (

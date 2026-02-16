@@ -4,16 +4,21 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Pencil,
-    Settings,
-    Hexagon,
     Check,
     User,
     MapPin,
     FileText,
+    Link as LinkIcon, // Icon for Social
     X,
-    Loader2
+    Loader2,
+    Instagram,
+    Facebook,
+    Youtube,
+    Globe
 } from 'lucide-react';
+
 import StepOnePersonal from './StepOneProfile';
+import StepSocial from './StepSocial'; // ✅ Imported StepSocial
 import StepTwoAddress from './StepTwoAddress';
 import StepThreeKYC from './StepThreeKYC';
 
@@ -51,12 +56,13 @@ const EditModal = ({ isOpen, onClose, title, children, onSave, loading }: any) =
 interface ProfileViewProps {
     stats: any;
     user: any;
-    onEdit: () => void; // Keeps the original full wizard flow
+    onEdit: () => void;
 }
 
 export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     const router = useRouter();
-    const [activeModal, setActiveModal] = useState<'PERSONAL' | 'ADDRESS' | 'KYC' | null>(null);
+    // ✅ Added 'SOCIAL' to state
+    const [activeModal, setActiveModal] = useState<'PERSONAL' | 'SOCIAL' | 'ADDRESS' | 'KYC' | null>(null);
     const [loading, setLoading] = useState(false);
 
     // Form State (initialized with user data for editing)
@@ -70,10 +76,13 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
         preferredLanguage: user?.preferredLanguage || 'English',
         providerType: user?.providerType || 'BOTH',
         shopName: user?.shopName || '',
+
+        // Social Links
         instagramUrl: user?.instagramUrl || '',
         facebookUrl: user?.facebookUrl || '',
         youtubeUrl: user?.youtubeUrl || '',
         websiteUrl: user?.websiteUrl || '',
+
         // Addresses
         addressLine1: user?.addresses?.find((a: any) => a.type === 'Home')?.line1 || '',
         addressLine2: user?.addresses?.find((a: any) => a.type === 'Home')?.line2 || '',
@@ -81,6 +90,7 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
         city: user?.addresses?.find((a: any) => a.type === 'Home')?.city || '',
         state: user?.addresses?.find((a: any) => a.type === 'Home')?.state || '',
         pincode: user?.addresses?.find((a: any) => a.type === 'Home')?.pincode || '',
+
         // Business Address
         bizAddressLine1: user?.addresses?.find((a: any) => a.type === 'Work')?.line1 || '',
         bizAddressLine2: user?.addresses?.find((a: any) => a.type === 'Work')?.line2 || '',
@@ -88,6 +98,7 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
         bizState: user?.addresses?.find((a: any) => a.type === 'Work')?.state || '',
         bizPincode: user?.addresses?.find((a: any) => a.type === 'Work')?.pincode || '',
         sameAsPersonal: false,
+
         // KYC
         idProofType: user?.kycDetails?.idProofType || 'Aadhaar',
         idProofNumber: user?.kycDetails?.idProofNumber || '',
@@ -150,6 +161,9 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     const workAddress = user?.addresses?.find((a: any) => a.type === 'Work') || homeAddress;
     const kyc = user?.kycDetails || {};
 
+    // Helper to count social links
+    const socialCount = [user?.instagramUrl, user?.facebookUrl, user?.youtubeUrl, user?.websiteUrl].filter(Boolean).length;
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 relative">
 
@@ -162,6 +176,17 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 loading={loading}
             >
                 <StepOnePersonal form={form} updateField={updateField} errors={errors} getInputClass={getInputClass} />
+            </EditModal>
+
+            {/* ✅ New SOCIAL Modal */}
+            <EditModal
+                isOpen={activeModal === 'SOCIAL'}
+                onClose={() => setActiveModal(null)}
+                title="Edit Social Profiles"
+                onSave={handleSave}
+                loading={loading}
+            >
+                <StepSocial form={form} updateField={updateField} getInputClass={getInputClass} />
             </EditModal>
 
             <EditModal
@@ -188,9 +213,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
             {/* Summary Card */}
             <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center relative overflow-hidden group max-w-4xl mx-auto">
                 <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500 to-purple-600 opacity-10"></div>
-                {/* ✅ REVERTED: Clicking the profile image now triggers `onEdit` (Full Wizard) 
-                    instead of opening the Personal modal directly.
-                */}
                 <div className="relative inline-block cursor-pointer" onClick={onEdit}>
                     <img
                         src={imageUrl}
@@ -233,7 +255,53 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                     </div>
                 </div>
 
-                {/* 2. Location & Business Card */}
+                {/* 2. ✅ Social Profiles Card (New) */}
+                <div className="bg-white rounded-2xl shadow-sm border-l-4 border-pink-500 p-6 relative overflow-hidden group">
+                    <button
+                        onClick={() => setActiveModal('SOCIAL')}
+                        className="absolute top-4 right-4 p-2 bg-pink-50 text-pink-500 rounded-lg transition-all hover:bg-pink-100"
+                    >
+                        <Pencil size={18} />
+                    </button>
+                    <LinkIcon className="absolute -bottom-6 -right-6 text-pink-50 opacity-50" size={120} />
+
+                    <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2">
+                        <LinkIcon size={14} /> Social Profiles
+                    </h3>
+                    <div className="relative z-10">
+                        {socialCount > 0 ? (
+                            <div className="grid grid-cols-2 gap-3">
+                                {user?.instagramUrl && (
+                                    <a href={user.instagramUrl} target="_blank" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-pink-50 hover:text-pink-600 transition-colors">
+                                        <Instagram size={14} className="text-pink-500" /> Instagram
+                                    </a>
+                                )}
+                                {user?.facebookUrl && (
+                                    <a href={user.facebookUrl} target="_blank" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                        <Facebook size={14} className="text-blue-600" /> Facebook
+                                    </a>
+                                )}
+                                {user?.youtubeUrl && (
+                                    <a href={user.youtubeUrl} target="_blank" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors">
+                                        <Youtube size={14} className="text-red-600" /> YouTube
+                                    </a>
+                                )}
+                                {user?.websiteUrl && (
+                                    <a href={user.websiteUrl} target="_blank" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                                        <Globe size={14} className="text-emerald-500" /> Website
+                                    </a>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-4 text-slate-400">
+                                <LinkIcon size={32} className="mb-2 opacity-50" />
+                                <p className="text-xs">No social profiles linked</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 3. Location & Business Card */}
                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-orange-500 p-6 relative overflow-hidden group">
                     <button
                         onClick={() => setActiveModal('ADDRESS')}
@@ -258,8 +326,8 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                     </div>
                 </div>
 
-                {/* 3. KYC Card */}
-                <div className="bg-white rounded-2xl shadow-sm border-l-4 border-purple-500 p-6 relative overflow-hidden group md:col-span-2">
+                {/* 4. KYC Card */}
+                <div className="bg-white rounded-2xl shadow-sm border-l-4 border-purple-500 p-6 relative overflow-hidden group">
                     <button
                         onClick={() => setActiveModal('KYC')}
                         className="absolute top-4 right-4 p-2 bg-purple-50 text-purple-600 rounded-lg transition-all hover:bg-purple-100"
@@ -271,33 +339,23 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                     <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2">
                         <FileText size={14} /> KYC Verification
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                    <div className="space-y-4 relative z-10">
                         <div className="space-y-3 text-sm">
                             <p className="text-slate-600 flex justify-between"><strong>ID Type:</strong> <span className="text-slate-900">{kyc.idProofType || "N/A"}</span></p>
-                            <p className="text-slate-600 flex justify-between"><strong>GST Registered:</strong> <span className="text-slate-900">{kyc.gstRegistered ? "Yes" : "No"}</span></p>
-                            {kyc.gstRegistered && (
-                                <p className="text-slate-600 flex justify-between"><strong>GST Number:</strong> <span className="text-slate-900 font-mono">{kyc.gstNumber}</span></p>
-                            )}
+                            <p className="text-slate-600 flex justify-between"><strong>GST Reg:</strong> <span className="text-slate-900">{kyc.gstRegistered ? "Yes" : "No"}</span></p>
                         </div>
-                        <div className="flex flex-col justify-center items-center bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4">
-                            <p className="text-xs font-bold text-slate-500 uppercase mb-2">ID Proof Status</p>
+                        <div className="flex flex-col justify-center items-center bg-slate-50 rounded-xl border border-dashed border-slate-200 p-3">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Document Status</p>
                             {kyc.idProofFrontImg ? (
-                                <span className="text-emerald-600 font-bold flex items-center gap-2 bg-emerald-100 px-3 py-1 rounded-full text-sm">
-                                    <Check size={16} /> Uploaded & Verified
+                                <span className="text-emerald-600 font-bold flex items-center gap-1 bg-emerald-100 px-3 py-1 rounded-full text-xs">
+                                    <Check size={14} /> Verified
                                 </span>
                             ) : (
-                                <span className="text-red-500 font-bold text-sm bg-red-50 px-3 py-1 rounded-full">Missing Document</span>
+                                <span className="text-red-500 font-bold text-xs bg-red-50 px-3 py-1 rounded-full">Missing</span>
                             )}
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Bottom Global Edit (Keeps original flow) */}
-            <div className="flex justify-center mt-8">
-                <button onClick={onEdit} className="px-8 py-3 bg-[#0f172a] text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 active:scale-95">
-                    <Pencil size={16} /> Start Full Verification Wizard
-                </button>
             </div>
         </div>
     );

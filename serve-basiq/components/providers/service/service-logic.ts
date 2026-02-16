@@ -82,7 +82,6 @@ export function useServiceForm({
             if (!res.ok) throw new Error('Failed to fetch categories');
             return res.json();
         },
-        // ⚡ CACHING SETTINGS:
         staleTime: Infinity,
         gcTime: 1000 * 60 * 60 * 24,
         refetchOnWindowFocus: false,
@@ -95,60 +94,44 @@ export function useServiceForm({
         desc: serviceData?.desc || '',
         experience: serviceData?.experience || '',
         stock: serviceData?.stock || 1,
-
         categoryId: serviceData?.categoryId || '',
         subCategoryIds: normalizeSubIds(serviceData),
-
-        // ✅ Automatically set phone from user profile
         altPhone: serviceData?.altPhone || userData?.phone || '',
 
-        mainimg:
-            serviceData?.serviceimg ||
-            serviceData?.rentalImg ||
-            serviceData?.mainimg ||
-            '',
+        // Images
+        mainimg: serviceData?.serviceimg || serviceData?.rentalImg || serviceData?.mainimg || '',
         coverImg: serviceData?.coverImg || '',
         gallery: serviceData?.gallery || [],
 
-        priceType:
-            serviceData?.priceType ||
-            (listingType === 'RENTAL' ? 'DAILY' : 'FIXED'),
+        priceType: serviceData?.priceType || (listingType === 'RENTAL' ? 'DAILY' : 'FIXED'),
         price: serviceData?.price || '',
 
         // Rental Fields
         itemCondition: serviceData?.itemCondition || 'New',
         securityDeposit: serviceData?.securityDeposit || '',
         minDuration: serviceData?.minDuration || '1 Hour',
-        // maxDuration removed from state
         rentalMode: serviceData?.rentalMode || 'PICKUP',
 
+        // Location
         addressLine1: serviceData?.addressLine1 || userAddress?.line1 || '',
         city: serviceData?.city || userAddress?.city || '',
         state: serviceData?.state || userAddress?.state || '',
         pincode: serviceData?.pincode || userAddress?.pincode || '',
-
         latitude: Number(serviceData?.latitude) || 0,
         longitude: Number(serviceData?.longitude) || 0,
         radiusKm: serviceData?.radiusKm || 10,
 
-        workingDays:
-            serviceData?.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        // Schedule
+        workingDays: serviceData?.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
         openTime: serviceData?.openTime || '09:00',
         closeTime: serviceData?.closeTime || '18:00',
     }));
 
     const activeSubCategories = useMemo(() => {
-        const selectedCat = categories.find(
-            (c: Category) => c.id === form.categoryId
-        );
-
-        if (selectedCat) {
-            return selectedCat.children || selectedCat.subcategories || [];
-        }
-
+        const selectedCat = categories.find((c: Category) => c.id === form.categoryId);
+        if (selectedCat) return selectedCat.children || selectedCat.subcategories || [];
         const existing = serviceData?.subcategory || serviceData?.subcategories;
         if (!existing) return [];
-
         return Array.isArray(existing) ? existing : [existing];
     }, [categories, form.categoryId, serviceData]);
 
@@ -186,44 +169,55 @@ export function useServiceForm({
         });
     };
 
-    const handleImageUpload = async (
-        e: React.ChangeEvent<HTMLInputElement>,
-        field: string
-    ) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    // ✅ UPDATED: Handles Multiple Images for Gallery
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        setUploading(true);
+        setActiveUploadField(field);
 
         try {
-            setUploading(true);
-            setActiveUploadField(field);
+            // Helper to process a single file (Compress -> Upload)
+            const processFile = async (file: File) => {
+                let uploadFile = file;
+                if (file.type.startsWith('image/')) {
+                    uploadFile = await imageCompression(file, {
+                        maxSizeMB: 1,
+                        maxWidthOrHeight: 1920,
+                        useWebWorker: true,
+                    });
+                }
+                return await uploadToBackend(uploadFile);
+            };
 
-            let uploadFile = file;
-            if (file.type.startsWith('image/')) {
-                uploadFile = await imageCompression(file, {
-                    maxSizeMB: 1,
-                    maxWidthOrHeight: 1920,
-                    useWebWorker: true,
-                });
+            if (field === 'gallery') {
+                // --- MULTIPLE FILE UPLOAD LOGIC ---
+                const uploadPromises = Array.from(files).map((file) => processFile(file));
+                const newUrls = await Promise.all(uploadPromises);
+
+                // Append new URLs to existing gallery
+                handleChange('gallery', [...form.gallery, ...newUrls]);
+                showToast?.(`${newUrls.length} images uploaded`, 'success');
+            } else {
+                // --- SINGLE FILE UPLOAD LOGIC (Main Img / Cover) ---
+                const url = await processFile(files[0]);
+                handleChange(field, url);
+                showToast?.('Image uploaded', 'success');
             }
 
-            const url = await uploadToBackend(uploadFile);
-
-            if (field === 'gallery')
-                handleChange('gallery', [...form.gallery, url]);
-            else handleChange(field, url);
-
-            showToast?.('Image uploaded', 'success');
-        } catch {
+        } catch (error) {
+            console.error(error);
             showToast?.('Upload failed', 'error');
         } finally {
             setUploading(false);
             setActiveUploadField(null);
+            e.target.value = ''; // Reset input
         }
     };
 
     const handleGetLocation = () => {
         if (!navigator.geolocation) return;
-
         setGettingLoc(true);
         navigator.geolocation.getCurrentPosition(
             pos => {
@@ -253,16 +247,13 @@ export function useServiceForm({
                 longitude: Number(form.longitude),
                 subCategoryIds: form.subCategoryIds,
                 [listingType === 'RENTAL' ? 'rentalImg' : 'serviceimg']: form.mainimg,
-
-                // Rental fields (maxDuration removed)
                 itemCondition: form.itemCondition,
                 securityDeposit: Number(form.securityDeposit),
                 minDuration: form.minDuration,
                 rentalMode: form.rentalMode
             };
 
-            const endpoint =
-                listingType === 'RENTAL' ? '/api/rentals' : '/api/services';
+            const endpoint = listingType === 'RENTAL' ? '/api/rentals' : '/api/services';
 
             const res = await fetch(endpoint, {
                 method: 'POST',
@@ -288,24 +279,10 @@ export function useServiceForm({
     };
 
     return {
-        step,
-        setStep,
-        loading,
-        uploading,
-        activeUploadField,
-        gettingLoc,
-        categories,
-        loadingCats,
-        activeSubCategories,
-        form,
-        listingType,
-        setListingType,
-        handleChange,
-        toggleSubCategory,
-        toggleDay,
-        handleImageUpload,
-        removeGalleryImg,
-        handleGetLocation,
-        handleSubmit,
+        step, setStep, loading, uploading, activeUploadField, gettingLoc,
+        categories, loadingCats, activeSubCategories,
+        form, listingType, setListingType,
+        handleChange, toggleSubCategory, toggleDay,
+        handleImageUpload, removeGalleryImg, handleGetLocation, handleSubmit,
     };
 }

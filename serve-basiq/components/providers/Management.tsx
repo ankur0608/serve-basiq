@@ -51,7 +51,13 @@ const ServiceTableRow = memo(({ s, index, onEdit, onDelete }: { s: any, index: n
                                 {s.listingType === 'RENTAL' ? 'Rental' : 'Service'}
                             </span>
                         </div>
-                        <p className="text-[10px] text-slate-400 line-clamp-1">{s.desc || 'No description provided'}</p>
+                        <p className="text-[10px] text-slate-400">
+                            {s.desc
+                                ? s.desc.length > 80
+                                    ? s.desc.slice(0, 80) + "..."
+                                    : s.desc
+                                : "No description provided"}
+                        </p>
                     </div>
                 </div>
             </td>

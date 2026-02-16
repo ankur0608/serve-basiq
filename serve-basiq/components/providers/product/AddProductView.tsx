@@ -40,7 +40,10 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const { saveProduct, isSaving } = useProducts(userId);
     const [step, setStep] = useState(1);
     const [uploading, setUploading] = useState(false);
+
+    // Track which field is currently uploading ('main' or 'gallery')
     const [activeUploadField, setActiveUploadField] = useState<'main' | 'gallery' | null>(null);
+
     const [categories, setCategories] = useState<Category[]>([]);
 
     const [form, setForm] = useState<ProductForm>({
@@ -57,7 +60,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         deliveryType: editingProduct?.deliveryType || 'DELIVERY'
     });
 
-    // Fetch Categories
+    // --- Fetch Categories ---
     useEffect(() => {
         const fetchCategories = async () => {
             try {
@@ -72,13 +75,14 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         fetchCategories();
     }, [showToast]);
 
-    // Derived State
+    // --- Derived State ---
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(c => c.id === form.categoryId);
         return selectedCat ? selectedCat.children : [];
     }, [categories, form.categoryId]);
 
-    // Handlers
+    // --- Handlers ---
+
     const handleChange = useCallback((field: keyof ProductForm, value: any) => {
         setForm(prev => {
             if (field === 'categoryId') {
@@ -88,7 +92,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
-    const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, target: 'main' | 'gallery') => {
+    // 1. Single Image Upload (Main Product Image)
+    const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, target: 'main') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -97,15 +102,38 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
         try {
             const url = await uploadImage(file);
-            if (target === 'main') {
-                setForm(prev => ({ ...prev, productImage: url }));
-            } else {
-                setForm(prev => ({ ...prev, gallery: [...prev.gallery, url] }));
-            }
-            showToast("Image uploaded!", "success");
+            setForm(prev => ({ ...prev, productImage: url }));
+            showToast("Main image uploaded!", "success");
         } catch (e) {
             console.error(e);
             showToast("Upload failed", "error");
+        } finally {
+            setUploading(false);
+            setActiveUploadField(null);
+        }
+    }, [showToast]);
+
+    // 2. Multiple Image Upload (Gallery)
+    const handleGalleryUpload = useCallback(async (files: File[]) => {
+        if (!files || files.length === 0) return;
+
+        setUploading(true);
+        setActiveUploadField('gallery');
+
+        try {
+            // Upload all files in parallel
+            const uploadPromises = files.map(file => uploadImage(file));
+            const uploadedUrls = await Promise.all(uploadPromises);
+
+            setForm(prev => ({
+                ...prev,
+                gallery: [...prev.gallery, ...uploadedUrls]
+            }));
+
+            showToast(`${uploadedUrls.length} images added to gallery`, "success");
+        } catch (e) {
+            console.error(e);
+            showToast("One or more images failed to upload", "error");
         } finally {
             setUploading(false);
             setActiveUploadField(null);
@@ -183,7 +211,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                             form={form}
                             uploading={uploading}
                             activeUploadField={activeUploadField}
-                            handleImageUpload={handleImageUpload}
+                            handleImageUpload={handleImageUpload}     // Single (Main)
+                            handleGalleryUpload={handleGalleryUpload} // Multiple (Gallery)
                             removeGalleryImg={removeGalleryImg}
                             setStep={setStep}
                         />
