@@ -44,12 +44,12 @@ const Navbar = () => {
                 <div className="flex md:hidden items-center justify-between h-14">
                     <Link href="/" className="flex items-center">
                         <Image
-                            src="/mobile-navbar.png"
+                            src="/navbar.png"
                             alt="Servebasiq Logo"
                             width={170}
                             height={50}
                             priority
-                            className="h-14 w-auto"
+                            className="h-18 w-auto"
                         />
 
                     </Link>

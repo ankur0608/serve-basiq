@@ -36,7 +36,7 @@ export default function ProductsExplorer() {
         rawProducts,
         rawCategories,
         isLoading,
-        isFetching, // 👈 Use this
+        isFetching,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage
@@ -73,13 +73,13 @@ export default function ProductsExplorer() {
         toggleFavorite(e, id);
     }, [toggleFavorite]);
 
-    // Show full skeleton ONLY on the very first load
     if (isLoading) return <ProductsSkeleton />;
 
     return (
-        <section className="h-screen flex flex-col bg-slate-50 text-slate-800">
-            {/* --- HEADER (Fixed) --- */}
-            <div className="shrink-0 z-10 pt-4 md:pt-6 bg-slate-50">
+        // Changed h-screen to min-h-screen to enable page-level scrolling
+        <section className="min-h-screen bg-slate-50 text-slate-800 pb-10">
+            {/* --- HEADER SECTION --- */}
+            <div className="pt-4 md:pt-6 bg-slate-50">
                 <div className="container mx-auto max-w-7xl px-4 mb-2">
                     <ProductCategories categories={availableCategories} />
                 </div>
@@ -96,23 +96,26 @@ export default function ProductsExplorer() {
                 </div>
             </div>
 
-            {/* --- CONTENT (Scrollable Area) --- */}
-            <div className="flex-1 min-h-0 container mx-auto max-w-7xl px-4 mt-2 flex gap-6 lg:gap-8 pb-4">
+            {/* --- CONTENT AREA --- */}
+            <div className="container mx-auto max-w-7xl px-4 mt-2 flex gap-6 lg:gap-8">
 
-                {/* SIDEBAR (Desktop) */}
-                <aside className="hidden md:block w-[260px] shrink-0 overflow-y-auto custom-scrollbar">
-                    <ProductFiltersDesktop
-                        selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
-                        selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
-                        selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
-                        availableCategories={availableCategories} availableSubcategories={availableSubcategories}
-                        uniqueLocations={uniqueLocations} resetFilters={resetFilters}
-                    />
+                {/* SIDEBAR (Desktop) - Made Sticky */}
+                <aside className="hidden md:block w-[260px] shrink-0">
+                    <div className="sticky top-24 h-fit">
+                        <ProductFiltersDesktop
+                            selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
+                            selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
+                            selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
+                            availableCategories={availableCategories} availableSubcategories={availableSubcategories}
+                            uniqueLocations={uniqueLocations} resetFilters={resetFilters}
+                        />
+                    </div>
                 </aside>
 
-                {/* MAIN GRID */}
-                <main className="relative flex-1 min-w-0 h-full flex flex-col">
-                    <div className="hidden md:block mb-4 shrink-0">
+                {/* MAIN AREA */}
+                <main className="relative flex-1 min-w-0">
+                    {/* Desktop Search Bar */}
+                    <div className="hidden md:block mb-6">
                         <div className="relative w-full">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                                 <FaMagnifyingGlass size={18} />
@@ -130,16 +133,16 @@ export default function ProductsExplorer() {
                         </div>
                     </div>
 
-                    {/* --- LOADING OVERLAY (Shows when filtering) --- */}
+                    {/* LOADING OVERLAY (Filtering State) */}
                     {isFetching && !isFetchingNextPage && rawProducts.length > 0 && (
-                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-50 flex justify-center pt-20 transition-all duration-300 pointer-events-none">
-                            <div className="bg-white p-3 rounded-full shadow-xl border border-slate-100">
+                        <div className="fixed inset-0 bg-white/40 z-50 flex justify-center pt-40 pointer-events-none">
+                            <div className="bg-white p-3 rounded-full shadow-xl border h-fit">
                                 <Loader2 className="animate-spin text-slate-900 w-6 h-6" />
                             </div>
                         </div>
                     )}
 
-                    <div className="flex-1 min-h-0">
+                    <div>
                         {rawProducts.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
                                 <div className="p-4 bg-slate-50 rounded-full mb-4">
@@ -150,23 +153,30 @@ export default function ProductsExplorer() {
                             </div>
                         ) : (
                             <VirtuosoGrid
-                                style={{ height: '100%' }}
+                                useWindowScroll
                                 totalCount={rawProducts.length}
                                 endReached={() => hasNextPage && fetchNextPage()}
-                                overscan={2000}
+                                overscan={1000}
                                 components={{
                                     List: forwardRef<HTMLDivElement, ComponentPropsWithRef<'div'>>(({ style, children, ...props }, ref) => (
                                         <div
                                             ref={ref}
                                             {...props}
-                                            style={style}
-                                            className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-20"
+                                            style={{
+                                                ...style,
+                                                display: 'grid',
+                                                // Responsive logic using Tailwind's breakpoints directly in style is hard,
+                                                // so we set the base style and use className for overrides.
+                                                gap: '1rem',
+                                            }}
+                                            // 2 columns by default (mobile), 2 on md, 3 on lg/desktop
+                                            className="grid grid-cols-2 lg:grid-cols-3 md:gap-6 pb-20"
                                         >
                                             {children}
                                         </div>
                                     )),
                                     Footer: () => isFetchingNextPage ? (
-                                        <div className="col-span-full py-8 flex justify-center">
+                                        <div className="py-10 flex justify-center w-full">
                                             <Loader2 className="animate-spin h-6 w-6 text-slate-400" />
                                         </div>
                                     ) : null

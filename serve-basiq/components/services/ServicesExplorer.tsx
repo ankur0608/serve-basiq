@@ -32,7 +32,7 @@ export default function ServicesExplorer() {
         favoriteIds,
         toggleFavorite,
         isLoading,
-        isFetching, // 👈 Grab this
+        isFetching,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage
@@ -65,14 +65,12 @@ export default function ServicesExplorer() {
         toggleFavorite({ id, type: 'SERVICE' });
     }, [toggleFavorite]);
 
-    // Only show full skeleton on INITIAL load. 
-    // Filtering will use the overlay below.
     if (isLoading) return <ProductsSkeleton />;
 
     return (
-        <section className="h-screen flex flex-col bg-slate-50 text-slate-800">
+        <section className="min-h-screen bg-slate-50 text-slate-800 pb-10">
             {/* --- HEADER SECTION --- */}
-            <div className="shrink-0 z-10 pt-4 md:pt-6 bg-slate-50">
+            <div className="pt-4 md:pt-6 bg-slate-50">
                 <div className="container mx-auto max-w-7xl px-4 mb-2">
                     <ServiceCategories categories={categories} />
                 </div>
@@ -89,24 +87,23 @@ export default function ServicesExplorer() {
                 </div>
             </div>
 
-            {/* --- MAIN CONTENT LAYOUT --- */}
-            <div className="flex-1 min-h-0 container mx-auto max-w-7xl px-4 mt-2 flex gap-6 lg:gap-8 pb-4">
-
+            <div className="container mx-auto max-w-7xl px-4 mt-2 flex gap-6 lg:gap-8">
                 {/* SIDEBAR (Desktop) */}
-                <aside className="hidden md:block w-[260px] shrink-0 overflow-y-auto custom-scrollbar">
-                    <ServiceFiltersDesktop
-                        selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
-                        selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
-                        selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
-                        availableCategories={categories} availableSubcategories={availableSubcategories}
-                        uniqueLocations={uniqueLocations} resetFilters={resetFilters}
-                    />
+                <aside className="hidden md:block w-[260px] shrink-0">
+                    <div className="sticky top-24 h-fit">
+                        <ServiceFiltersDesktop
+                            selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
+                            selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
+                            selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
+                            availableCategories={categories} availableSubcategories={availableSubcategories}
+                            uniqueLocations={uniqueLocations} resetFilters={resetFilters}
+                        />
+                    </div>
                 </aside>
 
                 {/* GRID AREA */}
-                <main className="relative flex-1 min-w-0 h-full flex flex-col">
-                    {/* Search Bar */}
-                    <div className="hidden md:block mb-4 shrink-0">
+                <main className="relative flex-1 min-w-0">
+                    <div className="hidden md:block mb-6">
                         <div className="relative w-full">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                                 <FaMagnifyingGlass size={18} />
@@ -124,17 +121,16 @@ export default function ServicesExplorer() {
                         </div>
                     </div>
 
-                    {/* LOADING OVERLAY (Shows when filtering) */}
+                    {/* LOADING OVERLAY */}
                     {isFetching && !isFetchingNextPage && services.length > 0 && (
-                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-50 flex justify-center pt-20 transition-all duration-300 pointer-events-none">
-                            <div className="bg-white p-3 rounded-full shadow-xl border border-slate-100">
+                        <div className="fixed inset-0 bg-white/40 z-50 flex justify-center pt-40 pointer-events-none">
+                            <div className="bg-white p-3 rounded-full shadow-xl border h-fit">
                                 <Loader2 className="animate-spin text-slate-900 w-6 h-6" />
                             </div>
                         </div>
                     )}
 
-                    {/* VIRTUALIZED GRID */}
-                    <div className="flex-1 min-h-0">
+                    <div>
                         {services.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
                                 <div className="p-4 bg-slate-50 rounded-full mb-4">
@@ -145,23 +141,29 @@ export default function ServicesExplorer() {
                             </div>
                         ) : (
                             <VirtuosoGrid
-                                style={{ height: '100%' }}
+                                useWindowScroll
                                 totalCount={services.length}
                                 endReached={() => hasNextPage && fetchNextPage()}
-                                overscan={2000}
+                                overscan={1000}
                                 components={{
                                     List: forwardRef<HTMLDivElement, ComponentPropsWithRef<'div'>>(({ style, children, ...props }, ref) => (
                                         <div
                                             ref={ref}
                                             {...props}
-                                            style={style}
-                                            className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-20"
+                                            style={{
+                                                ...style,
+                                                display: 'grid',
+                                                // We remove the hardcoded column count from style so className handles it
+                                                gap: '1rem',
+                                            }}
+                                            // 2 columns mobile, 3 columns desktop (lg breakpoint)
+                                            className="grid grid-cols-2 lg:grid-cols-3 md:gap-6 pb-20"
                                         >
                                             {children}
                                         </div>
                                     )),
                                     Footer: () => isFetchingNextPage ? (
-                                        <div className="col-span-full py-8 flex justify-center">
+                                        <div className="py-10 flex justify-center w-full">
                                             <Loader2 className="animate-spin h-6 w-6 text-slate-400" />
                                         </div>
                                     ) : null
