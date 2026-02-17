@@ -2,7 +2,6 @@
 
 import { Filter, MapPin } from 'lucide-react';
 
-// 👇 Define the interface here directly to avoid import errors
 export interface CategoryData {
     id: string;
     name: string;
@@ -33,10 +32,10 @@ export default function ServiceFiltersDesktop({
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 h-fit sticky top-4">
-            {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h3 className="font-bold text-lg text-slate-900">Filters</h3>
                 <button
+                    type="button" // 👈 Added type="button"
                     onClick={resetFilters}
                     className="text-sm font-bold text-red-500 hover:text-red-600 hover:underline transition"
                 >
@@ -44,9 +43,7 @@ export default function ServiceFiltersDesktop({
                 </button>
             </div>
 
-            {/* Filter Groups */}
             <div className="space-y-6">
-
                 {/* Category */}
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Category</label>
@@ -104,7 +101,6 @@ export default function ServiceFiltersDesktop({
                         <MapPin className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                     </div>
                 </div>
-
             </div>
         </div>
     );

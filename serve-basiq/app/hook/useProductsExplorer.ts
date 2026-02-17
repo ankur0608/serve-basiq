@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 
 // --- SHARED TYPES ---
 export interface ProductItem {
@@ -77,8 +77,8 @@ interface UseProductsExplorerProps {
     category?: string;
     subcategory?: string;
     search?: string;
-    location?: string; // Added
-    sort?: string;     // Added
+    location?: string;
+    sort?: string;
 }
 
 export function useProductsExplorer({
@@ -90,19 +90,17 @@ export function useProductsExplorer({
 }: UseProductsExplorerProps = {}) {
     const queryClient = useQueryClient();
 
-    // --- 1. Debounce Search Term ---
-    // This prevents API calls on every keystroke. 
-    // It waits 500ms after the user stops typing.
+    // 1. Debounce Search
     const [debouncedSearch, setDebouncedSearch] = useState(search);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(search);
-        }, 500); // 500ms delay
+        }, 500);
         return () => clearTimeout(timer);
     }, [search]);
 
-    // --- 2. Fetch User Profile ---
+    // 2. Fetch User Profile
     const { data: currentUser } = useQuery({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
@@ -110,10 +108,10 @@ export function useProductsExplorer({
             if (!res.ok) return null;
             return res.json();
         },
-        staleTime: 1000 * 60 * 10, // Keep fresh for 10 mins
+        staleTime: 1000 * 60 * 10,
     });
 
-    // --- 3. Fetch Favorites ---
+    // 3. Fetch Favorites
     const { data: favData } = useQuery({
         queryKey: ['favorites', 'user'],
         queryFn: async () => {
@@ -124,25 +122,21 @@ export function useProductsExplorer({
         staleTime: 1000 * 60 * 5,
     });
 
-    // --- 4. INFINITE Query for Products ---
+    // 4. INFINITE Query
     const {
         data,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
-        isLoading
+        isLoading,
+        isFetching, // 👈 Export this to detect background fetching
     } = useInfiniteQuery({
-        // Include ALL filters in the key. 
-        // Using 'debouncedSearch' instead of 'search' is key to preventing spam.
         queryKey: ['products', 'infinite', category, subcategory, debouncedSearch, location, sort],
-
         queryFn: async ({ pageParam = undefined }) => {
             const params = new URLSearchParams();
             params.append('limit', '12');
 
             if (pageParam) params.append('cursor', pageParam as string);
-
-            // Pass filters to Backend
             if (category) params.append('categoryId', category);
             if (subcategory) params.append('subcategoryId', subcategory);
             if (debouncedSearch) params.append('search', debouncedSearch);
@@ -155,8 +149,13 @@ export function useProductsExplorer({
         },
         getNextPageParam: (lastPage: any) => lastPage.nextCursor ?? undefined,
         initialPageParam: undefined,
-        staleTime: 1000 * 60 * 2, // Data remains "fresh" for 2 minutes. No immediate refetch.
-        refetchOnWindowFocus: false, // Don't refetch when user switches tabs
+
+        // --- KEY FIX: Prevents white screen flash ---
+        placeholderData: keepPreviousData,
+
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
+        refetchOnWindowFocus: false,
     });
 
     // Flatten pages
@@ -166,17 +165,17 @@ export function useProductsExplorer({
         return normalizeProducts(allItems);
     }, [data]);
 
-    // --- 5. Fetch Categories ---
+    // 5. Fetch Categories
     const { data: categoriesData } = useQuery({
         queryKey: ['categories', 'product'],
         queryFn: async () => {
             const res = await fetch('/api/categories?type=PRODUCT');
             return res.json();
         },
-        staleTime: 1000 * 60 * 60, // 1 Hour
+        staleTime: 1000 * 60 * 60 * 24,
     });
 
-    // --- Action: Toggle Favorite (Optimistic Update) ---
+    // Toggle Favorite
     const toggleMutation = useMutation({
         mutationFn: async ({ id }: { id: string }) => {
             await fetch('/api/favorites/toggle', {
@@ -216,6 +215,7 @@ export function useProductsExplorer({
         rawProducts,
         rawCategories: (categoriesData || []) as CategoryData[],
         isLoading,
+        isFetching, // Return this
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage

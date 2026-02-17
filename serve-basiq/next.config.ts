@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
       // 👇 NEWLY ADDED DOMAINS
       {
         protocol: 'https',
+        hostname: 'picsum.photos', // Added this line to fix your error
+      },
+      {
+        protocol: 'https',
         hostname: 'via.placeholder.com',
       },
       {

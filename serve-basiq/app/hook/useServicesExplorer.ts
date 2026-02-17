@@ -1,8 +1,7 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { useFavorites } from './useFavorites'; // Ensure this points to your file
+import { useFavorites } from './useFavorites';
 
-// --- TYPES ---
 export interface ServiceItem {
     id: string;
     name: string;
@@ -28,17 +27,12 @@ interface UseServicesExplorerProps {
 }
 
 export function useServicesExplorer({
-    search,
-    category,
-    subcategory,
-    location,
-    sort
+    search, category, subcategory, location, sort
 }: UseServicesExplorerProps) {
 
-    // 1. Reuse your existing Favorites Hook
+    const queryClient = useQueryClient();
     const { favoriteServices, toggleFavorite } = useFavorites();
 
-    // 2. User Profile Query
     const { data: currentUser } = useQuery({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
@@ -46,33 +40,31 @@ export function useServicesExplorer({
             if (!res.ok) return null;
             return res.json();
         },
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 10,
     });
 
-    // 3. Categories Query
     const { data: categoriesData } = useQuery({
         queryKey: ['categories', 'service'],
         queryFn: async () => {
             const res = await fetch('/api/categories?type=SERVICE');
             return res.json();
         },
-        staleTime: 1000 * 60 * 60,
+        staleTime: 1000 * 60 * 60 * 24,
     });
 
-    // 4. Infinite Scroll Query
     const {
         data,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
         isLoading,
+        isFetching, // 👈 Needed for the loading overlay
         isError
     } = useInfiniteQuery({
         queryKey: ['services', 'explorer', search, category, subcategory, location, sort],
         queryFn: async ({ pageParam = undefined }) => {
             const params = new URLSearchParams();
             params.append('limit', '12');
-
             if (pageParam) params.append('cursor', pageParam as string);
             if (search) params.append('search', search);
             if (category) params.append('categoryId', category);
@@ -86,10 +78,15 @@ export function useServicesExplorer({
         },
         getNextPageParam: (lastPage: any) => lastPage.nextCursor ?? undefined,
         initialPageParam: undefined,
-        staleTime: 1000 * 60 * 1,
+
+        // --- CRITICAL FIX FOR FLASHING ---
+        placeholderData: keepPreviousData, // Keeps old data visible while fetching new filter data
+
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
+        refetchOnWindowFocus: false,
     });
 
-    // 5. Data Normalization (Moved logic out of component)
     const services = useMemo(() => {
         if (!data) return [];
         const rawItems = data.pages.flatMap((page: any) => page.items || []);
@@ -115,9 +112,10 @@ export function useServicesExplorer({
         services,
         categories: categoriesData || [],
         currentUser,
-        favoriteIds: favoriteServices, // Array of IDs from your hook
+        favoriteIds: favoriteServices,
         toggleFavorite,
         isLoading,
+        isFetching, // Return this
         isError,
         fetchNextPage,
         hasNextPage,

@@ -2,7 +2,6 @@
 
 import { Filter, MapPin } from 'lucide-react';
 
-// Use 'any' for CategoryData if not strictly typed, or import the specific type
 interface DesktopFiltersProps {
     selectedCategory: string;
     setSelectedCategory: (val: string) => void;
@@ -30,6 +29,7 @@ export default function ProductFiltersDesktop({
             <div className="flex items-center justify-between mb-6">
                 <h3 className="font-bold text-lg text-slate-900">Filters</h3>
                 <button
+                    type="button" // 👈 Added type="button"
                     onClick={resetFilters}
                     className="text-sm font-bold text-red-500 hover:text-red-600 hover:underline transition"
                 >

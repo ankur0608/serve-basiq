@@ -59,6 +59,7 @@ export default function ProductFiltersMobile({
                     />
                 </div>
                 <button
+                    type="button" // 👈 Added type="button"
                     onClick={() => setIsOpen(true)}
                     className="bg-slate-900 text-white w-12 rounded-lg flex items-center justify-center active:scale-95 transition shadow-md"
                 >
@@ -82,6 +83,7 @@ export default function ProductFiltersMobile({
                         <div className="flex items-center justify-between p-4 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-900">Filters</h3>
                             <button
+                                type="button" // 👈 Added type="button"
                                 onClick={() => setIsOpen(false)}
                                 className="p-2 hover:bg-slate-100 rounded-full text-slate-500"
                             >
@@ -168,17 +170,20 @@ export default function ProductFiltersMobile({
                                     <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                                 </div>
                             </div>
+
                         </div>
 
                         {/* Footer Buttons */}
                         <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
                             <button
+                                type="button" // 👈 Added type="button"
                                 onClick={handleReset}
                                 className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition"
                             >
                                 Reset
                             </button>
                             <button
+                                type="button" // 👈 Added type="button"
                                 onClick={handleApply}
                                 className="flex-[2] py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-lg shadow-slate-900/20"
                             >

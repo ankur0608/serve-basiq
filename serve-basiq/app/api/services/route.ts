@@ -70,7 +70,6 @@ export async function GET(req: Request) {
         }, { status: 500 });
     }
 }
-// ✅ POST: Create/Update Service
 export async function POST(req: Request) {
     try {
         const body = await req.json();
