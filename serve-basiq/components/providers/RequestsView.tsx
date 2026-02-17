@@ -230,6 +230,9 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
     const { data, isLoading, refetch } = useProviderRequests(currentUser?.id, providerType);
     const bookings = data?.bookings || [];
     const orders = data?.orders || [];
+    // Initialize active tab as 'ALL' or 'PENDING' based on preference. 
+    // Since you want ALL first, I set default to 'PENDING' (most important) or 'ALL' (if you prefer). 
+    // Leaving as 'PENDING' for focus, but 'ALL' is now first in the list.
     const [activeTab, setActiveTab] = useState<TabType>('PENDING');
     const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -322,12 +325,13 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
         }
     };
 
+    // --- MODIFIED: 'ALL' moved to first position ---
     const statusTabs: { id: TabType; label: string; icon: any }[] = [
+        { id: 'ALL', label: 'All', icon: Filter }, // Moved to first
         { id: 'PENDING', label: 'Pending', icon: Clock },
         { id: 'ACTIVE', label: 'Active', icon: Truck },
         { id: 'COMPLETED', label: 'Done', icon: CheckCircle2 },
         { id: 'CANCELLED', label: 'Rejected', icon: XCircle },
-        { id: 'ALL', label: 'All', icon: Filter },
     ];
 
     if (isLoading) return <div className="h-96 flex flex-col items-center justify-center text-slate-400"><Loader2 className="animate-spin text-blue-600 mb-2" size={32} /><p className="text-sm font-medium">Loading requests...</p></div>;
@@ -336,11 +340,12 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 {providerType === 'BOTH' ? (
-                    <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
+                    <div className="flex w-full md:w-auto p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
+                        {/* --- MODIFIED: Added responsive padding (px-2 md:px-16) to fix mobile overflow --- */}
                         <button
                             onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }}
                             className={clsx(
-                                "flex-1 px-16 py-3 text-sm font-bold rounded-lg transition-all",
+                                "flex-1 px-2 md:px-16 py-3 text-sm font-bold rounded-lg transition-all whitespace-nowrap",
                                 viewMode === 'SERVICES'
                                     ? "bg-slate-900 text-white shadow-md"
                                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
@@ -352,7 +357,7 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
                         <button
                             onClick={() => { setViewMode('PRODUCTS'); setActiveTab('PENDING'); }}
                             className={clsx(
-                                "flex-1 px-16 py-3 text-sm font-bold rounded-lg transition-all",
+                                "flex-1 px-2 md:px-16 py-3 text-sm font-bold rounded-lg transition-all whitespace-nowrap",
                                 viewMode === 'PRODUCTS'
                                     ? "bg-slate-900 text-white shadow-md"
                                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
@@ -373,9 +378,9 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
             </div>
 
             <div className="border-b border-slate-200">
-                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 w-full">
                     {statusTabs.map((tab) => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={clsx("px-4 py-2.5 text-sm font-bold transition-all flex items-center gap-2 border-b-2 whitespace-nowrap", activeTab === tab.id ? "border-slate-900 text-slate-900 bg-slate-50/50 rounded-t-lg" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg")}>
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={clsx("px-4 py-2.5 text-sm font-bold transition-all flex items-center gap-2 border-b-2 whitespace-nowrap flex-shrink-0", activeTab === tab.id ? "border-slate-900 text-slate-900 bg-slate-50/50 rounded-t-lg" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg")}>
                             <tab.icon size={16} className={activeTab === tab.id ? (viewMode === 'SERVICES' ? "text-blue-600" : "text-purple-600") : ""} />
                             {tab.label}
                             <span className={clsx("ml-1 px-1.5 py-0.5 rounded-full text-[10px]", activeTab === tab.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}>

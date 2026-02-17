@@ -16,7 +16,9 @@ import {
     FaBuilding,
 } from "react-icons/fa6";
 import clsx from "clsx";
-import AppImage from "@/components/ui/AppImage"; // Ensure this path is correct based on your project
+import AppImage from "@/components/ui/AppImage"; // Ensure this path is correct
+import Input from "@/components/ui/Input"; // Imported Reusable Component
+import Select from "@/components/ui/Select"; // Imported Reusable Component
 
 // --- TYPES ---
 export interface ProfileData {
@@ -46,13 +48,11 @@ interface ProfileEditModalProps {
 }
 
 // --- HELPER: NORMALIZE DATA FOR COMPARISON ---
-// (Converts nulls/undefined to empty strings to prevent false "changes")
 const normalize = (data: ProfileData) => {
     return {
         name: data.name || "",
         email: data.email || "",
         phone: data.phone || "",
-        // We don't compare 'image' string here, we check the 'file' object instead
         dateOfBirth: data.dateOfBirth || "",
         preferredLanguage: data.preferredLanguage || "English",
         addressLine1: data.addressLine1 || "",
@@ -86,17 +86,15 @@ export default function ProfileEditModal({
         if (isOpen && initialData) {
             setFormData(initialData);
             setPreview(initialData.image || null);
-            setFile(null); // Reset uploaded file
+            setFile(null);
         }
     }, [isOpen, initialData]);
 
-    // 2. DIRTY CHECKING: Has data changed?
+    // 2. DIRTY CHECKING
     const hasChanges = useMemo(() => {
-        if (file) return true; // New file uploaded = changed
-
+        if (file) return true;
         const current = normalize(formData);
         const initial = normalize(initialData);
-
         return JSON.stringify(current) !== JSON.stringify(initial);
     }, [formData, initialData, file]);
 
@@ -139,17 +137,13 @@ export default function ProfileEditModal({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        // Prevent API call if nothing changed
         if (!hasChanges) {
             onClose();
             return;
         }
-
         setLoading(true);
         try {
             await onSave(formData, file);
-            // Parent handles closing on success
         } catch (error) {
             console.error(error);
         } finally {
@@ -166,7 +160,12 @@ export default function ProfileEditModal({
                 onClick={onClose}
             ></div>
 
-            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative z-10 flex flex-col max-h-[85vh] sm:max-h-[90vh]">
+            {/* UPDATED CONTAINER: 
+          1. max-h-[85dvh] handles mobile address bars properly.
+          2. flex-col ensures header/footer stay put while body scrolls.
+      */}
+            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative z-10 flex flex-col max-h-[85dvh] sm:max-h-[90vh]">
+
                 {/* Header */}
                 <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div>
@@ -183,8 +182,11 @@ export default function ProfileEditModal({
                     </button>
                 </div>
 
-                {/* Scrollable Content */}
-                <div className="p-5 overflow-y-auto custom-scrollbar">
+                {/* UPDATED SCROLL AREA: 
+            1. flex-1: Fills remaining space.
+            2. min-h-0: Allows scrolling inside flex item.
+        */}
+                <div className="p-5 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                     <form id="profile-form" onSubmit={handleSubmit} className="space-y-6">
 
                         {/* Image Upload */}
@@ -230,32 +232,35 @@ export default function ProfileEditModal({
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
-                                    <InputField
+                                    <Input
                                         label="Full Name"
                                         value={formData.name}
-                                        onChange={(v: string) =>
-                                            setFormData({ ...formData, name: v })
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, name: e.target.value })
                                         }
                                         placeholder="e.g. John Doe"
                                     />
                                 </div>
                                 <div>
-                                    <InputField
+                                    <Input
                                         label="Date of Birth"
                                         type="date"
                                         value={formData.dateOfBirth}
-                                        onChange={(v: string) =>
-                                            setFormData({ ...formData, dateOfBirth: v })
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, dateOfBirth: e.target.value })
                                         }
                                         icon={<FaCalendarDays />}
                                     />
                                 </div>
                                 <div>
-                                    <SelectField
+                                    <Select
                                         label="Preferred Language"
                                         value={formData.preferredLanguage}
-                                        onChange={(v: string) =>
-                                            setFormData({ ...formData, preferredLanguage: v })
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                preferredLanguage: e.target.value,
+                                            })
                                         }
                                         options={["English", "Hindi", "Gujarati", "Marathi"]}
                                         icon={<FaLanguage />}
@@ -263,11 +268,11 @@ export default function ProfileEditModal({
                                 </div>
 
                                 <div>
-                                    <InputField
+                                    <Input
                                         label="Email Address"
                                         value={formData.email}
-                                        onChange={(v: string) =>
-                                            setFormData({ ...formData, email: v })
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, email: e.target.value })
                                         }
                                         type="email"
                                         icon={<FaEnvelope />}
@@ -276,11 +281,11 @@ export default function ProfileEditModal({
                                     />
                                 </div>
                                 <div>
-                                    <InputField
+                                    <Input
                                         label="Mobile Number"
                                         value={formData.phone}
-                                        onChange={(v: string) =>
-                                            setFormData({ ...formData, phone: v })
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, phone: e.target.value })
                                         }
                                         type="tel"
                                         icon={<FaPhone />}
@@ -311,41 +316,41 @@ export default function ProfileEditModal({
                             </h4>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
-                                    <InputField
+                                    <Input
                                         label="Address Line 1"
                                         value={formData.addressLine1}
-                                        onChange={(v: string) =>
-                                            setFormData({ ...formData, addressLine1: v })
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, addressLine1: e.target.value })
                                         }
                                         icon={<FaLocationDot />}
                                         placeholder="House No., Building, Apartment"
                                     />
                                 </div>
                                 <div className="col-span-2">
-                                    <InputField
+                                    <Input
                                         label="Address Line 2"
                                         value={formData.addressLine2}
-                                        onChange={(v: string) =>
-                                            setFormData({ ...formData, addressLine2: v })
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, addressLine2: e.target.value })
                                         }
                                         placeholder="Area, Colony, Road, Sector"
                                     />
                                 </div>
                                 <div className="col-span-2">
-                                    <InputField
+                                    <Input
                                         label="Landmark"
                                         value={formData.landmark}
-                                        onChange={(v: string) =>
-                                            setFormData({ ...formData, landmark: v })
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, landmark: e.target.value })
                                         }
                                         placeholder="e.g. Near City Mall"
                                     />
                                 </div>
 
-                                <InputField
+                                <Input
                                     label="Pincode"
                                     value={formData.pincode}
-                                    onChange={handlePincodeChange}
+                                    onChange={(e) => handlePincodeChange(e.target.value)}
                                     maxLength={6}
                                     placeholder="e.g. 400001"
                                     rightElement={
@@ -355,31 +360,31 @@ export default function ProfileEditModal({
                                     }
                                 />
 
-                                <InputField
+                                <Input
                                     label="City"
                                     value={formData.city}
-                                    onChange={(v: string) =>
-                                        setFormData({ ...formData, city: v })
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, city: e.target.value })
                                     }
                                     icon={<FaCity />}
                                     placeholder="e.g. Mumbai"
                                 />
 
-                                <InputField
+                                <Input
                                     label="District"
                                     value={formData.district}
-                                    onChange={(v: string) =>
-                                        setFormData({ ...formData, district: v })
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, district: e.target.value })
                                     }
                                     icon={<FaBuilding />}
                                     placeholder="e.g. Thane"
                                 />
 
-                                <InputField
+                                <Input
                                     label="State"
                                     value={formData.state}
-                                    onChange={(v: string) =>
-                                        setFormData({ ...formData, state: v })
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, state: e.target.value })
                                     }
                                     placeholder="e.g. Maharashtra"
                                 />
@@ -401,7 +406,7 @@ export default function ProfileEditModal({
                     <button
                         type="submit"
                         form="profile-form"
-                        disabled={loading || !hasChanges} // ✅ Disabled if no changes
+                        disabled={loading || !hasChanges}
                         className={clsx(
                             "flex-2 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm sm:text-base",
                             loading || !hasChanges
@@ -417,87 +422,6 @@ export default function ProfileEditModal({
                             </>
                         )}
                     </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// --- SUB COMPONENTS (Input & Select) ---
-
-function InputField({
-    label,
-    value,
-    onChange,
-    type = "text",
-    placeholder,
-    icon,
-    maxLength,
-    disabled,
-    rightElement,
-}: any) {
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-1.5 ml-1">
-                <label className="block text-xs font-bold text-slate-700">
-                    {label}
-                </label>
-                {rightElement}
-            </div>
-            <div className="relative">
-                <input
-                    type={type}
-                    value={value || ""}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder={placeholder}
-                    maxLength={maxLength}
-                    disabled={disabled}
-                    className={clsx(
-                        "w-full border rounded-xl px-4 py-3 text-sm font-medium outline-none transition border-gray-200 focus:border-blue-500 placeholder:text-gray-400",
-                        icon ? "pl-10" : "",
-                        disabled
-                            ? "bg-gray-50 text-gray-500 cursor-not-allowed"
-                            : "bg-white"
-                    )}
-                />
-                {icon && (
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                        {icon}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
-
-function SelectField({ label, value, onChange, options, icon }: any) {
-    return (
-        <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">
-                {label}
-            </label>
-            <div className="relative">
-                <select
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    className={clsx(
-                        "w-full border border-gray-200 bg-white rounded-xl px-4 py-3 text-sm font-medium outline-none transition focus:border-blue-500 appearance-none",
-                        icon ? "pl-10" : ""
-                    )}
-                >
-                    {options.map((opt: string) => (
-                        <option key={opt} value={opt}>
-                            {opt}
-                        </option>
-                    ))}
-                </select>
-                {icon && (
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                        {icon}
-                    </div>
-                )}
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">
-                    ▼
                 </div>
             </div>
         </div>

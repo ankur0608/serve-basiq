@@ -271,11 +271,11 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                 <div>
                                     {!session ? (
                                         // Case 1: Not Logged In
-                                        <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100 text-center sticky top-24">
-                                            <p className="text-blue-800 text-sm font-medium">Log in to view eligibility.</p>
+                                        <div >
+                                            {/* <p className="text-blue-800 text-sm font-medium">Log in to view eligibility.</p>
                                             <Link href="/login" className="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition">
                                                 Login Now
-                                            </Link>
+                                            </Link> */}
                                         </div>
                                     ) : isEligibilityLoading ? (
                                         // Case 2: Loading State

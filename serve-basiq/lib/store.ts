@@ -23,7 +23,7 @@ export interface User {
   email: string | null;
   phone: string;
   img: string | null;
-  image?: string | null; // Keep both for compatibility
+  image?: string | null;
 
   role: string;
   providerType?: "SERVICE" | "PRODUCT" | "BOTH" | string;
@@ -54,7 +54,7 @@ export interface User {
 
 interface UIState {
   currentUser: User | null;
-  lastFetched: number; // ✅ Track when we last fetched
+  lastFetched: number;
 
   setCurrentUser: (user: User | null) => void;
   logout: () => void;
@@ -67,7 +67,7 @@ interface UIState {
   setTempName: (name: string) => void;
 
   mobileNumber: string;
-  devOtp?: string;
+  verificationId: string | null; // ✅ Changed from devOtp to verificationId
   isNewUser: boolean;
 
   isLoginOpen: boolean;
@@ -75,8 +75,10 @@ interface UIState {
   isNameOpen: boolean;
   isEditProfileOpen: boolean;
 
-  onOpenOtp: (phone: string, otp?: string, isNewUser?: boolean) => void;
+  // ✅ Updated signature to accept verificationId
+  onOpenOtp: (phone: string, verificationId: string, isNewUser?: boolean) => void;
   onCloseOtp: () => void;
+
   onOpenLogin: () => void;
   onCloseLogin: () => void;
   onOpenName: () => void;
@@ -89,9 +91,8 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       currentUser: null,
-      lastFetched: 0, // Default to 0 (never fetched)
+      lastFetched: 0,
 
-      // ✅ When setting user, update timestamp
       setCurrentUser: (user) => set({ currentUser: user, lastFetched: Date.now() }),
 
       logout: () => set({ currentUser: null, lastFetched: 0 }),
@@ -103,7 +104,7 @@ export const useUIStore = create<UIState>()(
       setTempName: (name) => set({ tempName: name }),
 
       mobileNumber: "",
-      devOtp: undefined,
+      verificationId: null, // Default null
       isNewUser: false,
 
       isLoginOpen: false,
@@ -111,31 +112,32 @@ export const useUIStore = create<UIState>()(
       isNameOpen: false,
       isEditProfileOpen: false,
 
-      onOpenOtp: (phone, otp, isNewUser) =>
+      // ✅ Store the verificationId from MessageCentral
+      onOpenOtp: (phone, verificationId, isNewUser) =>
         set({
           mobileNumber: phone,
-          devOtp: otp,
+          verificationId: verificationId,
           isNewUser: isNewUser || false,
           isLoginOpen: false,
           isOtpOpen: true,
           isNameOpen: false,
         }),
 
-      onCloseOtp: () => set({ mobileNumber: "", devOtp: undefined, isOtpOpen: false }),
+      onCloseOtp: () => set({ mobileNumber: "", verificationId: null, isOtpOpen: false }),
 
       onOpenLogin: () =>
         set({
           isLoginOpen: true,
           isOtpOpen: false,
           isNameOpen: false,
-          devOtp: undefined,
+          verificationId: null,
           isNewUser: false,
         }),
 
       onCloseLogin: () =>
         set({
           isLoginOpen: false,
-          devOtp: undefined,
+          verificationId: null,
           tempName: "",
           isNewUser: false,
           isNameOpen: false,
@@ -148,12 +150,11 @@ export const useUIStore = create<UIState>()(
       onCloseEditProfile: () => set({ isEditProfileOpen: false }),
     }),
     {
-      name: "servemate-storage", // Unique name in localStorage
+      name: "servemate-storage",
       storage: createJSONStorage(() => localStorage),
-      // ✅ Only save User and Timestamp
       partialize: (state) => ({
         currentUser: state.currentUser,
-        lastFetched: state.lastFetched
+        lastFetched: state.lastFetched,
       }),
     }
   )

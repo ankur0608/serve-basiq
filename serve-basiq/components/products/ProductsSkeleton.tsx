@@ -3,64 +3,89 @@ export function ProductsSkeleton() {
         <section className="min-h-screen bg-slate-50 pb-20 pt-4 md:pt-6">
             <div className="container mx-auto max-w-7xl px-4">
 
-                {/* 1. Categories Skeleton: UPDATED to match Rectangular Cards */}
-                <div className="mb-8">
-                    {/* Header Line (Optional, matches 'Wholesale Products' title space) */}
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="h-8 w-48 animate-pulse rounded-lg bg-slate-200" />
-                        <div className="h-4 w-16 animate-pulse rounded bg-slate-200" />
-                    </div>
+                {/* 1. Categories Skeleton (Horizontal Scroll) */}
+                <div className="mb-6 md:mb-8">
+                    {/* Title Placeholder */}
+                    <div className="h-6 w-32 bg-slate-200 rounded animate-pulse mb-4" />
 
-                    {/* The Scrollable Card List */}
-                    <div className="flex gap-4 overflow-hidden pb-2">
-                        {[...Array(5)].map((_, i) => (
+                    {/* Scrollable Chips/Cards */}
+                    <div className="flex gap-3 overflow-hidden">
+                        {[...Array(8)].map((_, i) => (
                             <div
                                 key={i}
-                                // specific width (w-40 md:w-56) makes them wide rectangles like your real cards
-                                className="flex h-32 w-40 md:w-56 shrink-0 flex-col items-center justify-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
-                            >
-                                {/* Icon Placeholder (Blue icon in real app) */}
-                                <div className="h-10 w-10 animate-pulse rounded-full bg-slate-200" />
-
-                                {/* Text Label Placeholder */}
-                                <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
-                            </div>
+                                className="h-10 w-24 md:w-32 shrink-0 rounded-full bg-slate-200 animate-pulse"
+                            />
                         ))}
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-6 lg:gap-8 md:flex-row">
+                {/* 2. Mobile Filter Bar Skeleton (Visible only on Mobile) */}
+                <div className="mb-6 block md:hidden">
+                    <div className="flex gap-3">
+                        <div className="h-12 flex-1 rounded-2xl bg-slate-200 animate-pulse" />
+                        <div className="h-12 w-12 rounded-2xl bg-slate-200 animate-pulse" />
+                    </div>
+                </div>
 
-                    {/* 2. Sidebar Skeleton */}
-                    <div className="hidden w-[260px] shrink-0 space-y-8 md:block">
+                <div className="flex flex-col md:flex-row gap-6 lg:gap-8">
+
+                    {/* 3. Sidebar Skeleton (Hidden on Mobile, Matches w-[260px]) */}
+                    <div className="hidden md:block w-[260px] shrink-0 space-y-8">
+                        {/* Filter Group 1 */}
                         <div className="space-y-4">
-                            <div className="h-6 w-24 animate-pulse rounded bg-slate-200" />
+                            <div className="h-5 w-20 bg-slate-200 rounded animate-pulse" />
                             <div className="space-y-3">
                                 {[...Array(5)].map((_, i) => (
                                     <div key={i} className="flex items-center gap-3">
-                                        <div className="h-5 w-5 shrink-0 animate-pulse rounded bg-slate-200" />
-                                        <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
+                                        <div className="h-5 w-5 rounded bg-slate-200 animate-pulse" />
+                                        <div className="h-4 w-32 rounded bg-slate-200 animate-pulse" />
                                     </div>
                                 ))}
                             </div>
                         </div>
+
+                        {/* Filter Group 2 */}
+                        <div className="space-y-4">
+                            <div className="h-5 w-20 bg-slate-200 rounded animate-pulse" />
+                            <div className="h-2 w-full bg-slate-200 rounded animate-pulse" />
+                            <div className="flex justify-between">
+                                <div className="h-4 w-8 bg-slate-200 rounded animate-pulse" />
+                                <div className="h-4 w-8 bg-slate-200 rounded animate-pulse" />
+                            </div>
+                        </div>
                     </div>
 
-                    {/* 3. Main Content Skeleton */}
+                    {/* 4. Main Content Skeleton */}
                     <div className="flex-1">
-                        <div className="mb-6 h-14 w-full animate-pulse rounded-2xl bg-slate-200" />
 
-                        <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-3">
+                        {/* Search Bar Skeleton (Hidden on mobile as per your real component structure) */}
+                        <div className="hidden md:block mb-6">
+                            <div className="h-[56px] w-full rounded-2xl bg-slate-200 animate-pulse" />
+                        </div>
+
+                        {/* Product Grid Skeleton */}
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                             {[...Array(6)].map((_, i) => (
-                                <div key={i} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-                                    <div className="aspect-[4/3] w-full animate-pulse rounded-xl bg-slate-200" />
-                                    <div className="space-y-2 px-1">
-                                        <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" />
-                                        <div className="h-3 w-1/2 animate-pulse rounded bg-slate-200" />
+                                <div
+                                    key={i}
+                                    className="flex flex-col rounded-3xl border border-slate-100 bg-white p-3 shadow-sm"
+                                >
+                                    {/* Image Placeholder - Aspect Ratio matches typical product cards */}
+                                    <div className="aspect-square w-full rounded-2xl bg-slate-200 animate-pulse mb-3" />
+
+                                    {/* Content Lines */}
+                                    <div className="space-y-2 px-1 mb-4 flex-1">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
+                                            <div className="h-4 w-4 bg-slate-200 rounded-full animate-pulse" />
+                                        </div>
+                                        <div className="h-3 w-1/2 bg-slate-200 rounded animate-pulse" />
                                     </div>
-                                    <div className="mt-2 flex items-center justify-between px-1">
-                                        <div className="h-6 w-20 animate-pulse rounded bg-slate-200" />
-                                        <div className="h-8 w-8 animate-pulse rounded-full bg-slate-200" />
+
+                                    {/* Bottom Row (Price & Avatar) */}
+                                    <div className="mt-auto flex items-center justify-between px-1">
+                                        <div className="h-6 w-24 bg-slate-200 rounded animate-pulse" />
+                                        <div className="h-8 w-8 rounded-full bg-slate-200 animate-pulse" />
                                     </div>
                                 </div>
                             ))}

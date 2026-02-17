@@ -5,7 +5,8 @@ import {
   FaArrowLeft, FaLocationDot, FaStar,
   FaShieldHalved, FaBoxOpen, FaTruckFast,
   FaCircleCheck, FaStore, FaCube,
-  FaInstagram, FaFacebook, FaYoutube, FaGlobe
+  FaInstagram, FaFacebook, FaYoutube, FaGlobe,
+  FaLock
 } from 'react-icons/fa6';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -53,18 +54,14 @@ export default async function ProductDetail({ params }: Props) {
 
   // 2. LOGIC: STRICT CHECK REVIEW ELIGIBILITY
   let canReview = false;
-  let reviewMessage = "Login to leave a review.";
 
   if (session?.user?.id) {
     const userId = session.user.id;
 
     // A. User cannot review their own product
-    if (product.userId === userId) {
-      canReview = false;
-      reviewMessage = "You cannot review your own product.";
-    } else {
+    if (product.userId !== userId) {
+
       // B. Check if User bought the product AND it is DELIVERED
-      // We explicitly check for 'DELIVERED' status to prevent reviews on cancelled/pending orders
       const hasDeliveredOrder = await prisma.order.findFirst({
         where: {
           userId: userId,
@@ -81,16 +78,8 @@ export default async function ProductDetail({ params }: Props) {
         }
       });
 
-      if (!hasDeliveredOrder) {
-        canReview = false;
-        reviewMessage = "You must purchase and receive this item to review it.";
-      } else if (existingReview) {
-        canReview = false;
-        reviewMessage = "You have already reviewed this product.";
-      } else {
-        // Only if all checks pass
+      if (hasDeliveredOrder && !existingReview) {
         canReview = true;
-        reviewMessage = "";
       }
     }
   }
@@ -134,46 +123,46 @@ export default async function ProductDetail({ params }: Props) {
     <div className="pb-40 bg-slate-50 min-h-screen">
 
       {/* --- HERO BANNER --- */}
-      <div className="h-[40vh] md:h-[50vh] w-full bg-slate-900 relative overflow-hidden">
+      <div className="h-[40vh] md:h-[50vh] w-full bg-slate-900 relative overflow-hidden group">
         <AppImage
           src={mainImg}
           alt={product.name}
           type="banner"
-          className="w-full h-full object-cover opacity-80"
+          className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
           priority={true}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-slate-900/20 to-slate-900/60"></div>
 
         {/* Back Button */}
-        <Link href="/products" className="absolute top-8 left-8 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition z-20">
+        <Link href="/products" className="absolute top-6 left-6 md:top-8 md:left-8 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition z-20">
           <FaArrowLeft />
         </Link>
       </div>
 
       {/* --- FLOATING CONTENT --- */}
-      <div className="max-w-6xl mx-auto px-4 -mt-32 relative z-10">
-        <div className="grid lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-4 -mt-32 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          {/* LEFT COLUMN */}
-          <div className="lg:col-span-2 space-y-8">
+          {/* LEFT COLUMN - Main Info & Reviews */}
+          <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
 
             {/* 1. MAIN INFO CARD */}
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
+            <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
               <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
-                <div>
+                <div className="w-full md:w-auto">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-blue-600 text-xs font-bold uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                    <span className="text-blue-600 text-[10px] md:text-xs font-bold uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
                       {product.category?.name || "Product"}
                     </span>
-                    <span className={`flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border ${isInStock ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                    <span className={`flex items-center gap-1 text-[10px] md:text-xs font-bold px-3 py-1 rounded-full border ${isInStock ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
                       <span className={`w-2 h-2 rounded-full ${isInStock ? "bg-green-500 animate-pulse" : "bg-amber-500"}`}></span>
                       {isInStock ? `In Stock` : "Out of Stock"}
                     </span>
                   </div>
 
-                  <h1 className="text-4xl font-black text-slate-900 leading-tight">{product.name}</h1>
+                  <h1 className="text-3xl md:text-4xl font-black text-slate-900 leading-tight">{product.name}</h1>
 
-                  <p className="flex items-start gap-2 text-slate-500 mt-2">
+                  <p className="flex items-start gap-2 text-slate-500 mt-2 text-sm md:text-base">
                     <FaLocationDot className="text-red-400 mt-1 shrink-0" />
                     <span className="leading-relaxed font-medium">{location}</span>
                   </p>
@@ -202,40 +191,32 @@ export default async function ProductDetail({ params }: Props) {
                 </div>
               )}
 
-              {/* Description */}
-              {/* <div className="border-t border-slate-100 pt-8">
-                <h3 className="text-xl font-bold text-slate-900 mb-4">Description</h3>
-                <p className="text-slate-600 leading-relaxed whitespace-pre-line">
-                  {product.desc}
-                </p>
-              </div> */}
-
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-8">
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Min Order</p>
-                  <div className="flex items-center gap-1 font-bold text-slate-900 mt-1">
+                  <div className="flex items-center gap-1 font-bold text-slate-900 mt-1 text-sm md:text-base">
                     <FaBoxOpen className="text-slate-400" /> {product.moq} {product.unit}
                   </div>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Delivery</p>
-                  <div className="flex items-center gap-1 font-bold text-slate-900 mt-1">
+                  <div className="flex items-center gap-1 font-bold text-slate-900 mt-1 text-sm md:text-base">
                     <FaTruckFast className="text-slate-400" /> {product.deliveryType || "Standard"}
                   </div>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Provider</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <div className="w-5 h-5 rounded-full overflow-hidden bg-slate-200 relative">
+                    <div className="w-5 h-5 rounded-full overflow-hidden bg-slate-200 relative shrink-0">
                       {providerImage && <AppImage src={providerImage} alt="Sup" type="avatar" className="w-full h-full object-cover" />}
                     </div>
-                    <p className="font-bold text-slate-900 text-xs truncate max-w-[80px]">{displayName}</p>
+                    <p className="font-bold text-slate-900 text-xs md:text-sm truncate">{displayName}</p>
                   </div>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Unit Type</p>
-                  <div className="flex items-center gap-1 font-bold text-slate-900 mt-1">
+                  <div className="flex items-center gap-1 font-bold text-slate-900 mt-1 text-sm md:text-base">
                     <FaCube className="text-slate-400" /> {product.unit}
                   </div>
                 </div>
@@ -244,11 +225,11 @@ export default async function ProductDetail({ params }: Props) {
 
             {/* 2. GALLERY CARD */}
             {galleryImages.length > 0 && (
-              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
+              <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
                 <h3 className="text-xl font-bold text-slate-900 mb-6">Gallery</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {galleryImages.map((img, i) => (
-                    <div key={i} className="h-48 w-full relative group rounded-2xl overflow-hidden bg-slate-50 border border-slate-100">
+                    <div key={i} className="aspect-square w-full relative group rounded-2xl overflow-hidden bg-slate-50 border border-slate-100">
                       <AppImage
                         src={img}
                         alt={`Gallery ${i}`}
@@ -262,37 +243,28 @@ export default async function ProductDetail({ params }: Props) {
             )}
 
             {/* 3. REVIEWS CARD */}
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
+            <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
               <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black text-slate-900">Reviews & Ratings</h3>
-                <span className="text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{reviewCount} reviews</span>
+                <h3 className="text-xl md:text-2xl font-black text-slate-900">Reviews</h3>
+                <span className="text-xs md:text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{reviewCount} reviews</span>
               </div>
 
-              {/* === RATING FORM OR NOTICE === */}
-              <div className="mb-8">
-                {canReview ? (
-                  <div className="mb-8 border border-blue-100 bg-blue-50/50 p-6 rounded-2xl">
-                    <RatingForm productId={product.id} />
+              {/* === RATING FORM OR ELIGIBILITY NOTICE === */}
+              {canReview ? (
+                <div className="mb-8 border border-blue-100 bg-blue-50/50 p-6 rounded-2xl animate-in fade-in slide-in-from-top-4">
+                  <RatingForm productId={product.id} />
+                </div>
+              ) : (
+                <div className="mb-8 p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center sticky top-4 z-10">
+                  <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                    <FaBoxOpen />
                   </div>
-                ) : (
-                  <div className="p-6 bg-slate-50 border border-slate-100 rounded-2xl text-center">
-                    <p className="text-slate-500 font-medium text-sm flex flex-col gap-2 items-center">
-                      {/* Icon based on reason */}
-                      {reviewMessage.includes("own") ? <FaStore className="text-slate-300 text-2xl" /> :
-                        reviewMessage.includes("purchase") ? <FaBoxOpen className="text-slate-300 text-2xl" /> :
-                          reviewMessage.includes("already") ? <FaStar className="text-slate-300 text-2xl" /> : null}
-
-                      {reviewMessage}
-                    </p>
-                    {/* Optional Call to Action if not logged in */}
-                    {reviewMessage.includes("Login") && (
-                      <Link href="/login" className="mt-3 inline-block text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 hover:bg-blue-100">
-                        Login Now
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
+                  <p className="text-slate-800 text-sm font-bold">Verified Purchase Only</p>
+                  <p className="text-slate-500 text-xs mt-2 leading-relaxed max-w-sm mx-auto">
+                    You can only leave a review after you have purchased this Product and it is marked as <strong>Delivered</strong>.
+                  </p>
+                </div>
+              )}
 
               {/* Review List */}
               <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
@@ -300,7 +272,7 @@ export default async function ProductDetail({ params }: Props) {
                   product.reviews.map((review) => (
                     <div key={review.id} className="border-b border-slate-100 pb-6 last:border-0 last:pb-0">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden relative border border-slate-100">
+                        <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden relative border border-slate-100 shrink-0">
                           <AppImage src={review.author?.image || ""} alt="User" type="avatar" className="w-full h-full object-cover" />
                         </div>
                         <div>
@@ -316,7 +288,10 @@ export default async function ProductDetail({ params }: Props) {
                     </div>
                   ))
                 ) : (
-                  <p className="text-slate-400 italic text-sm text-center py-8">No reviews yet. Be the first to review!</p>
+                  <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <FaStar className="mx-auto text-slate-300 text-3xl mb-2" />
+                    <p className="text-slate-400 font-medium text-sm">No reviews yet.</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -324,10 +299,10 @@ export default async function ProductDetail({ params }: Props) {
           </div>
 
           {/* RIGHT COLUMN (Sticky Sidebar) */}
-          <div className="space-y-6">
+          <div className="space-y-6 order-1 lg:order-2 h-fit lg:sticky lg:top-24 z-20">
 
             {/* PRICE & ACTION CARD */}
-            <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 top-24 z-20">
+            <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
               <div className="mb-6">
                 <p className="text-slate-400 text-sm font-medium">Starting at</p>
                 <div className="flex items-baseline gap-1">
@@ -348,6 +323,19 @@ export default async function ProductDetail({ params }: Props) {
                   </ul>
                 </div>
               </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6">
+                <ProductWrapper
+                  productId={product.id}
+                  productName={product.name}
+                  productPrice={Number(product.price)}
+                  productUnit={product.unit}
+                  moq={Number(product.moq)}
+                  currentUser={loggedInUser}
+                  userAddresses={loggedInUser?.addresses || []}
+                />
+              </div>
             </div>
 
             {/* SUPPLIER PROFILE CARD */}
@@ -357,15 +345,15 @@ export default async function ProductDetail({ params }: Props) {
               </h4>
 
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden relative">
+                <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden relative shrink-0">
                   {providerImage ? (
                     <AppImage src={providerImage} alt={displayName} type="avatar" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300"><FaStore /></div>
                   )}
                 </div>
-                <div>
-                  <h5 className="font-bold text-slate-900 leading-tight">{displayName}</h5>
+                <div className="overflow-hidden">
+                  <h5 className="font-bold text-slate-900 leading-tight truncate">{displayName}</h5>
                   {isVerified && (
                     <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md mt-1 w-fit">
                       <FaCircleCheck /> Verified
@@ -375,17 +363,6 @@ export default async function ProductDetail({ params }: Props) {
               </div>
               <SupplierProfileModal supplier={product.user} />
             </div>
-
-            {/* Action Buttons */}
-            <ProductWrapper
-              productId={product.id}
-              productName={product.name}
-              productPrice={Number(product.price)}
-              productUnit={product.unit}
-              moq={Number(product.moq)}
-              currentUser={loggedInUser}
-              userAddresses={loggedInUser?.addresses || []}
-            />
 
           </div>
 

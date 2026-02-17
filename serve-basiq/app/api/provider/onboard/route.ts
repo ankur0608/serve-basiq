@@ -2,10 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { onboardSchema } from "@/lib/validators";
 
-// 1. Ensure you define this enum if you haven't imported it, 
-// or TypeScript might complain if it doesn't match the Prisma generated type.
-// Usually, Prisma exports this, but we can pass the string directly if it matches.
-
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -13,16 +9,29 @@ export async function POST(req: Request) {
         // 🔍 Log for debugging
         console.log("📦 Onboard Payload:", body);
 
-        // 1. Validate Data using Zod
-        // NOTE: Ensure you have updated 'onboardSchema' in validators.ts to include providerType if you want strict validation.
-        // If not, we extract it from 'body' directly below.
+
         const validData = onboardSchema.parse(body);
         const { userId, providerType } = body; // Extract providerType directly from body
 
         if (!userId) {
             return NextResponse.json({ success: false, message: "User ID required" }, { status: 400 });
         }
+        if (validData.email) {
+            const existingUser = await prisma.user.findUnique({
+                where: { email: validData.email },
+            });
 
+            // If user exists AND it is NOT the current user -> CONFLICT
+            if (existingUser && existingUser.id !== userId) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: "This email is already in use by another account. Please use a different email."
+                    },
+                    { status: 409 } // 409 Conflict
+                );
+            }
+        }
         await prisma.$transaction(async (tx) => {
             // 2. Update User Profile
             await tx.user.update({
@@ -82,7 +91,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error("❌ Onboard Error:", error);
-
+        if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
+            return NextResponse.json(
+                { success: false, message: "Email already taken by another account." },
+                { status: 409 }
+            );
+        }
         if (error.issues) {
             return NextResponse.json({ success: false, error: "Validation Failed", details: error.issues }, { status: 400 });
         }

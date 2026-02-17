@@ -40,7 +40,6 @@ export default async function RentalDetailsPage({ params }: Props) {
                 select: {
                     id: true, name: true, shopName: true, email: true, phone: true,
                     isVerified: true, image: true, profileImage: true,
-                    // ✅ We need these from the USER
                     instagramUrl: true, facebookUrl: true, websiteUrl: true, youtubeUrl: true,
                 }
             }
@@ -273,18 +272,21 @@ export default async function RentalDetailsPage({ params }: Props) {
                                     </div>
                                 ) : (
                                     <div className="p-6 bg-slate-50 border border-slate-100 rounded-2xl text-center">
-                                        <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
-                                            {reviewMessage.includes("Login") ? <FaLock /> : <FaBoxOpen />}
+
+                                        <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center sticky top-24">
+                                            <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                                                {reviewMessage.includes("Login") ? <FaLock /> : <FaBoxOpen />}
+                                            </div>
+                                            <p className="text-slate-800 text-sm font-bold">Verified Purchase Only</p>
+                                            <p className="text-slate-500 text-xs mt-2 leading-relaxed">
+                                                You can only leave a review after you have booked this Rental and the job is marked as <strong>Completed</strong>.
+                                            </p>
                                         </div>
-                                        <p className="text-slate-900 font-bold mb-1">Cannot Write Review</p>
-                                        <p className="text-slate-500 font-medium text-sm flex flex-col gap-2 items-center">
-                                            {reviewMessage}
-                                        </p>
-                                        {reviewMessage.includes("Login") && (
+                                        {/* {reviewMessage.includes("Login") && (
                                             <Link href="/login" className="mt-3 inline-block text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 hover:bg-blue-100">
                                                 Login Now
                                             </Link>
-                                        )}
+                                        )} */}
                                     </div>
                                 )}
                             </div>

@@ -35,8 +35,12 @@ export async function GET(request: Request) {
     }
 
     // Flatten Address - Get the most recent one (index 0)
-    const primaryAddress = user.addresses[0] || {};
-
+    // const primaryAddress = user.addresses[0] || {};
+    // Flatten Address - Prioritize 'Home' type, otherwise use the newest one
+    const primaryAddress =
+      user.addresses.find((addr) => addr.type === "Home") ||
+      user.addresses[0] ||
+      {};
     // Helper: convert null/undefined to empty string
     const val = (v: any) => (v === null || v === undefined ? "" : v);
 
