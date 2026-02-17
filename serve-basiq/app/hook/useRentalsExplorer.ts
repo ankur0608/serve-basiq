@@ -121,8 +121,7 @@
 //     };
 // }
 
-
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 // --- SHARED TYPES ---
@@ -157,18 +156,14 @@ export interface CategoryData {
     children: { id: string; name: string }[];
 }
 
-// Normalizer
 const normalizeRentals = (data: any[]): RentalItem[] => {
     if (!Array.isArray(data)) return [];
-
     return data.map((item: any) => {
         const genericPrice = Number(item.price) || 0;
         const type = item.priceType || 'DAILY';
-
         const effectiveDaily = Number(item.dailyPrice) || (type === 'DAILY' ? genericPrice : 0);
         const effectiveMonthly = Number(item.monthlyPrice) || (type === 'MONTHLY' ? genericPrice : 0);
         const effectiveFixed = Number(item.fixedPrice) || (type === 'FIXED' ? genericPrice : 0);
-
         const displayPrice = effectiveDaily || effectiveFixed || effectiveMonthly || genericPrice;
         const displayType = effectiveDaily ? 'DAILY' : (effectiveFixed ? 'FIXED' : 'MONTHLY');
 
@@ -204,7 +199,6 @@ interface UseRentalsProps {
 }
 
 export function useRentalsExplorer({ category, search }: UseRentalsProps = {}) {
-    // 1. Fetch User Profile
     const { data: currentUser } = useQuery({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
@@ -212,10 +206,9 @@ export function useRentalsExplorer({ category, search }: UseRentalsProps = {}) {
             if (!res.ok) return null;
             return res.json();
         },
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 10,
     });
 
-    // 2. Fetch Categories
     const { data: categoriesData } = useQuery({
         queryKey: ['categories', 'rental'],
         queryFn: async () => {
@@ -226,18 +219,18 @@ export function useRentalsExplorer({ category, search }: UseRentalsProps = {}) {
         staleTime: 1000 * 60 * 60,
     });
 
-    // 3. INFINITE FETCH Rentals
     const {
         data,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
-        isLoading
+        isLoading,
+        isFetching // 👈 Grab this for the overlay
     } = useInfiniteQuery({
         queryKey: ['rentals', 'infinite', category, search],
         queryFn: async ({ pageParam = undefined }) => {
             const params = new URLSearchParams();
-            params.append('limit', '12'); // Fetch 12 items per page
+            params.append('limit', '12');
             if (pageParam) params.append('cursor', pageParam as string);
             if (category) params.append('categoryId', category);
             if (search) params.append('search', search);
@@ -247,9 +240,10 @@ export function useRentalsExplorer({ category, search }: UseRentalsProps = {}) {
         },
         getNextPageParam: (lastPage: any) => lastPage.nextCursor,
         initialPageParam: undefined,
+        placeholderData: keepPreviousData, // 👈 KEY FIX: Keeps items on screen during filter
+        staleTime: 1000 * 60 * 5,
     });
 
-    // Flatten pages into one array
     const rawRentals = useMemo(() => {
         if (!data) return [];
         const allItems = data.pages.flatMap((page: any) => page.items || []);
@@ -261,6 +255,7 @@ export function useRentalsExplorer({ category, search }: UseRentalsProps = {}) {
         rawRentals,
         rawCategories: (categoriesData || []) as CategoryData[],
         isLoading,
+        isFetching,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage

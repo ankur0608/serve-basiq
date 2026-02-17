@@ -60,6 +60,7 @@ export default function RentalFiltersMobile({
                 </div>
                 <button
                     onClick={() => setIsOpen(true)}
+                    type="button" // 👈 Add this
                     className="bg-slate-900 text-white w-12 rounded-lg flex items-center justify-center active:scale-95 transition shadow-md"
                 >
                     <Filter size={20} />
@@ -174,6 +175,7 @@ export default function RentalFiltersMobile({
                         <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
                             <button
                                 onClick={handleReset}
+                                type="button" // 👈 Add this
                                 className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition"
                             >
                                 Reset

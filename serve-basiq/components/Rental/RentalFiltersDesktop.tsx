@@ -30,6 +30,7 @@ export default function RentalFiltersDesktop({
                 <h3 className="font-bold text-lg text-slate-900">Filters</h3>
                 <button
                     onClick={resetFilters}
+                    type="button" // 👈 Add this
                     className="text-sm font-bold text-red-500 hover:text-red-600 hover:underline transition"
                 >
                     Reset

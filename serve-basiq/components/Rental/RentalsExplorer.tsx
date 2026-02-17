@@ -206,17 +206,14 @@
 //     );
 // }
 
-
-
-
-
 'use client';
 
-import { useState, useMemo, useEffect } from 'react'; // Removed useRef, useCallback
+import { useState, useMemo, useEffect, useCallback, forwardRef } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
 import { KeyRound, Loader2 } from 'lucide-react';
-import { useInView } from 'react-intersection-observer'; // 👈 1. Import this
+import { VirtuosoGrid } from 'react-virtuoso';
 
 // Hooks
 import { useRentalsExplorer } from '@/app/hook/useRentalsExplorer';
@@ -228,27 +225,23 @@ import RentalFiltersDesktop from './RentalFiltersDesktop';
 import RentalFiltersMobile from './RentalFiltersMobile';
 import { ProductsSkeleton } from '../products/ProductsSkeleton';
 
-// --- MAIN COMPONENT ---
 export default function RentalsExplorer() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Local State
+    // 1. State
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
     const [selectedLocation, setSelectedLocation] = useState('');
     const [sortOption, setSortOption] = useState('');
 
-    // --- 2. Setup Intersection Observer ---
-    const { ref, inView } = useInView(); // Automatically detects visibility
-
-    // Use Custom Hook
+    // 2. Hook
     const {
-        currentUser,
         rawRentals,
         rawCategories,
         isLoading,
+        isFetching,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage
@@ -257,52 +250,29 @@ export default function RentalsExplorer() {
         search: searchTerm
     });
 
-    // --- 3. Trigger Fetch when In View ---
-    useEffect(() => {
-        if (inView && hasNextPage) {
-            fetchNextPage();
-        }
-    }, [inView, hasNextPage, fetchNextPage]);
-
-    // Client-side Sorting & Sub-filtering
-    // ⚠️ NOTE: See "Critical Advice" below regarding this section
+    // 3. Derived Data
     const uniqueLocations = useMemo(() => {
         const locs = new Set(rawRentals.map(r => r.location).filter(Boolean));
         return Array.from(locs).sort();
     }, [rawRentals]);
 
-    const availableCategories = useMemo(() => {
-        if (rawCategories.length > 0) return rawCategories;
-        return [];
-    }, [rawCategories]);
-
     const availableSubcategories = useMemo(() => {
         if (!selectedCategory) return [];
-        const cat = availableCategories.find((c: any) => String(c.id) === String(selectedCategory));
+        const cat = rawCategories.find((c: any) => String(c.id) === String(selectedCategory));
         return cat ? cat.children : [];
-    }, [selectedCategory, availableCategories]);
+    }, [selectedCategory, rawCategories]);
 
-    const filteredAndSortedItems = useMemo(() => {
+    // Client-side filtering for sub-filters (Subcategory/Location/Sort)
+    const filteredItems = useMemo(() => {
         let result = [...rawRentals];
+        if (selectedSubcategory) result = result.filter(i => String(i.subcategoryId) === String(selectedSubcategory));
+        if (selectedLocation) result = result.filter(i => i.location === selectedLocation);
 
-        // Filter: Subcategory & Location
-        if (selectedSubcategory) {
-            result = result.filter(item => String(item.subcategoryId) === String(selectedSubcategory));
-        }
-        if (selectedLocation) {
-            result = result.filter(item => item.location === selectedLocation);
-        }
+        if (sortOption === 'price_asc') result.sort((a, b) => a.price - b.price);
+        else if (sortOption === 'price_desc') result.sort((a, b) => b.price - a.price);
+        else if (sortOption === 'rating') result.sort((a, b) => b.rating - a.rating);
+        else if (sortOption === 'popular') result.sort((a, b) => b.reviewCount - a.reviewCount);
 
-        // Sort
-        if (sortOption === 'price_asc') {
-            result.sort((a, b) => a.price - b.price);
-        } else if (sortOption === 'price_desc') {
-            result.sort((a, b) => b.price - a.price);
-        } else if (sortOption === 'rating') {
-            result.sort((a, b) => b.rating - a.rating);
-        } else if (sortOption === 'popular') {
-            result.sort((a, b) => b.reviewCount - a.reviewCount);
-        }
         return result;
     }, [rawRentals, selectedSubcategory, selectedLocation, sortOption]);
 
@@ -311,82 +281,114 @@ export default function RentalsExplorer() {
         setSelectedLocation(''); setSortOption('');
         router.push('/rentals');
     };
-    if (isLoading) {
-        return <ProductsSkeleton />;
-    }
+
+    if (isLoading) return <ProductsSkeleton />;
+
     return (
-        <section className="min-h-screen bg-slate-50 text-slate-800 pb-20 pt-4 md:pt-6">
-            {/* ... Categories and Header sections (kept same) ... */}
-            <div className="container mx-auto max-w-7xl px-4 mb-6">
-                <RentalCategories categories={availableCategories} />
+        <section className="min-h-screen bg-slate-50 text-slate-800 pb-20">
+            {/* Header / Categories */}
+            <div className="pt-4 md:pt-6 bg-slate-50">
+                <div className="container mx-auto max-w-7xl px-4 mb-6">
+                    <RentalCategories categories={rawCategories} />
+                </div>
+                <div className="container mx-auto max-w-7xl px-4">
+                    <RentalFiltersMobile
+                        searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+                        selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
+                        selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
+                        selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
+                        sortOption={sortOption} setSortOption={setSortOption}
+                        availableCategories={rawCategories} availableSubcategories={availableSubcategories}
+                        uniqueLocations={uniqueLocations} resetFilters={resetFilters}
+                    />
+                </div>
             </div>
 
-            <div className="container mx-auto max-w-7xl px-4 relative z-10">
-                <RentalFiltersMobile
-                    searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-                    selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
-                    selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
-                    selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
-                    sortOption={sortOption} setSortOption={setSortOption}
-                    availableCategories={availableCategories} availableSubcategories={availableSubcategories}
-                    uniqueLocations={uniqueLocations} resetFilters={resetFilters}
-                />
-
-                <div className="flex flex-col md:flex-row gap-6 lg:gap-8 mt-2">
-                    <aside className="hidden md:block w-[260px] shrink-0">
+            <div className="container mx-auto max-w-7xl px-4 mt-2 flex gap-6 lg:gap-8">
+                {/* Sticky Sidebar */}
+                <aside className="hidden md:block w-[260px] shrink-0">
+                    <div className="sticky top-24 h-fit">
                         <RentalFiltersDesktop
                             selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
                             selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
                             selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
-                            availableCategories={availableCategories} availableSubcategories={availableSubcategories}
+                            availableCategories={rawCategories} availableSubcategories={availableSubcategories}
                             uniqueLocations={uniqueLocations} resetFilters={resetFilters}
                         />
-                    </aside>
+                    </div>
+                </aside>
 
-                    <main className="flex-1 min-w-0">
-                        {/* Search Bar Block (kept same) */}
-                        <div className="hidden md:block mb-6">
-                            {/* ... Search Input Code ... */}
-                        </div>
-
-                        {/* Results Grid */}
-                        {isLoading ? (
-                            <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>
-                        ) : (
-                            <div className="animate-in fade-in duration-500">
-                                {filteredAndSortedItems.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
-                                        <div className="p-4 bg-slate-50 rounded-full mb-4">
-                                            <KeyRound className="text-slate-400" size={40} />
-                                        </div>
-                                        <h4 className="text-xl font-bold text-slate-800">No rentals found</h4>
-                                        <button onClick={resetFilters} className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">
-                                            Clear Filters
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                            {filteredAndSortedItems.map((item) => (
-                                                <RentalCard key={item.id} rental={item} />
-                                            ))}
-                                        </div>
-
-                                        {/* --- 4. Attach Ref to this DIV --- */}
-                                        <div ref={ref} className="flex justify-center py-8 min-h-[50px]">
-                                            {isFetchingNextPage && (
-                                                <div className="flex items-center gap-2 text-slate-500">
-                                                    <Loader2 className="animate-spin" size={20} />
-                                                    <span>Loading more...</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </>
-                                )}
+                <main className="relative flex-1 min-w-0">
+                    {/* Desktop Search */}
+                    <div className="hidden md:block mb-6">
+                        <div className="relative w-full">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                <FaMagnifyingGlass size={18} />
                             </div>
+                            <input
+                                type="text"
+                                placeholder="Search rentals, equipment, or vehicles..."
+                                className="w-full pl-12 pr-10 py-4 bg-slate-50 border-none rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium text-slate-900 text-base"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            {searchTerm && (
+                                <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-red-500">
+                                    <FaXmark size={18} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Overlay Spinner */}
+                    {isFetching && !isFetchingNextPage && rawRentals.length > 0 && (
+                        <div className="fixed inset-0 bg-white/40 z-50 flex justify-center pt-40 pointer-events-none">
+                            <div className="bg-white p-3 rounded-full shadow-xl border h-fit">
+                                <Loader2 className="animate-spin text-slate-900 w-6 h-6" />
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        {filteredItems.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
+                                <div className="p-4 bg-slate-50 rounded-full mb-4">
+                                    <KeyRound className="text-slate-400" size={40} />
+                                </div>
+                                <h4 className="text-xl font-bold text-slate-800">No rentals found</h4>
+                                <button onClick={resetFilters} className="mt-4 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">Clear Filters</button>
+                            </div>
+                        ) : (
+                            <VirtuosoGrid
+                                useWindowScroll
+                                totalCount={filteredItems.length}
+                                endReached={() => hasNextPage && fetchNextPage()}
+                                overscan={1000}
+                                components={{
+                                    List: forwardRef<HTMLDivElement, ComponentPropsWithRef<'div'>>(({ style, children, ...props }, ref) => (
+                                        <div
+                                            ref={ref}
+                                            {...props}
+                                            style={{ ...style, display: 'grid', gap: '1rem' }}
+                                            className="grid grid-cols-2 lg:grid-cols-3 md:gap-6 pb-20"
+                                        >
+                                            {children}
+                                        </div>
+                                    )),
+                                    Footer: () => isFetchingNextPage ? (
+                                        <div className="py-10 flex justify-center w-full">
+                                            <Loader2 className="animate-spin h-6 w-6 text-slate-400" />
+                                        </div>
+                                    ) : null
+                                }}
+                                itemContent={(index) => {
+                                    const item = filteredItems[index];
+                                    return <RentalCard key={item.id} rental={item} />;
+                                }}
+                            />
                         )}
-                    </main>
-                </div>
+                    </div>
+                </main>
             </div>
         </section>
     );
