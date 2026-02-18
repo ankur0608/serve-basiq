@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useMemo, useCallback, forwardRef } from 'react';
-import type { ComponentPropsWithRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SearchX, Loader2 } from 'lucide-react';
 import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
-import { VirtuosoGrid } from 'react-virtuoso';
 
 import { useServicesExplorer } from '@/app/hook/useServicesExplorer';
 import ServiceCard from '@/components/ui/ServiceCard';
@@ -18,12 +16,15 @@ export default function ServicesExplorer() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Filters
+    // --- FILTERS STATE ---
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedLocation, setSelectedLocation] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
     const [sortOption, setSortOption] = useState('');
+
+    // --- INFINITE SCROLL REF ---
+    const observerTarget = useRef<HTMLDivElement>(null);
 
     const {
         services,
@@ -44,6 +45,7 @@ export default function ServicesExplorer() {
         sort: sortOption
     });
 
+    // --- DERIVED DATA ---
     const availableSubcategories = useMemo(() => {
         if (!selectedCategory) return [];
         const cat = categories.find((c: any) => String(c.id) === String(selectedCategory));
@@ -65,11 +67,44 @@ export default function ServicesExplorer() {
         toggleFavorite({ id, type: 'SERVICE' });
     }, [toggleFavorite]);
 
+    // --- SEAMLESS INFINITE SCROLL LOGIC ---
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const target = entries[0];
+
+                // Trigger fetch if:
+                // 1. The invisible footer is "approaching" (within 800px)
+                // 2. We have more pages to fetch
+                // 3. We are NOT currently fetching (prevents duplicate API calls)
+                if (target.isIntersecting && hasNextPage && !isFetchingNextPage && !isFetching) {
+                    fetchNextPage();
+                }
+            },
+            {
+                threshold: 0,
+                // "800px" means: Trigger the load when the user is 800px AWAY from the bottom.
+                // This creates the "Seamless" effect.
+                rootMargin: '800px'
+            }
+        );
+
+        const currentTarget = observerTarget.current;
+        if (currentTarget) {
+            observer.observe(currentTarget);
+        }
+
+        return () => {
+            if (currentTarget) observer.unobserve(currentTarget);
+        };
+    }, [hasNextPage, fetchNextPage, isFetchingNextPage, isFetching]);
+
+    // --- INITIAL LOADING ---
     if (isLoading) return <ProductsSkeleton />;
 
     return (
         <section className="min-h-screen bg-slate-50 text-slate-800 pb-10">
-            {/* --- HEADER SECTION --- */}
+            {/* --- HEADER --- */}
             <div className="pt-4 md:pt-6 bg-slate-50">
                 <div className="container mx-auto max-w-7xl px-4 mb-2">
                     <ServiceCategories categories={categories} />
@@ -88,7 +123,7 @@ export default function ServicesExplorer() {
             </div>
 
             <div className="container mx-auto max-w-7xl px-4 mt-2 flex gap-6 lg:gap-8">
-                {/* SIDEBAR (Desktop) */}
+                {/* --- SIDEBAR (Desktop) --- */}
                 <aside className="hidden md:block w-[260px] shrink-0">
                     <div className="sticky top-24 h-fit">
                         <ServiceFiltersDesktop
@@ -101,8 +136,9 @@ export default function ServicesExplorer() {
                     </div>
                 </aside>
 
-                {/* GRID AREA */}
+                {/* --- MAIN CONTENT --- */}
                 <main className="relative flex-1 min-w-0">
+                    {/* Search Bar */}
                     <div className="hidden md:block mb-6">
                         <div className="relative w-full">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
@@ -121,7 +157,7 @@ export default function ServicesExplorer() {
                         </div>
                     </div>
 
-                    {/* LOADING OVERLAY */}
+                    {/* Filter Loading Overlay (shows when changing categories/filters) */}
                     {isFetching && !isFetchingNextPage && services.length > 0 && (
                         <div className="fixed inset-0 bg-white/40 z-50 flex justify-center pt-40 pointer-events-none">
                             <div className="bg-white p-3 rounded-full shadow-xl border h-fit">
@@ -140,37 +176,10 @@ export default function ServicesExplorer() {
                                 <button type="button" onClick={resetFilters} className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">Clear Filters</button>
                             </div>
                         ) : (
-                            <VirtuosoGrid
-                                useWindowScroll
-                                totalCount={services.length}
-                                endReached={() => hasNextPage && fetchNextPage()}
-                                overscan={1000}
-                                components={{
-                                    List: forwardRef<HTMLDivElement, ComponentPropsWithRef<'div'>>(({ style, children, ...props }, ref) => (
-                                        <div
-                                            ref={ref}
-                                            {...props}
-                                            style={{
-                                                ...style,
-                                                display: 'grid',
-                                                // We remove the hardcoded column count from style so className handles it
-                                                gap: '1rem',
-                                            }}
-                                            // 2 columns mobile, 3 columns desktop (lg breakpoint)
-                                            className="grid grid-cols-2 lg:grid-cols-3 md:gap-6 pb-20"
-                                        >
-                                            {children}
-                                        </div>
-                                    )),
-                                    Footer: () => isFetchingNextPage ? (
-                                        <div className="py-10 flex justify-center w-full">
-                                            <Loader2 className="animate-spin h-6 w-6 text-slate-400" />
-                                        </div>
-                                    ) : null
-                                }}
-                                itemContent={(index) => {
-                                    const item = services[index];
-                                    return (
+                            <>
+                                {/* GRID LAYOUT */}
+                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                                    {services.map((item) => (
                                         <ServiceCard
                                             key={item.id}
                                             service={item}
@@ -178,9 +187,22 @@ export default function ServicesExplorer() {
                                             toggleFav={(e) => handleToggleFav(e!, item.id)}
                                             currentUser={currentUser}
                                         />
-                                    );
-                                }}
-                            />
+                                    ))}
+                                </div>
+
+                                {/* INVISIBLE TRIGGER & LOADING FOOTER */}
+                                <div ref={observerTarget} className="w-full py-8 mt-4 flex flex-col items-center justify-center min-h-[50px]">
+                                    {isFetchingNextPage ? (
+                                        <div className="flex items-center gap-2 text-slate-500">
+                                            <Loader2 className="animate-spin h-5 w-5" />
+                                            <span className="text-sm font-medium">Loading more services...</span>
+                                        </div>
+                                    ) : (
+                                        // Empty div to maintain layout while observing
+                                        <div className="h-1 w-full" />
+                                    )}
+                                </div>
+                            </>
                         )}
                     </div>
                 </main>

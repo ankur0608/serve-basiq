@@ -58,7 +58,7 @@ interface UIState {
 
   setCurrentUser: (user: User | null) => void;
   logout: () => void;
-
+  devOtp?: string; // ✅ Temporary OTP storage for simulation, will be removed in production
   // Login/Modal State
   loginIntent: "user" | "provider";
   setLoginIntent: (intent: "user" | "provider") => void;
@@ -104,6 +104,7 @@ export const useUIStore = create<UIState>()(
       setTempName: (name) => set({ tempName: name }),
 
       mobileNumber: "",
+      devOtp: undefined,
       verificationId: null, // Default null
       isNewUser: false,
 
@@ -116,19 +117,21 @@ export const useUIStore = create<UIState>()(
       onOpenOtp: (phone, verificationId, isNewUser) =>
         set({
           mobileNumber: phone,
+          devOtp: undefined,
           verificationId: verificationId,
           isNewUser: isNewUser || false,
           isLoginOpen: false,
           isOtpOpen: true,
           isNameOpen: false,
         }),
-
-      onCloseOtp: () => set({ mobileNumber: "", verificationId: null, isOtpOpen: false }),
+      onCloseOtp: () => set({ mobileNumber: "", devOtp: undefined, isOtpOpen: false }),
+      // onCloseOtp: () => set({ mobileNumber: "", verificationId: null, isOtpOpen: false }),
 
       onOpenLogin: () =>
         set({
           isLoginOpen: true,
           isOtpOpen: false,
+          devOtp: undefined,
           isNameOpen: false,
           verificationId: null,
           isNewUser: false,
@@ -138,6 +141,7 @@ export const useUIStore = create<UIState>()(
         set({
           isLoginOpen: false,
           verificationId: null,
+          devOtp: undefined,
           tempName: "",
           isNewUser: false,
           isNameOpen: false,
@@ -145,6 +149,7 @@ export const useUIStore = create<UIState>()(
 
       onOpenName: () => set({ isNameOpen: true, isOtpOpen: false, isLoginOpen: false }),
       onCloseName: () => set({ isNameOpen: false, isNewUser: false, tempName: "" }),
+
 
       onOpenEditProfile: () => set({ isEditProfileOpen: true }),
       onCloseEditProfile: () => set({ isEditProfileOpen: false }),

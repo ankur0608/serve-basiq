@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import imageCompression from 'browser-image-compression';
+// ❌ REMOVED: import { compressVideo } ... (Not needed)
 
 export interface SubCategory {
     id: string;
@@ -169,7 +170,7 @@ export function useServiceForm({
         });
     };
 
-    // ✅ UPDATED: Handles Multiple Images for Gallery
+    // ✅ UPDATED: Simple Upload (Images compressed, Videos direct)
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
@@ -178,32 +179,39 @@ export function useServiceForm({
         setActiveUploadField(field);
 
         try {
-            // Helper to process a single file (Compress -> Upload)
+            // Helper to process a single file
             const processFile = async (file: File) => {
                 let uploadFile = file;
+
+                // Only compress images
                 if (file.type.startsWith('image/')) {
-                    uploadFile = await imageCompression(file, {
-                        maxSizeMB: 1,
-                        maxWidthOrHeight: 1920,
-                        useWebWorker: true,
-                    });
+                    try {
+                        uploadFile = await imageCompression(file, {
+                            maxSizeMB: 1,
+                            maxWidthOrHeight: 1920,
+                            useWebWorker: true,
+                        });
+                    } catch (err) {
+                        console.error("Image compress failed, uploading original", err);
+                    }
                 }
+
+                // Videos are uploaded directly (handled by API 50MB limit)
                 return await uploadToBackend(uploadFile);
             };
 
             if (field === 'gallery') {
                 // --- MULTIPLE FILE UPLOAD LOGIC ---
-                const uploadPromises = Array.from(files).map((file) => processFile(file));
+                const uploadPromises = Array.from(files).map(file => processFile(file));
                 const newUrls = await Promise.all(uploadPromises);
 
-                // Append new URLs to existing gallery
                 handleChange('gallery', [...form.gallery, ...newUrls]);
-                showToast?.(`${newUrls.length} images uploaded`, 'success');
+                showToast?.(`${newUrls.length} items uploaded`, 'success');
             } else {
-                // --- SINGLE FILE UPLOAD LOGIC (Main Img / Cover) ---
+                // --- SINGLE FILE UPLOAD LOGIC ---
                 const url = await processFile(files[0]);
                 handleChange(field, url);
-                showToast?.('Image uploaded', 'success');
+                showToast?.('Uploaded successfully', 'success');
             }
 
         } catch (error) {

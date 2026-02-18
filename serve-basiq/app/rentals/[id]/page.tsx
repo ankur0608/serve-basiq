@@ -15,6 +15,12 @@ import RentalBookingWrapper from '@/components/Rental/RentalBookingWrapper';
 
 export const dynamic = "force-dynamic";
 
+// ✅ HELPER: Detect Video Files
+const isVideo = (url: string | null | undefined) => {
+    if (!url) return false;
+    return url.match(/\.(mp4|webm|mov|mkv)$/i);
+};
+
 interface Props {
     params: Promise<{ id: string }>;
 }
@@ -115,7 +121,7 @@ export default async function RentalDetailsPage({ params }: Props) {
     const ratingValue = calculatedRating;
     const reviewCount = rental.reviews.length;
 
-    // ✅ UPDATED SOCIALS: Only fetching from 'provider' (the user)
+    // Socials
     const socials = [
         { icon: <FaInstagram size={20} />, url: provider?.instagramUrl, styleClass: "text-pink-600 bg-pink-50 border-pink-100 hover:bg-pink-600 hover:text-white" },
         { icon: <FaFacebook size={20} />, url: provider?.facebookUrl, styleClass: "text-blue-600 bg-blue-50 border-blue-100 hover:bg-blue-600 hover:text-white" },
@@ -123,7 +129,7 @@ export default async function RentalDetailsPage({ params }: Props) {
         { icon: <FaGlobe size={20} />, url: provider?.websiteUrl, styleClass: "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-600 hover:text-white" },
     ].filter(s => s.url && s.url !== "null");
 
-    // Fix: Handle null vs undefined for RentalBookingWrapper
+    // Prices
     const safeDailyPrice = rental.dailyPrice ?? undefined;
     const safeMonthlyPrice = rental.monthlyPrice ?? undefined;
     const safeFixedPrice = rental.fixedPrice ?? undefined;
@@ -236,19 +242,27 @@ export default async function RentalDetailsPage({ params }: Props) {
                             </div>
                         </div>
 
-                        {/* GALLERY */}
+                        {/* ✅ GALLERY SECTION WITH VIDEO SUPPORT */}
                         {galleryImages.length > 0 && (
                             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                                 <h3 className="text-xl font-bold text-slate-900 mb-6">Gallery</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    {galleryImages.map((img, i) => (
+                                    {galleryImages.map((mediaUrl, i) => (
                                         <div key={i} className="h-48 w-full relative group rounded-2xl overflow-hidden bg-slate-50 border border-slate-100">
-                                            <AppImage
-                                                src={img}
-                                                alt={`Gallery ${i}`}
-                                                type="gallery"
-                                                className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                                            />
+                                            {isVideo(mediaUrl) ? (
+                                                <video
+                                                    src={mediaUrl}
+                                                    controls
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <AppImage
+                                                    src={mediaUrl}
+                                                    alt={`Gallery ${i}`}
+                                                    type="gallery"
+                                                    className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                                                />
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -272,7 +286,6 @@ export default async function RentalDetailsPage({ params }: Props) {
                                     </div>
                                 ) : (
                                     <div className="p-6 bg-slate-50 border border-slate-100 rounded-2xl text-center">
-
                                         <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center sticky top-24">
                                             <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
                                                 {reviewMessage.includes("Login") ? <FaLock /> : <FaBoxOpen />}
@@ -282,11 +295,6 @@ export default async function RentalDetailsPage({ params }: Props) {
                                                 You can only leave a review after you have booked this Rental and the job is marked as <strong>Completed</strong>.
                                             </p>
                                         </div>
-                                        {/* {reviewMessage.includes("Login") && (
-                                            <Link href="/login" className="mt-3 inline-block text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 hover:bg-blue-100">
-                                                Login Now
-                                            </Link>
-                                        )} */}
                                     </div>
                                 )}
                             </div>

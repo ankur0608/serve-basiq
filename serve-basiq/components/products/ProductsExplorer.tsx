@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useMemo, useCallback, forwardRef } from 'react';
-import type { ComponentPropsWithRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
 import { PackageOpen, Loader2 } from 'lucide-react';
-import { VirtuosoGrid } from 'react-virtuoso';
 
 // Hooks
 import { useProductsExplorer } from '@/app/hook/useProductsExplorer';
@@ -27,6 +25,9 @@ export default function ProductsExplorer() {
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
     const [selectedLocation, setSelectedLocation] = useState('');
     const [sortOption, setSortOption] = useState('');
+
+    // Infinite Scroll Ref
+    const observerTarget = useRef<HTMLDivElement>(null);
 
     // 2. Data Hook
     const {
@@ -68,15 +69,40 @@ export default function ProductsExplorer() {
         router.push('/products');
     };
 
-    // Callback for memoized cards
     const handleToggleFav = useCallback((e: React.MouseEvent, id: string) => {
         toggleFavorite(e, id);
     }, [toggleFavorite]);
 
+    // --- SEAMLESS INFINITE SCROLL LOGIC ---
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const target = entries[0];
+                if (target.isIntersecting && hasNextPage && !isFetchingNextPage && !isFetching) {
+                    fetchNextPage();
+                }
+            },
+            {
+                threshold: 0,
+                // Load more data when user is 800px away from the bottom
+                rootMargin: '800px'
+            }
+        );
+
+        const currentTarget = observerTarget.current;
+        if (currentTarget) {
+            observer.observe(currentTarget);
+        }
+
+        return () => {
+            if (currentTarget) observer.unobserve(currentTarget);
+        };
+    }, [hasNextPage, fetchNextPage, isFetchingNextPage, isFetching]);
+
+
     if (isLoading) return <ProductsSkeleton />;
 
     return (
-        // Changed h-screen to min-h-screen to enable page-level scrolling
         <section className="min-h-screen bg-slate-50 text-slate-800 pb-10">
             {/* --- HEADER SECTION --- */}
             <div className="pt-4 md:pt-6 bg-slate-50">
@@ -99,7 +125,7 @@ export default function ProductsExplorer() {
             {/* --- CONTENT AREA --- */}
             <div className="container mx-auto max-w-7xl px-4 mt-2 flex gap-6 lg:gap-8">
 
-                {/* SIDEBAR (Desktop) - Made Sticky */}
+                {/* SIDEBAR (Desktop) */}
                 <aside className="hidden md:block w-[260px] shrink-0">
                     <div className="sticky top-24 h-fit">
                         <ProductFiltersDesktop
@@ -133,7 +159,7 @@ export default function ProductsExplorer() {
                         </div>
                     </div>
 
-                    {/* LOADING OVERLAY (Filtering State) */}
+                    {/* LOADING OVERLAY (Filtering) */}
                     {isFetching && !isFetchingNextPage && rawProducts.length > 0 && (
                         <div className="fixed inset-0 bg-white/40 z-50 flex justify-center pt-40 pointer-events-none">
                             <div className="bg-white p-3 rounded-full shadow-xl border h-fit">
@@ -152,38 +178,10 @@ export default function ProductsExplorer() {
                                 <button type="button" onClick={resetFilters} className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">Clear Filters</button>
                             </div>
                         ) : (
-                            <VirtuosoGrid
-                                useWindowScroll
-                                totalCount={rawProducts.length}
-                                endReached={() => hasNextPage && fetchNextPage()}
-                                overscan={1000}
-                                components={{
-                                    List: forwardRef<HTMLDivElement, ComponentPropsWithRef<'div'>>(({ style, children, ...props }, ref) => (
-                                        <div
-                                            ref={ref}
-                                            {...props}
-                                            style={{
-                                                ...style,
-                                                display: 'grid',
-                                                // Responsive logic using Tailwind's breakpoints directly in style is hard,
-                                                // so we set the base style and use className for overrides.
-                                                gap: '1rem',
-                                            }}
-                                            // 2 columns by default (mobile), 2 on md, 3 on lg/desktop
-                                            className="grid grid-cols-2 lg:grid-cols-3 md:gap-6 pb-20"
-                                        >
-                                            {children}
-                                        </div>
-                                    )),
-                                    Footer: () => isFetchingNextPage ? (
-                                        <div className="py-10 flex justify-center w-full">
-                                            <Loader2 className="animate-spin h-6 w-6 text-slate-400" />
-                                        </div>
-                                    ) : null
-                                }}
-                                itemContent={(index) => {
-                                    const item = rawProducts[index];
-                                    return (
+                            <>
+                                {/* NATIVE GRID (Replaces Virtuoso) */}
+                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                                    {rawProducts.map((item) => (
                                         <ProductCard
                                             key={item.id}
                                             product={item}
@@ -191,9 +189,21 @@ export default function ProductsExplorer() {
                                             toggleFav={(e) => handleToggleFav(e!, item.id)}
                                             currentUser={currentUser}
                                         />
-                                    );
-                                }}
-                            />
+                                    ))}
+                                </div>
+
+                                {/* SCROLL TRIGGER / FOOTER */}
+                                <div ref={observerTarget} className="w-full py-8 mt-4 flex flex-col items-center justify-center min-h-[50px]">
+                                    {isFetchingNextPage ? (
+                                        <div className="flex items-center gap-2 text-slate-500">
+                                            <Loader2 className="animate-spin h-5 w-5" />
+                                            <span className="text-sm font-medium">Loading more products...</span>
+                                        </div>
+                                    ) : (
+                                        <div className="h-1 w-full" />
+                                    )}
+                                </div>
+                            </>
                         )}
                     </div>
                 </main>

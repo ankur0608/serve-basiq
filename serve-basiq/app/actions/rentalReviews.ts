@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { uploadToR2 } from "@/lib/r2"; // ✅ Import R2 Uploader
 
 export async function submitRentalReview(formData: FormData) {
     try {
@@ -14,7 +15,8 @@ export async function submitRentalReview(formData: FormData) {
         }
 
         // 2. Extract Data
-        const rentalId = formData.get("serviceId") as string; // RatingForm uses "serviceId" as the generic key
+        // Note: The frontend uses "serviceId" as the generic key for the ID
+        const rentalId = (formData.get("rentalId") || formData.get("serviceId")) as string;
         const rating = parseInt(formData.get("rating") as string);
         const comment = formData.get("comment") as string;
         const authorId = session.user.id;
@@ -33,19 +35,42 @@ export async function submitRentalReview(formData: FormData) {
             return { success: false, error: "Rental not found." };
         }
 
-        // 4. Create Review
+        // 4. Handle Image Uploads (Same logic as Service Review)
+        const files = formData.getAll("images") as File[];
+        const uploadedImageUrls: string[] = [];
+
+        if (files && files.length > 0) {
+            for (const file of files) {
+                if (!file || file.size === 0) continue;
+
+                const arrayBuffer = await file.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+
+                // Sanitize filename
+                const timestamp = Date.now();
+                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "");
+
+                // ✅ STORE IN 'reviews/' FOLDER
+                const key = `reviews/${timestamp}-${safeName}`;
+
+                const url = await uploadToR2(key, buffer, file.type);
+                if (url) uploadedImageUrls.push(url);
+            }
+        }
+
+        // 5. Create Review
         await prisma.review.create({
             data: {
                 rating,
                 comment,
                 rentalId: rentalId,
                 authorId: authorId,    // The Renter
-                userId: rental.userId, // The Owner (REQUIRED)
-                images: []
+                userId: rental.userId, // The Owner
+                images: uploadedImageUrls // ✅ Save image URLs
             },
         });
 
-        // 5. Revalidate
+        // 6. Revalidate
         revalidatePath(`/rentals/${rentalId}`);
 
         return { success: true };

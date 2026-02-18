@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { FaStar, FaCamera, FaXmark } from "react-icons/fa6";
 import Image from "next/image";
+import { Loader2 } from "lucide-react"; // Added cleaner loader
 
 // Import actions
 import { submitServiceReview } from "@/app/actions/reviews";
@@ -28,12 +29,11 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
     const activeId = serviceId || productId || rentalId;
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Debugging Props on Mount
-    // console.log("🛠️ [CLIENT] RatingForm mounted. Props:", { serviceId, productId, rentalId, activeId });
-
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const selectedFiles = Array.from(e.target.files);
+
+            // Limit to 5 images total
             if (images.length + selectedFiles.length > 5) {
                 alert("You can only upload a maximum of 5 images.");
                 return;
@@ -48,81 +48,61 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("🚀 [CLIENT] Submit clicked.");
 
-        if (rating === 0) {
-            console.warn("⚠️ [CLIENT] Validation Failed: No rating selected");
-            return alert("Please select a star rating!");
-        }
-        if (!activeId) {
-            console.error("❌ [CLIENT] Critical Error: No Active ID found");
-            return alert("Error: No ID provided for review.");
-        }
+        if (rating === 0) return alert("Please select a star rating!");
+        if (!activeId) return alert("Error: No ID provided for review.");
 
         setLoading(true);
 
         try {
             const formData = new FormData();
-            formData.append("serviceId", activeId);
+            formData.append("serviceId", activeId); // Action expects "serviceId" usually, or change based on type
             formData.append("rating", rating.toString());
             formData.append("comment", comment);
 
+            // Append all images
             images.forEach((image) => {
                 formData.append("images", image);
-            });
-
-            console.log("📡 [CLIENT] Sending FormData:", {
-                serviceId: activeId,
-                rating,
-                comment,
-                imagesCount: images.length
             });
 
             let res;
 
             if (serviceId) {
-                console.log("👉 [CLIENT] Calling submitServiceReview...");
                 res = await submitServiceReview(formData);
             } else if (productId) {
-                console.log("👉 [CLIENT] Calling submitProductReview...");
+                // Ensure product action expects 'productId' key in formData if different
+                formData.set("productId", activeId);
                 res = await submitProductReview(formData);
             } else if (rentalId) {
-                console.log("👉 [CLIENT] Calling submitRentalReview...");
+                formData.set("rentalId", activeId);
                 res = await submitRentalReview(formData);
-            } else {
-                throw new Error("Unknown review type");
             }
 
-            console.log("🔙 [CLIENT] Server Response:", res);
-
             if (res?.success) {
-                console.log("✅ [CLIENT] Success! Opening Modal.");
                 setShowSuccessModal(true);
+                // Reset Form
                 setRating(0);
                 setComment("");
                 setImages([]);
             } else {
-                console.error("❌ [CLIENT] Server returned error:", res?.error);
                 alert(res?.error || "Something went wrong.");
             }
         } catch (error) {
-            console.error("💥 [CLIENT] Exception caught:", error);
+            console.error(error);
             alert("Failed to submit review.");
         } finally {
             setLoading(false);
         }
     };
 
-    if (!activeId) {
-        console.error("❌ [CLIENT] Render aborted: Missing activeId");
-        return null;
-    }
+    if (!activeId) return null;
 
     return (
         <>
             <form onSubmit={handleSubmit} className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                 <h4 className="font-bold text-slate-900">Leave a Review</h4>
 
+                {/* Star Rating */}
                 <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -141,6 +121,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
                     ))}
                 </div>
 
+                {/* Comment Box */}
                 <textarea
                     className="w-full p-3 text-sm border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     placeholder="Share your experience..."
@@ -150,6 +131,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
                     required
                 />
 
+                {/* Image Upload Section */}
                 <div className="space-y-3">
                     <div className="flex items-center gap-2">
                         <button
@@ -174,6 +156,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
                         onChange={handleImageChange}
                     />
 
+                    {/* Image Previews */}
                     {images.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {images.map((file, index) => (
@@ -198,11 +181,13 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
                     )}
                 </div>
 
+                {/* Submit Button */}
                 <button
                     disabled={loading}
-                    className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-800 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                    className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-800 disabled:opacity-70 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                 >
-                    {loading ? "Posting..." : "Submit Review"}
+                    {loading && <Loader2 className="animate-spin" size={16} />}
+                    {loading ? "Posting Review..." : "Submit Review"}
                 </button>
             </form>
 
@@ -210,7 +195,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
                 isOpen={showSuccessModal}
                 onClose={() => setShowSuccessModal(false)}
                 title="Review Submitted!"
-                message="Thank you for your feedback. Your review helps others make better decisions."
+                message="Thank you for your feedback."
                 buttonText="Close"
             />
         </>

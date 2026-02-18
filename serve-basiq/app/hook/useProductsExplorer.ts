@@ -129,12 +129,13 @@ export function useProductsExplorer({
         hasNextPage,
         isFetchingNextPage,
         isLoading,
-        isFetching, // 👈 Export this to detect background fetching
+        isFetching,
     } = useInfiniteQuery({
         queryKey: ['products', 'infinite', category, subcategory, debouncedSearch, location, sort],
         queryFn: async ({ pageParam = undefined }) => {
             const params = new URLSearchParams();
-            params.append('limit', '12');
+            // INCREASED LIMIT TO 24 FOR BETTER UX
+            params.append('limit', '24');
 
             if (pageParam) params.append('cursor', pageParam as string);
             if (category) params.append('categoryId', category);
@@ -149,20 +150,31 @@ export function useProductsExplorer({
         },
         getNextPageParam: (lastPage: any) => lastPage.nextCursor ?? undefined,
         initialPageParam: undefined,
-
-        // --- KEY FIX: Prevents white screen flash ---
         placeholderData: keepPreviousData,
-
         staleTime: 1000 * 60 * 5,
         gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
     });
 
-    // Flatten pages
+    // Flatten pages & Deduplicate
     const rawProducts = useMemo(() => {
         if (!data) return [];
+
+        // 1. Flatten
         const allItems = data.pages.flatMap((page: any) => page.products || page.items || []);
-        return normalizeProducts(allItems);
+
+        // 2. Normalize first (handles image logic)
+        const normalizedItems = normalizeProducts(allItems);
+
+        // 3. DEDUPLICATION (The Fix)
+        const uniqueMap = new Map();
+        normalizedItems.forEach((item) => {
+            if (!uniqueMap.has(item.id)) {
+                uniqueMap.set(item.id, item);
+            }
+        });
+
+        return Array.from(uniqueMap.values());
     }, [data]);
 
     // 5. Fetch Categories
@@ -215,7 +227,7 @@ export function useProductsExplorer({
         rawProducts,
         rawCategories: (categoriesData || []) as CategoryData[],
         isLoading,
-        isFetching, // Return this
+        isFetching,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage

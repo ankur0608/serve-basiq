@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { uploadToR2 } from "@/lib/r2"; // ✅ Import R2 Uploader
 
 export async function submitProductReview(formData: FormData) {
     console.log("🔥 [SERVER ACTION] submitProductReview started");
@@ -11,59 +12,70 @@ export async function submitProductReview(formData: FormData) {
     try {
         // 1. Validate Session
         const session = await getServerSession(authOptions);
-        console.log("👤 [SERVER ACTION] Session User:", session?.user?.id);
 
         if (!session?.user?.id) {
-            console.error("❌ [SERVER ACTION] Error: User not logged in");
             return { success: false, error: "You must be logged in." };
         }
 
         // 2. Extract Data
-        const productId = formData.get("serviceId") as string;
-        const ratingString = formData.get("rating") as string;
-        const rating = parseInt(ratingString);
+        // Note: The frontend uses "serviceId" or "productId" as the key
+        const productId = (formData.get("productId") || formData.get("serviceId")) as string;
+        const rating = parseInt(formData.get("rating") as string);
         const comment = formData.get("comment") as string;
         const authorId = session.user.id;
 
-        console.log("📦 [SERVER ACTION] Payload:", { productId, rating, comment, authorId });
-
         if (!productId || !rating) {
-            console.error("❌ [SERVER ACTION] Error: Missing productId or rating");
             return { success: false, error: "Missing required fields." };
         }
 
-        // 3. Fetch Product Owner (REQUIRED by Schema)
-        console.log("🔍 [SERVER ACTION] Fetching product owner for ID:", productId);
+        // 3. Fetch Product Owner
         const product = await prisma.product.findUnique({
             where: { id: productId },
             select: { userId: true }
         });
 
         if (!product) {
-            console.error("❌ [SERVER ACTION] Error: Product not found in DB");
             return { success: false, error: "Product not found." };
         }
 
-        console.log("✅ [SERVER ACTION] Product Found. Owner ID:", product.userId);
+        // 4. Handle Image Uploads (Same logic as Service Review)
+        const files = formData.getAll("images") as File[];
+        const uploadedImageUrls: string[] = [];
 
-        // 4. Create Review
-        console.log("💾 [SERVER ACTION] Attempting to create review in Prisma...");
-        const newReview = await prisma.review.create({
+        if (files && files.length > 0) {
+            console.log(`📸 [Product] Uploading ${files.length} images...`);
+            for (const file of files) {
+                if (!file || file.size === 0) continue;
+
+                const arrayBuffer = await file.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+
+                // Sanitize filename
+                const timestamp = Date.now();
+                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "");
+
+                // ✅ STORE IN 'reviews/' FOLDER
+                const key = `reviews/${timestamp}-${safeName}`;
+
+                const url = await uploadToR2(key, buffer, file.type);
+                if (url) uploadedImageUrls.push(url);
+            }
+        }
+
+        // 5. Create Review
+        await prisma.review.create({
             data: {
                 rating,
                 comment,
                 productId: productId,
                 authorId: authorId,    // The Buyer
-                userId: product.userId, // The Seller (REQUIRED)
-                images: []
+                userId: product.userId, // The Seller
+                images: uploadedImageUrls // ✅ Save image URLs
             },
         });
 
-        console.log("🎉 [SERVER ACTION] Review Created Successfully:", newReview.id);
-
-        // 5. Revalidate
+        // 6. Revalidate
         revalidatePath(`/products/${productId}`);
-        console.log("🔄 [SERVER ACTION] Revalidated path:", `/products/${productId}`);
 
         return { success: true };
 

@@ -17,6 +17,12 @@ import RatingForm from '@/components/Rating/RatingForm';
 
 export const dynamic = "force-dynamic";
 
+// ✅ HELPER: Detect Video Files
+const isVideo = (url: string | null | undefined) => {
+  if (!url) return false;
+  return url.match(/\.(mp4|webm|mov|mkv)$/i);
+};
+
 interface Props {
   params: Promise<{ id: string }>;
 }
@@ -223,19 +229,28 @@ export default async function ProductDetail({ params }: Props) {
               </div>
             </div>
 
-            {/* 2. GALLERY CARD */}
+            {/* 2. GALLERY CARD (UPDATED FOR VIDEO) */}
             {galleryImages.length > 0 && (
               <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
                 <h3 className="text-xl font-bold text-slate-900 mb-6">Gallery</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {galleryImages.map((img, i) => (
+                  {galleryImages.map((mediaUrl, i) => (
                     <div key={i} className="aspect-square w-full relative group rounded-2xl overflow-hidden bg-slate-50 border border-slate-100">
-                      <AppImage
-                        src={img}
-                        alt={`Gallery ${i}`}
-                        type="gallery"
-                        className="w-full h-full object-contain mix-blend-multiply p-2 group-hover:scale-110 transition duration-500"
-                      />
+                      {isVideo(mediaUrl) ? (
+                        <video
+                          src={mediaUrl}
+                          controls
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <AppImage
+                          src={mediaUrl}
+                          alt={`Gallery ${i}`}
+                          type="gallery"
+                          // Use containment for product images as they often have white backgrounds
+                          className="w-full h-full object-contain mix-blend-multiply p-2 group-hover:scale-110 transition duration-500"
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

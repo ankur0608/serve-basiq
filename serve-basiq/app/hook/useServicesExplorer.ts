@@ -64,7 +64,7 @@ export function useServicesExplorer({
         queryKey: ['services', 'explorer', search, category, subcategory, location, sort],
         queryFn: async ({ pageParam = undefined }) => {
             const params = new URLSearchParams();
-            params.append('limit', '12');
+            params.append('limit', '24');
             if (pageParam) params.append('cursor', pageParam as string);
             if (search) params.append('search', search);
             if (category) params.append('categoryId', category);
@@ -89,9 +89,23 @@ export function useServicesExplorer({
 
     const services = useMemo(() => {
         if (!data) return [];
+
+        // 1. Flatten all pages into a single array
         const rawItems = data.pages.flatMap((page: any) => page.items || []);
 
-        return rawItems.map((item: any): ServiceItem => ({
+        // 2. DEDUPLICATION LOGIC
+        // We use a Map to filter out duplicate IDs. 
+        // If the API returns the same item in two different pages, this prevents the React key error.
+        const uniqueItems = new Map();
+
+        rawItems.forEach((item: any) => {
+            if (!uniqueItems.has(item.id)) {
+                uniqueItems.set(item.id, item);
+            }
+        });
+
+        // 3. Transform to ServiceItem interface
+        return Array.from(uniqueItems.values()).map((item: any): ServiceItem => ({
             id: item.id,
             name: item.name,
             categoryId: item.category?.id,
@@ -115,7 +129,7 @@ export function useServicesExplorer({
         favoriteIds: favoriteServices,
         toggleFavorite,
         isLoading,
-        isFetching, // Return this
+        isFetching,
         isError,
         fetchNextPage,
         hasNextPage,

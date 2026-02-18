@@ -2,23 +2,32 @@
 
 import {
     ChevronRight, Loader2, Save, UploadCloud, Navigation,
-    Trash2, Clock, Camera, Plus, Check, BadgeIndianRupee
+    Trash2, Clock, Camera, Plus, Check, BadgeIndianRupee,
+    PlayCircle, FileVideo
 } from 'lucide-react';
 
-// Shared Styles (Duplicated for standalone capability)
+// --- Shared Styles ---
 const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
 
-// --- STEP 2: Visuals ---
-// --- STEP 2: Visuals ---
-// Note: Ensure handleImageUpload and activeUploadField are passed from the useServiceForm hook to this component
+// ✅ FIXED HELPER: Detect Video Files correctly
+const isVideo = (url: string) => {
+    if (!url) return false;
+    // ❌ REMOVED: url.includes('services/') <- This caused the bug!
+    // Only return true if it actually ends in a video extension
+    return url.match(/\.(mp4|webm|mov|mkv)$/i);
+};
+
+// ==========================================
+// STEP 2: Visuals (Images & Video)
+// ==========================================
 export const StepTwoVisuals = ({
     form,
     setStep,
-    handleChange,
-    handleImageUpload, // ✅ Passed from hook
-    activeUploadField, // ✅ Passed from hook
-    removeGalleryImg   // ✅ Passed from hook
+    handleImageUpload,
+    activeUploadField,
+    removeGalleryImg,
+    processingMsg
 }: any) => {
 
     return (
@@ -35,15 +44,8 @@ export const StepTwoVisuals = ({
                         accept="image/*"
                         onChange={(e) => handleImageUpload(e, 'mainimg')}
                         className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        disabled={!!processingMsg}
                     />
-
-                    {/* Loading Overlay */}
-                    {activeUploadField === 'mainimg' && (
-                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
-                            <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
-                            <span className="text-xs font-bold text-blue-600">Uploading...</span>
-                        </div>
-                    )}
 
                     {/* Content */}
                     {form.mainimg ? (
@@ -61,6 +63,14 @@ export const StepTwoVisuals = ({
                             <span className="text-xs font-bold uppercase tracking-wide">Click to Upload</span>
                         </div>
                     )}
+
+                    {/* Loading Overlay */}
+                    {activeUploadField === 'mainimg' && (
+                        <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                            <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
+                            <span className="text-xs font-bold text-blue-600 animate-pulse">{processingMsg || "Uploading..."}</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -75,6 +85,7 @@ export const StepTwoVisuals = ({
                         accept="image/*"
                         onChange={(e) => handleImageUpload(e, 'coverImg')}
                         className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        disabled={!!processingMsg}
                     />
                     {activeUploadField === 'coverImg' && (
                         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
@@ -92,14 +103,29 @@ export const StepTwoVisuals = ({
                 </div>
             </div>
 
-            {/* 3. Gallery Section - MULTI UPLOAD ENABLED */}
+            {/* 3. Gallery Section */}
             <div>
-                <label className={labelClass}>Gallery</label>
+                <label className={labelClass}>Gallery (Images & Video)</label>
                 <div className="grid grid-cols-4 gap-3">
-                    {/* Existing Images */}
-                    {form.gallery.map((img: string, i: number) => (
-                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 shadow-sm bg-white">
-                            <img src={img} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
+                    {/* Existing Media */}
+                    {form.gallery.map((url: string, i: number) => (
+                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 shadow-sm bg-black">
+
+                            {/* Render Video or Image based on FIXED helper */}
+                            {isVideo(url) ? (
+                                <>
+                                    <video src={url} className="w-full h-full object-cover opacity-80" muted playsInline />
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <PlayCircle size={24} className="text-white/90" fill="rgba(0,0,0,0.5)" />
+                                    </div>
+                                    <div className="absolute bottom-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-white font-bold flex items-center gap-1">
+                                        <FileVideo size={10} /> VIDEO
+                                    </div>
+                                </>
+                            ) : (
+                                <img src={url} className="w-full h-full object-cover bg-white" alt={`Gallery ${i}`} />
+                            )}
+
                             <button
                                 type="button"
                                 onClick={() => removeGalleryImg(i)}
@@ -114,16 +140,25 @@ export const StepTwoVisuals = ({
                     <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
                         <input
                             type="file"
-                            accept="image/*"
-                            multiple // ✅ THIS ENABLES MULTIPLE SELECTION
+                            accept="image/*, video/mp4, video/webm"
+                            multiple
                             onChange={(e) => handleImageUpload(e, 'gallery')}
-                            disabled={activeUploadField === 'gallery'}
+                            disabled={!!processingMsg}
                             className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
                         />
+
                         {activeUploadField === 'gallery' ? (
-                            <Loader2 className="animate-spin text-blue-500" size={20} />
+                            <div className="flex flex-col items-center justify-center px-1 text-center">
+                                <Loader2 className="animate-spin text-blue-500 mb-1" size={20} />
+                                <span className="text-[8px] font-bold text-blue-500 leading-tight">
+                                    {processingMsg || "Uploading..."}
+                                </span>
+                            </div>
                         ) : (
-                            <Plus className="text-slate-400" size={24} />
+                            <div className="flex flex-col items-center">
+                                <Plus className="text-slate-400" size={24} />
+                                <span className="text-[10px] text-slate-400 font-bold mt-1">Add Media</span>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -141,7 +176,7 @@ export const StepTwoVisuals = ({
                 <button
                     type="button"
                     onClick={() => setStep(3)}
-                    disabled={!form.mainimg}
+                    disabled={!form.mainimg || !!processingMsg}
                     className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     Next <ChevronRight size={18} />
@@ -151,7 +186,7 @@ export const StepTwoVisuals = ({
     );
 };
 
-// --- STEP 3: Schedule ---
+// ... (StepThreeSchedule and StepFourPricing remain unchanged) ...
 export const StepThreeSchedule = ({ form, handleChange, handleGetLocation, gettingLoc, toggleDay, setStep, DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }: any) => (
     <div className="space-y-5 animate-in slide-in-from-right duration-300">
         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm">
@@ -228,7 +263,6 @@ export const StepThreeSchedule = ({ form, handleChange, handleGetLocation, getti
     </div>
 );
 
-// --- STEP 4: Pricing ---
 export const StepFourPricing = ({ form, handleChange, loading, setStep, onComplete, serviceData, listingType }: any) => {
 
     const PRICING_OPTIONS = listingType === 'RENTAL'

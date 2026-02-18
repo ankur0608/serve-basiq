@@ -5,8 +5,7 @@ import imageCompression from 'browser-image-compression';
 import { onboardSchema } from "@/lib/validators";
 import { useUIStore, User } from "@/lib/store";
 
-// --- CONFIGURATION ---
-const MAX_FRONTEND_SIZE_MB = 10; // Initial check before compression
+const MAX_FRONTEND_SIZE_MB = 10; 
 const COMPRESSION_OPTIONS = {
     maxSizeMB: 0.8,          // Target ~800KB
     maxWidthOrHeight: 1200,  // Resize 4K images down to 1200px

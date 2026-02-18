@@ -5,13 +5,19 @@ import {
     FaArrowLeft, FaLocationDot, FaStar,
     FaShieldHalved, FaPhone,
     FaInstagram, FaFacebook, FaYoutube, FaGlobe,
-    FaCircleCheck, FaLock
+    FaCircleCheck, FaLock, FaPlay
 } from 'react-icons/fa6';
 import BookingWrapper from '@/components/booking/BookingWrapper';
 import AppImage from '@/components/ui/AppImage';
 import RatingForm from '@/components/Rating/RatingForm';
 import { Session } from 'next-auth';
-import { useServicePageData } from '@/app/hook/useServicePageData'; // 👈 Import the new hook
+import { useServicePageData } from '@/app/hook/useServicePageData';
+
+// --- HELPER: Detect Video Files ---
+const isVideo = (url: string | null | undefined) => {
+    if (!url) return false;
+    return url.match(/\.(mp4|webm|mov|mkv)$/i);
+};
 
 // --- TYPES ---
 interface ServiceDetailViewProps {
@@ -69,14 +75,15 @@ interface ServiceDetailViewProps {
 export default function ServiceDetailView({ service, loggedInUser: initialUser, session }: ServiceDetailViewProps) {
     const displayName = service.user.shopName || service.name;
 
-    // --- 📡 DATA FETCHING: Using Custom Hook ---
+    // --- 📡 DATA FETCHING ---
     const { currentUser, eligibility, isEligibilityLoading } = useServicePageData({
         serviceId: service.id,
         initialUser,
         session
     });
 
-    // --- 🖼️ IMAGE LOGIC ---
+    // --- 🖼️ HERO IMAGE LOGIC ---
+    // Note: We assume the Main/Cover image is always an IMAGE based on your upload rules.
     const heroImage =
         service.coverImg ||
         service.serviceimg ||
@@ -109,8 +116,6 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
         { name: 'Website', icon: <FaGlobe size={20} />, url: service.websiteUrl || service.user.websiteUrl, styleClass: "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-600 hover:text-white" },
     ].filter(s => s.url && s.url.trim() !== "" && s.url !== "null");
 
-
-    // --- 🔍 HELPER: CHECK IF ALREADY REVIEWED (For UI Messaging) ---
     const alreadyReviewed = session && service.reviews.some(
         (r: any) => r.authorId === currentUser?.id
     );
@@ -138,6 +143,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
 
                         {/* MAIN INFO CARD */}
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
+                            {/* ... (Header, Title, Address - No changes here) ... */}
                             <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
                                 <div>
                                     <div className="flex items-center gap-2 mb-3">
@@ -211,26 +217,42 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                             </div>
                         </div>
 
-                        {/* GALLERY */}
+                        {/* ✅ UPDATED GALLERY SECTION */}
                         {service.gallery && service.gallery.length > 0 && (
                             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                                 <h3 className="text-xl font-bold text-slate-900 mb-6">Work Gallery</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    {service.gallery.map((img, i) => (
-                                        <div key={i} className="h-48 w-full relative group">
-                                            <AppImage src={img} alt={`Gallery ${i}`} type="gallery" className="w-full h-full object-cover rounded-2xl group-hover:opacity-90 transition cursor-pointer" />
+                                    {service.gallery.map((mediaUrl, i) => (
+                                        <div key={i} className="h-48 w-full relative group rounded-2xl overflow-hidden bg-black/5">
+                                            {isVideo(mediaUrl) ? (
+                                                <div className="w-full h-full relative">
+                                                    <video
+                                                        src={mediaUrl}
+                                                        controls
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    {/* Optional: Add a play icon overlay if you want custom styling, 
+                                                        but standard 'controls' is best for UX */}
+                                                </div>
+                                            ) : (
+                                                <AppImage
+                                                    src={mediaUrl}
+                                                    alt={`Gallery ${i}`}
+                                                    type="gallery"
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500 cursor-pointer"
+                                                />
+                                            )}
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
-                        {/* REVIEWS & RATINGS */}
+                        {/* REVIEWS & RATINGS (No changes needed here) */}
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                             <h3 className="text-2xl font-black text-slate-900 mb-8">Reviews & Ratings</h3>
                             <div className="grid md:grid-cols-2 gap-10">
-
-                                {/* 1. List of Reviews */}
+                                {/* Review List */}
                                 <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                                     {service.reviews.length > 0 ? (
                                         service.reviews.map((review) => (
@@ -253,7 +275,6 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                                 {review.images && review.images.length > 0 && (
                                                     <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                                                         {review.images.map((img: string, idx: number) => (
-                                                            // ⚠️ FIX: Added 'relative' here to contain the AppImage ⚠️
                                                             <div key={idx} className="relative h-16 w-16 flex-shrink-0 rounded-lg overflow-hidden border border-slate-200 shadow-sm hover:scale-105 transition-transform">
                                                                 <AppImage src={img} alt="review-img" type="gallery" className="w-full h-full object-cover" />
                                                             </div>
@@ -267,27 +288,18 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                     )}
                                 </div>
 
-                                {/* 2. Conditional Rating Form */}
+                                {/* Rating Form Logic */}
                                 <div>
                                     {!session ? (
-                                        // Case 1: Not Logged In
-                                        <div >
-                                            {/* <p className="text-blue-800 text-sm font-medium">Log in to view eligibility.</p>
-                                            <Link href="/login" className="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition">
-                                                Login Now
-                                            </Link> */}
-                                        </div>
+                                        <div></div>
                                     ) : isEligibilityLoading ? (
-                                        // Case 2: Loading State
                                         <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 text-center sticky top-24 animate-pulse">
                                             <div className="h-4 bg-slate-200 rounded w-3/4 mx-auto mb-2"></div>
                                             <div className="h-3 bg-slate-200 rounded w-1/2 mx-auto"></div>
                                         </div>
                                     ) : eligibility?.canReview ? (
-                                        // Case 3: Eligible to Review
                                         <RatingForm serviceId={service.id} />
                                     ) : (
-                                        // Case 4: Not Eligible
                                         alreadyReviewed ? (
                                             <div className="p-6 rounded-2xl bg-green-50 border border-green-100 text-center sticky top-24">
                                                 <FaCircleCheck className="mx-auto text-green-500 text-2xl mb-2" />
