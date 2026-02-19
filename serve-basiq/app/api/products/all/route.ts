@@ -17,7 +17,10 @@ export async function GET(request: Request) {
     const subcategoryId = searchParams.get('subcategoryId');
     const search = searchParams.get('search');
 
-    const whereClause: any = {};
+    const whereClause: any = {
+      isVerified: true,
+      user: { isVerified: true }
+    };
 
     // 1. ID-Based Filters
     if (categoryId) whereClause.categoryId = categoryId;

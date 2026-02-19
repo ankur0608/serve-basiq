@@ -268,31 +268,64 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                     <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2">
                         <LinkIcon size={14} /> Social Profiles
                     </h3>
+
                     <div className="relative z-10">
                         {socialCount > 0 ? (
                             <div className="grid grid-cols-2 gap-3">
-                                {user?.instagramUrl && (
-                                    <a href={user.instagramUrl} target="_blank" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-pink-50 hover:text-pink-600 transition-colors">
+                                {/* Instagram */}
+                                {user?.instagramUrl ? (
+                                    <a href={user.instagramUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-pink-50 hover:text-pink-600 transition-colors">
                                         <Instagram size={14} className="text-pink-500" /> Instagram
                                     </a>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 p-2 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 cursor-not-allowed">
+                                        <Instagram size={14} className="opacity-50" />
+                                        <span className="opacity-60">Instagram</span>
+                                        <span className="ml-auto text-[10px] font-semibold opacity-50">N/A</span>
+                                    </div>
                                 )}
-                                {user?.facebookUrl && (
-                                    <a href={user.facebookUrl} target="_blank" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+
+                                {/* Facebook */}
+                                {user?.facebookUrl ? (
+                                    <a href={user.facebookUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
                                         <Facebook size={14} className="text-blue-600" /> Facebook
                                     </a>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 p-2 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 cursor-not-allowed">
+                                        <Facebook size={14} className="opacity-50" />
+                                        <span className="opacity-60">Facebook</span>
+                                        <span className="ml-auto text-[10px] font-semibold opacity-50">N/A</span>
+                                    </div>
                                 )}
-                                {user?.youtubeUrl && (
-                                    <a href={user.youtubeUrl} target="_blank" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors">
+
+                                {/* YouTube */}
+                                {user?.youtubeUrl ? (
+                                    <a href={user.youtubeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors">
                                         <Youtube size={14} className="text-red-600" /> YouTube
                                     </a>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 p-2 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 cursor-not-allowed">
+                                        <Youtube size={14} className="opacity-50" />
+                                        <span className="opacity-60">YouTube</span>
+                                        <span className="ml-auto text-[10px] font-semibold opacity-50">N/A</span>
+                                    </div>
                                 )}
-                                {user?.websiteUrl && (
-                                    <a href={user.websiteUrl} target="_blank" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+
+                                {/* Website */}
+                                {user?.websiteUrl ? (
+                                    <a href={user.websiteUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                                         <Globe size={14} className="text-emerald-500" /> Website
                                     </a>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 p-2 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 cursor-not-allowed">
+                                        <Globe size={14} className="opacity-50" />
+                                        <span className="opacity-60">Website</span>
+                                        <span className="ml-auto text-[10px] font-semibold opacity-50">N/A</span>
+                                    </div>
                                 )}
                             </div>
                         ) : (
+                            /* Original full-empty fallback */
                             <div className="flex flex-col items-center justify-center py-4 text-slate-400">
                                 <LinkIcon size={32} className="mb-2 opacity-50" />
                                 <p className="text-xs">No social profiles linked</p>

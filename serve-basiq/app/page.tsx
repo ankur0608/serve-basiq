@@ -10,6 +10,7 @@ import {
   FaWrench, FaBoxesStacked, FaPenFancy, FaStore,
   FaShieldHalved, FaWallet, FaHeadset, FaArrowRight
 } from 'react-icons/fa6';
+import HowItWorks from '@/components/home/HowItWorks';
 
 export default async function Home() {
 
@@ -139,18 +140,7 @@ export default async function Home() {
           </div>
         </div>
 
-        {/* 6. CTA BANNER */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 md:p-12 text-white text-center relative overflow-hidden shadow-xl">
-          <div className="relative z-10 max-w-2xl mx-auto">
-            <h2 className="text-2xl md:text-4xl font-extrabold mb-4">Ready to simplify your life?</h2>
-            <p className="text-slate-300 mb-8">Join thousands of users who trust Servebasiq.</p>
-            <Link href="/auth/register" className="bg-brand-600 hover:bg-brand-500 text-white px-8 py-3.5 rounded-xl font-bold text-lg transition shadow-lg inline-flex items-center gap-2 active:scale-95">
-              Get Started for Free <FaArrowRight />
-            </Link>
-          </div>
-          <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-brand-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        </div>
+        <HowItWorks />
 
       </div>
     </div>

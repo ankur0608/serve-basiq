@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { FaXmark, FaArrowLeft, FaSpinner } from "react-icons/fa6";
+import { AlertCircle, ShieldAlert } from "lucide-react"; // Import some nice icons for errors
 import clsx from "clsx";
 import { useUIStore } from "@/lib/store";
 import { signIn } from "next-auth/react";
@@ -15,6 +16,10 @@ interface OtpModalProps {
 export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     const [showModal, setShowModal] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    
+    // ✅ New Error State: holds message and type of error
+    const [errorMsg, setErrorMsg] = useState<{ text: string, type: 'RATE_LIMIT' | 'INVALID' | null }>({ text: "", type: null });
+    
     const router = useRouter();
 
     // Store Data
@@ -26,7 +31,7 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     // Store Actions
     const onOpenLogin = useUIStore((state) => state.onOpenLogin);
     const onCloseOtp = useUIStore((state) => state.onCloseOtp);
-    const onOpenName = useUIStore((state) => state.onOpenName); // ✅ Action to open Name Modal
+    const onOpenName = useUIStore((state) => state.onOpenName); 
     const setCurrentUser = useUIStore((state) => state.setCurrentUser);
 
     // OTP State
@@ -36,6 +41,7 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     useEffect(() => {
         if (isOpen) {
             setShowModal(true);
+            setErrorMsg({ text: "", type: null }); // Reset errors on open
             document.body.style.overflow = "hidden";
             setTimeout(() => inputRefs.current[0]?.focus(), 100);
         } else {
@@ -58,6 +64,10 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
 
     const handleChange = (index: number, value: string) => {
         if (isNaN(Number(value))) return;
+        
+        // Clear errors as soon as user starts typing again
+        if (errorMsg.type) setErrorMsg({ text: "", type: null });
+
         const newOtp = [...otp];
         newOtp[index] = value;
         setOtp(newOtp);
@@ -78,22 +88,35 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         if (code.length !== 4) return;
 
         setIsLoading(true);
+        setErrorMsg({ text: "", type: null }); // Reset errors before trying
 
         try {
-            // 1. Verify OTP
             const res = await fetch("/api/auth/verify-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     phone: mobileNumber,
                     otp: code,
-                    // No Name sent here anymore. User is created with default name.
                 }),
             });
 
+            // ✅ Handle Specific Errors
             if (!res.ok) {
                 const errorData = await res.json();
-                throw new Error(errorData.message || "Invalid OTP");
+                
+                if (res.status === 429) {
+                    // Rate Limit Hit
+                    setErrorMsg({ text: errorData.error || "Too many attempts. Please try again later.", type: 'RATE_LIMIT' });
+                    setOtp(["", "", "", ""]); // Clear OTP fields
+                    inputRefs.current[0]?.blur(); // Remove focus to show they are blocked
+                    return;
+                } else {
+                    // Invalid OTP / Expired
+                    setErrorMsg({ text: errorData.error || "Invalid OTP. Please check and try again.", type: 'INVALID' });
+                    setOtp(["", "", "", ""]); // Clear OTP fields so they can type again
+                    inputRefs.current[0]?.focus(); // Refocus first input
+                    return;
+                }
             }
 
             const user = await res.json();
@@ -107,11 +130,11 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
             if (signInResult?.error) throw new Error(signInResult.error);
 
             setCurrentUser(user);
-            onCloseOtp(); // Close OTP Modal
+            onCloseOtp(); 
 
             // 3. LOGIC: If New User -> Open Name Modal
             if (isNewUser) {
-                onOpenName(); // ✅ OPEN THE NEXT MODAL
+                onOpenName(); 
                 return;
             }
 
@@ -128,7 +151,7 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
 
         } catch (error: any) {
             console.error("Verification failed", error);
-            alert(error.message || "Something went wrong.");
+            setErrorMsg({ text: "Something went wrong on our end.", type: 'INVALID' });
         } finally {
             setIsLoading(false);
         }
@@ -142,8 +165,8 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                 <div className={clsx("fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300", isOpen ? "opacity-100" : "opacity-0")} onClick={onClose} />
                 <div className={clsx("relative w-full max-w-md bg-white rounded-3xl shadow-2xl text-left transform transition-all duration-300", isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4")}>
 
-                    <button onClick={onOpenLogin} className="absolute top-4 left-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10"><FaArrowLeft className="text-lg" /></button>
-                    <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10"><FaXmark className="text-lg" /></button>
+                    <button onClick={onOpenLogin} className="absolute top-4 left-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition-colors"><FaArrowLeft className="text-lg" /></button>
+                    <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition-colors"><FaXmark className="text-lg" /></button>
 
                     <div className="p-8">
                         <div className="text-center mb-8 mt-4">
@@ -151,20 +174,49 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                             <p className="text-sm text-gray-500 mt-2">Code sent to <span className="font-bold text-slate-900">+91 {mobileNumber}</span></p>
                         </div>
 
+                        {/* ✅ ERROR MESSAGE DISPLAY */}
+                        {errorMsg.type && (
+                            <div className={clsx(
+                                "mb-6 p-4 rounded-xl flex items-start gap-3 animate-in slide-in-from-top-2",
+                                errorMsg.type === 'RATE_LIMIT' ? "bg-orange-50 text-orange-800 border border-orange-200" : "bg-red-50 text-red-800 border border-red-200"
+                            )}>
+                                {errorMsg.type === 'RATE_LIMIT' ? <ShieldAlert className="shrink-0 mt-0.5" size={18} /> : <AlertCircle className="shrink-0 mt-0.5" size={18} />}
+                                <div className="text-sm font-medium leading-snug">{errorMsg.text}</div>
+                            </div>
+                        )}
+
                         <form onSubmit={handleVerify} className="space-y-8">
                             <div className="flex justify-center gap-3">
                                 {otp.map((digit, index) => (
-                                    <input key={index} ref={(el) => { inputRefs.current[index] = el; }} type="tel" maxLength={1} value={digit} onChange={(e) => handleChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-14 h-16 rounded-xl border-2 border-gray-200 text-center text-2xl font-bold text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all" disabled={isLoading} />
+                                    <input 
+                                        key={index} 
+                                        ref={(el) => { inputRefs.current[index] = el; }} 
+                                        type="tel" 
+                                        maxLength={1} 
+                                        value={digit} 
+                                        onChange={(e) => handleChange(index, e.target.value)} 
+                                        onKeyDown={(e) => handleKeyDown(index, e)} 
+                                        disabled={isLoading || errorMsg.type === 'RATE_LIMIT'} // Disable inputs if rate limited
+                                        className={clsx(
+                                            "w-14 h-16 rounded-xl border-2 text-center text-2xl font-bold outline-none transition-all",
+                                            errorMsg.type ? "border-red-300 bg-red-50 text-red-900 focus:border-red-500" : "border-gray-200 text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10",
+                                            (isLoading || errorMsg.type === 'RATE_LIMIT') && "opacity-50 cursor-not-allowed"
+                                        )} 
+                                    />
                                 ))}
                             </div>
-                            <button type="submit" disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition flex items-center justify-center gap-2">
+                            <button 
+                                type="submit" 
+                                disabled={isLoading || errorMsg.type === 'RATE_LIMIT'} // Disable button if rate limited
+                                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 {isLoading ? <FaSpinner className="animate-spin" /> : "Verify & Login"}
                             </button>
                         </form>
 
                         <div className="mt-8 text-center text-sm font-medium space-y-2">
                             <div>Didn’t receive code? <button className="text-slate-900 font-bold hover:underline">Resend in 30s</button></div>
-                            {devOtp && <div className="text-xs text-green-600 bg-green-50 py-1 px-2 rounded inline-block border border-green-200">Dev Mode OTP: <b>{devOtp}</b></div>}
+                            {devOtp && <div className="text-xs text-green-600 bg-green-50 py-1 px-2 rounded inline-block border border-green-200 mt-4">Dev Mode OTP: <b>{devOtp}</b></div>}
                         </div>
                     </div>
                 </div>
@@ -172,7 +224,6 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         </div>
     );
 }
-
 
 // "use client";
 

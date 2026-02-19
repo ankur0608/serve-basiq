@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
     Bell, Check, CalendarClock, MapPin, Clock, UserCircle, Lock
 } from 'lucide-react';

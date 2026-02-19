@@ -340,12 +340,12 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 {providerType === 'BOTH' ? (
-                    <div className="flex w-full md:w-auto p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
+                    <div className="flex w-full md:w-auto bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
                         {/* --- MODIFIED: Added responsive padding (px-2 md:px-16) to fix mobile overflow --- */}
                         <button
                             onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }}
                             className={clsx(
-                                "flex-1 px-2 md:px-16 py-3 text-sm font-bold rounded-lg transition-all whitespace-nowrap",
+                                "flex-1 px-2 md:px-16 py-4 text-sm font-bold rounded-lg transition-all whitespace-nowrap",
                                 viewMode === 'SERVICES'
                                     ? "bg-slate-900 text-white shadow-md"
                                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"

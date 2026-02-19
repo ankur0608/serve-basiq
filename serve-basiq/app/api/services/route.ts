@@ -17,7 +17,10 @@ export async function GET(req: Request) {
         const subcategoryId = searchParams.get("subcategoryId");
         const search = searchParams.get("search");
 
-        const where: any = {};
+        const where: any = {
+            isVerified: true,
+            user: { isVerified: true }
+        };
 
         // Only include filters if they have a value
         if (userId) where.userId = userId;

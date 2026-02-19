@@ -1,3 +1,4 @@
+// app/provider/dashboard/page.tsx (or wherever your ProviderDashboard is)
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,50 +11,32 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-// --- IMPORTS ---
+// Components
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
-// 1. Remove ProfileView from here
-import { DashboardHomeView } from '@/components/providers/GeneralViews';
-// 2. Import it from its own file
-import ProfileView from '@/components/providers/ProfileView';
-
-import { AddProductView } from '@/components/providers/product/AddProductView';
-import { ManagementView } from '@/components/providers/Management';
-import { VerificationView } from '@/components/providers/VerificationView';
-import RequestsView from '@/components/providers/RequestsView';
 import { RestrictionModal } from '@/components/providers/RestrictionModal';
-import { ProductsView } from '@/components/providers/ProductsView';
+import { ProviderDashboardContent } from '@/components/providers/ProviderDashboardContent';
 
 export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
     const router = useRouter();
 
-    // 1. Fetch General Dashboard Data
     const { data: dashboardData, isLoading: loading, refetch: refetchDashboard, isError } = useProviderDashboard(currentUser?.id);
 
     // Local State
     const [activeView, setActiveView] = useState('dashboard');
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
-
-    // Modal State
     const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
-    // ✅ SAFE DATA EXTRACTION
-    const bookings = dashboardData?.bookings || [];
-    const orders = dashboardData?.orders || [];
+    // Data Extraction
     const userData = dashboardData?.user;
     const providerType = dashboardData?.user?.providerType || 'BOTH';
     const isVerified = dashboardData?.isSetupComplete || false;
 
-    // ✅ FIX: Default Stats Object
     const safeStats = useMemo(() => {
         return dashboardData?.stats || {
-            revenue: 0,
-            jobsCompleted: 0,
-            pendingRequests: 0,
-            rating: 0,
-            service: { shopName: '' } // Ensure nested objects exist to prevent crashes
+            revenue: 0, jobsCompleted: 0, pendingRequests: 0, rating: 0,
+            service: { shopName: '' }
         };
     }, [dashboardData]);
 
@@ -62,14 +45,11 @@ export default function ProviderDashboard() {
         setTimeout(() => setToast(null), 3000);
     };
 
-    // Auto-show restriction modal if setup is incomplete
     useEffect(() => {
         if (dashboardData && !dashboardData.isSetupComplete) {
             setShowRestrictionModal(true);
         }
     }, [dashboardData]);
-
-    // --- HANDLERS ---
 
     const handleBackToHome = async () => {
         if (!currentUser) return;
@@ -86,11 +66,6 @@ export default function ProviderDashboard() {
         }
     };
 
-    const displayName = userData?.name || currentUser?.name || "Provider";
-    const displayImg = userData?.profileImage || userData?.img || "https://i.pravatar.cc/150";
-    const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-    // Handle protected view navigation
     const handleViewChange = (view: string) => {
         const publicViews = ['dashboard', 'profile', 'edit-profile'];
         if (!publicViews.includes(view) && !isVerified) {
@@ -99,6 +74,21 @@ export default function ProviderDashboard() {
         }
         setActiveView(view);
     };
+
+    // ✅ SMART HIGHLIGHTING LOGIC
+    // Maps active sub-pages to their main sidebar category
+    const getActiveNavId = (view: string) => {
+        if (['settings', 'products', 'add-product'].includes(view)) return 'settings'; // "Management" tab
+        if (['profile', 'edit-profile'].includes(view)) return 'profile';              // "Account" tab
+        if (['requests'].includes(view)) return 'requests';                            // "Operations" tab
+        return 'dashboard';                                                            // "Home" tab
+    };
+
+    const activeNavId = getActiveNavId(activeView);
+
+    const displayName = userData?.name || currentUser?.name || "Provider";
+    const displayImg = userData?.profileImage || userData?.img || "https://i.pravatar.cc/150";
+    const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     if (loading) return (
         <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FC] gap-3">
@@ -118,7 +108,6 @@ export default function ProviderDashboard() {
     return (
         <div className="flex h-screen overflow-hidden bg-[#F8F9FC] font-sans text-slate-800 relative">
 
-            {/* --- MODALS & OVERLAYS --- */}
             <RestrictionModal
                 isOpen={showRestrictionModal}
                 onClose={() => setShowRestrictionModal(false)}
@@ -142,10 +131,11 @@ export default function ProviderDashboard() {
                     </div>
                 </div>
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-                    <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeView} set={handleViewChange} />
-                    <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeView} set={handleViewChange} badge={dashboardData?.stats?.pendingRequests} />
-                    <NavButton id="settings" icon={Package} label="Management" active={activeView} set={handleViewChange} />
-                    <NavButton id="profile" icon={UserCircle} label="Account" active={activeView} set={handleViewChange} />
+                    {/* Notice how we pass `activeNavId` here instead of `activeView` */}
+                    <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeNavId} set={handleViewChange} />
+                    <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeNavId} set={handleViewChange} badge={dashboardData?.stats?.pendingRequests} />
+                    <NavButton id="settings" icon={Package} label="Management" active={activeNavId} set={handleViewChange} />
+                    <NavButton id="profile" icon={UserCircle} label="Account" active={activeNavId} set={handleViewChange} />
                 </nav>
                 <div className="p-4 border-t border-slate-100">
                     <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleViewChange('profile')}>
@@ -189,108 +179,32 @@ export default function ProviderDashboard() {
                 </header>
 
                 <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32 lg:pb-8 scroll-smooth">
-                    <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-                        {/* 1. Dashboard Home */}
-                        {activeView === 'dashboard' && (
-                            <DashboardHomeView
-                                stats={{ stats: safeStats }}
-                                setActiveView={handleViewChange}
-                                onBackToHome={handleBackToHome}
-                                isVerified={isVerified}
-                            />
-                        )}
-
-                        {activeView === 'requests' && (
-                            <RequestsView
-                                showToast={showToast}
-                                providerType={providerType}
-                            />
-                        )}
-
-                        {/* 3. Account Profile - Using the NEW ProfileView */}
-                        {activeView === 'profile' && (
-                            <ProfileView
-                                stats={safeStats} // Pass safeStats directly, not nested
-                                user={userData}
-                                onEdit={() => handleViewChange('edit-profile')}
-                            />
-                        )}
-
-                        {/* 4. Service / Product Management (Parent View) */}
-                        {activeView === 'settings' && (
-                            providerType === 'PRODUCT' ? (
-                                <div className="space-y-6">
-                                    <h2 className="text-xl font-bold text-slate-900">Inventory Management</h2>
-                                    {currentUser?.id && (
-                                        <ProductsView
-                                            setActiveView={handleViewChange}
-                                            userId={currentUser.id}
-                                            setSelectedProduct={setSelectedProduct}
-                                            showToast={showToast}
-                                            providerType={providerType}
-                                        />
-                                    )}
-                                </div>
-                            ) : (
-                                <ManagementView
-                                    currentUser={currentUser}
-                                    userData={userData}
-                                    showToast={showToast}
-                                    setActiveView={handleViewChange}
-                                    providerType={providerType}
-                                />
-                            )
-                        )}
-
-                        {/* 5. Products Specific Tab (for Hybrid Providers) */}
-                        {activeView === 'products' && (
-                            <div className="space-y-6">
-                                {currentUser?.id && (
-                                    <ProductsView
-                                        setActiveView={handleViewChange}
-                                        userId={currentUser.id}
-                                        setSelectedProduct={setSelectedProduct}
-                                        showToast={showToast}
-                                        providerType={providerType}
-                                    />
-                                )}
-                            </div>
-                        )}
-
-                        {/* 6. Verification / Edit Profile */}
-                        {activeView === 'edit-profile' && (
-                            <VerificationView
-                                userId={currentUser?.id || ""}
-                                existingData={userData}
-                                showToast={showToast}
-                                onBack={() => {
-                                    refetchDashboard();
-                                    handleViewChange('profile');
-                                }}
-                            />
-                        )}
-
-                        {/* 7. Add/Edit Product Form */}
-                        {activeView === 'add-product' && currentUser?.id && (
-                            <AddProductView
-                                setActiveView={handleViewChange}
-                                userId={currentUser.id}
-                                showToast={showToast}
-                                editingProduct={selectedProduct}
-                            />
-                        )}
-                    </div>
+                    {/* Render Extracted Content Component */}
+                    <ProviderDashboardContent
+                        activeView={activeView}
+                        handleViewChange={handleViewChange}
+                        handleBackToHome={handleBackToHome}
+                        safeStats={safeStats}
+                        isVerified={isVerified}
+                        showToast={showToast}
+                        providerType={providerType}
+                        userData={userData}
+                        currentUser={currentUser}
+                        refetchDashboard={refetchDashboard}
+                        setSelectedProduct={setSelectedProduct}
+                        selectedProduct={selectedProduct}
+                    />
                 </main>
             </div>
 
             {/* --- MOBILE NAVIGATION --- */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 z-50 pb-safe shadow-lg">
                 <div className="flex justify-around items-center h-16">
-                    <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeView} set={handleViewChange} />
-                    <MobileNavBtn id="requests" icon={ClipboardList} label="Ops" active={activeView} set={handleViewChange} />
-                    <MobileNavBtn id="settings" icon={Package} label="Manage" active={activeView} set={handleViewChange} />
-                    <MobileNavBtn id="profile" icon={UserCircle} label="Me" active={activeView} set={handleViewChange} />
+                    {/* Apply `activeNavId` to mobile buttons as well! */}
+                    <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeNavId} set={handleViewChange} />
+                    <MobileNavBtn id="requests" icon={ClipboardList} label="Ops" active={activeNavId} set={handleViewChange} />
+                    <MobileNavBtn id="settings" icon={Package} label="Manage" active={activeNavId} set={handleViewChange} />
+                    <MobileNavBtn id="profile" icon={UserCircle} label="Me" active={activeNavId} set={handleViewChange} />
                 </div>
             </nav>
         </div>

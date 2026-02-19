@@ -1,5 +1,7 @@
 import { Box, Truck, ChevronRight } from 'lucide-react';
 import { ProductForm } from './AddProductView';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 
 interface Step3Props {
     form: ProductForm;
@@ -8,42 +10,45 @@ interface Step3Props {
 }
 
 export function Step3Inventory({ form, handleChange, setStep }: Step3Props) {
-    const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
-    const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white appearance-none";
-
     return (
         <div className="space-y-5 animate-in slide-in-from-right duration-300">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <label className={labelClass}>Inventory Settings</label>
+                <h3 className="block text-xs font-bold text-slate-500 uppercase mb-4">Inventory Settings</h3>
                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-[10px] text-slate-400 font-bold mb-1 block">Stock Status</label>
-                        <div className="relative">
-                            <Box className="absolute left-3 top-3.5 text-slate-400" size={18} />
-                            <select className={`${inputClass} pl-10`} value={form.stockStatus} onChange={e => handleChange('stockStatus', e.target.value)}>
-                                <option value="IN_STOCK">In Stock</option>
-                                <option value="ON_DEMAND">On Demand</option>
-                            </select>
-                            <ChevronRight size={14} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-[10px] text-slate-400 font-bold mb-1 block">MOQ</label>
-                        <input type="number" className={inputClass} placeholder="Min Qty" value={form.moq} onChange={e => handleChange('moq', e.target.value)} />
-                    </div>
+                    <Select
+                        label="STOCK STATUS"
+                        icon={<Box size={18} className="text-slate-400" />}
+                        value={form.stockStatus}
+                        onChange={e => handleChange('stockStatus', e.target.value)}
+                        className="bg-slate-50/50"
+                        options={[
+                            { label: 'In Stock', value: 'IN_STOCK' },
+                            { label: 'On Demand', value: 'ON_DEMAND' }
+                        ]}
+                    />
+                    <Input
+                        label="MOQ"
+                        type="number"
+                        placeholder="Min Qty"
+                        value={form.moq}
+                        onChange={e => handleChange('moq', e.target.value)}
+                        className="bg-slate-50/50"
+                    />
                 </div>
             </div>
 
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <label className={labelClass}>Logistics</label>
-                <div className="relative">
-                    <Truck className="absolute left-3 top-3.5 text-slate-400" size={18} />
-                    <select className={`${inputClass} pl-10`} value={form.deliveryType} onChange={e => handleChange('deliveryType', e.target.value)}>
-                        <option value="DELIVERY">Delivery</option>
-                        <option value="PICKUP">Pickup Only</option>
-                    </select>
-                    <ChevronRight size={14} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
-                </div>
+                <Select
+                    label="LOGISTICS"
+                    icon={<Truck size={18} className="text-slate-400" />}
+                    value={form.deliveryType}
+                    onChange={e => handleChange('deliveryType', e.target.value)}
+                    className="bg-slate-50/50"
+                    options={[
+                        { label: 'Delivery', value: 'DELIVERY' },
+                        { label: 'Pickup Only', value: 'PICKUP' }
+                    ]}
+                />
             </div>
 
             <div className="flex gap-3 pt-2">

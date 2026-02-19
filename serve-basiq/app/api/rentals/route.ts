@@ -145,8 +145,10 @@ export async function GET(req: Request) {
         const categoryId = searchParams.get("categoryId");
         const search = searchParams.get("search");
 
-        const where: any = {};
-        if (userId) where.userId = userId;
+        const where: any = {
+            isVerified: true,
+            user: { isVerified: true }
+        }; if (userId) where.userId = userId;
         if (categoryId) where.categoryId = categoryId;
         if (search) {
             where.OR = [

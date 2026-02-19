@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Package, Scale, ChevronRight, LayoutGrid, Box, AlertCircle } from 'lucide-react';
 import { ProductForm, Category, SubCategory } from './AddProductView';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import clsx from 'clsx';
 
 interface Step1Props {
@@ -13,16 +15,6 @@ interface Step1Props {
 
 export function Step1Info({ form, categories, activeSubCategories, handleChange, setStep }: Step1Props) {
     const [errors, setErrors] = useState<Record<string, string>>({});
-
-    const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
-
-    // Dynamic class generator for inputs
-    const getInputClass = (hasError: boolean) => clsx(
-        "w-full px-4 py-3 border rounded-xl outline-none text-sm font-medium transition-all appearance-none",
-        hasError
-            ? "border-red-500 bg-red-50 focus:ring-2 focus:ring-red-200 text-red-900 placeholder:text-red-300"
-            : "border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500"
-    );
 
     const validate = () => {
         const newErrors: Record<string, string> = {};
@@ -47,7 +39,6 @@ export function Step1Info({ form, categories, activeSubCategories, handleChange,
         }
     };
 
-    // Clear error when user types
     const onFieldChange = (field: keyof ProductForm, value: any) => {
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
@@ -55,90 +46,87 @@ export function Step1Info({ form, categories, activeSubCategories, handleChange,
         handleChange(field, value);
     };
 
+    const getErrorClass = (hasError: boolean) =>
+        hasError ? "!border-red-500 bg-red-50 focus:!border-red-500 text-red-900 placeholder:text-red-300" : "bg-slate-50/50";
+
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
             <div className="grid grid-cols-3 gap-4">
                 {/* Product Name */}
                 <div className="col-span-2 space-y-1">
-                    <label className={labelClass}>Product Name</label>
-                    <div className="relative">
-                        <Package className={clsx("absolute left-3 top-3.5", errors.name ? "text-red-400" : "text-slate-400")} size={18} />
-                        <input
-                            className={`${getInputClass(!!errors.name)} pl-10`}
-                            placeholder="e.g. Heavy Duty Drill"
-                            value={form.name}
-                            onChange={e => onFieldChange('name', e.target.value)}
-                        />
-                    </div>
+                    <Input
+                        label="PRODUCT NAME"
+                        icon={<Package size={18} className={errors.name ? "text-red-400" : "text-slate-400"} />}
+                        placeholder="e.g. Heavy Duty Drill"
+                        value={form.name}
+                        onChange={e => onFieldChange('name', e.target.value)}
+                        className={getErrorClass(!!errors.name)}
+                    />
                     {errors.name && <p className="text-xs text-red-500 font-medium flex items-center gap-1"><AlertCircle size={10} /> {errors.name}</p>}
                 </div>
 
                 {/* Unit Type */}
                 <div className="space-y-1">
-                    <label className={labelClass}>Unit Type</label>
-                    <div className="relative">
-                        <Scale className={clsx("absolute left-3 top-3.5", errors.unit ? "text-red-400" : "text-slate-400")} size={18} />
-                        <select
-                            className={`${getInputClass(!!errors.unit)} pl-10`}
-                            value={form.unit}
-                            onChange={e => onFieldChange('unit', e.target.value)}
-                        >
-                            {['PIECE', 'KG', 'BOX', 'LITER'].map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                        <ChevronRight size={16} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
-                    </div>
-                    {errors.unit && <p className="text-xs text-red-500 font-medium">{errors.unit}</p>}
+                    <Select
+                        label="UNIT TYPE"
+                        icon={<Scale size={18} className={errors.unit ? "text-red-400" : "text-slate-400"} />}
+                        value={form.unit}
+                        onChange={e => onFieldChange('unit', e.target.value)}
+                        className={getErrorClass(!!errors.unit)}
+                        options={[
+                            { label: 'Select Unit', value: '' },
+                            ...['PIECE', 'KG', 'BOX', 'LITER'].map(u => ({ label: u, value: u }))
+                        ]}
+                    />
+                    {errors.unit && <p className="text-xs text-red-500 font-medium"><AlertCircle size={10} className="inline" /> {errors.unit}</p>}
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
                 {/* Category */}
                 <div className="space-y-1">
-                    <label className={labelClass}>Category</label>
-                    <div className="relative">
-                        <LayoutGrid className={clsx("absolute left-3 top-3.5", errors.categoryId ? "text-red-400" : "text-slate-400")} size={18} />
-                        <select
-                            className={`${getInputClass(!!errors.categoryId)} pl-10`}
-                            value={form.categoryId}
-                            onChange={e => onFieldChange('categoryId', e.target.value)}
-                        >
-                            <option value="">Select Category</option>
-                            {categories.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
-                        <ChevronRight size={16} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
-                    </div>
-                    {errors.categoryId && <p className="text-xs text-red-500 font-medium">{errors.categoryId}</p>}
+                    <Select
+                        label="CATEGORY"
+                        icon={<LayoutGrid size={18} className={errors.categoryId ? "text-red-400" : "text-slate-400"} />}
+                        value={form.categoryId}
+                        onChange={e => onFieldChange('categoryId', e.target.value)}
+                        className={getErrorClass(!!errors.categoryId)}
+                        options={[
+                            { label: 'Select Category', value: '' },
+                            ...categories.map(c => ({ label: c.name, value: c.id }))
+                        ]}
+                    />
+                    {errors.categoryId && <p className="text-xs text-red-500 font-medium"><AlertCircle size={10} className="inline" /> {errors.categoryId}</p>}
                 </div>
 
                 {/* Sub-Category */}
                 <div className="space-y-1">
-                    <label className={labelClass}>Sub-Category</label>
-                    <div className="relative">
-                        <Box className={clsx("absolute left-3 top-3.5", errors.subCategoryId ? "text-red-400" : "text-slate-400")} size={18} />
-                        <select
-                            className={`${getInputClass(!!errors.subCategoryId)} pl-10`}
-                            disabled={!form.categoryId}
-                            value={form.subCategoryId}
-                            onChange={e => onFieldChange('subCategoryId', e.target.value)}
-                        >
-                            <option value="">{activeSubCategories.length === 0 ? "No Sub-categories" : "Select Sub-Category"}</option>
-                            {activeSubCategories.map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                        </select>
-                        <ChevronRight size={16} className="absolute right-3 top-4 text-slate-400 rotate-90 pointer-events-none" />
-                    </div>
-                    {errors.subCategoryId && <p className="text-xs text-red-500 font-medium">{errors.subCategoryId}</p>}
+                    <Select
+                        label="SUB-CATEGORY"
+                        icon={<Box size={18} className={errors.subCategoryId ? "text-red-400" : "text-slate-400"} />}
+                        value={form.subCategoryId}
+                        onChange={e => onFieldChange('subCategoryId', e.target.value)}
+                        className={getErrorClass(!!errors.subCategoryId)}
+                        disabled={!form.categoryId}
+                        options={[
+                            { label: activeSubCategories.length === 0 ? "No Sub-categories" : "Select Sub-Category", value: '' },
+                            ...activeSubCategories.map(s => ({ label: s.name, value: s.id }))
+                        ]}
+                    />
+                    {errors.subCategoryId && <p className="text-xs text-red-500 font-medium"><AlertCircle size={10} className="inline" /> {errors.subCategoryId}</p>}
                 </div>
             </div>
 
-            {/* Description */}
+            {/* Description (Textarea remains native as Input.tsx is an <input>) */}
             <div className="space-y-1">
-                <label className={labelClass}>Description</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">DESCRIPTION</label>
                 <textarea
-                    className={`${getInputClass(!!errors.desc)} resize-none`}
+                    className={clsx(
+                        "w-full px-4 py-3 border rounded-xl outline-none text-sm font-medium transition-all resize-none",
+                        errors.desc
+                            ? "border-red-500 bg-red-50 focus:ring-2 focus:ring-red-200 text-red-900 placeholder:text-red-300"
+                            : "border-gray-200 bg-slate-50/50 focus:bg-white focus:border-blue-500"
+                    )}
                     rows={2}
                     placeholder="Describe product features..."
                     value={form.desc}

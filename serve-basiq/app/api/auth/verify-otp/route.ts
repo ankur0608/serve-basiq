@@ -1,9 +1,28 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// --- RATE LIMITER SETUP ---
+const globalForVerifyLimit = globalThis as unknown as { otpVerifyMap: Map<string, number[]> };
+const otpVerifyMap = globalForVerifyLimit.otpVerifyMap || new Map<string, number[]>();
+if (process.env.NODE_ENV !== "production") globalForVerifyLimit.otpVerifyMap = otpVerifyMap;
+
+function checkVerifyRateLimit(key: string, limit: number, windowMs: number) {
+  const now = Date.now();
+  const timestamps = otpVerifyMap.get(key) || [];
+  const recentAttempts = timestamps.filter((time) => now - time < windowMs);
+
+  if (recentAttempts.length >= limit) return false;
+
+  recentAttempts.push(now);
+  otpVerifyMap.set(key, recentAttempts);
+  return true;
+}
+// --------------------------
+
 export async function POST(req: Request) {
   try {
-    // ✅ Extract 'name' from request body
     const { phone, otp, userId, name } = await req.json();
 
     console.log("🚀 [API] Verify Started. Payload:", { phone, otp, name, userId: userId || "NULL" });
@@ -11,6 +30,13 @@ export async function POST(req: Request) {
     if (!phone || !otp) {
       console.log("❌ [API] Missing phone or OTP");
       return NextResponse.json({ error: "Missing phone or OTP" }, { status: 400 });
+    }
+
+    // ⏳ RATE LIMIT: Max 5 verification attempts per 5 minutes
+    const isAllowed = checkVerifyRateLimit(`verify_${phone}`, 5, 5 * 60 * 1000);
+    if (!isAllowed) {
+      console.log("❌ [API] Rate limit exceeded for:", phone);
+      return NextResponse.json({ error: "Too many attempts. Try again in 5 minutes." }, { status: 429 });
     }
 
     // 1. Verify OTP
@@ -30,6 +56,9 @@ export async function POST(req: Request) {
     }
 
     console.log("✅ [API] OTP Verified successfully.");
+
+    // (Clear rate limit map for this phone upon success so they aren't punished for future logins)
+    otpVerifyMap.delete(`verify_${phone}`);
 
     let user;
 
@@ -64,7 +93,6 @@ export async function POST(req: Request) {
       if (existingUser) {
         console.log("👋 [API] Existing user found:", existingUser.id);
 
-        // Logic to determine if update is needed
         const updateData: any = {};
 
         if (!existingUser.isPhoneVerified) {
@@ -72,7 +100,6 @@ export async function POST(req: Request) {
           updateData.isPhoneVerified = true;
         }
 
-        // Optional: Update name if provided and missing in DB
         if (name && !existingUser.name) {
           console.log(`🔹 [API] Updating missing name to: ${name}`);
           updateData.name = name;
@@ -93,14 +120,12 @@ export async function POST(req: Request) {
         console.log("✨ [API] New User Detected. Creating account...");
         console.log(`📝 [API] Name provided: ${name || "User (Default)"}`);
 
-        // ✅ CREATE NEW USER WITH NAME
         user = await prisma.user.create({
           data: {
             phone: phone,
-            name: name || "User", // Use the name from frontend
+            name: name || "User",
             isPhoneVerified: true,
             role: "USER",
-            // Note: providerType is optional now, so we don't need to pass it
           },
         });
         console.log("✅ [API] New User Created with ID:", user.id);
@@ -119,8 +144,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-
-
 // import { NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
 // import { messageCentral } from "@/lib/messageCentral";

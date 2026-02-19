@@ -12,6 +12,7 @@ import AppImage from '@/components/ui/AppImage';
 import RatingForm from '@/components/Rating/RatingForm';
 import { Session } from 'next-auth';
 import { useServicePageData } from '@/app/hook/useServicePageData';
+import AppVideo from '../ui/AppVideo';
 
 // --- HELPER: Detect Video Files ---
 const isVideo = (url: string | null | undefined) => {
@@ -226,10 +227,9 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                         <div key={i} className="h-48 w-full relative group rounded-2xl overflow-hidden bg-black/5">
                                             {isVideo(mediaUrl) ? (
                                                 <div className="w-full h-full relative">
-                                                    <video
+                                                    <AppVideo
                                                         src={mediaUrl}
-                                                        controls
-                                                        className="w-full h-full object-cover"
+                                                        className="w-full h-full"
                                                     />
                                                     {/* Optional: Add a play icon overlay if you want custom styling, 
                                                         but standard 'controls' is best for UX */}

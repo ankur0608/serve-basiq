@@ -3,6 +3,24 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// --- RATE LIMITER SETUP ---
+const globalForRateLimit = globalThis as unknown as { otpRequestMap: Map<string, number[]> };
+const otpRequestMap = globalForRateLimit.otpRequestMap || new Map<string, number[]>();
+if (process.env.NODE_ENV !== "production") globalForRateLimit.otpRequestMap = otpRequestMap;
+
+function checkRateLimit(key: string, limit: number, windowMs: number) {
+  const now = Date.now();
+  const timestamps = otpRequestMap.get(key) || [];
+  const recentRequests = timestamps.filter((time) => now - time < windowMs);
+  
+  if (recentRequests.length >= limit) return false; // Rate limit exceeded
+  
+  recentRequests.push(now);
+  otpRequestMap.set(key, recentRequests);
+  return true; // Allowed
+}
+// --------------------------
+
 export async function POST(req: Request) {
   const { phone } = await req.json();
 
@@ -10,6 +28,15 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { message: "Invalid phone number" },
       { status: 400 }
+    );
+  }
+
+  // ⏳ RATE LIMIT: Max 3 OTP requests per 5 minutes per phone number
+  const isAllowed = checkRateLimit(`send_${phone}`, 3, 5 * 60 * 1000);
+  if (!isAllowed) {
+    return NextResponse.json(
+      { message: "Too many requests. Please wait 5 minutes." },
+      { status: 429 }
     );
   }
 

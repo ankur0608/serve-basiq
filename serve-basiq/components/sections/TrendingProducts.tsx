@@ -14,7 +14,7 @@ export default async function TrendingProducts() {
       where: {
         // ✅ Relaxed filter: Only checks if the PRODUCT is verified
         isVerified: true,
-        // user: { isVerified: true } // 👈 Commented out for testing
+        user: { isVerified: true } // 👈 Commented out for testing
       },
       include: {
         user: {

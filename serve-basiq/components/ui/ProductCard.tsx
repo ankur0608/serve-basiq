@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, memo } from 'react';
 import Image from 'next/image';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession } from 'next-auth/react'; // Removed signIn
 import { useRouter } from 'next/navigation';
 import { FaHeart, FaRegHeart, FaPaperPlane, FaXmark } from "react-icons/fa6";
 import { BadgeCheck, Box, Tag } from 'lucide-react';
@@ -10,6 +10,8 @@ import { BadgeCheck, Box, Tag } from 'lucide-react';
 // Components
 import ProductWrapper from '@/components/products/ProductWrapper';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
+// 👉 NOTE: Ensure this path points correctly to your LoginModal file
+import LoginModal from '@/components/auth/LoginModal';
 
 interface ProductCardProps {
     product: any;
@@ -22,8 +24,10 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
     const { data: session, update } = useSession();
     const router = useRouter();
 
+    // Modal States
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false); // ✅ Added Login Modal State
 
     if (!product) return null;
 
@@ -59,11 +63,15 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
     const moqValue = minOrder || product.moq || 1;
 
     const handleRequestClick = (e: React.MouseEvent) => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
+
+        // ✅ Changed: Open custom LoginModal instead of redirecting
         if (!session) {
-            signIn(undefined, { callbackUrl: window.location.pathname });
+            setShowLoginModal(true);
             return;
         }
+
         if (!effectiveUser?.isPhoneVerified) {
             setShowVerifyModal(true);
             return;
@@ -173,7 +181,14 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                 </div>
             </div>
 
-            {/* --- MODALS (Unchanged logic, just keeping them here) --- */}
+            {/* --- MODALS --- */}
+
+            {/* ✅ Added Custom Login Modal */}
+            <LoginModal
+                isOpen={showLoginModal}
+                onClose={() => setShowLoginModal(false)}
+            />
+
             <MobileVerificationModal
                 isOpen={showVerifyModal}
                 onClose={() => setShowVerifyModal(false)}

@@ -77,46 +77,6 @@ export default function Hero() {
             ))}
           </div>
         </div>
-
-        {/* STATISTICS BLOCK */}
-        <div className="mx-auto max-w-5xl">
-          <div className="rounded-3xl border border-gray-100 bg-white/80 p-6 shadow-xl backdrop-blur-md md:p-10">
-            <div className="grid grid-cols-1 divide-y divide-gray-100 md:grid-cols-3 md:divide-x md:divide-y-0">
-
-              {/* Stat 1 */}
-              <div className="flex flex-col items-center justify-center p-4">
-                <div className="text-4xl font-extrabold text-slate-900 sm:text-5xl">
-                  500+
-                </div>
-                <div className="mt-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-                  Verified Experts
-                </div>
-              </div>
-
-              {/* Stat 2 */}
-              <div className="flex flex-col items-center justify-center p-4">
-                <div className="text-4xl font-extrabold text-slate-900 sm:text-5xl">
-                  10k+
-                </div>
-                <div className="mt-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-                  Transactions
-                </div>
-              </div>
-
-              {/* Stat 3 */}
-              <div className="flex flex-col items-center justify-center p-4">
-                <div className="flex items-center gap-2 text-4xl font-extrabold text-slate-900 sm:text-5xl">
-                  4.9 <FaStar className="text-yellow-400 text-3xl sm:text-4xl" />
-                </div>
-                <div className="mt-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-                  Average Rating
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );
