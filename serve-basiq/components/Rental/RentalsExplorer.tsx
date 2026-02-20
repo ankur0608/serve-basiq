@@ -35,7 +35,6 @@ export default function RentalsExplorer() {
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
-        // ✅ Add these from hook
         favoriteIds = [],
         toggleFavorite,
         currentUser
@@ -65,7 +64,6 @@ export default function RentalsExplorer() {
         router.push('/rentals');
     };
 
-    // ✅ Handle Toggle Favorite
     const handleToggleFav = useCallback((e: React.MouseEvent, id: string) => {
         e.preventDefault(); e.stopPropagation();
         if (toggleFavorite) {
@@ -73,7 +71,6 @@ export default function RentalsExplorer() {
         }
     }, [toggleFavorite]);
 
-    // --- SEAMLESS INFINITE SCROLL LOGIC ---
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -150,7 +147,6 @@ export default function RentalsExplorer() {
                         </div>
                     </div>
 
-                    {/* Overlay Spinner */}
                     {isFetching && !isFetchingNextPage && rawRentals.length > 0 && (
                         <div className="fixed inset-0 bg-white/40 z-50 flex justify-center pt-40 pointer-events-none">
                             <div className="bg-white p-3 rounded-full shadow-xl border h-fit">
@@ -175,7 +171,6 @@ export default function RentalsExplorer() {
                                         <RentalCard
                                             key={item.id}
                                             rental={item}
-                                            // ✅ Pass props here
                                             isFav={favoriteIds?.includes(item.id)}
                                             toggleFav={(e) => handleToggleFav(e!, item.id)}
                                             currentUser={currentUser}
