@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { FaXmark, FaArrowLeft, FaSpinner } from "react-icons/fa6";
-import { AlertCircle, ShieldAlert } from "lucide-react"; // Import some nice icons for errors
+import { AlertCircle, ShieldAlert } from "lucide-react";
 import clsx from "clsx";
 import { useUIStore } from "@/lib/store";
 import { signIn } from "next-auth/react";
@@ -16,10 +16,10 @@ interface OtpModalProps {
 export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     const [showModal, setShowModal] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    
-    // ✅ New Error State: holds message and type of error
+
+    // Error State
     const [errorMsg, setErrorMsg] = useState<{ text: string, type: 'RATE_LIMIT' | 'INVALID' | null }>({ text: "", type: null });
-    
+
     const router = useRouter();
 
     // Store Data
@@ -31,40 +31,45 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     // Store Actions
     const onOpenLogin = useUIStore((state) => state.onOpenLogin);
     const onCloseOtp = useUIStore((state) => state.onCloseOtp);
-    const onOpenName = useUIStore((state) => state.onOpenName); 
+    const onOpenName = useUIStore((state) => state.onOpenName);
     const setCurrentUser = useUIStore((state) => state.setCurrentUser);
 
     // OTP State
     const [otp, setOtp] = useState(["", "", "", ""]);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+    // ✅ FIX: Single unified useEffect to handle Modal Open, Reset, and Auto-fill
     useEffect(() => {
         if (isOpen) {
             setShowModal(true);
             setErrorMsg({ text: "", type: null }); // Reset errors on open
             document.body.style.overflow = "hidden";
-            setTimeout(() => inputRefs.current[0]?.focus(), 100);
+
+            // If we have a devOtp, auto-fill it immediately
+            if (devOtp) {
+                const otpString = String(devOtp);
+                if (otpString.length === 4) {
+                    setOtp(otpString.split(""));
+                    // Focus the last input so the user can just click "Verify" or press Enter
+                    setTimeout(() => inputRefs.current[3]?.focus(), 100);
+                }
+            } else {
+                // No devOtp? Clear the fields and focus the first one
+                setOtp(["", "", "", ""]);
+                setTimeout(() => inputRefs.current[0]?.focus(), 100);
+            }
         } else {
+            // Modal is closing, clean up
             const timer = setTimeout(() => setShowModal(false), 300);
             document.body.style.overflow = "unset";
             setOtp(["", "", "", ""]);
             return () => clearTimeout(timer);
         }
-    }, [isOpen]);
-
-    // Auto-fill Dev OTP
-    useEffect(() => {
-        if (isOpen && devOtp) {
-            const otpString = devOtp.toString();
-            if (otpString.length === 4) {
-                setOtp(otpString.split(""));
-            }
-        }
-    }, [devOtp, isOpen]);
+    }, [isOpen, devOtp]); // Listen to both isOpen and devOtp
 
     const handleChange = (index: number, value: string) => {
         if (isNaN(Number(value))) return;
-        
+
         // Clear errors as soon as user starts typing again
         if (errorMsg.type) setErrorMsg({ text: "", type: null });
 
@@ -88,7 +93,7 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         if (code.length !== 4) return;
 
         setIsLoading(true);
-        setErrorMsg({ text: "", type: null }); // Reset errors before trying
+        setErrorMsg({ text: "", type: null });
 
         try {
             const res = await fetch("/api/auth/verify-otp", {
@@ -100,28 +105,24 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                 }),
             });
 
-            // ✅ Handle Specific Errors
             if (!res.ok) {
                 const errorData = await res.json();
-                
+
                 if (res.status === 429) {
-                    // Rate Limit Hit
                     setErrorMsg({ text: errorData.error || "Too many attempts. Please try again later.", type: 'RATE_LIMIT' });
-                    setOtp(["", "", "", ""]); // Clear OTP fields
-                    inputRefs.current[0]?.blur(); // Remove focus to show they are blocked
+                    setOtp(["", "", "", ""]);
+                    inputRefs.current[0]?.blur();
                     return;
                 } else {
-                    // Invalid OTP / Expired
                     setErrorMsg({ text: errorData.error || "Invalid OTP. Please check and try again.", type: 'INVALID' });
-                    setOtp(["", "", "", ""]); // Clear OTP fields so they can type again
-                    inputRefs.current[0]?.focus(); // Refocus first input
+                    setOtp(["", "", "", ""]);
+                    inputRefs.current[0]?.focus();
                     return;
                 }
             }
 
             const user = await res.json();
 
-            // 2. Sign In (Create Session)
             const signInResult = await signIn("credentials", {
                 phone: mobileNumber,
                 redirect: false,
@@ -130,15 +131,13 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
             if (signInResult?.error) throw new Error(signInResult.error);
 
             setCurrentUser(user);
-            onCloseOtp(); 
+            onCloseOtp();
 
-            // 3. LOGIC: If New User -> Open Name Modal
             if (isNewUser) {
-                onOpenName(); 
+                onOpenName();
                 return;
             }
 
-            // 4. If Old User -> Redirect Immediately
             if (loginIntent === 'provider') {
                 if (user.providerType) {
                     router.push('/provider/dashboard');
@@ -174,7 +173,6 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                             <p className="text-sm text-gray-500 mt-2">Code sent to <span className="font-bold text-slate-900">+91 {mobileNumber}</span></p>
                         </div>
 
-                        {/* ✅ ERROR MESSAGE DISPLAY */}
                         {errorMsg.type && (
                             <div className={clsx(
                                 "mb-6 p-4 rounded-xl flex items-start gap-3 animate-in slide-in-from-top-2",
@@ -188,26 +186,26 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                         <form onSubmit={handleVerify} className="space-y-8">
                             <div className="flex justify-center gap-3">
                                 {otp.map((digit, index) => (
-                                    <input 
-                                        key={index} 
-                                        ref={(el) => { inputRefs.current[index] = el; }} 
-                                        type="tel" 
-                                        maxLength={1} 
-                                        value={digit} 
-                                        onChange={(e) => handleChange(index, e.target.value)} 
-                                        onKeyDown={(e) => handleKeyDown(index, e)} 
-                                        disabled={isLoading || errorMsg.type === 'RATE_LIMIT'} // Disable inputs if rate limited
+                                    <input
+                                        key={index}
+                                        ref={(el) => { inputRefs.current[index] = el; }}
+                                        type="tel"
+                                        maxLength={1}
+                                        value={digit}
+                                        onChange={(e) => handleChange(index, e.target.value)}
+                                        onKeyDown={(e) => handleKeyDown(index, e)}
+                                        disabled={isLoading || errorMsg.type === 'RATE_LIMIT'}
                                         className={clsx(
                                             "w-14 h-16 rounded-xl border-2 text-center text-2xl font-bold outline-none transition-all",
                                             errorMsg.type ? "border-red-300 bg-red-50 text-red-900 focus:border-red-500" : "border-gray-200 text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10",
                                             (isLoading || errorMsg.type === 'RATE_LIMIT') && "opacity-50 cursor-not-allowed"
-                                        )} 
+                                        )}
                                     />
                                 ))}
                             </div>
-                            <button 
-                                type="submit" 
-                                disabled={isLoading || errorMsg.type === 'RATE_LIMIT'} // Disable button if rate limited
+                            <button
+                                type="submit"
+                                disabled={isLoading || errorMsg.type === 'RATE_LIMIT'}
                                 className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isLoading ? <FaSpinner className="animate-spin" /> : "Verify & Login"}

@@ -1,7 +1,7 @@
 generator client {
     provider        = "prisma-client-js"
     engineType      = "library"
-    previewFeatures = ["driverAdapters"]
+    // previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -204,12 +204,14 @@ model Rental {
     radiusKm     Int?     @default(10)
 
     // --- System ---
-    isVerified     Boolean         @default(false)
-    createdAt      DateTime        @default(now())
-    updatedAt      DateTime        @updatedAt
-    bookings       Booking[]
-    rentalBookings RentalBooking[]
-    reviews        Review[]
+    isVerified      Boolean          @default(false)
+    createdAt       DateTime         @default(now())
+    updatedAt       DateTime         @updatedAt
+    bookings        Booking[]
+    favoritedBy     FavoriteRental[]
+    rentalBookings  RentalBooking[]
+    reviews         Review[]
+    // favoriteRentals FavoriteRental[]
 }
 
 model Category {
@@ -337,15 +339,14 @@ model User {
     upiId                 String?
     preferredPayoutMethod PayoutMethod? @default(BANK)
 
-    kycDetails KycDetails?
-
-    accounts     Account[]
-    services     Service[]
-    addresses    Address[]
-    products     Product[]
-    reviews      Review[]
-    bookings     Booking[]
-    requirements Requirement[]
+    kycDetails      KycDetails?
+    accounts        Account[]
+    services        Service[]
+    addresses       Address[]
+    products        Product[]
+    reviews         Review[]
+    bookings        Booking[]
+    requirements    Requirement[]
 
     createdAt        DateTime          @default(now())
     updatedAt        DateTime          @updatedAt
@@ -353,6 +354,7 @@ model User {
     favoriteServices FavoriteService[]
     favoriteProducts FavoriteProduct[]
     rentalBookings   RentalBooking[]   @relation("RenterUser")
+    favoriteRentals  FavoriteRental[]
 }
 
 model KycDetails {
@@ -576,4 +578,15 @@ model FavoriteProduct {
     createdAt DateTime @default(now())
 
     @@unique([userId, productId]) // Prevent duplicate likes
+}
+
+model FavoriteRental {
+    id        String   @id @default(cuid())
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    rentalId  String
+    rental    Rental   @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now())
+
+    @@unique([userId, rentalId]) // Prevent duplicate likes
 }

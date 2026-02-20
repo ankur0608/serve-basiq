@@ -9,6 +9,8 @@ import {
     FaGear,
     FaChevronRight,
     FaSpinner,
+    FaBriefcase, // ✅ Added icon for the banner
+    FaHeart,     // ✅ Added icon for favorites
 } from "react-icons/fa6";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -32,7 +34,7 @@ export default function ProfilePage() {
     // 1. Fetch Data
     const { data: profileDataFromApi, isLoading, error } = useUserProfile();
 
-    // ✅ FIX 1: Use 'mutateAsync' instead of 'mutate' to get a Promise
+    // Use 'mutateAsync' instead of 'mutate' to get a Promise
     const { mutateAsync: updateProfile, isPending: isSaving } = useUpdateProfile();
 
     const [isHydrated, setIsHydrated] = useState(false);
@@ -106,6 +108,33 @@ export default function ProfilePage() {
 
             <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20 space-y-6">
                 <ProfileStats />
+
+                {/* ✅ BECOME A PARTNER BANNER */}
+                {!userAny.isWorker && (
+                    <div className="bg-slate-900 rounded-2xl p-6 relative overflow-hidden shadow-md">
+                        {/* Background Watermark Icon */}
+                        <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
+                            <FaBriefcase className="w-48 h-48 text-white" />
+                        </div>
+
+                        <div className="relative z-10">
+                            <h3 className="text-xl font-bold text-white mb-2">
+                                Become a Service Provider
+                            </h3>
+                            <p className="text-slate-300 text-sm mb-5">
+                                Earn money by offering your skills.
+                            </p>
+                            <Link
+                                href="/become-pro"
+                                className="inline-flex items-center gap-2 bg-white text-slate-900 px-5 py-2.5 rounded-xl font-bold hover:bg-slate-100 transition-colors text-sm"
+                            >
+                                <FaBriefcase />
+                                Apply Now
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="flex flex-col">
                         <MenuLink
@@ -117,6 +146,12 @@ export default function ProfilePage() {
                             href="/profile/orders"
                             icon={<FaBoxOpen className="text-blue-600" />}
                             label="My Orders"
+                        />
+                        {/* ✅ Added Favourites Link */}
+                        <MenuLink
+                            href="/favorites"
+                            icon={<FaHeart className="text-pink-500" />}
+                            label="Favourites"
                         />
                         <MenuLink
                             href="/profile/settings"
@@ -131,7 +166,6 @@ export default function ProfilePage() {
                     isOpen={isEditProfileOpen}
                     onClose={onCloseEditProfile}
                     initialData={profileData}
-                    // ✅ FIX 2: Pass an async function that awaits the mutation
                     onSave={async (formData, file) => {
                         await updateProfile({ formData, file, currentUser: userAny });
                     }}

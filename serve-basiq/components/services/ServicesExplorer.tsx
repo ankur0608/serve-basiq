@@ -6,6 +6,7 @@ import { SearchX, Loader2 } from 'lucide-react';
 import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
 
 import { useServicesExplorer } from '@/app/hook/useServicesExplorer';
+import { useDebounce } from '@/app/hook/useDebounce'; // <-- Added import
 import ServiceCard from '@/components/ui/ServiceCard';
 import ServiceCategories from '../home/ServiceCategories';
 import ServiceFiltersDesktop from './ServiceFiltersDesktop';
@@ -18,6 +19,8 @@ export default function ServicesExplorer() {
 
     // --- FILTERS STATE ---
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 500); // <-- 500ms delay
+
     const [selectedLocation, setSelectedLocation] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
@@ -38,7 +41,7 @@ export default function ServicesExplorer() {
         hasNextPage,
         isFetchingNextPage
     } = useServicesExplorer({
-        search: searchTerm,
+        search: debouncedSearchTerm, // <-- Using debounced term for the API call
         category: selectedCategory,
         subcategory: selectedSubcategory,
         location: selectedLocation,
@@ -57,8 +60,11 @@ export default function ServicesExplorer() {
         [services]);
 
     const resetFilters = () => {
-        setSearchTerm(''); setSelectedLocation(''); setSelectedCategory('');
-        setSelectedSubcategory(''); setSortOption('');
+        setSearchTerm('');
+        setSelectedLocation('');
+        setSelectedCategory('');
+        setSelectedSubcategory('');
+        setSortOption('');
         router.push('/services');
     };
 
@@ -72,27 +78,15 @@ export default function ServicesExplorer() {
         const observer = new IntersectionObserver(
             (entries) => {
                 const target = entries[0];
-
-                // Trigger fetch if:
-                // 1. The invisible footer is "approaching" (within 800px)
-                // 2. We have more pages to fetch
-                // 3. We are NOT currently fetching (prevents duplicate API calls)
                 if (target.isIntersecting && hasNextPage && !isFetchingNextPage && !isFetching) {
                     fetchNextPage();
                 }
             },
-            {
-                threshold: 0,
-                // "800px" means: Trigger the load when the user is 800px AWAY from the bottom.
-                // This creates the "Seamless" effect.
-                rootMargin: '800px'
-            }
+            { threshold: 0, rootMargin: '800px' }
         );
 
         const currentTarget = observerTarget.current;
-        if (currentTarget) {
-            observer.observe(currentTarget);
-        }
+        if (currentTarget) observer.observe(currentTarget);
 
         return () => {
             if (currentTarget) observer.unobserve(currentTarget);
@@ -130,6 +124,7 @@ export default function ServicesExplorer() {
                             selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
                             selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
                             selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
+                            sortOption={sortOption} setSortOption={setSortOption} // <-- Added sort props
                             availableCategories={categories} availableSubcategories={availableSubcategories}
                             uniqueLocations={uniqueLocations} resetFilters={resetFilters}
                         />
@@ -146,7 +141,7 @@ export default function ServicesExplorer() {
                             </div>
                             <input
                                 type="text" placeholder="Search..."
-                                className="w-full pl-12 pr-10 py-4 bg-slate-50 border-none rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium text-slate-900 text-base"
+                                className="w-full pl-12 pr-10 py-4 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium text-slate-900 text-base"
                                 value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             {searchTerm && (
@@ -157,7 +152,7 @@ export default function ServicesExplorer() {
                         </div>
                     </div>
 
-                    {/* Filter Loading Overlay (shows when changing categories/filters) */}
+                    {/* Filter Loading Overlay */}
                     {isFetching && !isFetchingNextPage && services.length > 0 && (
                         <div className="fixed inset-0 bg-white/40 z-50 flex justify-center pt-40 pointer-events-none">
                             <div className="bg-white p-3 rounded-full shadow-xl border h-fit">
@@ -198,7 +193,6 @@ export default function ServicesExplorer() {
                                             <span className="text-sm font-medium">Loading more services...</span>
                                         </div>
                                     ) : (
-                                        // Empty div to maintain layout while observing
                                         <div className="h-1 w-full" />
                                     )}
                                 </div>

@@ -7,6 +7,7 @@ import { PackageOpen, Loader2 } from 'lucide-react';
 
 // Hooks
 import { useProductsExplorer } from '@/app/hook/useProductsExplorer';
+import { useDebounce } from '@/app/hook/useDebounce'; // <-- Make sure path matches your setup
 
 // Components
 import ProductCard from '@/components/ui/ProductCard';
@@ -21,6 +22,8 @@ export default function ProductsExplorer() {
 
     // 1. UI State
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 500); // <-- 500ms delay
+
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
     const [selectedLocation, setSelectedLocation] = useState('');
@@ -44,7 +47,7 @@ export default function ProductsExplorer() {
     } = useProductsExplorer({
         category: selectedCategory,
         subcategory: selectedSubcategory,
-        search: searchTerm,
+        search: debouncedSearchTerm, // <-- Pass the debounced term!
         location: selectedLocation,
         sort: sortOption
     });
@@ -82,23 +85,16 @@ export default function ProductsExplorer() {
                     fetchNextPage();
                 }
             },
-            {
-                threshold: 0,
-                // Load more data when user is 800px away from the bottom
-                rootMargin: '800px'
-            }
+            { threshold: 0, rootMargin: '800px' }
         );
 
         const currentTarget = observerTarget.current;
-        if (currentTarget) {
-            observer.observe(currentTarget);
-        }
+        if (currentTarget) observer.observe(currentTarget);
 
         return () => {
             if (currentTarget) observer.unobserve(currentTarget);
         };
     }, [hasNextPage, fetchNextPage, isFetchingNextPage, isFetching]);
-
 
     if (isLoading) return <ProductsSkeleton />;
 
@@ -132,6 +128,7 @@ export default function ProductsExplorer() {
                             selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
                             selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
                             selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
+                            sortOption={sortOption} setSortOption={setSortOption} // <-- Added sort
                             availableCategories={availableCategories} availableSubcategories={availableSubcategories}
                             uniqueLocations={uniqueLocations} resetFilters={resetFilters}
                         />
@@ -179,7 +176,7 @@ export default function ProductsExplorer() {
                             </div>
                         ) : (
                             <>
-                                {/* NATIVE GRID (Replaces Virtuoso) */}
+                                {/* NATIVE GRID */}
                                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                                     {rawProducts.map((item) => (
                                         <ProductCard

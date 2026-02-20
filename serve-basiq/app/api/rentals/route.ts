@@ -129,42 +129,88 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// ✅ This line is crucial for GET requests with search params in App Router
 export const dynamic = 'force-dynamic';
 
-// --- GET HANDLER (The one causing 405) ---
+// --- GET HANDLER ---
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
 
-        const limit = parseInt(searchParams.get("limit") || "12");
+        const limit = parseInt(searchParams.get("limit") || "24");
         const cursor = searchParams.get("cursor");
 
         // Filters
         const userId = searchParams.get("userId");
         const categoryId = searchParams.get("categoryId");
+        const subcategoryId = searchParams.get("subcategoryId"); // 👈 Added
         const search = searchParams.get("search");
+        const location = searchParams.get("location"); // 👈 Added
+        const sort = searchParams.get("sort"); // 👈 Added
 
+        // 🔒 STRICT REQUIREMENT: Verified rentals and users only
         const where: any = {
             isVerified: true,
             user: { isVerified: true }
-        }; if (userId) where.userId = userId;
+        };
+
+        if (userId) where.userId = userId;
         if (categoryId) where.categoryId = categoryId;
+        if (subcategoryId) where.subCategoryId = subcategoryId;
+
+        // ✅ LOCATION FILTER: Using Address table Work type
+        if (location) {
+            where.user = {
+                ...where.user,
+                addresses: {
+                    some: {
+                        type: { equals: 'Work', mode: 'insensitive' },
+                        city: { equals: location, mode: 'insensitive' }
+                    }
+                }
+            };
+        }
+
+        // Add Search safely
         if (search) {
-            where.OR = [
-                { name: { contains: search, mode: 'insensitive' } },
-                { desc: { contains: search, mode: 'insensitive' } }
+            where.AND = [
+                {
+                    OR: [
+                        { name: { contains: search, mode: 'insensitive' } },
+                        { desc: { contains: search, mode: 'insensitive' } }
+                    ]
+                }
             ];
+        }
+
+        // --- BUILD PRISMA ORDER BY CLAUSE ---
+        let orderBy: any = { createdAt: "desc" };
+        switch (sort) {
+            case "price_asc":
+                orderBy = { price: "asc" };
+                break;
+            case "price_desc":
+                orderBy = { price: "desc" };
+                break;
+            case "popular":
+                orderBy = { reviews: { _count: "desc" } };
+                break;
+            // Add rating here if added to schema later
         }
 
         // Include relations
         const includeObj = {
             category: { select: { id: true, name: true } },
             subcategory: { select: { id: true, name: true } },
+            _count: { select: { reviews: true } }, // 👈 Needed for sorting popular
             user: {
                 select: {
                     id: true, name: true, image: true, phone: true,
-                    isVerified: true, shopName: true
+                    isVerified: true, shopName: true,
+                    // Pull the Work address so frontend can map the location
+                    addresses: {
+                        where: { type: 'Work' },
+                        select: { city: true }
+                    }
                 }
             }
         };
@@ -175,7 +221,7 @@ export async function GET(req: Request) {
             take: limit + 1,
             cursor: cursor ? { id: cursor } : undefined,
             skip: cursor ? 1 : 0,
-            orderBy: { createdAt: "desc" },
+            orderBy,
         });
 
         let nextCursor = undefined;
@@ -194,6 +240,8 @@ export async function GET(req: Request) {
         return NextResponse.json({ success: false, message: "Failed to fetch" }, { status: 500 });
     }
 }
+
+// ... POST handler remains completely unchanged ...
 
 // --- POST HANDLER ---
 export async function POST(req: Request) {

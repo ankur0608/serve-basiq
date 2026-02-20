@@ -8,33 +8,40 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
     // --- PAGINATION PARAMS ---
-    const limit = parseInt(searchParams.get('limit') || '12');
+    const limit = parseInt(searchParams.get('limit') || '24');
     const cursor = searchParams.get('cursor');
 
     // --- FILTER PARAMS ---
-    const catFilter = searchParams.get('cat');
     const categoryId = searchParams.get('categoryId');
     const subcategoryId = searchParams.get('subcategoryId');
     const search = searchParams.get('search');
+    const location = searchParams.get('location');
+    const sort = searchParams.get('sort');
 
+    // --- BUILD PRISMA WHERE CLAUSE ---
+    // 🔒 STRICT REQUIREMENT: Only verified products from verified users
     const whereClause: any = {
       isVerified: true,
       user: { isVerified: true }
     };
 
-    // 1. ID-Based Filters
     if (categoryId) whereClause.categoryId = categoryId;
     if (subcategoryId) whereClause.subCategoryId = subcategoryId;
 
-    // 2. Legacy Name-Based Filter
-    if (!categoryId && catFilter && catFilter !== 'All') {
-      whereClause.OR = [
-        { category: { name: catFilter } },
-        { subcategory: { name: catFilter } }
-      ];
+    // ✅ LOCATION FILTER: Look inside the User's Address table for "Work"
+    if (location) {
+      whereClause.user = {
+        ...whereClause.user, // Keep the isVerified check!
+        addresses: {
+          some: {
+            type: { equals: 'Work', mode: 'insensitive' },
+            city: { equals: location, mode: 'insensitive' }
+          }
+        }
+      };
     }
 
-    // 3. Search Filter
+    // Search Filter
     if (search) {
       const searchCondition = {
         OR: [
@@ -44,23 +51,45 @@ export async function GET(request: Request) {
       };
 
       if (whereClause.AND) {
-        // @ts-ignore
         whereClause.AND.push(searchCondition);
       } else {
         whereClause.AND = [searchCondition];
       }
     }
 
+    // --- BUILD PRISMA ORDER BY CLAUSE ---
+    let orderBy: any = { createdAt: 'desc' };
+
+    switch (sort) {
+      case "price_asc":
+        orderBy = { price: "asc" };
+        break;
+      case "price_desc":
+        orderBy = { price: "desc" };
+        break;
+      case "popular":
+        orderBy = { reviews: { _count: "desc" } };
+        break;
+      // Note: Since 'rating' doesn't exist on Product schema yet, we skip sorting by it
+    }
+
     // --- DB QUERY ---
     const products = await prisma.product.findMany({
       where: whereClause,
-      orderBy: { createdAt: 'desc' },
+      orderBy,
       take: limit + 1,
       cursor: cursor ? { id: cursor } : undefined,
       skip: cursor ? 1 : 0,
       include: {
         user: {
-          select: { id: true, shopName: true, name: true, isVerified: true, profileImage: true, image: true }
+          select: {
+            id: true, shopName: true, name: true, isVerified: true, profileImage: true, image: true,
+            // ✅ Pull the Work address so the frontend can display the location!
+            addresses: {
+              where: { type: 'Work' },
+              select: { city: true }
+            }
+          }
         },
         category: {
           select: { id: true, name: true }
@@ -78,7 +107,7 @@ export async function GET(request: Request) {
     let nextCursor = undefined;
     if (products.length > limit) {
       const nextItem = products.pop();
-      nextCursor = nextItem?.id; // Last item ID
+      nextCursor = nextItem?.id;
     }
 
     // --- FORMATTING ---
@@ -86,7 +115,6 @@ export async function GET(request: Request) {
       id: product.id,
       name: product.name,
       description: product.desc,
-
       category: {
         id: product.category?.id,
         name: product.category?.name || "General"
@@ -95,18 +123,16 @@ export async function GET(request: Request) {
         id: product.subcategory?.id,
         name: product.subcategory?.name
       },
-
       price: Number(product.price) || 0,
       minOrderQty: Number(product.moq) || 1,
       unit: product.unit || "Pcs",
-
-      // Image Logic
       images: product.gallery.length > 0
         ? product.gallery
         : (product.productImage ? [product.productImage] : []),
-
-      // Fallback Image
       image: product.productImage || (product.gallery.length > 0 ? product.gallery[0] : ""),
+
+      // ✅ Map the city dynamically from the user's work address
+      location: product.user?.addresses?.[0]?.city || "Worldwide",
 
       provider: {
         id: product.user?.id,
@@ -115,10 +141,7 @@ export async function GET(request: Request) {
         image: product.user?.profileImage || product.user?.image || "",
         verified: product.user?.isVerified || false
       },
-
-      // ✅ FIX: Hardcode to 0 because 'rating' field does not exist in DB yet
       rating: 0,
-
       reviewsCount: product._count?.reviews || 0,
       stock: 100
     }));

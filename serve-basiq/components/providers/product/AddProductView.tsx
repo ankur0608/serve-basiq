@@ -5,11 +5,9 @@ import { useProducts } from '@/app/hook/useProducts';
 import { uploadImage } from '@/lib/upload';
 import { X } from 'lucide-react';
 
-// Import Step Components
-import { Step1Info } from './Step1Info';
-import { Step2Images } from './Step2Images';
-import { Step3Inventory } from './Step3Inventory';
-import { Step4Pricing } from './Step4Pricing';
+// Import New 2-Step Components
+import { Step1Details } from './Step1Info';
+import { Step2Media } from './Step2Images';
 
 // --- Shared Types ---
 export interface SubCategory { id: string; name: string; }
@@ -40,10 +38,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const { saveProduct, isSaving } = useProducts(userId);
     const [step, setStep] = useState(1);
     const [uploading, setUploading] = useState(false);
-
-    // Track which field is currently uploading ('main' or 'gallery')
     const [activeUploadField, setActiveUploadField] = useState<'main' | 'gallery' | null>(null);
-
     const [categories, setCategories] = useState<Category[]>([]);
 
     const [form, setForm] = useState<ProductForm>({
@@ -75,13 +70,10 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         fetchCategories();
     }, [showToast]);
 
-    // --- Derived State ---
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(c => c.id === form.categoryId);
         return selectedCat ? selectedCat.children : [];
     }, [categories, form.categoryId]);
-
-    // --- Handlers ---
 
     const handleChange = useCallback((field: keyof ProductForm, value: any) => {
         setForm(prev => {
@@ -92,7 +84,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
-    // 1. Single Image Upload (Main Product Image)
     const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, target: 'main') => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -113,7 +104,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         }
     }, [showToast]);
 
-    // 2. Multiple Image Upload (Gallery)
     const handleGalleryUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
 
@@ -121,7 +111,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField('gallery');
 
         try {
-            // Upload all files in parallel
             const uploadPromises = files.map(file => uploadImage(file));
             const uploadedUrls = await Promise.all(uploadPromises);
 
@@ -171,67 +160,48 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const closeForm = useCallback(() => setActiveView('products'), [setActiveView]);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-2xl w-full mx-auto relative flex flex-col max-h-[90vh]">
 
-                {/* Close Button */}
                 <button onClick={closeForm} className="absolute top-4 right-4 z-10 text-white/70 hover:text-white transition">
                     <X size={24} />
                 </button>
 
-                {/* Header & Progress Bar */}
                 <div className="bg-slate-900 p-6 text-white relative shrink-0">
                     <div className="flex justify-between items-center mb-1">
                         <h2 className="text-xl font-bold">
                             {editingProduct ? 'Edit Product' : 'Add Product'}
                         </h2>
                         <span className="text-xs font-bold bg-white/10 px-2 py-1 rounded text-slate-300">
-                            Step {step} of 4
+                            Step {step} of 2
                         </span>
                     </div>
                     <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-800">
-                        <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${(step / 4) * 100}%` }} />
+                        <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${(step / 2) * 100}%` }} />
                     </div>
                 </div>
 
-                {/* Form Body */}
                 <form onSubmit={handleSubmit} className="p-6 overflow-y-auto">
                     {step === 1 && (
-                        <Step1Info
+                        <Step1Details
                             form={form}
                             categories={categories}
                             activeSubCategories={activeSubCategories}
                             handleChange={handleChange}
                             setStep={setStep}
+                            closeForm={closeForm}
                         />
                     )}
 
                     {step === 2 && (
-                        <Step2Images
+                        <Step2Media
                             form={form}
                             uploading={uploading}
                             activeUploadField={activeUploadField}
-                            handleImageUpload={handleImageUpload}     // Single (Main)
-                            handleGalleryUpload={handleGalleryUpload} // Multiple (Gallery)
+                            handleImageUpload={handleImageUpload}
+                            handleGalleryUpload={handleGalleryUpload}
                             removeGalleryImg={removeGalleryImg}
                             setStep={setStep}
-                        />
-                    )}
-
-                    {step === 3 && (
-                        <Step3Inventory
-                            form={form}
-                            handleChange={handleChange}
-                            setStep={setStep}
-                        />
-                    )}
-
-                    {step === 4 && (
-                        <Step4Pricing
-                            form={form}
-                            handleChange={handleChange}
-                            setStep={setStep}
-                            closeForm={closeForm}
                             isSaving={isSaving}
                             editingProduct={editingProduct}
                         />

@@ -14,9 +14,9 @@ interface UserStats {
 interface FavoriteDetails {
     services: any[];
     products: any[];
+    rentals: any[]; // ✅ Added rentals array
 }
 
-// Define the shape of data passed to the mutation
 interface UpdateProfileParams {
     formData: any;
     file: File | null;
@@ -44,7 +44,8 @@ export function useFavoritesDetails() {
         queryKey: ['favorites', 'details'],
         queryFn: async () => {
             const res = await fetch('/api/user/favorites/details');
-            if (!res.ok) return { services: [], products: [] };
+            // ✅ Fallback includes rentals
+            if (!res.ok) return { services: [], products: [], rentals: [] };
             return res.json();
         },
         staleTime: 1000 * 60 * 10,
@@ -69,7 +70,7 @@ export function useUserProfile() {
     });
 }
 
-// --- 4. ✅ NEW: Hook for Active Bookings ---
+// --- 4. Hook for Active Bookings ---
 export function useActiveBookings() {
     return useQuery({
         queryKey: ['user', 'bookings', 'active'],
@@ -78,7 +79,6 @@ export function useActiveBookings() {
             if (!res.ok) throw new Error('Failed to fetch bookings');
             return res.json();
         },
-        // Cache settings: Data stays fresh for 5 mins, kept in memory for 30 mins
         staleTime: 1000 * 60 * 5,
         gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
@@ -147,7 +147,7 @@ export function useUpdateProfile() {
 
             if (!updateRes.ok) throw new Error("Failed to update profile");
 
-            return { payload, uploadedImageUrl }; // Return data for onSuccess
+            return { payload, uploadedImageUrl };
         },
         onSuccess: async (data, variables) => {
             const { payload, uploadedImageUrl } = data;
@@ -174,7 +174,7 @@ export function useUpdateProfile() {
             // 5. Update NextAuth Session
             await updateSession({ name: formData.name, image: uploadedImageUrl });
 
-            // 6. Invalidate React Query Cache (Refetch in background)
+            // 6. Invalidate React Query Cache
             queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
 
             // 7. Close Modal
@@ -182,10 +182,11 @@ export function useUpdateProfile() {
         },
         onError: (error) => {
             console.error("Profile update error:", error);
-            // Optionally add toast notification here
         }
     });
 }
+
+// --- 6. Hook for User Orders ---
 export function useUserOrders() {
     return useQuery({
         queryKey: ['user', 'orders'],
@@ -194,8 +195,8 @@ export function useUserOrders() {
             if (!res.ok) throw new Error('Failed to fetch orders');
             return res.json();
         },
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        gcTime: 1000 * 60 * 30,   // 30 minutes
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
     });
 }

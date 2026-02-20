@@ -116,8 +116,8 @@ export function useServicesExplorer({
             priceType: item.priceType || 'FIXED',
             rating: Number(item.rating) || 0,
             reviewCount: item._count?.reviews || 0,
-            location: item.user?.city || item.city || "Remote",
-            image: item.serviceimg || item.mainimg || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80",
+            // Inside useServicesExplorer.ts mapping:
+            location: item.user?.addresses?.[0]?.city || item.city || "Remote", image: item.serviceimg || item.mainimg || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80",
             type: 'Service'
         }));
     }, [data]);

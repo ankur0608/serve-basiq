@@ -12,7 +12,8 @@ export async function GET() {
         // ✅ FIX: Check for ID, not Email. 
         if (!session?.user?.id) {
             // Return empty arrays instead of error so UI doesn't crash
-            return NextResponse.json({ services: [], products: [] });
+            // Added rentals to the fallback
+            return NextResponse.json({ services: [], products: [], rentals: [] });
         }
 
         const user = await prisma.user.findUnique({
@@ -25,12 +26,17 @@ export async function GET() {
                 favoriteProducts: {
                     include: { product: true },
                     orderBy: { createdAt: 'desc' }
+                },
+                // ✅ Fetch the new FavoriteRental records
+                favoriteRentals: {
+                    include: { rental: true },
+                    orderBy: { createdAt: 'desc' }
                 }
             }
         });
 
         if (!user) {
-            return NextResponse.json({ services: [], products: [] });
+            return NextResponse.json({ services: [], products: [], rentals: [] });
         }
 
         // Format data
@@ -46,7 +52,15 @@ export async function GET() {
             isFavorite: true
         }));
 
-        return NextResponse.json({ services, products });
+        // ✅ Format rental data to match the UI requirements
+        const rentals = user.favoriteRentals.map((f) => ({
+            ...f.rental,
+            image: f.rental.rentalImg || f.rental.coverImg || "/placeholder.jpg",
+            isFavorite: true
+        }));
+
+        // ✅ Return all three categories
+        return NextResponse.json({ services, products, rentals });
 
     } catch (error) {
         console.error("[FAVORITES_DETAILS_ERROR]", error);

@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import { useRouter } from 'next/navigation';
 
-// Import your new split components
+// Component imports
 import BookingPreferences from './BookingPreferences';
 import AddressSelection from './AddressSelection';
+import AddressModal from './AddressModal'; // Adjust path depending on where you saved it
 
 interface BookingFormProps {
   serviceId: string;
@@ -146,14 +146,10 @@ export default function BookingForm({
     }
   };
 
+  // simplified heavily - no longer needs user profile data
   const getModalInitialData = () => {
     if (editingAddress) {
       return {
-        name: userDetails?.name || "",
-        email: userDetails?.email || "",
-        phone: userDetails?.phone || "",
-        dateOfBirth: userDetails?.dob || "",
-        preferredLanguage: "English",
         addressLine1: editingAddress.line1 || "",
         addressLine2: editingAddress.line2 || "",
         landmark: editingAddress.landmark || "",
@@ -164,11 +160,6 @@ export default function BookingForm({
       };
     }
     return {
-      name: userDetails?.name || "",
-      email: userDetails?.email || "",
-      phone: userDetails?.phone || "",
-      dateOfBirth: userDetails?.dob || "",
-      preferredLanguage: "English",
       addressLine1: "",
       addressLine2: "",
       landmark: "",
@@ -189,14 +180,13 @@ export default function BookingForm({
           <p className="text-white font-bold text-lg leading-tight truncate max-w-[220px]">{serviceName}</p>
         </div>
         <div className="text-right flex flex-col items-end justify-center">
-          <span className="block text-xs font-medium text-slate-400 mb-0.5">Total Amount</span>
+          <span className="block text-xs font-medium text-slate-400 mb-0.5 mt-7">Total Amount</span>
           <span className="text-xl font-bold text-white tracking-tight">₹{price}</span>
         </div>
       </div>
 
       {/* --- BODY --- */}
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6">
-
+      <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6">
         <BookingPreferences
           timeline={timeline}
           setTimeline={setTimeline}
@@ -214,7 +204,7 @@ export default function BookingForm({
         />
 
         <div className="h-4"></div>
-      </form>
+      </div>
 
       {/* --- FOOTER --- */}
       <div className="p-4 px-6 bg-white border-t border-slate-100 shrink-0 flex gap-3 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] z-10">
@@ -226,7 +216,7 @@ export default function BookingForm({
           Cancel
         </button>
         <button
-          type="submit"
+          type="button" // Changed from submit so we don't accidentally trigger a form wrap 
           onClick={handleSubmit}
           disabled={loading || !addressId}
           className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -235,17 +225,13 @@ export default function BookingForm({
         </button>
       </div>
 
-      {/* Address Edit/Add Modal */}
-      {isAddressModalOpen && (
-        <ProfileEditModal
-          isOpen={isAddressModalOpen}
-          onClose={() => setIsAddressModalOpen(false)}
-          initialData={getModalInitialData()}
-          onSave={handleSaveAddress}
-          isEmailLocked={true}
-          isPhoneLocked={true}
-        />
-      )}
+      {/* NEW Address Edit/Add Modal */}
+      <AddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+        initialData={getModalInitialData()}
+        onSave={handleSaveAddress}
+      />
     </div>
   );
 }

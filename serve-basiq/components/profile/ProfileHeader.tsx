@@ -1,13 +1,12 @@
-"use client";
+'use client';
 
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/lib/store';
 import { useSession } from 'next-auth/react';
-import { FaPhone, FaRightFromBracket, FaPencil, FaBriefcase, FaGaugeHigh } from 'react-icons/fa6';
+import { FaPhone, FaRightFromBracket, FaPencil, FaGaugeHigh } from 'react-icons/fa6';
 import clsx from 'clsx';
 import Image from 'next/image';
 
-// ✅ Define proper types for props
 interface ProfileHeaderProps {
     onEditClick: () => void;
     onLogout: () => void;
@@ -25,10 +24,7 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
 
     const displayName = currentUser?.name || session?.user?.name || "User";
 
-    // ✅ IMAGE LOGIC: 
-    // 1. userImage (Passed from parent - highest priority)
-    // 2. currentUser.img (From our Store)
-    // 3. session.user.image (From Google/NextAuth)
+    // IMAGE LOGIC
     const displayImage = userImage || currentUser?.img || session?.user?.image;
 
     // @ts-ignore - 'phone' might not be in default NextAuth session types
@@ -39,8 +35,6 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
     const handleProviderClick = () => {
         if (isWorker) {
             router.push('/provider/dashboard');
-        } else {
-            router.push('/become-pro');
         }
     };
 
@@ -60,7 +54,7 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
                             fill
                             className="object-cover"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            priority // Load this image immediately
+                            priority
                         />
                     ) : (
                         <span>{getInitials()}</span>
@@ -95,23 +89,25 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
                     </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleProviderClick}
-                        className={clsx("flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm shadow-lg border", isWorker ? "bg-green-500 text-white border-green-400 hover:bg-green-600" : "bg-white text-blue-600 border-white hover:bg-blue-50")}
-                    >
-                        {isWorker ? <><FaGaugeHigh /> Dashboard</> : <><FaBriefcase /> Become a Partner</>}
-                    </button>
+                {/* ✅ Action Buttons - ONLY renders if isWorker is true */}
+                {isWorker && (
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleProviderClick}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm shadow-lg border bg-green-500 text-white border-green-400 hover:bg-green-600"
+                        >
+                            <FaGaugeHigh /> Dashboard
+                        </button>
 
-                    <button
-                        onClick={onLogout}
-                        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm"
-                        aria-label="Logout"
-                    >
-                        <FaRightFromBracket />
-                    </button>
-                </div>
+                        <button
+                            onClick={onLogout}
+                            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2.5 rounded-xl text-sm font-bold transition-all backdrop-blur-sm"
+                            aria-label="Logout"
+                        >
+                            <FaRightFromBracket />
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -23,6 +23,9 @@ export default function NameModal({ isOpen, onClose }: NameModalProps) {
     const loginIntent = useUIStore((state) => state.loginIntent);
     const onCloseName = useUIStore((state) => state.onCloseName);
 
+    // Regex: Allows only letters (uppercase/lowercase), spaces, hyphens, and apostrophes
+    const nameRegex = /^[a-zA-Z\s\-']+$/;
+
     useEffect(() => {
         if (isOpen) {
             setShowModal(true);
@@ -37,8 +40,17 @@ export default function NameModal({ isOpen, onClose }: NameModalProps) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!name || name.trim().length < 2) {
-            setError("Please enter a valid name");
+        const trimmedName = name.trim();
+
+        // 1. Basic length check
+        if (!trimmedName || trimmedName.length < 2) {
+            setError("Please enter a valid name (at least 2 characters)");
+            return;
+        }
+
+        // 2. Final string-only validation check before sending to API
+        if (!nameRegex.test(trimmedName)) {
+            setError("Names can only contain letters, spaces, or hyphens");
             return;
         }
 
@@ -56,9 +68,9 @@ export default function NameModal({ isOpen, onClose }: NameModalProps) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    action: "UPDATE_NAME", // ⚡ Specify the action for the backend
+                    action: "UPDATE_NAME",
                     userId,
-                    name: name.trim()
+                    name: trimmedName
                 }),
             });
 
@@ -67,15 +79,15 @@ export default function NameModal({ isOpen, onClose }: NameModalProps) {
                 throw new Error(data.error || "Failed to update name");
             }
 
-            // Sync the local session so the new name shows up immediately
-            await update({ ...session, user: { ...session?.user, name } });
+            // Sync the local session
+            await update({ ...session, user: { ...session?.user, name: trimmedName } });
 
             onCloseName();
 
             if (loginIntent === 'provider') {
                 router.push('/become-pro');
             } else {
-                router.refresh(); // Refresh to update server-side data
+                router.refresh();
             }
 
         } catch (err: any) {
@@ -91,12 +103,20 @@ export default function NameModal({ isOpen, onClose }: NameModalProps) {
     return (
         <div className="fixed inset-0 z-[100] overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4 text-center">
+                {/* Backdrop */}
                 <div
-                    className={clsx("fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300", isOpen ? "opacity-100" : "opacity-0")}
-                    onClick={() => { }} // Forced step: Clicking background doesn't close
+                    className={clsx(
+                        "fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300",
+                        isOpen ? "opacity-100" : "opacity-0"
+                    )}
+                    onClick={() => { }}
                 />
 
-                <div className={clsx("relative w-full max-w-md bg-white rounded-3xl shadow-2xl text-left transform transition-all duration-300", isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4")}>
+                {/* Modal Content */}
+                <div className={clsx(
+                    "relative w-full max-w-md bg-white rounded-3xl shadow-2xl text-left transform transition-all duration-300",
+                    isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4"
+                )}>
                     <div className="p-8">
                         <div className="text-center mb-6 mt-2">
                             <h2 className="text-2xl font-extrabold text-slate-900">What's your name?</h2>
@@ -105,14 +125,19 @@ export default function NameModal({ isOpen, onClose }: NameModalProps) {
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
-                                <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">Full Name</label>
+                                <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">
+                                    Full Name
+                                </label>
                                 <div className="relative group">
                                     <FaRegUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                     <input
                                         type="text"
                                         value={name}
                                         onChange={(e) => {
-                                            setName(e.target.value);
+                                            // REAL-TIME VALIDATION:
+                                            // This immediately removes numbers and special symbols as they are typed.
+                                            const cleanValue = e.target.value.replace(/[^a-zA-Z\s\-']/g, "");
+                                            setName(cleanValue);
                                             setError("");
                                         }}
                                         placeholder="Ex. John Doe"
@@ -120,7 +145,11 @@ export default function NameModal({ isOpen, onClose }: NameModalProps) {
                                         disabled={isLoading}
                                     />
                                 </div>
-                                {error && <p className="text-red-500 text-xs font-bold mt-2 ml-1 animate-pulse">{error}</p>}
+                                {error && (
+                                    <p className="text-red-500 text-xs font-bold mt-2 ml-1 animate-pulse">
+                                        {error}
+                                    </p>
+                                )}
                             </div>
 
                             <button

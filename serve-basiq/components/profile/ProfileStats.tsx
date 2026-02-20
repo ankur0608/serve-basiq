@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useUserStats, useFavoritesDetails } from '@/app/hook/useProfileQueries'; 
+import { useUserStats, useFavoritesDetails } from '@/app/hook/useProfileQueries';
 import {
     FaCalendarCheck,
     FaHeart,
@@ -10,26 +10,21 @@ import {
 import clsx from 'clsx';
 
 export default function ProfileStats() {
-
-    // ✅ Hook 1: User Stats (Bookings & Cancellations)
-    // Uses the cached data from your custom hook
     const { data: statsData, isLoading: isStatsLoading } = useUserStats();
-
-    // ✅ Hook 2: Favorites
-    // We reuse the 'details' hook here. Since it's cached by React Query, 
-    // it won't trigger a heavy re-fetch if you've already loaded the Favorites page.
     const { data: favData, isLoading: isFavLoading } = useFavoritesDetails();
 
-    // Calculations
-    // Safely calculate length based on the hook's return structure
-    const favoriteCount = (favData?.services?.length || 0) + (favData?.products?.length || 0);
+    // ✅ Calculations include Rentals
+    const favoriteCount =
+        (favData?.services?.length || 0) +
+        (favData?.products?.length || 0) +
+        (favData?.rentals?.length || 0);
+
     const bookingCount = statsData?.bookings || 0;
     const cancellationCount = statsData?.cancellations || 0;
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-3 gap-3 md:gap-6">
-
                 {/* Card 1: Bookings */}
                 <StatCard
                     href="/profile/bookings"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 
 // --- SHARED TYPES ---
@@ -51,23 +51,24 @@ const normalizeProducts = (data: any[]): ProductItem[] => {
             name: item.name,
             description: item.description || item.desc || "",
             price: Number(item.price) || 0,
-            minOrderQty: item.moq || 1,
+            minOrderQty: item.moq || item.minOrderQty || 1,
             unit: item.unit || 'pcs',
             images: validImages,
-            categoryId: item.category?.id,
-            categoryName: item.category?.name || "General",
-            subcategoryId: item.subcategory?.id,
-            subcategoryName: item.subcategory?.name,
+            categoryId: item.category?.id || item.categoryId,
+            categoryName: item.category?.name || item.categoryName || "General",
+            subcategoryId: item.subcategory?.id || item.subcategoryId,
+            subcategoryName: item.subcategory?.name || item.subcategoryName,
             rating: item.rating || 0,
-            reviewsCount: item._count?.reviews || 0,
-            inStock: item.stockStatus !== 'OUT_OF_STOCK',
-            location: item.city || item.user?.city || "Worldwide",
+            reviewsCount: item.reviewsCount || item._count?.reviews || 0,
+            inStock: item.inStock !== false && item.stockStatus !== 'OUT_OF_STOCK',
+            // Location is now sent properly formatted from the API
+            location: item.location || "Worldwide",
             provider: {
-                id: item.user?.id,
-                name: item.user?.name,
-                shopName: item.supplier || item.user?.shopName || "Seller",
-                image: item.user?.profileImage || item.user?.image || "",
-                verified: item.isVerified || false
+                id: item.provider?.id || item.user?.id,
+                name: item.provider?.name || item.user?.name,
+                shopName: item.provider?.shopName || item.supplier || item.user?.shopName || "Seller",
+                image: item.provider?.image || item.user?.profileImage || item.user?.image || "",
+                verified: item.provider?.verified || item.isVerified || false
             }
         };
     });
@@ -90,17 +91,7 @@ export function useProductsExplorer({
 }: UseProductsExplorerProps = {}) {
     const queryClient = useQueryClient();
 
-    // 1. Debounce Search
-    const [debouncedSearch, setDebouncedSearch] = useState(search);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(search);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [search]);
-
-    // 2. Fetch User Profile
+    // 1. Fetch User Profile
     const { data: currentUser } = useQuery({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
@@ -111,7 +102,7 @@ export function useProductsExplorer({
         staleTime: 1000 * 60 * 10,
     });
 
-    // 3. Fetch Favorites
+    // 2. Fetch Favorites
     const { data: favData } = useQuery({
         queryKey: ['favorites', 'user'],
         queryFn: async () => {
@@ -122,7 +113,7 @@ export function useProductsExplorer({
         staleTime: 1000 * 60 * 5,
     });
 
-    // 4. INFINITE Query
+    // 3. INFINITE Query
     const {
         data,
         fetchNextPage,
@@ -131,16 +122,15 @@ export function useProductsExplorer({
         isLoading,
         isFetching,
     } = useInfiniteQuery({
-        queryKey: ['products', 'infinite', category, subcategory, debouncedSearch, location, sort],
+        queryKey: ['products', 'infinite', category, subcategory, search, location, sort],
         queryFn: async ({ pageParam = undefined }) => {
             const params = new URLSearchParams();
-            // INCREASED LIMIT TO 24 FOR BETTER UX
             params.append('limit', '24');
 
             if (pageParam) params.append('cursor', pageParam as string);
             if (category) params.append('categoryId', category);
             if (subcategory) params.append('subcategoryId', subcategory);
-            if (debouncedSearch) params.append('search', debouncedSearch);
+            if (search) params.append('search', search); // Search is already debounced from parent
             if (location) params.append('location', location);
             if (sort) params.append('sort', sort);
 
@@ -163,10 +153,10 @@ export function useProductsExplorer({
         // 1. Flatten
         const allItems = data.pages.flatMap((page: any) => page.products || page.items || []);
 
-        // 2. Normalize first (handles image logic)
+        // 2. Normalize
         const normalizedItems = normalizeProducts(allItems);
 
-        // 3. DEDUPLICATION (The Fix)
+        // 3. Deduplication
         const uniqueMap = new Map();
         normalizedItems.forEach((item) => {
             if (!uniqueMap.has(item.id)) {
@@ -177,7 +167,7 @@ export function useProductsExplorer({
         return Array.from(uniqueMap.values());
     }, [data]);
 
-    // 5. Fetch Categories
+    // 4. Fetch Categories
     const { data: categoriesData } = useQuery({
         queryKey: ['categories', 'product'],
         queryFn: async () => {

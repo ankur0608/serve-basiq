@@ -114,16 +114,30 @@ export const useUIStore = create<UIState>()(
       isEditProfileOpen: false,
 
       // ✅ Store the verificationId from MessageCentral
-      onOpenOtp: (phone, verificationId, isNewUser) =>
+      // onOpenOtp: (phone, verificationId, isNewUser) =>
+      //   set({
+      //     mobileNumber: phone,
+      //     devOtp: undefined,
+      //     verificationId: verificationId,
+      //     isNewUser: isNewUser || false,
+      //     isLoginOpen: false,
+      //     isOtpOpen: true,
+      //     isNameOpen: false,
+      //   }),
+      onOpenOtp: (phone, verificationId, isNewUser) => {
+        // If the ID passed is exactly 4 digits, it's our local dev OTP
+        const isDevOtp = verificationId && verificationId.length === 4 && !isNaN(Number(verificationId));
+        
         set({
           mobileNumber: phone,
-          devOtp: undefined,
-          verificationId: verificationId,
+          verificationId: isDevOtp ? null : verificationId, 
+          devOtp: isDevOtp ? verificationId : undefined, 
           isNewUser: isNewUser || false,
           isLoginOpen: false,
           isOtpOpen: true,
           isNameOpen: false,
-        }),
+        });
+      },
       onCloseOtp: () => set({ mobileNumber: "", devOtp: undefined, isOtpOpen: false }),
       // onCloseOtp: () => set({ mobileNumber: "", verificationId: null, isOtpOpen: false }),
 

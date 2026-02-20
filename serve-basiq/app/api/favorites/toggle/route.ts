@@ -10,12 +10,8 @@ export async function POST(req: Request) {
     // 1. Check Session
     const session = await getServerSession(authOptions);
 
-    // Debug Log
-    if (!session) console.log("🔴 [API] Session is NULL");
-    else if (!session.user) console.log("🔴 [API] Session.user is NULL");
-    else console.log(`🔵 [API] User authenticated: ${session.user.id}`);
-
     if (!session || !session.user || !session.user.id) {
+      console.log("🔴 [API] Unauthorized attempt");
       return new NextResponse("Unauthorized: Please log in", { status: 401 });
     }
 
@@ -35,9 +31,7 @@ export async function POST(req: Request) {
     // 3. Logic for Service
     if (type === 'SERVICE') {
       const existing = await prisma.favoriteService.findUnique({
-        where: {
-          userId_serviceId: { userId, serviceId: itemId }
-        }
+        where: { userId_serviceId: { userId, serviceId: itemId } }
       });
 
       if (existing) {
@@ -46,9 +40,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ status: 'removed' });
       } else {
         console.log(`🔵 [API] Adding Service ${itemId} to favorites`);
-        await prisma.favoriteService.create({
-          data: { userId, serviceId: itemId }
-        });
+        await prisma.favoriteService.create({ data: { userId, serviceId: itemId } });
         return NextResponse.json({ status: 'added' });
       }
     }
@@ -56,9 +48,7 @@ export async function POST(req: Request) {
     // 4. Logic for Product
     else if (type === 'PRODUCT') {
       const existing = await prisma.favoriteProduct.findUnique({
-        where: {
-          userId_productId: { userId, productId: itemId }
-        }
+        where: { userId_productId: { userId, productId: itemId } }
       });
 
       if (existing) {
@@ -67,9 +57,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ status: 'removed' });
       } else {
         console.log(`🔵 [API] Adding Product ${itemId} to favorites`);
-        await prisma.favoriteProduct.create({
-          data: { userId, productId: itemId }
-        });
+        await prisma.favoriteProduct.create({ data: { userId, productId: itemId } });
+        return NextResponse.json({ status: 'added' });
+      }
+    }
+
+    // 5. Logic for Rental (NEW)
+    else if (type === 'RENTAL') {
+      const existing = await prisma.favoriteRental.findUnique({
+        where: { userId_rentalId: { userId, rentalId: itemId } }
+      });
+
+      if (existing) {
+        console.log(`🔵 [API] Removing Rental ${itemId} from favorites`);
+        await prisma.favoriteRental.delete({ where: { id: existing.id } });
+        return NextResponse.json({ status: 'removed' });
+      } else {
+        console.log(`🔵 [API] Adding Rental ${itemId} to favorites`);
+        await prisma.favoriteRental.create({ data: { userId, rentalId: itemId } });
         return NextResponse.json({ status: 'added' });
       }
     }

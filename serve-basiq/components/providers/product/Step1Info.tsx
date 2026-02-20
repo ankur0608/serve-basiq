@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, Scale, ChevronRight, LayoutGrid, Box, AlertCircle } from 'lucide-react';
+import { Package, Scale, ChevronRight, LayoutGrid, Box, AlertCircle, BadgeIndianRupee, Truck } from 'lucide-react';
 import { ProductForm, Category, SubCategory } from './AddProductView';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
@@ -11,32 +11,29 @@ interface Step1Props {
     activeSubCategories: SubCategory[];
     handleChange: (field: keyof ProductForm, value: any) => void;
     setStep: (step: number) => void;
+    closeForm: () => void;
 }
 
-export function Step1Info({ form, categories, activeSubCategories, handleChange, setStep }: Step1Props) {
+export function Step1Details({ form, categories, activeSubCategories, handleChange, setStep, closeForm }: Step1Props) {
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const validate = () => {
         const newErrors: Record<string, string> = {};
 
-        if (!form.name.trim()) newErrors.name = "Product name is required";
-        else if (form.name.length < 3) newErrors.name = "Name must be at least 3 chars";
-
-        if (!form.unit) newErrors.unit = "Unit is required";
-        if (!form.categoryId) newErrors.categoryId = "Category is required";
-        if (!form.subCategoryId) newErrors.subCategoryId = "Sub-category is required";
-
-        if (!form.desc.trim()) newErrors.desc = "Description is required";
-        else if (form.desc.length < 10) newErrors.desc = "Description should be detailed (min 10 chars)";
+        if (!form.name.trim()) newErrors.name = "Required";
+        if (!form.unit) newErrors.unit = "Required";
+        if (!form.categoryId) newErrors.categoryId = "Required";
+        if (!form.subCategoryId) newErrors.subCategoryId = "Required";
+        if (!form.desc.trim()) newErrors.desc = "Required";
+        if (!form.price || Number(form.price) <= 0) newErrors.price = "Valid price required";
+        if (!form.moq || Number(form.moq) <= 0) newErrors.moq = "Required";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleNext = () => {
-        if (validate()) {
-            setStep(2);
-        }
+        if (validate()) setStep(2);
     };
 
     const onFieldChange = (field: keyof ProductForm, value: any) => {
@@ -50,9 +47,9 @@ export function Step1Info({ form, categories, activeSubCategories, handleChange,
         hasError ? "!border-red-500 bg-red-50 focus:!border-red-500 text-red-900 placeholder:text-red-300" : "bg-slate-50/50";
 
     return (
-        <div className="space-y-6 animate-in slide-in-from-right duration-300">
+        <div className="space-y-5 animate-in slide-in-from-right duration-300">
+            {/* Name & Unit */}
             <div className="grid grid-cols-3 gap-4">
-                {/* Product Name */}
                 <div className="col-span-2 space-y-1">
                     <Input
                         label="PRODUCT NAME"
@@ -62,10 +59,7 @@ export function Step1Info({ form, categories, activeSubCategories, handleChange,
                         onChange={e => onFieldChange('name', e.target.value)}
                         className={getErrorClass(!!errors.name)}
                     />
-                    {errors.name && <p className="text-xs text-red-500 font-medium flex items-center gap-1"><AlertCircle size={10} /> {errors.name}</p>}
                 </div>
-
-                {/* Unit Type */}
                 <div className="space-y-1">
                     <Select
                         label="UNIT TYPE"
@@ -78,12 +72,11 @@ export function Step1Info({ form, categories, activeSubCategories, handleChange,
                             ...['PIECE', 'KG', 'BOX', 'LITER'].map(u => ({ label: u, value: u }))
                         ]}
                     />
-                    {errors.unit && <p className="text-xs text-red-500 font-medium"><AlertCircle size={10} className="inline" /> {errors.unit}</p>}
                 </div>
             </div>
 
+            {/* Categories */}
             <div className="grid grid-cols-2 gap-4">
-                {/* Category */}
                 <div className="space-y-1">
                     <Select
                         label="CATEGORY"
@@ -96,10 +89,7 @@ export function Step1Info({ form, categories, activeSubCategories, handleChange,
                             ...categories.map(c => ({ label: c.name, value: c.id }))
                         ]}
                     />
-                    {errors.categoryId && <p className="text-xs text-red-500 font-medium"><AlertCircle size={10} className="inline" /> {errors.categoryId}</p>}
                 </div>
-
-                {/* Sub-Category */}
                 <div className="space-y-1">
                     <Select
                         label="SUB-CATEGORY"
@@ -113,34 +103,94 @@ export function Step1Info({ form, categories, activeSubCategories, handleChange,
                             ...activeSubCategories.map(s => ({ label: s.name, value: s.id }))
                         ]}
                     />
-                    {errors.subCategoryId && <p className="text-xs text-red-500 font-medium"><AlertCircle size={10} className="inline" /> {errors.subCategoryId}</p>}
                 </div>
             </div>
 
-            {/* Description (Textarea remains native as Input.tsx is an <input>) */}
+            {/* Price & MOQ */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <Input
+                        label={`PRICE (PER ${form.unit || 'UNIT'})`}
+                        type="number"
+                        icon={<BadgeIndianRupee size={18} className={errors.price ? "text-red-400" : "text-slate-400"} />}
+                        placeholder="0.00"
+                        value={form.price}
+                        onChange={e => onFieldChange('price', e.target.value)}
+                        className={getErrorClass(!!errors.price)}
+                    />
+                </div>
+                <div className="space-y-1">
+                    <Input
+                        label="MIN ORDER QTY (MOQ)"
+                        type="number"
+                        icon={<Package size={18} className={errors.moq ? "text-red-400" : "text-slate-400"} />}
+                        placeholder="1"
+                        value={form.moq}
+                        onChange={e => onFieldChange('moq', e.target.value)}
+                        className={getErrorClass(!!errors.moq)}
+                    />
+                </div>
+            </div>
+
+            {/* Stock & Logistics */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <Select
+                        label="STOCK STATUS"
+                        icon={<Box size={18} className="text-slate-400" />}
+                        value={form.stockStatus}
+                        onChange={e => onFieldChange('stockStatus', e.target.value)}
+                        className="bg-slate-50/50"
+                        options={[
+                            { label: 'In Stock', value: 'IN_STOCK' },
+                            { label: 'On Demand', value: 'ON_DEMAND' }
+                        ]}
+                    />
+                </div>
+                <div className="space-y-1">
+                    <Select
+                        label="LOGISTICS"
+                        icon={<Truck size={18} className="text-slate-400" />}
+                        value={form.deliveryType}
+                        onChange={e => onFieldChange('deliveryType', e.target.value)}
+                        className="bg-slate-50/50"
+                        options={[
+                            { label: 'Delivery', value: 'DELIVERY' },
+                            { label: 'Pickup Only', value: 'PICKUP' }
+                        ]}
+                    />
+                </div>
+            </div>
+
+            {/* Description */}
             <div className="space-y-1">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">DESCRIPTION</label>
                 <textarea
                     className={clsx(
                         "w-full px-4 py-3 border rounded-xl outline-none text-sm font-medium transition-all resize-none",
-                        errors.desc
-                            ? "border-red-500 bg-red-50 focus:ring-2 focus:ring-red-200 text-red-900 placeholder:text-red-300"
-                            : "border-gray-200 bg-slate-50/50 focus:bg-white focus:border-blue-500"
+                        errors.desc ? "border-red-500 bg-red-50 focus:ring-2 focus:ring-red-200 text-red-900" : "border-gray-200 bg-slate-50/50 focus:bg-white focus:border-blue-500"
                     )}
-                    rows={2}
+                    rows={3}
                     placeholder="Describe product features..."
                     value={form.desc}
                     onChange={e => onFieldChange('desc', e.target.value)}
                 />
-                {errors.desc && <p className="text-xs text-red-500 font-medium flex items-center gap-1"><AlertCircle size={10} /> {errors.desc}</p>}
             </div>
+
+            {/* Global Error Notice if missing fields */}
+            {Object.keys(errors).length > 0 && (
+                <p className="text-xs text-red-500 font-bold text-center"><AlertCircle size={14} className="inline mr-1" /> Please fill out all required fields properly.</p>
+            )}
 
             <button
                 type="button"
                 onClick={handleNext}
-                className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-4 active:scale-[0.99]"
+                className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition active:scale-[0.99]"
             >
-                Next Step <ChevronRight size={18} />
+                Next: Add Media <ChevronRight size={18} />
+            </button>
+            <button type="button" onClick={closeForm} className="w-full text-xs font-bold text-slate-400 hover:text-slate-600 transition mt-2">
+                Cancel
             </button>
         </div>
     );

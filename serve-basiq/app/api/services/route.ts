@@ -16,24 +16,65 @@ export async function GET(req: Request) {
         const categoryId = searchParams.get("categoryId");
         const subcategoryId = searchParams.get("subcategoryId");
         const search = searchParams.get("search");
+        const location = searchParams.get("location");
+        const sort = searchParams.get("sort");
 
+        // --- BUILD PRISMA WHERE CLAUSE ---
         const where: any = {
-            isVerified: true,
-            user: { isVerified: true }
+            isVerified: true, // Service must be verified
+            user: {
+                isVerified: true, // User must be verified
+            }
         };
 
-        // Only include filters if they have a value
         if (userId) where.userId = userId;
         if (categoryId) where.categoryId = categoryId;
         if (subcategoryId) where.subCategoryId = subcategoryId;
 
+        // ✅ NEW LOGIC: Look inside the User's Address table for "Work"
+        if (location) {
+            where.user = {
+                ...where.user, // Keep the isVerified: true check
+                addresses: {
+                    some: {
+                        type: { equals: 'Work', mode: 'insensitive' }, // Targets your 'Work' type
+                        city: { equals: location, mode: 'insensitive' } // Matches the city
+                    }
+                }
+            };
+        }
+
+        // Add search filter safely
         if (search) {
-            where.OR = [
-                { name: { contains: search, mode: 'insensitive' } },
-                { desc: { contains: search, mode: 'insensitive' } },
+            where.AND = [
+                {
+                    OR: [
+                        { name: { contains: search, mode: 'insensitive' } },
+                        { desc: { contains: search, mode: 'insensitive' } },
+                    ]
+                }
             ];
         }
 
+        // --- BUILD PRISMA ORDER BY CLAUSE ---
+        let orderBy: any = { createdAt: "desc" };
+
+        switch (sort) {
+            case "price_asc":
+                orderBy = { price: "asc" };
+                break;
+            case "price_desc":
+                orderBy = { price: "desc" };
+                break;
+            case "rating":
+                orderBy = { rating: "desc" };
+                break;
+            case "popular":
+                orderBy = { reviews: { _count: "desc" } };
+                break;
+        }
+
+        // --- EXECUTE QUERY ---
         const services = await prisma.service.findMany({
             where,
             include: {
@@ -43,14 +84,19 @@ export async function GET(req: Request) {
                 user: {
                     select: {
                         id: true, name: true, image: true, phone: true,
-                        isVerified: true, shopName: true
+                        isVerified: true, shopName: true,
+                        // ✅ Pull the Work address so the frontend can use it!
+                        addresses: {
+                            where: { type: 'Work' },
+                            select: { city: true }
+                        }
                     }
                 }
             },
             take: limit + 1,
             cursor: cursor ? { id: cursor } : undefined,
             skip: cursor ? 1 : 0,
-            orderBy: { createdAt: "desc" },
+            orderBy,
         });
 
         let nextCursor = undefined;
@@ -59,14 +105,13 @@ export async function GET(req: Request) {
             nextCursor = nextItem?.id;
         }
 
-        // We return { items: [...] } to match your useInfiniteQuery logic
         return NextResponse.json({
             items: services,
             nextCursor
         });
 
     } catch (error: any) {
-        console.error("API ERROR:", error.message);
+        console.error("API ERROR [GET /api/services]:", error.message);
         return NextResponse.json({
             success: false,
             message: "Failed to fetch services",

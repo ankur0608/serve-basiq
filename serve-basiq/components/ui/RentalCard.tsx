@@ -14,14 +14,14 @@ export interface RentalProps {
     location: string;
     rating: number;
 
-    // ✅ Price Fields (Make sure these match your API response)
+    // Price Fields
     price: number;
     priceType: string;
     dailyPrice?: number | null;
     monthlyPrice?: number | null;
     fixedPrice?: number | null;
 
-    // ✅ Address Fields
+    // Address Fields
     addressLine1?: string;
     addressLine2?: string;
     city?: string;
@@ -49,27 +49,22 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
     } = rental;
 
     // =========================================================================
-    // ✅ SMART PRICE LOGIC (Fixes the "0" issue)
+    // SMART PRICE LOGIC
     // =========================================================================
 
-    // 1. Determine Effective Prices for the Booking Wrapper
-    // If the specific field (e.g., monthlyPrice) is null, but priceType IS 'MONTHLY', use the main 'price'.
     const effectiveDailyPrice = dailyPrice ?? (priceType === 'DAILY' ? price : undefined);
     const effectiveMonthlyPrice = monthlyPrice ?? (priceType === 'MONTHLY' ? price : undefined);
     const effectiveFixedPrice = fixedPrice ?? (priceType === 'FIXED' ? price : undefined);
 
-    // 2. Determine Display Price for the Card
     let displayPrice = 0;
     if (priceType === 'DAILY') displayPrice = effectiveDailyPrice || 0;
     else if (priceType === 'MONTHLY') displayPrice = effectiveMonthlyPrice || 0;
     else if (priceType === 'FIXED') displayPrice = effectiveFixedPrice || 0;
 
-    // Final fallback: If logic failed but we have a main price, use it
     if (displayPrice === 0 && price > 0) displayPrice = price;
 
     // =========================================================================
 
-    // Construct the Owner Address String
     const ownerAddress = useMemo(() => {
         return [addressLine1, addressLine2, city, state, pincode]
             .filter(part => part && part.trim() !== "")
@@ -90,27 +85,44 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
     }, [currentUser, session]);
 
     const handleBookClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         setShowBooking(true);
     };
 
     const handleDetailsClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         router.push(`/rentals/${id}`);
     };
 
     return (
         <>
-            <div onClick={handleDetailsClick} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow h-full">
+            <div onClick={handleDetailsClick} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow h-full relative">
 
                 {/* Image Section */}
                 <div className="relative h-44 w-full bg-gray-100 overflow-hidden">
-                    <img src={image} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm text-white uppercase tracking-wide bg-orange-600">
+                    <img
+                        src={image}
+                        alt={name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+
+                    <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm text-white uppercase tracking-wide bg-orange-600 z-10">
                         {categoryName}
                     </span>
+
+                    {/* --- ADDED FAVORITE BUTTON HERE --- */}
+                    {toggleFav && (
+                        <button
+                            onClick={toggleFav}
+                            className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full shadow hover:bg-white transition-colors z-10"
+                        >
+                            {isFav ? (
+                                <FaHeart size={12} className="text-red-500" />
+                            ) : (
+                                <FaRegHeart size={12} className="text-gray-400" />
+                            )}
+                        </button>
+                    )}
                 </div>
 
                 {/* Content Section */}
@@ -126,7 +138,6 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
                         </span>
                     </div>
 
-                    {/* ✅ UPDATED PRICE DISPLAY */}
                     <div className="text-sm font-bold text-gray-900 mt-2">
                         ₹{displayPrice} <span className="text-xs font-medium text-gray-400">/ {priceType?.toLowerCase() || 'day'}</span>
                     </div>
@@ -152,12 +163,9 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
                                 rentalName={name}
                                 rentalImage={image}
                                 ownerLocation={ownerAddress}
-
-                                // ✅ Pass Calculated Prices (numbers or undefined)
                                 dailyPrice={typeof effectiveDailyPrice === 'number' ? effectiveDailyPrice : undefined}
                                 monthlyPrice={typeof effectiveMonthlyPrice === 'number' ? effectiveMonthlyPrice : undefined}
                                 fixedPrice={typeof effectiveFixedPrice === 'number' ? effectiveFixedPrice : undefined}
-
                                 currentUser={effectiveUser}
                                 userAddresses={effectiveUser?.addresses || []}
                                 defaultOpen={true}

@@ -5,10 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
 import { KeyRound, Loader2 } from 'lucide-react';
 
-// Hooks
 import { useRentalsExplorer } from '@/app/hook/useRentalsExplorer';
-
-// Components
+import { useDebounce } from '@/app/hook/useDebounce';
 import RentalCard from '@/components/ui/RentalCard';
 import RentalCategories from './RentalCategories';
 import RentalFiltersDesktop from './RentalFiltersDesktop';
@@ -19,17 +17,16 @@ export default function RentalsExplorer() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // 1. State
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
     const [selectedLocation, setSelectedLocation] = useState('');
     const [sortOption, setSortOption] = useState('');
 
-    // Infinite Scroll Ref
     const observerTarget = useRef<HTMLDivElement>(null);
 
-    // 2. Hook
     const {
         rawRentals,
         rawCategories,
@@ -37,10 +34,17 @@ export default function RentalsExplorer() {
         isFetching,
         fetchNextPage,
         hasNextPage,
-        isFetchingNextPage
+        isFetchingNextPage,
+        // ✅ Add these from hook
+        favoriteIds = [],
+        toggleFavorite,
+        currentUser
     } = useRentalsExplorer({
         category: selectedCategory,
-        search: searchTerm
+        subcategory: selectedSubcategory,
+        search: debouncedSearchTerm,
+        location: selectedLocation,
+        sort: sortOption
     });
 
     // 3. Derived Data
@@ -55,25 +59,19 @@ export default function RentalsExplorer() {
         return cat ? cat.children : [];
     }, [selectedCategory, rawCategories]);
 
-    // Client-side filtering for sub-filters (Subcategory/Location/Sort)
-    const filteredItems = useMemo(() => {
-        let result = [...rawRentals];
-        if (selectedSubcategory) result = result.filter(i => String(i.subcategoryId) === String(selectedSubcategory));
-        if (selectedLocation) result = result.filter(i => i.location === selectedLocation);
-
-        if (sortOption === 'price_asc') result.sort((a, b) => a.price - b.price);
-        else if (sortOption === 'price_desc') result.sort((a, b) => b.price - a.price);
-        else if (sortOption === 'rating') result.sort((a, b) => b.rating - a.rating);
-        else if (sortOption === 'popular') result.sort((a, b) => b.reviewCount - a.reviewCount);
-
-        return result;
-    }, [rawRentals, selectedSubcategory, selectedLocation, sortOption]);
-
     const resetFilters = () => {
         setSearchTerm(''); setSelectedCategory(''); setSelectedSubcategory('');
         setSelectedLocation(''); setSortOption('');
         router.push('/rentals');
     };
+
+    // ✅ Handle Toggle Favorite
+    const handleToggleFav = useCallback((e: React.MouseEvent, id: string) => {
+        e.preventDefault(); e.stopPropagation();
+        if (toggleFavorite) {
+            toggleFavorite({ id, type: 'RENTAL' });
+        }
+    }, [toggleFavorite]);
 
     // --- SEAMLESS INFINITE SCROLL LOGIC ---
     useEffect(() => {
@@ -84,23 +82,16 @@ export default function RentalsExplorer() {
                     fetchNextPage();
                 }
             },
-            {
-                threshold: 0,
-                // Load more data when user is 800px away from the bottom
-                rootMargin: '800px'
-            }
+            { threshold: 0, rootMargin: '800px' }
         );
 
         const currentTarget = observerTarget.current;
-        if (currentTarget) {
-            observer.observe(currentTarget);
-        }
+        if (currentTarget) observer.observe(currentTarget);
 
         return () => {
             if (currentTarget) observer.unobserve(currentTarget);
         };
     }, [hasNextPage, fetchNextPage, isFetchingNextPage, isFetching]);
-
 
     if (isLoading) return <ProductsSkeleton />;
 
@@ -132,6 +123,7 @@ export default function RentalsExplorer() {
                             selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
                             selectedSubcategory={selectedSubcategory} setSelectedSubcategory={setSelectedSubcategory}
                             selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation}
+                            sortOption={sortOption} setSortOption={setSortOption}
                             availableCategories={rawCategories} availableSubcategories={availableSubcategories}
                             uniqueLocations={uniqueLocations} resetFilters={resetFilters}
                         />
@@ -146,11 +138,9 @@ export default function RentalsExplorer() {
                                 <FaMagnifyingGlass size={18} />
                             </div>
                             <input
-                                type="text"
-                                placeholder="Search rentals, equipment, or vehicles..."
+                                type="text" placeholder="Search rentals, equipment, or vehicles..."
                                 className="w-full pl-12 pr-10 py-4 bg-slate-50 border-none rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium text-slate-900 text-base"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             {searchTerm && (
                                 <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-red-500">
@@ -170,7 +160,7 @@ export default function RentalsExplorer() {
                     )}
 
                     <div>
-                        {filteredItems.length === 0 ? (
+                        {rawRentals.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
                                 <div className="p-4 bg-slate-50 rounded-full mb-4">
                                     <KeyRound className="text-slate-400" size={40} />
@@ -180,14 +170,19 @@ export default function RentalsExplorer() {
                             </div>
                         ) : (
                             <>
-                                {/* NATIVE GRID REPLACEMENT */}
                                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                    {filteredItems.map((item) => (
-                                        <RentalCard key={item.id} rental={item} />
+                                    {rawRentals.map((item) => (
+                                        <RentalCard
+                                            key={item.id}
+                                            rental={item}
+                                            // ✅ Pass props here
+                                            isFav={favoriteIds?.includes(item.id)}
+                                            toggleFav={(e) => handleToggleFav(e!, item.id)}
+                                            currentUser={currentUser}
+                                        />
                                     ))}
                                 </div>
 
-                                {/* SCROLL TRIGGER / FOOTER */}
                                 <div ref={observerTarget} className="w-full py-8 mt-4 flex flex-col items-center justify-center min-h-[50px]">
                                     {isFetchingNextPage ? (
                                         <div className="flex items-center gap-2 text-slate-500">
