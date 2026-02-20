@@ -48,13 +48,13 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
                 {/* Profile Image Circle */}
                 <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl font-bold text-white shadow-2xl border-4 border-white/10 overflow-hidden relative shrink-0">
                     {displayImage ? (
-                        <Image
+                        <img
                             src={displayImage}
                             alt="Profile"
-                            fill
+                            // fill
                             className="object-cover"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            priority
+                            // priority
                         />
                     ) : (
                         <span>{getInitials()}</span>

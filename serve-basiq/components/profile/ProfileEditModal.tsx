@@ -16,9 +16,9 @@ import {
     FaBuilding,
 } from "react-icons/fa6";
 import clsx from "clsx";
-import AppImage from "@/components/ui/AppImage"; // Ensure this path is correct
-import Input from "@/components/ui/Input"; // Imported Reusable Component
-import Select from "@/components/ui/Select"; // Imported Reusable Component
+import AppImage from "@/components/ui/AppImage";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 
 // --- TYPES ---
 export interface ProfileData {
@@ -160,12 +160,7 @@ export default function ProfileEditModal({
                 onClick={onClose}
             ></div>
 
-            {/* UPDATED CONTAINER: 
-          1. max-h-[85dvh] handles mobile address bars properly.
-          2. flex-col ensures header/footer stay put while body scrolls.
-      */}
             <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative z-10 flex flex-col max-h-[85dvh] sm:max-h-[90vh]">
-
                 {/* Header */}
                 <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div>
@@ -182,10 +177,7 @@ export default function ProfileEditModal({
                     </button>
                 </div>
 
-                {/* UPDATED SCROLL AREA: 
-            1. flex-1: Fills remaining space.
-            2. min-h-0: Allows scrolling inside flex item.
-        */}
+                {/* Form Body */}
                 <div className="p-5 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                     <form id="profile-form" onSubmit={handleSubmit} className="space-y-6">
 
@@ -235,9 +227,7 @@ export default function ProfileEditModal({
                                     <Input
                                         label="Full Name"
                                         value={formData.name}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, name: e.target.value })
-                                        }
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="e.g. John Doe"
                                     />
                                 </div>
@@ -246,9 +236,7 @@ export default function ProfileEditModal({
                                         label="Date of Birth"
                                         type="date"
                                         value={formData.dateOfBirth}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, dateOfBirth: e.target.value })
-                                        }
+                                        onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
                                         icon={<FaCalendarDays />}
                                     />
                                 </div>
@@ -256,12 +244,7 @@ export default function ProfileEditModal({
                                     <Select
                                         label="Preferred Language"
                                         value={formData.preferredLanguage}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                preferredLanguage: e.target.value,
-                                            })
-                                        }
+                                        onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
                                         options={["English", "Hindi", "Gujarati", "Marathi"]}
                                         icon={<FaLanguage />}
                                     />
@@ -271,9 +254,7 @@ export default function ProfileEditModal({
                                     <Input
                                         label="Email Address"
                                         value={formData.email}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, email: e.target.value })
-                                        }
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                         type="email"
                                         icon={<FaEnvelope />}
                                         disabled={isEmailLocked}
@@ -284,9 +265,7 @@ export default function ProfileEditModal({
                                     <Input
                                         label="Mobile Number"
                                         value={formData.phone}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, phone: e.target.value })
-                                        }
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         type="tel"
                                         icon={<FaPhone />}
                                         disabled={isPhoneLocked}
@@ -319,9 +298,7 @@ export default function ProfileEditModal({
                                     <Input
                                         label="Address Line 1"
                                         value={formData.addressLine1}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, addressLine1: e.target.value })
-                                        }
+                                        onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
                                         icon={<FaLocationDot />}
                                         placeholder="House No., Building, Apartment"
                                     />
@@ -330,9 +307,7 @@ export default function ProfileEditModal({
                                     <Input
                                         label="Address Line 2"
                                         value={formData.addressLine2}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, addressLine2: e.target.value })
-                                        }
+                                        onChange={(e) => setFormData({ ...formData, addressLine2: e.target.value })}
                                         placeholder="Area, Colony, Road, Sector"
                                     />
                                 </div>
@@ -340,9 +315,7 @@ export default function ProfileEditModal({
                                     <Input
                                         label="Landmark"
                                         value={formData.landmark}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, landmark: e.target.value })
-                                        }
+                                        onChange={(e) => setFormData({ ...formData, landmark: e.target.value })}
                                         placeholder="e.g. Near City Mall"
                                     />
                                 </div>
@@ -353,19 +326,13 @@ export default function ProfileEditModal({
                                     onChange={(e) => handlePincodeChange(e.target.value)}
                                     maxLength={6}
                                     placeholder="e.g. 400001"
-                                    rightElement={
-                                        fetchingPincode && (
-                                            <FaSpinner className="animate-spin text-blue-600 text-xs" />
-                                        )
-                                    }
+                                    rightElement={fetchingPincode && <FaSpinner className="animate-spin text-blue-600 text-xs" />}
                                 />
 
                                 <Input
                                     label="City"
                                     value={formData.city}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, city: e.target.value })
-                                    }
+                                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                                     icon={<FaCity />}
                                     placeholder="e.g. Mumbai"
                                 />
@@ -373,9 +340,7 @@ export default function ProfileEditModal({
                                 <Input
                                     label="District"
                                     value={formData.district}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, district: e.target.value })
-                                    }
+                                    onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                                     icon={<FaBuilding />}
                                     placeholder="e.g. Thane"
                                 />
@@ -383,9 +348,7 @@ export default function ProfileEditModal({
                                 <Input
                                     label="State"
                                     value={formData.state}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, state: e.target.value })
-                                    }
+                                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                                     placeholder="e.g. Maharashtra"
                                 />
                             </div>
