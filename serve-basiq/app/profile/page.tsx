@@ -9,8 +9,8 @@ import {
     FaGear,
     FaChevronRight,
     FaSpinner,
-    FaBriefcase, // ✅ Added icon for the banner
-    FaHeart,     // ✅ Added icon for favorites
+    FaBriefcase,
+    FaHeart,
 } from "react-icons/fa6";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -18,7 +18,7 @@ import { fullLogout } from "@/lib/logout";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
 import ProfileEditModal, { ProfileData } from "@/components/profile/ProfileEditModal";
-
+import MobileVerificationModal from "@/components/auth/MobileVerificationModal"; 
 export default function ProfilePage() {
     const { data: session, status } = useSession();
 
@@ -32,12 +32,15 @@ export default function ProfilePage() {
     } = useUIStore();
 
     // 1. Fetch Data
-    const { data: profileDataFromApi, isLoading, error } = useUserProfile();
+    const { data: profileDataFromApi, isLoading, error, refetch } = useUserProfile(); // 👈 Added refetch
 
     // Use 'mutateAsync' instead of 'mutate' to get a Promise
     const { mutateAsync: updateProfile, isPending: isSaving } = useUpdateProfile();
 
     const [isHydrated, setIsHydrated] = useState(false);
+
+    // 👉 NEW: State to manage the Phone Verification Modal
+    const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
 
     // Wait for Zustand hydration
     useEffect(() => {
@@ -162,12 +165,33 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
+                {/* EDIT MODAL */}
                 <ProfileEditModal
                     isOpen={isEditProfileOpen}
                     onClose={onCloseEditProfile}
                     initialData={profileData}
+                    isPhoneLocked={true} // 👈 Lock phone field so they must use the OTP modal
+                    onAddPhoneClick={() => {
+                        onCloseEditProfile(); // Close edit modal
+                        setIsPhoneModalOpen(true); // Open phone verification modal
+                    }}
                     onSave={async (formData, file) => {
                         await updateProfile({ formData, file, currentUser: userAny });
+                    }}
+                />
+
+                {/* 👉 NEW: MOBILE VERIFICATION MODAL */}
+                <MobileVerificationModal
+                    userId={userAny.id}
+                    isOpen={isPhoneModalOpen}
+                    onClose={() => {
+                        setIsPhoneModalOpen(false);
+                        onOpenEditProfile(); // Re-open Edit Modal if they cancel
+                    }}
+                    onSuccess={() => {
+                        setIsPhoneModalOpen(false);
+                        refetch(); // Reload user data from API to get the new phone number
+                        onOpenEditProfile(); // Re-open Edit Modal to show the verified number
                     }}
                 />
             </div>

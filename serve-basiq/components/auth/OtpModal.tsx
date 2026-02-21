@@ -38,40 +38,32 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     const [otp, setOtp] = useState(["", "", "", ""]);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-    // ✅ FIX: Single unified useEffect to handle Modal Open, Reset, and Auto-fill
     useEffect(() => {
         if (isOpen) {
             setShowModal(true);
-            setErrorMsg({ text: "", type: null }); // Reset errors on open
+            setErrorMsg({ text: "", type: null });
             document.body.style.overflow = "hidden";
 
-            // If we have a devOtp, auto-fill it immediately
             if (devOtp) {
                 const otpString = String(devOtp);
                 if (otpString.length === 4) {
                     setOtp(otpString.split(""));
-                    // Focus the last input so the user can just click "Verify" or press Enter
                     setTimeout(() => inputRefs.current[3]?.focus(), 100);
                 }
             } else {
-                // No devOtp? Clear the fields and focus the first one
                 setOtp(["", "", "", ""]);
                 setTimeout(() => inputRefs.current[0]?.focus(), 100);
             }
         } else {
-            // Modal is closing, clean up
             const timer = setTimeout(() => setShowModal(false), 300);
             document.body.style.overflow = "unset";
             setOtp(["", "", "", ""]);
             return () => clearTimeout(timer);
         }
-    }, [isOpen, devOtp]); // Listen to both isOpen and devOtp
+    }, [isOpen, devOtp]);
 
     const handleChange = (index: number, value: string) => {
         if (isNaN(Number(value))) return;
-
-        // Clear errors as soon as user starts typing again
-        if (errorMsg.type) setErrorMsg({ text: "", type: null });
 
         const newOtp = [...otp];
         newOtp[index] = value;
@@ -116,7 +108,7 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                 } else {
                     setErrorMsg({ text: errorData.error || "Invalid OTP. Please check and try again.", type: 'INVALID' });
                     setOtp(["", "", "", ""]);
-                    inputRefs.current[0]?.focus();
+                    // Focus is now handled by the error modal's close button
                     return;
                 }
             }
@@ -156,32 +148,59 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         }
     };
 
+    // Handler for closing the error modal
+    const handleDismissError = () => {
+        const type = errorMsg.type;
+        setErrorMsg({ text: "", type: null });
+
+        // Only refocus the inputs if it wasn't a rate limit error
+        if (type !== 'RATE_LIMIT') {
+            setTimeout(() => inputRefs.current[0]?.focus(), 100);
+        }
+    };
+
     if (!isOpen && !showModal) return null;
 
     return (
         <div className="fixed inset-0 z-[100] overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4 text-center">
                 <div className={clsx("fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300", isOpen ? "opacity-100" : "opacity-0")} onClick={onClose} />
-                <div className={clsx("relative w-full max-w-md bg-white rounded-3xl shadow-2xl text-left transform transition-all duration-300", isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4")}>
+
+                {/* Added overflow-hidden so the error overlay doesn't break the rounded corners */}
+                <div className={clsx("relative w-full max-w-md bg-white rounded-3xl shadow-2xl text-left transform transition-all duration-300 overflow-hidden", isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4")}>
 
                     <button onClick={onOpenLogin} className="absolute top-4 left-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition-colors"><FaArrowLeft className="text-lg" /></button>
                     <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition-colors"><FaXmark className="text-lg" /></button>
+
+                    {/* NEW: Inner Error Modal Overlay */}
+                    {errorMsg.type && (
+                        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-8 bg-white/95 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+                            <div className={clsx(
+                                "flex items-center justify-center w-20 h-20 rounded-full mb-6",
+                                errorMsg.type === 'RATE_LIMIT' ? "bg-orange-100 text-orange-600" : "bg-red-100 text-red-600"
+                            )}>
+                                {errorMsg.type === 'RATE_LIMIT' ? <ShieldAlert size={40} /> : <AlertCircle size={40} />}
+                            </div>
+                            <h3 className="text-2xl font-extrabold text-slate-900 mb-2 text-center">
+                                {errorMsg.type === 'RATE_LIMIT' ? "Rate Limited" : "Verification Failed"}
+                            </h3>
+                            <p className="text-gray-500 text-center mb-8 px-4">
+                                {errorMsg.text}
+                            </p>
+                            <button
+                                onClick={handleDismissError}
+                                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition-all"
+                            >
+                                {errorMsg.type === 'RATE_LIMIT' ? "Understood" : "Try Again"}
+                            </button>
+                        </div>
+                    )}
 
                     <div className="p-8">
                         <div className="text-center mb-8 mt-4">
                             <h2 className="text-2xl font-extrabold text-slate-900">Verify OTP</h2>
                             <p className="text-sm text-gray-500 mt-2">Code sent to <span className="font-bold text-slate-900">+91 {mobileNumber}</span></p>
                         </div>
-
-                        {errorMsg.type && (
-                            <div className={clsx(
-                                "mb-6 p-4 rounded-xl flex items-start gap-3 animate-in slide-in-from-top-2",
-                                errorMsg.type === 'RATE_LIMIT' ? "bg-orange-50 text-orange-800 border border-orange-200" : "bg-red-50 text-red-800 border border-red-200"
-                            )}>
-                                {errorMsg.type === 'RATE_LIMIT' ? <ShieldAlert className="shrink-0 mt-0.5" size={18} /> : <AlertCircle className="shrink-0 mt-0.5" size={18} />}
-                                <div className="text-sm font-medium leading-snug">{errorMsg.text}</div>
-                            </div>
-                        )}
 
                         <form onSubmit={handleVerify} className="space-y-8">
                             <div className="flex justify-center gap-3">
@@ -194,18 +213,18 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
                                         value={digit}
                                         onChange={(e) => handleChange(index, e.target.value)}
                                         onKeyDown={(e) => handleKeyDown(index, e)}
-                                        disabled={isLoading || errorMsg.type === 'RATE_LIMIT'}
+                                        disabled={isLoading || errorMsg.type !== null}
                                         className={clsx(
                                             "w-14 h-16 rounded-xl border-2 text-center text-2xl font-bold outline-none transition-all",
-                                            errorMsg.type ? "border-red-300 bg-red-50 text-red-900 focus:border-red-500" : "border-gray-200 text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10",
-                                            (isLoading || errorMsg.type === 'RATE_LIMIT') && "opacity-50 cursor-not-allowed"
+                                            "border-gray-200 text-slate-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10",
+                                            (isLoading || errorMsg.type !== null) && "opacity-50 cursor-not-allowed"
                                         )}
                                     />
                                 ))}
                             </div>
                             <button
                                 type="submit"
-                                disabled={isLoading || errorMsg.type === 'RATE_LIMIT'}
+                                disabled={isLoading || errorMsg.type !== null}
                                 className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isLoading ? <FaSpinner className="animate-spin" /> : "Verify & Login"}
@@ -222,7 +241,6 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
         </div>
     );
 }
-
 // "use client";
 
 // import { useState, useEffect, useRef } from "react";

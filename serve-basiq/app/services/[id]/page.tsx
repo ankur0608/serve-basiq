@@ -45,7 +45,34 @@ export default async function ServiceDetailPage({ params }: Props) {
 
   if (!rawService) return notFound();
 
-  // 2. ✅ SMART ADDRESS LOGIC
+  // 👉 2. NEW: Fetch Related Services for the Slider
+  const rawRelatedServices = await prisma.service.findMany({
+    where: {
+      categoryId: rawService.categoryId,
+      id: { not: id } // Exclude the current service
+    },
+    take: 8,
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      priceType: true,
+      coverImg: true,
+      serviceimg: true,
+      mainimg: true,
+      gallery: true,
+      category: { select: { name: true } },
+      user: { select: { shopName: true } }
+    }
+  });
+
+  // Convert Prisma Decimal to Number for the Client Component
+  const relatedServices = rawRelatedServices.map(rs => ({
+    ...rs,
+    price: Number(rs.price),
+  }));
+
+  // 3. ✅ SMART ADDRESS LOGIC
   // Priority: 1. Service Specific Address -> 2. Provider Work Address -> 3. Provider Home Address
   const providerAddresses = rawService.user.addresses || [];
   const providerWorkAddr = providerAddresses.find(a => a.type === 'Work');
@@ -60,7 +87,7 @@ export default async function ServiceDetailPage({ params }: Props) {
   const finalPincode = rawService.pincode || fallbackAddr?.pincode || null;
   const finalLandmark = fallbackAddr?.landmark || null; // Service model usually doesn't have landmark, so we take from Provider
 
-  // 3. Data Mapping
+  // 4. Data Mapping
   const service = {
     ...rawService,
     price: Number(rawService.price),
@@ -123,6 +150,7 @@ export default async function ServiceDetailPage({ params }: Props) {
       service={service as any}
       loggedInUser={loggedInUser}
       session={session}
+      relatedServices={relatedServices} // 👉 NEW: Pass the related services here
     />
   );
 }

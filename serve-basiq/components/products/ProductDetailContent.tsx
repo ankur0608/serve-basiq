@@ -15,7 +15,7 @@ import AppImage from '@/components/ui/AppImage';
 import SupplierProfileModal from '@/components/products/SupplierProfileModal';
 import RatingForm from '@/components/Rating/RatingForm';
 import AppVideo from '@/components/ui/AppVideo';
-
+import ProductSlider from '@/components/products/ProductSlider'; // 👈 Import the new component
 // ✅ HELPER: Detect Video Files
 const isVideo = (url: string | null | undefined) => {
     if (!url) return false;
@@ -55,7 +55,22 @@ export default async function ProductDetailContent({ id }: Props) {
     });
 
     if (!product) return notFound();
-
+    const relatedProducts = await prisma.product.findMany({
+        where: {
+            categoryId: product.categoryId,
+            id: { not: id }, // Don't show the product we are currently looking at
+        },
+        take: 8, // Limit to 8 products for the slider
+        select: {
+            id: true,
+            name: true,
+            price: true,
+            unit: true,
+            productImage: true,
+            gallery: true,
+            category: { select: { name: true } }
+        }
+    });
     // 2. LOGIC: STRICT CHECK REVIEW ELIGIBILITY
     let canReview = false;
 
@@ -378,6 +393,10 @@ export default async function ProductDetailContent({ id }: Props) {
                     </div>
 
                 </div>
+                <ProductSlider
+                    title="Related Products"
+                    products={relatedProducts}
+                />
             </div>
         </div>
     );

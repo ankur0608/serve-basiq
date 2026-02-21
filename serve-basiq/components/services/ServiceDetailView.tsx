@@ -13,6 +13,7 @@ import RatingForm from '@/components/Rating/RatingForm';
 import { Session } from 'next-auth';
 import { useServicePageData } from '@/app/hook/useServicePageData';
 import AppVideo from '../ui/AppVideo';
+import ProductSlider from '@/components/products/ProductSlider'; // 👈 Import the Slider
 
 // --- HELPER: Detect Video Files ---
 const isVideo = (url: string | null | undefined) => {
@@ -71,9 +72,10 @@ interface ServiceDetailViewProps {
     };
     loggedInUser: any;
     session: Session | null;
+    relatedServices?: any[]; // 👈 NEW: Added prop for related services
 }
 
-export default function ServiceDetailView({ service, loggedInUser: initialUser, session }: ServiceDetailViewProps) {
+export default function ServiceDetailView({ service, loggedInUser: initialUser, session, relatedServices = [] }: ServiceDetailViewProps) {
     const displayName = service.user.shopName || service.name;
 
     // --- 📡 DATA FETCHING ---
@@ -84,7 +86,6 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
     });
 
     // --- 🖼️ HERO IMAGE LOGIC ---
-    // Note: We assume the Main/Cover image is always an IMAGE based on your upload rules.
     const heroImage =
         service.coverImg ||
         service.serviceimg ||
@@ -121,6 +122,17 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
         (r: any) => r.authorId === currentUser?.id
     );
 
+    // 👉 NEW: Map related services to match the ProductSlider format
+    const formattedRelatedServices = relatedServices.map((s) => ({
+        id: s.id,
+        name: s.name || s.user?.shopName || 'Service',
+        price: s.price || 0,
+        unit: s.priceType === 'HOURLY' ? 'hour' : 'fixed',
+        productImage: s.coverImg || s.serviceimg || s.mainimg || null,
+        gallery: Array.isArray(s.gallery) ? s.gallery : [],
+        category: s.category
+    }));
+
     return (
         <div className="pb-40 bg-slate-50 min-h-screen">
             {/* HERO SECTION */}
@@ -144,7 +156,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
 
                         {/* MAIN INFO CARD */}
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
-                            {/* ... (Header, Title, Address - No changes here) ... */}
+                            {/* ... (Kept exactly the same) ... */}
                             <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
                                 <div>
                                     <div className="flex items-center gap-2 mb-3">
@@ -218,7 +230,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                             </div>
                         </div>
 
-                        {/* ✅ UPDATED GALLERY SECTION */}
+                        {/* GALLERY SECTION */}
                         {service.gallery && service.gallery.length > 0 && (
                             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                                 <h3 className="text-xl font-bold text-slate-900 mb-6">Work Gallery</h3>
@@ -231,8 +243,6 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                                         src={mediaUrl}
                                                         className="w-full h-full"
                                                     />
-                                                    {/* Optional: Add a play icon overlay if you want custom styling, 
-                                                        but standard 'controls' is best for UX */}
                                                 </div>
                                             ) : (
                                                 <AppImage
@@ -248,7 +258,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                             </div>
                         )}
 
-                        {/* REVIEWS & RATINGS (No changes needed here) */}
+                        {/* REVIEWS & RATINGS */}
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                             <h3 className="text-2xl font-black text-slate-900 mb-8">Reviews & Ratings</h3>
                             <div className="grid md:grid-cols-2 gap-10">
@@ -376,6 +386,15 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                         </div>
                     </div>
                 </div>
+
+                {/* 👉 NEW: Reusing the ProductSlider mapped to Services */}
+                {formattedRelatedServices.length > 0 && (
+                    <ProductSlider
+                        title="Related Services"
+                        products={formattedRelatedServices}
+                    />
+                )}
+
             </div>
         </div>
     );

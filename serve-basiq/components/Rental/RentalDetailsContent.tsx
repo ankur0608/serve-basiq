@@ -14,6 +14,7 @@ import AppImage from '@/components/ui/AppImage';
 import RatingForm from '@/components/Rating/RatingForm';
 import RentalBookingWrapper from '@/components/Rental/RentalBookingWrapper';
 import AppVideo from '../ui/AppVideo';
+import ProductSlider from '@/components/products/ProductSlider'; // 👈 Import the Slider
 
 // ✅ HELPER: Detect Video Files
 const isVideo = (url: string | null | undefined) => {
@@ -22,13 +23,13 @@ const isVideo = (url: string | null | undefined) => {
 };
 
 interface Props {
-    id: string; // We take the resolved ID as a prop now
+    id: string;
 }
 
 export default async function RentalDetailsContent({ id }: Props) {
     const session = await getServerSession(authOptions);
 
-    // 1. DATABASE FETCH
+    // 1. DATABASE FETCH MAIN RENTAL
     const rental = await prisma.rental.findUnique({
         where: { id },
         include: {
@@ -52,6 +53,36 @@ export default async function RentalDetailsContent({ id }: Props) {
     });
 
     if (!rental) return notFound();
+
+    // 👉 NEW: Fetch Related Rentals (Same category, excluding current)
+    const relatedRentalsRaw = await prisma.rental.findMany({
+        where: {
+            categoryId: rental.categoryId,
+            id: { not: id } // Exclude the current rental
+        },
+        take: 8,
+        select: {
+            id: true,
+            name: true,
+            price: true,
+            priceType: true,
+            coverImg: true,
+            rentalImg: true,
+            gallery: true,
+            category: { select: { name: true } }
+        }
+    });
+
+    // Map the rental data to match the format the ProductSlider expects
+    const relatedRentals = relatedRentalsRaw.map((r) => ({
+        id: r.id,
+        name: r.name,
+        price: r.price || 0,
+        unit: r.priceType?.toLowerCase() || 'day', // Uses priceType (e.g., 'daily', 'monthly') as the unit
+        productImage: r.coverImg || r.rentalImg, // Maps rental image to slider image
+        gallery: Array.isArray(r.gallery) ? (r.gallery as string[]) : [],
+        category: r.category
+    }));
 
     // 2. LOGIC: CHECK REVIEW ELIGIBILITY
     let canReview = false;
@@ -155,6 +186,7 @@ export default async function RentalDetailsContent({ id }: Props) {
                     {/* LEFT COLUMN */}
                     <div className="lg:col-span-2 space-y-8">
                         {/* MAIN INFO */}
+                        {/* ... (Kept exactly the same) ... */}
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                             <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
                                 <div>
@@ -238,36 +270,28 @@ export default async function RentalDetailsContent({ id }: Props) {
                             </div>
                         </div>
 
-                        {/* GALLERY SECTION WITH VIDEO SUPPORT */}
+                        {/* GALLERY SECTION */}
                         {galleryImages.length > 0 && (
                             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                                 <h3 className="text-xl font-bold text-slate-900 mb-6">Gallery</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    {/* GALLERY SECTION WITH VIDEO SUPPORT */}
-                                    {galleryImages.length > 0 && (
-                                        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
-                                            <h3 className="text-xl font-bold text-slate-900 mb-6">Gallery</h3>
-                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                                {galleryImages.map((mediaUrl, i) => (
-                                                    <div key={i} className="h-48 w-full relative group rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 bg-black">
-                                                        {isVideo(mediaUrl) ? (
-                                                            <AppVideo
-                                                                src={mediaUrl}
-                                                                className="w-full h-full"
-                                                            />
-                                                        ) : (
-                                                            <AppImage
-                                                                src={mediaUrl}
-                                                                alt={`Gallery ${i}`}
-                                                                type="gallery"
-                                                                className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                                                            />
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
+                                    {galleryImages.map((mediaUrl, i) => (
+                                        <div key={i} className="h-48 w-full relative group rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 bg-black">
+                                            {isVideo(mediaUrl) ? (
+                                                <AppVideo
+                                                    src={mediaUrl}
+                                                    className="w-full h-full"
+                                                />
+                                            ) : (
+                                                <AppImage
+                                                    src={mediaUrl}
+                                                    alt={`Gallery ${i}`}
+                                                    type="gallery"
+                                                    className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                                                />
+                                            )}
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -384,6 +408,13 @@ export default async function RentalDetailsContent({ id }: Props) {
                         </div>
                     </div>
                 </div>
+
+                {/* 👉 NEW: Reusing the ProductSlider mapped to Rentals */}
+                <ProductSlider
+                    title="Related Rentals"
+                    products={relatedRentals}
+                />
+
             </div>
         </div>
     );

@@ -14,6 +14,7 @@ import {
     FaCalendarDays,
     FaLanguage,
     FaBuilding,
+    FaCircleCheck
 } from "react-icons/fa6";
 import clsx from "clsx";
 import AppImage from "@/components/ui/AppImage";
@@ -44,7 +45,7 @@ interface ProfileEditModalProps {
     onSave: (data: ProfileData, file: File | null) => Promise<void>;
     isEmailLocked?: boolean;
     isPhoneLocked?: boolean;
-    onAddPhoneClick?: () => void;
+    onAddPhoneClick?: () => void; // 👈 Triggers the parent component to open OTP modal
 }
 
 // --- HELPER: NORMALIZE DATA FOR COMPARISON ---
@@ -210,7 +211,7 @@ export default function ProfileEditModal({
                                 />
                             </div>
                             <p
-                                className="text-xs text-blue-600 font-bold cursor-pointer"
+                                className="text-xs text-blue-600 font-bold cursor-pointer hover:underline"
                                 onClick={() => fileInputRef.current?.click()}
                             >
                                 Change Photo
@@ -250,7 +251,7 @@ export default function ProfileEditModal({
                                     />
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-2">
                                     <Input
                                         label="Email Address"
                                         value={formData.email}
@@ -261,25 +262,37 @@ export default function ProfileEditModal({
                                         placeholder="e.g. john@example.com"
                                     />
                                 </div>
-                                <div>
+
+                                {/* ✅ Enhanced Phone Input with Verification Action */}
+                                <div className="md:col-span-2">
                                     <Input
                                         label="Mobile Number"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         type="tel"
                                         icon={<FaPhone />}
+                                        maxLength={10}
                                         disabled={isPhoneLocked}
                                         placeholder="e.g. 9876543210"
                                         rightElement={
-                                            onAddPhoneClick && (
-                                                <button
-                                                    type="button"
-                                                    onClick={onAddPhoneClick}
-                                                    className="text-xs font-bold text-blue-600 hover:text-blue-700 transition"
-                                                >
-                                                    {formData.phone ? "Change" : "Add"}
-                                                </button>
-                                            )
+                                            <div className="flex items-center gap-2">
+                                                {/* Verified Badge */}
+                                                {formData.phone && (
+                                                    <span className="hidden sm:flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md font-bold">
+                                                        <FaCircleCheck /> Verified
+                                                    </span>
+                                                )}
+                                                {/* Add/Change Button */}
+                                                {onAddPhoneClick && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={onAddPhoneClick}
+                                                        className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                                                    >
+                                                        {formData.phone ? "Change" : "Add Number"}
+                                                    </button>
+                                                )}
+                                            </div>
                                         }
                                     />
                                 </div>
