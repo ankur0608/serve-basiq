@@ -23,7 +23,6 @@ export function useImageUpload({
 
         if (!file) return;
 
-        // 1. Client-side Validation
         if (!file.type.startsWith("image/")) {
             setError("File must be an image (JPG, PNG, WEBP)");
             return;
@@ -37,7 +36,6 @@ export function useImageUpload({
         try {
             setIsUploading(true);
 
-            // 2. Get Presigned URL
             const presignRes = await fetch("/api/upload/presigned", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -52,7 +50,6 @@ export function useImageUpload({
 
             const { uploadUrl, publicUrl, key } = await presignRes.json();
 
-            // 3. Upload directly to R2
             const uploadRes = await fetch(uploadUrl, {
                 method: "PUT",
                 headers: { "Content-Type": file.type },
@@ -61,11 +58,9 @@ export function useImageUpload({
 
             if (!uploadRes.ok) throw new Error("Upload failed");
 
-            // 4. Update State
             setPreviewUrl(publicUrl);
             setFileKey(key);
 
-            // Optional: Callback to update your parent form (e.g., form.profileImage = key)
             if (onUploadSuccess) {
                 onUploadSuccess(key, publicUrl);
             }
@@ -91,6 +86,6 @@ export function useImageUpload({
         uploadError: error,
         handleImageUpload,
         removeImage,
-        setPreviewUrl // Exported in case you need to set it manually from session
+        setPreviewUrl 
     };
 }

@@ -638,6 +638,7 @@ import {
 } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import AppImage from '@/components/ui/AppImage';
 
 const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 const sectionTitleClass = "text-sm font-extrabold text-slate-900 border-b border-slate-200 pb-2 mb-4 uppercase tracking-wider";
@@ -944,8 +945,7 @@ export const StepTwoMedia = ({
 
                     {form.mainimg ? (
                         <>
-                            <img src={form.mainimg} className="w-full h-full object-cover" alt="Main Service" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-0">
+                            <AppImage src={form.mainimg} alt="Main Service" type="card" className="w-full h-full object-cover" />                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-0">
                                 <p className="text-white text-xs font-bold flex items-center gap-2"><Camera size={16} /> Change Photo</p>
                             </div>
                         </>
@@ -974,8 +974,7 @@ export const StepTwoMedia = ({
                         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20"><Loader2 className="animate-spin text-blue-600" size={24} /></div>
                     )}
                     {form.coverImg ? (
-                        <img src={form.coverImg} className="w-full h-full object-cover" alt="Cover" />
-                    ) : (
+                        <AppImage src={form.coverImg} alt="Cover" type="card" className="w-full h-full object-cover" />) : (
                         <div className="flex items-center gap-2 text-slate-400 group-hover:text-blue-500">
                             <Camera size={20} /> <span className="text-xs font-bold">Upload Cover</span>
                         </div>
@@ -1000,8 +999,7 @@ export const StepTwoMedia = ({
                                     </div>
                                 </>
                             ) : (
-                                <img src={url} className="w-full h-full object-cover bg-white" alt={`Gallery ${i}`} />
-                            )}
+                                <AppImage src={url} alt={`Gallery ${i}`} type="thumbnail" className="w-full h-full object-cover bg-white" />)}
                             <button type="button" onClick={() => removeGalleryImg(i)} className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shadow-sm z-10">
                                 <Trash2 size={12} />
                             </button>

@@ -90,6 +90,7 @@ export default function RentalsExplorer() {
         };
     }, [hasNextPage, fetchNextPage, isFetchingNextPage, isFetching]);
 
+    // Initial page load skeleton
     if (isLoading) return <ProductsSkeleton />;
 
     return (
@@ -131,8 +132,13 @@ export default function RentalsExplorer() {
                     {/* Desktop Search */}
                     <div className="hidden md:block mb-6">
                         <div className="relative w-full">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                                <FaMagnifyingGlass size={18} />
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                {/* UX UPGRADE: Show spinner right inside the search bar instead of magnifying glass when loading */}
+                                {isFetching && !isFetchingNextPage ? (
+                                    <Loader2 className="animate-spin text-blue-500" size={18} />
+                                ) : (
+                                    <FaMagnifyingGlass className="text-slate-400" size={18} />
+                                )}
                             </div>
                             <input
                                 type="text" placeholder="Search rentals, equipment, or vehicles..."
@@ -140,22 +146,15 @@ export default function RentalsExplorer() {
                                 value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             {searchTerm && (
-                                <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-red-500">
+                                <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-red-500 transition-colors">
                                     <FaXmark size={18} />
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    {isFetching && !isFetchingNextPage && rawRentals.length > 0 && (
-                        <div className="fixed inset-0 bg-white/40 z-50 flex justify-center pt-40 pointer-events-none">
-                            <div className="bg-white p-3 rounded-full shadow-xl border h-fit">
-                                <Loader2 className="animate-spin text-slate-900 w-6 h-6" />
-                            </div>
-                        </div>
-                    )}
-
-                    <div>
+                    {/* UX UPGRADE: Removed full-screen loader. Instead, we dim the grid content while keeping inputs fully usable */}
+                    <div className={`transition-opacity duration-300 ${isFetching && !isFetchingNextPage ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                         {rawRentals.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
                                 <div className="p-4 bg-slate-50 rounded-full mb-4">
@@ -178,11 +177,12 @@ export default function RentalsExplorer() {
                                     ))}
                                 </div>
 
+                                {/* Infinite Scroll Loader (Bottom) */}
                                 <div ref={observerTarget} className="w-full py-8 mt-4 flex flex-col items-center justify-center min-h-[50px]">
                                     {isFetchingNextPage ? (
-                                        <div className="flex items-center gap-2 text-slate-500">
-                                            <Loader2 className="animate-spin h-5 w-5" />
-                                            <span className="text-sm font-medium">Loading more rentals...</span>
+                                        <div className="flex items-center gap-2 text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100">
+                                            <Loader2 className="animate-spin h-4 w-4" />
+                                            <span className="text-sm font-medium">Loading more...</span>
                                         </div>
                                     ) : (
                                         <div className="h-1 w-full" />

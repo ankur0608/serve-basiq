@@ -5,61 +5,17 @@ import imageCompression from 'browser-image-compression';
 import { onboardSchema } from "@/lib/validators";
 import { useUIStore, User } from "@/lib/store";
 
-const MAX_FRONTEND_SIZE_MB = 10; 
+// 🌟 Import your global upload function!
+import { uploadToBackend } from "@/lib/uploadToBackend";
+
+const MAX_FRONTEND_SIZE_MB = 10;
 const COMPRESSION_OPTIONS = {
-    maxSizeMB: 0.8,          // Target ~800KB
-    maxWidthOrHeight: 1200,  // Resize 4K images down to 1200px
-    useWebWorker: true,      // Run in background thread
-    fileType: "image/webp"   // Convert to WebP for better compression
+    maxSizeMB: 0.8,
+    maxWidthOrHeight: 1200,
+    useWebWorker: true,
+    fileType: "image/webp" as const // 🎯 Forces conversion to WebP 
 };
 
-// --- UTILITY: Upload & Compress ---
-async function uploadToBackend(file: File): Promise<string> {
-    // 1. Basic Frontend Validation
-    if (file.size > MAX_FRONTEND_SIZE_MB * 1024 * 1024) {
-        throw new Error(`File is too large. Please select an image under ${MAX_FRONTEND_SIZE_MB}MB.`);
-    }
-    if (!file.type.startsWith("image/")) {
-        throw new Error("Invalid file type. Please upload an image.");
-    }
-
-    try {
-        // 2. Compress Image
-        console.log(`📉 Compressing ${file.name} (${(file.size / 1024).toFixed(2)}KB)...`);
-        const compressedFile = await imageCompression(file, COMPRESSION_OPTIONS);
-        console.log(`✅ Compressed to ${(compressedFile.size / 1024).toFixed(2)}KB`);
-
-        // 3. Prepare Upload
-        const formData = new FormData();
-        formData.append("file", compressedFile, file.name);
-
-        // 4. Send to Backend
-        const res = await fetch("/api/upload", { 
-            method: "POST", 
-            body: formData 
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-            throw new Error(data.message || data.error || "Upload failed");
-        }
-
-        // 5. Resolve URL
-        if (data.url) return data.url;
-        if (data.key && process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT) {
-            return `${process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT.replace(/\/$/, "")}/${data.key}`;
-        }
-
-        throw new Error("Upload successful but server returned no URL.");
-
-    } catch (error: any) {
-        console.error("Upload Error:", error);
-        throw new Error(error.message || "Failed to process image.");
-    }
-}
-
-// --- HOOK ---
 export function useProviderOnboarding() {
     const router = useRouter();
     const queryClient = useQueryClient();
@@ -86,7 +42,6 @@ export function useProviderOnboarding() {
         providerType: "BOTH",
     });
 
-    // --- FETCH PROFILE ---
     const { isLoading: isFetchingProfile } = useQuery({
         queryKey: ["userProfile", currentUser?.id],
         queryFn: async () => {
@@ -120,7 +75,6 @@ export function useProviderOnboarding() {
         staleTime: 300000, // 5 mins
     });
 
-    // --- SUBMIT MUTATION ---
     const onboardingMutation = useMutation({
         mutationFn: async (payload: any) => {
             const res = await fetch("/api/provider/onboard", {
@@ -191,24 +145,46 @@ export function useProviderOnboarding() {
         );
     }, []);
 
+    // 🚀 UPDATED: Uses imageCompression and global uploadToBackend
     const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        if (file.size > MAX_FRONTEND_SIZE_MB * 1024 * 1024) {
+            return alert(`File is too large. Please select an image under ${MAX_FRONTEND_SIZE_MB}MB.`);
+        }
+
+        if (!file.type.startsWith("image/")) {
+            return alert("Invalid file type. Please upload an image.");
+        }
+
         try {
             setUploading(true);
-            const url = await uploadToBackend(file);
+
+            // 1. Compress and convert to WebP
+            console.log(`📉 Compressing ${file.name}...`);
+            const compressedBlob = await imageCompression(file, COMPRESSION_OPTIONS);
+
+            // 2. Ensure the filename has a .webp extension
+            const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+            const uploadFile = new File([compressedBlob], newFileName, { type: 'image/webp' });
+
+            // 3. Upload directly to Cloudflare R2
+            const url = await uploadToBackend(uploadFile);
+
             setImgPreview(url);
+
             // Clear error if exists
             if (errors.profileImage) {
-                 setErrors(prev => {
-                     const n = {...prev};
-                     delete n.profileImage;
-                     return n;
-                 });
+                setErrors(prev => {
+                    const n = { ...prev };
+                    delete n.profileImage;
+                    return n;
+                });
             }
         } catch (err: any) {
-            alert(err.message);
+            console.error("Upload Error:", err);
+            alert(err.message || "Failed to process and upload image.");
         } finally {
             setUploading(false);
         }
@@ -224,8 +200,7 @@ export function useProviderOnboarding() {
                 profileImage: imgPreview || "",
                 phone: form.altPhone,
             };
-            
-            // Validate against schema before network request
+
             onboardSchema.parse(payload);
             onboardingMutation.mutate(payload);
         } catch (error: any) {

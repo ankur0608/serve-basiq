@@ -104,7 +104,6 @@ export function useServicesExplorer({
             }
         });
 
-        // 3. Transform to ServiceItem interface
         return Array.from(uniqueItems.values()).map((item: any): ServiceItem => ({
             id: item.id,
             name: item.name,

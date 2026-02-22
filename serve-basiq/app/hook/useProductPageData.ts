@@ -9,7 +9,6 @@ interface UseProductDataProps {
 
 export function useProductPageData({ productId, initialUser, session }: UseProductDataProps) {
 
-    // 1. User Profile (For addresses/context)
     const userQuery = useQuery({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
@@ -32,7 +31,7 @@ export function useProductPageData({ productId, initialUser, session }: UseProdu
             return res.json();
         },
         enabled: !!session,
-        staleTime: 0, // Always fetch fresh
+        staleTime: 0, 
         refetchOnWindowFocus: false,
     });
 

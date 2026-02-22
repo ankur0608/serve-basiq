@@ -31,7 +31,6 @@ export default function SettingsPage() {
         return date.toISOString().split('T')[0];
     };
 
-    // Prepare data for modals & display
     const addresses = currentUser?.addresses || [];
     const primaryAddress: any = addresses.length > 0 ? addresses[0] : {};
 
@@ -50,7 +49,6 @@ export default function SettingsPage() {
         pincode: primaryAddress.pincode || '',
     };
 
-    // --- Handlers ---
     const handleSaveData = async (data: any) => {
         try {
             const res = await fetch('/api/user/profile', {
@@ -69,7 +67,6 @@ export default function SettingsPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
-            {/* Header */}
             <div className="bg-white px-4 py-4 sticky top-0 z-10 shadow-sm flex items-center gap-3">
                 <Link href="/profile" className="p-2 -ml-2 hover:bg-slate-100 rounded-full text-slate-600">
                     <FaArrowLeft />
@@ -79,7 +76,6 @@ export default function SettingsPage() {
 
             <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
 
-                {/* --- 1. Personal Info Section --- */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-lg text-slate-900">Personal Information</h3>
@@ -105,7 +101,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* --- 2. Account & System Details Section --- */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h3 className="font-bold text-lg text-slate-900 mb-6">Account Details</h3>
                     <div className="space-y-5">
@@ -123,7 +118,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* --- 3. Saved Addresses Section --- */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-lg text-slate-900">Saved Addresses</h3>

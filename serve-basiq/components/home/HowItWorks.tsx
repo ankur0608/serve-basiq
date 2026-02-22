@@ -2,11 +2,9 @@
 
 import { useState } from 'react';
 import { Search, Users, ShieldCheck, ArrowRight } from 'lucide-react';
-// 👉 NOTE: Adjust this import path to wherever your LoginModal is actually saved!
 import LoginModal from '@/components/auth/LoginModal';
 
 export default function HowItWorks() {
-    // State to control the login modal
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const steps = [

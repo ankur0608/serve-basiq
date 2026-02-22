@@ -3,7 +3,9 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import imageCompression from 'browser-image-compression';
-// ❌ REMOVED: import { compressVideo } ... (Not needed)
+
+// 🌟 Import your reusable upload function!
+import { uploadToBackend } from '@/lib/uploadToBackend'; 
 
 export interface SubCategory {
     id: string;
@@ -32,20 +34,6 @@ const normalizeSubIds = (data: any): string[] => {
     if (Array.isArray(subs)) return subs.map((s: any) => s.id);
     return subs?.id ? [subs.id] : [];
 };
-
-export async function uploadToBackend(file: File): Promise<string> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-    });
-
-    if (!res.ok) throw new Error('Upload failed');
-    const data = await res.json();
-    return data.url;
-}
 
 export function useServiceForm({
     userId,
@@ -170,7 +158,7 @@ export function useServiceForm({
         });
     };
 
-    // ✅ UPDATED: Simple Upload (Images compressed, Videos direct)
+    // ✅ UPDATED: Compresses images, converts to WebP, and leaves video alone
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
@@ -183,20 +171,30 @@ export function useServiceForm({
             const processFile = async (file: File) => {
                 let uploadFile = file;
 
-                // Only compress images
+                // 📸 Only compress and convert images. Videos skip this block!
                 if (file.type.startsWith('image/')) {
                     try {
-                        uploadFile = await imageCompression(file, {
-                            maxSizeMB: 1,
+                        const compressedBlob = await imageCompression(file, {
+                            maxSizeMB: 1, // 1MB limit per image
                             maxWidthOrHeight: 1920,
                             useWebWorker: true,
+                            fileType: "image/webp", // 🎯 Forces conversion to WebP!
                         });
+
+                        // Rename the file to ensure it has a .webp extension
+                        const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+                        
+                        // Convert Blob back to a standard File object
+                        uploadFile = new File([compressedBlob], newFileName, {
+                            type: "image/webp",
+                        });
+
                     } catch (err) {
                         console.error("Image compress failed, uploading original", err);
                     }
                 }
 
-                // Videos are uploaded directly (handled by API 50MB limit)
+                // 🚀 Upload the file (WebP image or raw MP4 video) directly via Presigned URL
                 return await uploadToBackend(uploadFile);
             };
 
@@ -214,9 +212,9 @@ export function useServiceForm({
                 showToast?.('Uploaded successfully', 'success');
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            showToast?.('Upload failed', 'error');
+            showToast?.(error.message || 'Upload failed', 'error');
         } finally {
             setUploading(false);
             setActiveUploadField(null);

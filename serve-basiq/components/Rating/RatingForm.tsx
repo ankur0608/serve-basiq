@@ -3,9 +3,13 @@
 import { useState, useRef } from "react";
 import { FaStar, FaCamera, FaXmark } from "react-icons/fa6";
 import Image from "next/image";
-import { Loader2 } from "lucide-react"; // Added cleaner loader
+import { Loader2 } from "lucide-react";
+import imageCompression from "browser-image-compression";
 
-// Import actions
+// 🌟 Import your shiny new reusable upload function!
+import { uploadToBackend } from "@/lib/uploadToBackend";
+
+// Import actions (Make sure these paths match your project structure!)
 import { submitServiceReview } from "@/app/actions/reviews";
 import { submitProductReview } from "@/app/actions/productReviews";
 import { submitRentalReview } from "@/app/actions/rentalReviews";
@@ -24,21 +28,54 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
     const [comment, setComment] = useState("");
     const [images, setImages] = useState<File[]>([]);
     const [loading, setLoading] = useState(false);
+    const [isCompressing, setIsCompressing] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const activeId = serviceId || productId || rentalId;
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const selectedFiles = Array.from(e.target.files);
+    // 📸 Handles selecting images, shrinking them, and converting to WebP
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return;
 
-            // Limit to 5 images total
-            if (images.length + selectedFiles.length > 5) {
-                alert("You can only upload a maximum of 5 images.");
-                return;
-            }
-            setImages((prev) => [...prev, ...selectedFiles]);
+        const selectedFiles = Array.from(e.target.files);
+
+        // Limit to 5 images total
+        if (images.length + selectedFiles.length > 5) {
+            alert("You can only upload a maximum of 5 images.");
+            return;
+        }
+
+        setIsCompressing(true);
+
+        try {
+            const compressedFiles = await Promise.all(
+                selectedFiles.map(async (file) => {
+                    // Compress and convert to WebP
+                    const compressedBlob = await imageCompression(file, {
+                        maxSizeMB: 0.8, // 800KB max per image
+                        maxWidthOrHeight: 1920,
+                        useWebWorker: true,
+                        fileType: "image/webp", // Force WebP format
+                    });
+
+                    // Rename the file to ensure it has a .webp extension
+                    const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+
+                    // Convert Blob back to a standard File object
+                    return new File([compressedBlob], newFileName, {
+                        type: "image/webp",
+                    });
+                })
+            );
+
+            setImages((prev) => [...prev, ...compressedFiles]);
+        } catch (error) {
+            console.error("Error compressing images:", error);
+            alert("Failed to process images. Please try again.");
+        } finally {
+            setIsCompressing(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
 
@@ -46,6 +83,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
         setImages((prev) => prev.filter((_, i) => i !== index));
     };
 
+    // 📤 Handles the final form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -55,41 +93,54 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
         setLoading(true);
 
         try {
+            // 1️⃣ Upload compressed WebP images directly to R2 first
+            const uploadedUrls: string[] = [];
+
+            if (images.length > 0) {
+                // Uploading one by one to ensure reliability
+                for (const image of images) {
+                    const url = await uploadToBackend(image);
+                    uploadedUrls.push(url);
+                }
+            }
+
+            // 2️⃣ Prepare FormData with lightweight text/URLs, NOT files
             const formData = new FormData();
-            formData.append("serviceId", activeId); // Action expects "serviceId" usually, or change based on type
             formData.append("rating", rating.toString());
             formData.append("comment", comment);
 
-            // Append all images
-            images.forEach((image) => {
-                formData.append("images", image);
-            });
+            // Pass the array of R2 URLs as a JSON string!
+            // E.g. '["https://pub-xxx.r2.dev/img1.webp", "https://pub-xxx.r2.dev/img2.webp"]'
+            formData.append("images", JSON.stringify(uploadedUrls));
 
             let res;
 
+            // 3️⃣ Call the correct Server Action based on the active ID
             if (serviceId) {
+                formData.append("serviceId", activeId);
                 res = await submitServiceReview(formData);
             } else if (productId) {
-                // Ensure product action expects 'productId' key in formData if different
-                formData.set("productId", activeId);
+                formData.append("productId", activeId);
                 res = await submitProductReview(formData);
             } else if (rentalId) {
-                formData.set("rentalId", activeId);
+                formData.append("rentalId", activeId);
                 res = await submitRentalReview(formData);
             }
 
+            // 4️⃣ Handle Success
             if (res?.success) {
                 setShowSuccessModal(true);
-                // Reset Form
+                // Reset Form completely
                 setRating(0);
                 setComment("");
                 setImages([]);
+                if (fileInputRef.current) fileInputRef.current.value = "";
             } else {
                 alert(res?.error || "Something went wrong.");
             }
         } catch (error) {
-            console.error(error);
-            alert("Failed to submit review.");
+            console.error("Submission error:", error);
+            alert("Failed to submit review. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -137,10 +188,11 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+                            disabled={isCompressing || loading}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
                         >
-                            <FaCamera className="text-slate-400" />
-                            Add Photos
+                            {isCompressing ? <Loader2 className="animate-spin text-slate-400" size={16} /> : <FaCamera className="text-slate-400" />}
+                            {isCompressing ? "Processing..." : "Add Photos"}
                         </button>
                         <span className="text-xs text-slate-400">
                             {images.length} / 5 selected
@@ -171,7 +223,8 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
                                     <button
                                         type="button"
                                         onClick={() => removeImage(index)}
-                                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 transition-colors"
+                                        disabled={loading}
+                                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 transition-colors disabled:opacity-50"
                                     >
                                         <FaXmark size={10} />
                                     </button>
@@ -183,7 +236,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
 
                 {/* Submit Button */}
                 <button
-                    disabled={loading}
+                    disabled={loading || isCompressing}
                     className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-800 disabled:opacity-70 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                 >
                     {loading && <Loader2 className="animate-spin" size={16} />}

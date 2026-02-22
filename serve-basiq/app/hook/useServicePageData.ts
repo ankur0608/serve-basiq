@@ -9,7 +9,6 @@ interface UseServicePageDataProps {
 
 export function useServicePageData({ serviceId, initialUser, session }: UseServicePageDataProps) {
 
-    // 1. User Profile Query
     const userQuery = useQuery({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
@@ -18,12 +17,11 @@ export function useServicePageData({ serviceId, initialUser, session }: UseServi
             return res.json();
         },
         initialData: initialUser,
-        enabled: !!session, // Only fetch if logged in
-        staleTime: 1000 * 60 * 5, // 5 Minutes - Prevents immediate refetching
-        refetchOnWindowFocus: false, // Prevents refetching when clicking between tabs
+        enabled: !!session, 
+        staleTime: 1000 * 60 * 5, 
+        refetchOnWindowFocus: false, 
     });
 
-    // 2. Review Eligibility Query
     const eligibilityQuery = useQuery({
         queryKey: ['review-eligibility', serviceId],
         queryFn: async () => {
@@ -32,7 +30,7 @@ export function useServicePageData({ serviceId, initialUser, session }: UseServi
             return res.json();
         },
         enabled: !!session,
-        staleTime: 1000 * 60 * 5, // 5 Minutes
+        staleTime: 1000 * 60 * 5,
         refetchOnWindowFocus: false,
     });
 

@@ -5,7 +5,6 @@ export interface ProductProps {
     name: string;
     category: string;
     categoryObject?: any;
-    // Single object structure for subcategory
     subcategory?: { id: string; name: string } | null;
     price: number;
     moq: number;
@@ -20,12 +19,9 @@ export interface ProductProps {
     deliveryType: string;
 }
 
-// --- API FETCH FUNCTION ---
 const fetchProductsFn = async (userId?: string): Promise<ProductProps[]> => {
-    // 1. Determine Endpoint
     const endpoint = userId ? '/api/provider/products' : '/api/products/all';
 
-    // 2. Set Options (POST for provider to secure userId, GET for public)
     const options: RequestInit = userId
         ? {
             method: 'POST',
@@ -43,29 +39,23 @@ const fetchProductsFn = async (userId?: string): Promise<ProductProps[]> => {
     const rawData = await res.json();
     let items: any[] = [];
 
-    // 3. Normalize Response Structure
-    // Handles: [..], { data: [...] }, or { products: [...] }
     if (Array.isArray(rawData)) items = rawData;
     else if (rawData.data && Array.isArray(rawData.data)) items = rawData.data;
     else if (rawData.products && Array.isArray(rawData.products)) items = rawData.products;
 
-    // 4. Map to Interface
     return items.map((item: any) => ({
         ...item,
         id: String(item.id),
         name: item.name || "Untitled Product",
 
-        // Handle Category (Object or String)
         category: typeof item.category === 'object' ? item.category?.name : (item.category || "General"),
         categoryObject: item.category,
 
-        // Handle Subcategory
         subcategory: item.subcategory || null,
 
         price: Number(item.price) || 0,
         moq: Number(item.moq) || 1,
         unit: item.unit || 'PIECE',
-        // Fallback image logic
         image: item?.productImage || item.image || item.img || "",
         productImage: item?.productImage || item.image || "",
 
@@ -82,33 +72,26 @@ export const useProducts = (userId?: string) => {
     const queryClient = useQueryClient();
     const queryKey = ['products', userId];
 
-    // --- 1. FETCH QUERY ---
     const { data: products = [], isLoading, error } = useQuery({
         queryKey: queryKey,
         queryFn: () => fetchProductsFn(userId),
-        // Only fetch if we are mounted; infinite staleTime means it won't auto-refetch 
-        // unless invalidated manually or the window is refocused (if refetchOnWindowFocus was true)
         staleTime: Infinity,
         refetchOnWindowFocus: false,
     });
 
-    // --- 2. SAVE MUTATION (Create / Update) ---
     const saveMutation = useMutation({
         mutationFn: async (productData: any) => {
             const isEditing = !!productData.id;
 
-            // Determine Endpoint & Method
             const endpoint = isEditing
                 ? `/api/products/${productData.id}`
                 : '/api/products/create';
 
             const method = isEditing ? 'PATCH' : 'POST';
 
-            // Prepare Payload
             const payload = {
                 userId,
                 ...productData,
-                // Ensure subCategoryId is sent as a string ID, not an object
                 subCategoryId: typeof productData.subcategory === 'object'
                     ? productData.subcategory?.id
                     : productData.subCategoryId
@@ -127,12 +110,10 @@ export const useProducts = (userId?: string) => {
             return data;
         },
         onSuccess: () => {
-            // Force a re-fetch of the product list to show the new/updated item
             queryClient.invalidateQueries({ queryKey });
         },
     });
 
-    // --- 3. DELETE MUTATION ---
     const deleteMutation = useMutation({
         mutationFn: async (productId: string) => {
             const res = await fetch(`/api/products/${productId}`, {

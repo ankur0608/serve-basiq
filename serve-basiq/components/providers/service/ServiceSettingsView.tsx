@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { X, Hammer, Truck } from 'lucide-react';
 import { useServiceForm, ServiceSettingsProps } from './service-logic';
 
-// Import the new 2-Step Components
 import { StepOneDetails, StepTwoMedia } from './steps/StepOneBasic';
 
 const defaultToast = (msg: string, type: 'success' | 'error') => alert(`${type.toUpperCase()}: ${msg}`);
@@ -17,10 +16,8 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
   );
 
   return (
-    // FIX 2: Changed z-[9999] to z-9999
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
 
-      {/* TYPE SELECTION SCREEN */}
       {!serviceData && !initialType ? (
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full relative animate-in zoom-in-95 duration-200">
           <button onClick={onComplete} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
@@ -55,7 +52,6 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
           </div>
         </div>
       ) : (
-        /* MAIN FORM WRAPPER */
         <FormWrapper
           {...props}
           initialType={initialType!}
@@ -66,14 +62,11 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
   );
 }
 
-// ==========================================
-// INTERNAL FORM WRAPPER (Now 2 Steps)
-// ==========================================
 function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & { initialType: 'SERVICE' | 'RENTAL', onBack?: () => void }) {
   const {
     step, setStep, loading, form, categories, loadingCats, activeSubCategories,
     gettingLoc, activeUploadField, listingType,
-    uploading, // FIX 1: Destructure 'uploading' instead of 'processingMsg'
+    uploading,
     handleChange, toggleSubCategory, toggleDay, handleImageUpload, removeGalleryImg,
     handleGetLocation, handleSubmit
   } = useServiceForm({ ...props, preSelectedType: initialType });
@@ -103,7 +96,6 @@ function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & {
         </div>
       </div>
 
-      {/* Form Content Wrapper (With Custom Scrollbar) */}
       <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-50 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 transition-colors p-6">
         <form onSubmit={handleSubmit}>
 
@@ -130,7 +122,6 @@ function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & {
               handleImageUpload={handleImageUpload}
               activeUploadField={activeUploadField}
               removeGalleryImg={removeGalleryImg}
-              // FIX 1 cont.: Map 'uploading' boolean to the string expected by StepTwoMedia
               processingMsg={uploading ? "Uploading..." : undefined}
               loading={loading}
               serviceData={props.serviceData}

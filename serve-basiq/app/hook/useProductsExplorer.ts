@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 
-// --- SHARED TYPES ---
 export interface ProductItem {
     id: string;
     name: string;
@@ -102,7 +101,6 @@ export function useProductsExplorer({
         staleTime: 1000 * 60 * 10,
     });
 
-    // 2. Fetch Favorites
     const { data: favData } = useQuery({
         queryKey: ['favorites', 'user'],
         queryFn: async () => {
@@ -130,7 +128,7 @@ export function useProductsExplorer({
             if (pageParam) params.append('cursor', pageParam as string);
             if (category) params.append('categoryId', category);
             if (subcategory) params.append('subcategoryId', subcategory);
-            if (search) params.append('search', search); // Search is already debounced from parent
+            if (search) params.append('search', search); 
             if (location) params.append('location', location);
             if (sort) params.append('sort', sort);
 
@@ -146,17 +144,13 @@ export function useProductsExplorer({
         refetchOnWindowFocus: false,
     });
 
-    // Flatten pages & Deduplicate
     const rawProducts = useMemo(() => {
         if (!data) return [];
 
-        // 1. Flatten
         const allItems = data.pages.flatMap((page: any) => page.products || page.items || []);
 
-        // 2. Normalize
         const normalizedItems = normalizeProducts(allItems);
 
-        // 3. Deduplication
         const uniqueMap = new Map();
         normalizedItems.forEach((item) => {
             if (!uniqueMap.has(item.id)) {
@@ -167,7 +161,6 @@ export function useProductsExplorer({
         return Array.from(uniqueMap.values());
     }, [data]);
 
-    // 4. Fetch Categories
     const { data: categoriesData } = useQuery({
         queryKey: ['categories', 'product'],
         queryFn: async () => {
@@ -177,7 +170,6 @@ export function useProductsExplorer({
         staleTime: 1000 * 60 * 60 * 24,
     });
 
-    // Toggle Favorite
     const toggleMutation = useMutation({
         mutationFn: async ({ id }: { id: string }) => {
             await fetch('/api/favorites/toggle', {

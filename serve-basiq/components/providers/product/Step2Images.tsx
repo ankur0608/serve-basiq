@@ -18,7 +18,13 @@ interface Step2Props {
 export function Step2Media({ form, uploading, activeUploadField, handleImageUpload, handleGalleryUpload, removeGalleryImg, setStep, isSaving, editingProduct }: Step2Props) {
     const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 
-    const compressionOptions = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
+    // ✅ UPDATED: Added fileType to force conversion to WebP
+    const compressionOptions = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        fileType: "image/webp" as const
+    };
 
     const isVideo = (url: string) => url.match(/\.(mp4|webm)$/i) || url.includes('video');
 
@@ -27,15 +33,22 @@ export function Step2Media({ form, uploading, activeUploadField, handleImageUplo
         if (!file) return;
 
         try {
-            const compressedFile = await imageCompression(file, compressionOptions);
-            const newFile = new File([compressedFile], file.name, { type: file.type });
+            // 1. Compress and convert to WebP
+            const compressedBlob = await imageCompression(file, compressionOptions);
+
+            // 2. Rename file to ensure it has the .webp extension
+            const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+            const newFile = new File([compressedBlob], newFileName, { type: 'image/webp' });
+
+            // 3. Create synthetic event to pass back up to parent
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(newFile);
             const syntheticEvent = { target: { files: dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>;
+
             handleImageUpload(syntheticEvent, 'main');
         } catch (error) {
             console.error("Compression failed", error);
-            handleImageUpload(e, 'main');
+            handleImageUpload(e, 'main'); // Fallback to original file
         }
     };
 
@@ -47,17 +60,23 @@ export function Step2Media({ form, uploading, activeUploadField, handleImageUplo
         const processedFiles: File[] = [];
 
         for (const file of fileArray) {
+            // 📸 Only compress and convert images
             if (file.type.startsWith('image/')) {
                 try {
                     const compressedBlob = await imageCompression(file, compressionOptions);
-                    processedFiles.push(new File([compressedBlob], file.name, { type: file.type }));
+                    const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+                    processedFiles.push(new File([compressedBlob], newFileName, { type: 'image/webp' }));
                 } catch (err) {
-                    processedFiles.push(file);
+                    processedFiles.push(file); // Fallback
                 }
-            } else if (file.type.startsWith('video/')) {
+            }
+            // 🎬 Pass videos directly through without touching them
+            else if (file.type.startsWith('video/')) {
                 processedFiles.push(file);
             }
         }
+
+        // Pass the array of processed WebP files & raw videos back up to parent
         handleGalleryUpload(processedFiles);
     };
 

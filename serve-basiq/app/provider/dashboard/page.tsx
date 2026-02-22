@@ -1,4 +1,3 @@
-// app/provider/dashboard/page.tsx (or wherever your ProviderDashboard is)
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -11,7 +10,6 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-// Components
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
 import { RestrictionModal } from '@/components/providers/RestrictionModal';
 import { ProviderDashboardContent } from '@/components/providers/ProviderDashboardContent';
@@ -22,13 +20,11 @@ export default function ProviderDashboard() {
 
     const { data: dashboardData, isLoading: loading, refetch: refetchDashboard, isError } = useProviderDashboard(currentUser?.id);
 
-    // Local State
     const [activeView, setActiveView] = useState('dashboard');
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
     const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
-    // Data Extraction
     const userData = dashboardData?.user;
     const providerType = dashboardData?.user?.providerType || 'BOTH';
     const isVerified = dashboardData?.isSetupComplete || false;
@@ -75,13 +71,11 @@ export default function ProviderDashboard() {
         setActiveView(view);
     };
 
-    // ✅ SMART HIGHLIGHTING LOGIC
-    // Maps active sub-pages to their main sidebar category
     const getActiveNavId = (view: string) => {
-        if (['settings', 'products', 'add-product'].includes(view)) return 'settings'; // "Management" tab
-        if (['profile', 'edit-profile'].includes(view)) return 'profile';              // "Account" tab
-        if (['requests'].includes(view)) return 'requests';                            // "Operations" tab
-        return 'dashboard';                                                            // "Home" tab
+        if (['settings', 'products', 'add-product'].includes(view)) return 'settings';
+        if (['profile', 'edit-profile'].includes(view)) return 'profile';        
+        if (['requests'].includes(view)) return 'requests';                           
+        return 'dashboard';                                                           
     };
 
     const activeNavId = getActiveNavId(activeView);
@@ -121,7 +115,6 @@ export default function ProviderDashboard() {
                 </div>
             )}
 
-            {/* --- SIDEBAR (Desktop) --- */}
             <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-sm">
                 <div className="flex items-center gap-3 h-20 px-8 border-b border-slate-100">
                     <div className="bg-blue-600 text-white p-2 rounded-xl"><Settings size={24} /></div>
@@ -131,7 +124,6 @@ export default function ProviderDashboard() {
                     </div>
                 </div>
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-                    {/* Notice how we pass `activeNavId` here instead of `activeView` */}
                     <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeNavId} set={handleViewChange} />
                     <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeNavId} set={handleViewChange} badge={dashboardData?.stats?.pendingRequests} />
                     <NavButton id="settings" icon={Package} label="Management" active={activeNavId} set={handleViewChange} />
@@ -148,7 +140,6 @@ export default function ProviderDashboard() {
                 </div>
             </aside>
 
-            {/* --- MAIN CONTENT AREA --- */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 h-20 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20">
                     <div className="flex items-center gap-4">
@@ -179,7 +170,6 @@ export default function ProviderDashboard() {
                 </header>
 
                 <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32 lg:pb-8 scroll-smooth">
-                    {/* Render Extracted Content Component */}
                     <ProviderDashboardContent
                         activeView={activeView}
                         handleViewChange={handleViewChange}
@@ -197,10 +187,8 @@ export default function ProviderDashboard() {
                 </main>
             </div>
 
-            {/* --- MOBILE NAVIGATION --- */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 z-50 pb-safe shadow-lg">
                 <div className="flex justify-around items-center h-16">
-                    {/* Apply `activeNavId` to mobile buttons as well! */}
                     <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeNavId} set={handleViewChange} />
                     <MobileNavBtn id="requests" icon={ClipboardList} label="Ops" active={activeNavId} set={handleViewChange} />
                     <MobileNavBtn id="settings" icon={Package} label="Manage" active={activeNavId} set={handleViewChange} />

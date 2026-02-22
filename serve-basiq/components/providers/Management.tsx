@@ -13,7 +13,6 @@ interface ManagementViewProps {
     providerType: string;
 }
 
-// ✅ ServiceTableRow: Redesigned for perfect Mobile & Desktop viewing
 const ServiceTableRow = memo(
     ({ s, index, onEdit, onDelete }: {
         s: any;
@@ -35,12 +34,10 @@ const ServiceTableRow = memo(
 
         return (
             <tr className="group border-b border-slate-100 last:border-none hover:bg-slate-50/50 transition-colors">
-                {/* 1. Index (Hidden on mobile) */}
                 <td className="py-4 pl-4 md:pl-6 align-middle hidden md:table-cell w-12">
                     <span className="text-sm font-bold text-slate-400">{index + 1 < 10 ? `0${index + 1}` : index + 1}</span>
                 </td>
 
-                {/* 2. Listing Info (Always visible, adapts to mobile) */}
                 <td className="py-4 pl-4 md:pl-0 align-middle w-full sm:w-auto">
                     <div className="flex items-start sm:items-center gap-3 md:gap-4">
                         <div className="h-12 w-12 sm:h-10 sm:w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
@@ -58,12 +55,10 @@ const ServiceTableRow = memo(
                                 </span>
                             </div>
 
-                            {/* Desktop Description */}
                             <p className="text-[10px] text-slate-400 line-clamp-1 hidden sm:block">
                                 {s.desc || 'No description provided'}
                             </p>
 
-                            {/* Mobile-Only Info Block (Visible only on small screens) */}
                             <div className="flex flex-wrap items-center gap-2 mt-2 sm:hidden">
                                 <span className="font-bold text-slate-700 text-xs">
                                     ₹{Number(s.price).toLocaleString()} <span className="text-[9px] text-slate-400 font-medium uppercase">/{getPriceUnit(s.priceType)}</span>
@@ -83,14 +78,12 @@ const ServiceTableRow = memo(
                     </div>
                 </td>
 
-                {/* 3. Category (Hidden on medium/small screens) */}
                 <td className="py-4 align-middle hidden lg:table-cell">
                     <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">
                         {s.category?.name || 'General'}
                     </span>
                 </td>
 
-                {/* 4. Price (Hidden on mobile) */}
                 <td className="py-4 align-middle font-bold text-slate-700 text-sm hidden sm:table-cell">
                     ₹{Number(s.price).toLocaleString()}
                     <span className="text-[10px] text-slate-400 font-medium ml-1 uppercase">
@@ -98,7 +91,6 @@ const ServiceTableRow = memo(
                     </span>
                 </td>
 
-                {/* 5. Status (Hidden on mobile) */}
                 <td className="py-4 align-middle hidden md:table-cell">
                     {s.listingType === 'RENTAL' ? (
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${s.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
@@ -109,7 +101,6 @@ const ServiceTableRow = memo(
                     )}
                 </td>
 
-                {/* 6. Actions (Always visible) */}
                 <td className="py-4 pr-4 md:pr-6 align-middle text-right">
                     <div className="flex justify-end gap-1.5 sm:gap-2">
                         <button onClick={() => onEdit(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-400 transition-colors">
@@ -193,7 +184,7 @@ export function ManagementView({
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 space-y-6">
 
             {providerType === 'BOTH' && !isEditingService && !isCreatingService && (
-                <div className="flex bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
+                <div className="flex bg-white rounded-xl mb-1 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
                     <button onClick={() => setActiveView('settings')} className="flex-1 py-4 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all">Services</button>
                     <button onClick={() => setActiveView('products')} className="flex-1 py-4 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 transition-all">Products</button>
                 </div>
@@ -220,13 +211,11 @@ export function ManagementView({
                 </div>
             ) : (
                 <div className="p-4 md:p-0">
-                    {/* ✅ FIXED: items-start prevents button stretching on mobile */}
                     <div className="flex flex-col sm:flex-row sm:items-center items-start justify-between gap-4 mb-6">
                         <div>
                             <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">My Services</h2>
                             <p className="text-slate-500 text-xs md:text-sm mt-1">Manage your service offerings, rentals, and pricing.</p>
                         </div>
-                        {/* ✅ FIXED: w-fit keeps the button snug to the text on mobile */}
                         <button onClick={handleCreateNew} className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-black transition shadow-lg active:scale-95 w-fit">
                             <Plus size={18} /> Add Service
                         </button>
@@ -249,7 +238,6 @@ export function ManagementView({
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="border-b border-slate-100 bg-slate-50/50">
-                                            {/* ✅ FIXED: Hide non-essential columns on mobile using Tailwind breakpoints */}
                                             <th className="py-4 pl-4 md:pl-6 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell w-12">No.</th>
                                             <th className="py-4 pl-4 md:pl-0 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Listing</th>
                                             <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden lg:table-cell">Category</th>

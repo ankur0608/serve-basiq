@@ -4,17 +4,15 @@ import { useUIStore } from '@/lib/store';
 import { FaArrowLeft, FaBagShopping, FaBoxOpen } from 'react-icons/fa6';
 import Link from 'next/link';
 import ActivityTabs from '@/components/profile/ActivityTabs';
-import { useUserOrders } from '@/app/hook/useProfileQueries'; // ✅ Import Hook
+import { useUserOrders } from '@/app/hook/useProfileQueries';
 
 export default function MyOrdersPage() {
     const { currentUser } = useUIStore();
 
-    // ✅ Use React Query Hook
     const { data: orders = [], isLoading } = useUserOrders();
 
     return (
         <div className="min-h-screen bg-slate-50/50 pb-20">
-            {/* Glassmorphism Header */}
             <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-4 py-4">
                 <div className="max-w-4xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -42,7 +40,6 @@ export default function MyOrdersPage() {
                 ) : orders.length > 0 ? (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                        {/* Summary Card */}
                         <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-6 text-white shadow-lg shadow-emerald-200">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -55,7 +52,6 @@ export default function MyOrdersPage() {
                             </div>
                         </div>
 
-                        {/* List Container - Data is now normalized for ActivityTabs */}
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                             <ActivityTabs data={orders} type="orders" />
                         </div>
@@ -73,7 +69,6 @@ export default function MyOrdersPage() {
     );
 }
 
-// Skeleton Loader
 function OrderSkeleton() {
     return (
         <div className="space-y-4">
@@ -94,7 +89,6 @@ function OrderSkeleton() {
     );
 }
 
-// Empty State Component
 function EmptyState({ title, description, actionLink, actionText }: any) {
     return (
         <div className="flex flex-col items-center justify-center text-center py-16 px-4 animate-in zoom-in-95 duration-500">

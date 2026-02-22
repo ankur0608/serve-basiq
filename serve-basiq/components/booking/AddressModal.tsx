@@ -98,13 +98,24 @@ export default function AddressModal({ isOpen, onClose, initialData, onSave }: A
                         placeholder="e.g. Near Apollo Hospital"
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
+                    {/* City and District Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* <Input
                             label="City"
                             name="city"
                             value={formData.city}
                             onChange={handleChange}
                             placeholder="City"
+                            required
+                        /> */}
+                        <Input
+                            label="Pincode"
+                            name="pincode"
+                            value={formData.pincode}
+                            onChange={handleChange}
+                            placeholder="e.g. 110001"
+                            type="text"
+                            inputMode="numeric"
                             required
                         />
                         <Input
@@ -116,7 +127,8 @@ export default function AddressModal({ isOpen, onClose, initialData, onSave }: A
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* State and Pincode Row */}
+                    <div className="grid grid-cols-2 gap-4">
                         <Input
                             label="State"
                             name="state"
@@ -126,6 +138,14 @@ export default function AddressModal({ isOpen, onClose, initialData, onSave }: A
                             required
                         />
                         <Input
+                            label="City"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleChange}
+                            placeholder="City"
+                            required
+                        />
+                        {/* <Input
                             label="Pincode"
                             name="pincode"
                             value={formData.pincode}
@@ -134,7 +154,7 @@ export default function AddressModal({ isOpen, onClose, initialData, onSave }: A
                             type="text"
                             inputMode="numeric"
                             required
-                        />
+                        /> */}
                     </div>
                 </form>
 

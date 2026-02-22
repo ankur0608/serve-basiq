@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { uploadToR2 } from "@/lib/r2";
 
 export async function submitServiceReview(formData: FormData) {
     console.log("🚀 [Action] submitServiceReview started");
@@ -20,11 +19,12 @@ export async function submitServiceReview(formData: FormData) {
         const rating = Number(formData.get("rating"));
         const comment = formData.get("comment") as string;
 
+        // 1. Verify the user actually booked and completed this service
         const booking = await prisma.booking.findFirst({
             where: {
                 userId: session.user.id,
                 serviceId: serviceId,
-                status: "COMPLETED", 
+                status: "COMPLETED",
             },
             include: {
                 service: true,
@@ -38,28 +38,24 @@ export async function submitServiceReview(formData: FormData) {
             };
         }
 
-        const files = formData.getAll("images") as File[];
-        const uploadedImageUrls: string[] = [];
+        // 🚀 2. Parse the lightweight JSON string of URLs sent from the frontend!
+        // No more buffers, no more heavy RAM usage, no more OOM errors.
+        const imagesJson = formData.get("images") as string;
+        let uploadedImageUrls: string[] = [];
 
-        if (files && files.length > 0) {
-            console.log(`📸 [Action] Processing ${files.length} images...`);
-
-            for (const file of files) {
-                if (!file || file.size === 0) continue;
-
-                const arrayBuffer = await file.arrayBuffer();
-                const buffer = Buffer.from(arrayBuffer);
-
-                const timestamp = Date.now();
-                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "");
-
-                const key = `reviews/${timestamp}-${safeName}`;
-
-                const url = await uploadToR2(key, buffer, file.type);
-                if (url) uploadedImageUrls.push(url);
-            }
+        try {
+            // Safely parse the JSON string back into a TypeScript array
+            uploadedImageUrls = imagesJson ? JSON.parse(imagesJson) : [];
+        } catch (parseError) {
+            console.error("Failed to parse image URLs:", parseError);
+            uploadedImageUrls = [];
         }
 
+        if (uploadedImageUrls.length > 0) {
+            console.log(`📸 [Action] Saving ${uploadedImageUrls.length} image URLs to database...`);
+        }
+
+        // 3. Database Transaction: Create review and update service rating instantly
         await prisma.$transaction(async (tx) => {
             await tx.review.create({
                 data: {
@@ -67,8 +63,8 @@ export async function submitServiceReview(formData: FormData) {
                     comment,
                     serviceId,
                     authorId: session.user.id,
-                    userId: booking.service.userId, 
-                    images: uploadedImageUrls,
+                    userId: booking.service.userId,
+                    images: uploadedImageUrls, // Instantly save the string array!
                 },
             });
 
@@ -86,7 +82,9 @@ export async function submitServiceReview(formData: FormData) {
             timeout: 10000
         });
 
+        // 4. Update the UI
         revalidatePath(`/services/${serviceId}`);
+        console.log("✅ [Action] Review submitted successfully!");
         return { success: true };
 
     } catch (error: any) {

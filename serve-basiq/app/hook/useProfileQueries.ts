@@ -14,7 +14,7 @@ interface UserStats {
 interface FavoriteDetails {
     services: any[];
     products: any[];
-    rentals: any[]; // ✅ Added rentals array
+    rentals: any[];
 }
 
 interface UpdateProfileParams {
@@ -23,7 +23,6 @@ interface UpdateProfileParams {
     currentUser: any;
 }
 
-// --- 1. Hook for User Stats ---
 export function useUserStats() {
     return useQuery<UserStats>({
         queryKey: ['user', 'stats'],
@@ -32,19 +31,17 @@ export function useUserStats() {
             if (!res.ok) throw new Error('Failed to fetch stats');
             return res.json();
         },
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        gcTime: 1000 * 60 * 30,   // 30 minutes
+        staleTime: 1000 * 60 * 5, 
+        gcTime: 1000 * 60 * 30,   
         refetchOnWindowFocus: false,
     });
 }
 
-// --- 2. Hook for Favorites Details ---
 export function useFavoritesDetails() {
     return useQuery<FavoriteDetails>({
         queryKey: ['favorites', 'details'],
         queryFn: async () => {
             const res = await fetch('/api/user/favorites/details');
-            // ✅ Fallback includes rentals
             if (!res.ok) return { services: [], products: [], rentals: [] };
             return res.json();
         },
@@ -54,7 +51,6 @@ export function useFavoritesDetails() {
     });
 }
 
-// --- 3. Hook for Fetching Profile ---
 export function useUserProfile() {
     return useQuery({
         queryKey: ['user', 'profile'],
@@ -70,7 +66,6 @@ export function useUserProfile() {
     });
 }
 
-// --- 4. Hook for Active Bookings ---
 export function useActiveBookings() {
     return useQuery({
         queryKey: ['user', 'bookings', 'active'],
@@ -85,7 +80,6 @@ export function useActiveBookings() {
     });
 }
 
-// --- 5. Hook for Updating Profile (Mutation) ---
 export function useUpdateProfile() {
     const queryClient = useQueryClient();
     const { update: updateSession, data: session } = useSession();
@@ -93,13 +87,11 @@ export function useUpdateProfile() {
 
     return useMutation({
         mutationFn: async ({ formData, file, currentUser }: UpdateProfileParams) => {
-            // @ts-ignore
             const userId = currentUser?.id || session?.user?.id;
             if (!userId) throw new Error("User ID not found");
 
             let uploadedImageUrl = formData.image;
 
-            // 1. Handle Image Compression & Upload
             if (file) {
                 let fileToUpload = file;
                 if (file.type.startsWith("image/")) {
@@ -130,7 +122,6 @@ export function useUpdateProfile() {
                 }
             }
 
-            // 2. Prepare Payload
             const payload = {
                 userId,
                 ...formData,
@@ -138,7 +129,6 @@ export function useUpdateProfile() {
                 profileImage: uploadedImageUrl,
             };
 
-            // 3. API Call to Update Profile
             const updateRes = await fetch("/api/user/profile", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -153,7 +143,6 @@ export function useUpdateProfile() {
             const { payload, uploadedImageUrl } = data;
             const { currentUser, formData } = variables;
 
-            // 4. Update Store (Optimistic-ish)
             const updatedUser = {
                 ...currentUser,
                 ...formData,
@@ -171,13 +160,10 @@ export function useUpdateProfile() {
 
             setCurrentUser(updatedUser);
 
-            // 5. Update NextAuth Session
             await updateSession({ name: formData.name, image: uploadedImageUrl });
 
-            // 6. Invalidate React Query Cache
             queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
 
-            // 7. Close Modal
             onCloseEditProfile();
         },
         onError: (error) => {
@@ -186,7 +172,6 @@ export function useUpdateProfile() {
     });
 }
 
-// --- 6. Hook for User Orders ---
 export function useUserOrders() {
     return useQuery({
         queryKey: ['user', 'orders'],

@@ -12,7 +12,6 @@ import clsx from 'clsx';
 import { useUIStore } from '@/lib/store';
 import { useProviderRequests } from '@/app/hook/useProviderRequests';
 
-// --- Types ---
 interface RequestsViewProps {
     showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
     providerType: string;
@@ -29,7 +28,6 @@ const formatCurrency = (amount: number) => {
     }).format(amount);
 };
 
-// --- SUB-COMPONENT: Request Card ---
 const RequestCard = ({
     data,
     onAction,
@@ -146,7 +144,6 @@ const RequestCard = ({
             </div>
 
             <div className="p-4 pt-0 mt-auto">
-                {/* 1. PENDING REQUESTS (All Types) */}
                 {['REQUESTED', 'PENDING'].includes(data.displayStatus) && (
                     <div className="grid grid-cols-2 gap-3">
                         <button
@@ -166,7 +163,6 @@ const RequestCard = ({
                     </div>
                 )}
 
-                {/* 2. SERVICES & RENTALS */}
                 {(data.type === 'BOOKING' || data.type === 'RENTAL') && (
                     <>
                         {['ACCEPTED', 'APPROVED', 'IN_PROGRESS', 'ACTIVE'].includes(data.displayStatus) && (
@@ -187,7 +183,6 @@ const RequestCard = ({
                     </>
                 )}
 
-                {/* 3. PRODUCT WORKFLOW */}
                 {data.type === 'ORDER' && (
                     <>
                         {data.displayStatus === 'ACCEPTED' && (
@@ -209,7 +204,6 @@ const RequestCard = ({
                     </>
                 )}
 
-                {/* 4. CLOSED STATE */}
                 {['COMPLETED', 'DELIVERED', 'CANCELLED', 'REJECTED', 'RETURNED'].includes(data.displayStatus) && (
                     <div className="w-full py-2.5 rounded-xl bg-slate-50 text-slate-400 font-bold text-xs border border-slate-100 text-center flex items-center justify-center gap-2 cursor-not-allowed">
                         {['CANCELLED', 'REJECTED'].includes(data.displayStatus) ? (
@@ -230,9 +224,6 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
     const { data, isLoading, refetch } = useProviderRequests(currentUser?.id, providerType);
     const bookings = data?.bookings || [];
     const orders = data?.orders || [];
-    // Initialize active tab as 'ALL' or 'PENDING' based on preference. 
-    // Since you want ALL first, I set default to 'PENDING' (most important) or 'ALL' (if you prefer). 
-    // Leaving as 'PENDING' for focus, but 'ALL' is now first in the list.
     const [activeTab, setActiveTab] = useState<TabType>('PENDING');
     const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -325,9 +316,8 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
         }
     };
 
-    // --- MODIFIED: 'ALL' moved to first position ---
     const statusTabs: { id: TabType; label: string; icon: any }[] = [
-        { id: 'ALL', label: 'All', icon: Filter }, // Moved to first
+        { id: 'ALL', label: 'All', icon: Filter },
         { id: 'PENDING', label: 'Pending', icon: Clock },
         { id: 'ACTIVE', label: 'Active', icon: Truck },
         { id: 'COMPLETED', label: 'Done', icon: CheckCircle2 },
@@ -340,8 +330,7 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 {providerType === 'BOTH' ? (
-                    <div className="flex w-full md:w-auto bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
-                        {/* --- MODIFIED: Added responsive padding (px-2 md:px-16) to fix mobile overflow --- */}
+                    <div className="flex w-full md:w-auto bg-white rounded-xl mb-1 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
                         <button
                             onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }}
                             className={clsx(

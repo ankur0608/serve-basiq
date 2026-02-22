@@ -31,23 +31,18 @@ export default function ProfilePage() {
         onCloseEditProfile,
     } = useUIStore();
 
-    // 1. Fetch Data
-    const { data: profileDataFromApi, isLoading, error, refetch } = useUserProfile(); // 👈 Added refetch
+    const { data: profileDataFromApi, isLoading, error, refetch } = useUserProfile();
 
-    // Use 'mutateAsync' instead of 'mutate' to get a Promise
     const { mutateAsync: updateProfile, isPending: isSaving } = useUpdateProfile();
 
     const [isHydrated, setIsHydrated] = useState(false);
 
-    // 👉 NEW: State to manage the Phone Verification Modal
     const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
 
-    // Wait for Zustand hydration
     useEffect(() => {
         setIsHydrated(true);
     }, []);
 
-    // Sync Hook Data to Zustand Store
     useEffect(() => {
         if (profileDataFromApi) {
             setCurrentUser(profileDataFromApi);
@@ -112,10 +107,8 @@ export default function ProfilePage() {
             <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20 space-y-6">
                 <ProfileStats />
 
-                {/* ✅ BECOME A PARTNER BANNER */}
                 {!userAny.isWorker && (
                     <div className="bg-slate-900 rounded-2xl p-6 relative overflow-hidden shadow-md">
-                        {/* Background Watermark Icon */}
                         <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
                             <FaBriefcase className="w-48 h-48 text-white" />
                         </div>
@@ -150,7 +143,6 @@ export default function ProfilePage() {
                             icon={<FaBoxOpen className="text-blue-600" />}
                             label="My Orders"
                         />
-                        {/* ✅ Added Favourites Link */}
                         <MenuLink
                             href="/favorites"
                             icon={<FaHeart className="text-pink-500" />}
@@ -165,15 +157,14 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
-                {/* EDIT MODAL */}
                 <ProfileEditModal
                     isOpen={isEditProfileOpen}
                     onClose={onCloseEditProfile}
                     initialData={profileData}
-                    isPhoneLocked={true} // 👈 Lock phone field so they must use the OTP modal
+                    isPhoneLocked={true} 
                     onAddPhoneClick={() => {
-                        onCloseEditProfile(); // Close edit modal
-                        setIsPhoneModalOpen(true); // Open phone verification modal
+                        onCloseEditProfile(); 
+                        setIsPhoneModalOpen(true);
                     }}
                     onSave={async (formData, file) => {
                         await updateProfile({ formData, file, currentUser: userAny });
@@ -186,12 +177,12 @@ export default function ProfilePage() {
                     isOpen={isPhoneModalOpen}
                     onClose={() => {
                         setIsPhoneModalOpen(false);
-                        onOpenEditProfile(); // Re-open Edit Modal if they cancel
+                        onOpenEditProfile();
                     }}
                     onSuccess={() => {
                         setIsPhoneModalOpen(false);
-                        refetch(); // Reload user data from API to get the new phone number
-                        onOpenEditProfile(); // Re-open Edit Modal to show the verified number
+                        refetch();
+                        onOpenEditProfile(); 
                     }}
                 />
             </div>

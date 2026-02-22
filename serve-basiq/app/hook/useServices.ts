@@ -15,22 +15,15 @@ export function useServices(userId: string | undefined) {
             return res.json();
         },
         enabled: !!userId,
-
-        // ✅ CRITICAL CACHING SETTINGS
-        // 1. Infinity: Data is "fresh" forever. Navigating away and back WON'T trigger a fetch.
         staleTime: Infinity,
 
-        // 2. Garbage Collection: Keep data in memory for 24 hours even if unused.
         gcTime: 1000 * 60 * 60 * 24,
 
-        // 3. Window Focus: Don't refetch just because the user clicked a different tab.
         refetchOnWindowFocus: false,
 
-        // 4. Mount: Don't refetch if component remounts and data is already in cache.
         refetchOnMount: false
     });
 
-    // ✅ DELETE MUTATION (Triggers Refetch)
     const deleteMutation = useMutation({
         mutationFn: async ({ id, type }: { id: string; type: 'SERVICE' | 'RENTAL' }) => {
             const res = await fetch('/api/provider/services', {
@@ -42,7 +35,6 @@ export function useServices(userId: string | undefined) {
             return res.json();
         },
         onSuccess: () => {
-            // ⚡ This forces the API to call again ONLY when you delete an item
             queryClient.invalidateQueries({ queryKey });
         },
     });

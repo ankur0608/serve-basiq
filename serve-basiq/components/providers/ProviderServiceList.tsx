@@ -13,7 +13,6 @@ interface ManagementViewProps {
     providerType: string;
 }
 
-// ✅ ServiceTableRow: Updated to handle Rentals & Services
 const ServiceTableRow = memo(
     ({ s, index, onEdit, onDelete }: {
         s: any;
@@ -22,10 +21,8 @@ const ServiceTableRow = memo(
         onDelete: (payload: { id: string; type: 'SERVICE' | 'RENTAL' }) => void;
     }) => {
 
-        // Normalize Image
         const imageSrc = s.img || "";
 
-        // Helper for Price Label
         const getPriceUnit = (type: string) => {
             switch (type) {
                 case 'HOURLY': return 'hr';
@@ -52,7 +49,6 @@ const ServiceTableRow = memo(
                         <div>
                             <div className="flex items-center gap-2">
                                 <p className="font-bold text-slate-900 text-sm">{s.name}</p>
-                                {/* Type Badge */}
                                 <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${s.listingType === 'RENTAL' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
                                     {s.listingType === 'RENTAL' ? 'Rental' : 'Service'}
                                 </span>
@@ -99,14 +95,12 @@ export function ManagementView({
     providerType
 }: ManagementViewProps) {
 
-    // ✅ FIXED: Now correctly extracts rentals from the hook
     const { services: rawServices, rentals: rawRentals, isLoading, refetch, deleteItem } = useServices(currentUser?.id);
 
     const [selectedServiceToEdit, setSelectedServiceToEdit] = useState<any>(null);
     const [isEditingService, setIsEditingService] = useState(false);
     const [isCreatingService, setIsCreatingService] = useState(false);
 
-    // ✅ FIXED: Merges Services and Rentals into one list
     const allListings = useMemo(() => {
         const sList = (rawServices || []).map((svc: any) => ({
             ...svc,
@@ -160,7 +154,6 @@ export function ManagementView({
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 space-y-6">
 
-            {/* --- TAB TOGGLE --- */}
             {providerType === 'BOTH' && !isEditingService && !isCreatingService && (
                 <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
                     <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all">Services</button>
@@ -168,7 +161,6 @@ export function ManagementView({
                 </div>
             )}
 
-            {/* --- Main Content --- */}
             {isEditingService || isCreatingService ? (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div className="px-6 py-5 border-b bg-white flex justify-between items-center">

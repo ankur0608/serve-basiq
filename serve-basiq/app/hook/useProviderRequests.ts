@@ -14,6 +14,6 @@ export const useProviderRequests = (userId: string | undefined, providerType: st
             return res.json();
         },
         enabled: !!userId,
-        staleTime: 1000 * 60 * 2, // Cache for 2 minutes
+        staleTime: 1000 * 60 * 2,
     });
 };

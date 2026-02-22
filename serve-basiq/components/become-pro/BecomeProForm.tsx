@@ -93,13 +93,13 @@ export default function BecomeProForm() {
                         onGetLocation={handleGetLocation}
                         gettingLoc={gettingLoc}
                     />
-
+{/* 
                     {Object.keys(errors).length > 0 && (
                         <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 text-sm font-bold border border-red-100 animate-in fade-in slide-in-from-bottom-2">
                             <AlertTriangle size={20} className="shrink-0" />
                             <span>Please fix the highlighted errors before submitting.</span>
                         </div>
-                    )}
+                    )} */}
 
                     <button
                         type="submit"

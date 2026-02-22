@@ -1,7 +1,6 @@
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-// --- SHARED TYPES ---
 export interface RentalItem {
     id: string;
     name: string;
@@ -58,7 +57,6 @@ const normalizeRentals = (data: any[]): RentalItem[] => {
             priceType: displayType,
             rating: Number(item.rating) || 0,
             reviewCount: item._count?.reviews || 0,
-            // Map location to the User's Work address array safely
             location: item.user?.addresses?.[0]?.city || item.city || "Remote",
             image: item.rentalImg || item.coverImg || "https://images.unsplash.com/photo-1580587771525-78b9dba3b91d?auto=format&fit=crop&q=80",
             type: 'Rental',
@@ -105,7 +103,6 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
     const { data: favoriteIds = [] } = useQuery<string[]>({
         queryKey: ['favorites', 'RENTAL'],
         queryFn: async () => {
-            // 👇 Make sure this URL matches your actual GET route for favorites
             const res = await fetch('/api/favorites?type=RENTAL');
             if (!res.ok) return [];
             const data = await res.json();
@@ -116,10 +113,8 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
         staleTime: 1000 * 60 * 5,
     });
 
-    // Toggle favorite mutation with Optimistic UI updates
     const { mutate: toggleFavorite } = useMutation({
         mutationFn: async ({ id, type }: { id: string; type: 'RENTAL' | 'SERVICE' }) => {
-            // 👇 THIS WAS CAUSING THE 405 ERROR. IT IS NOW FIXED.
             const res = await fetch('/api/favorites/toggle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -128,7 +123,6 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
             if (!res.ok) throw new Error('Failed to toggle favorite');
             return res.json();
         },
-        // Optimistic UI update
         onMutate: async ({ id }) => {
             await queryClient.cancelQueries({ queryKey: ['favorites', 'RENTAL'] });
 
@@ -140,13 +134,11 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
 
             return { previousFavorites };
         },
-        // Rollback on error
         onError: (err, variables, context) => {
             if (context?.previousFavorites) {
                 queryClient.setQueryData(['favorites', 'RENTAL'], context.previousFavorites);
             }
         },
-        // Refetch on settle
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['favorites', 'RENTAL'] });
         }
@@ -204,7 +196,7 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
-        favoriteIds,      // ✅ Exported here
-        toggleFavorite    // ✅ Exported here
+        favoriteIds,      
+        toggleFavorite    
     };
 }

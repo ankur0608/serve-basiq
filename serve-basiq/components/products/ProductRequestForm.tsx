@@ -6,9 +6,9 @@ import {
     Package, Calculator, ArrowRight, CheckCircle2,
     StickyNote, ChevronRight
 } from 'lucide-react';
-import ProfileEditModal, { ProfileData } from '@/components/profile/ProfileEditModal';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
+import AddressModal from '@/components/booking/AddressModal';
 
 interface Props {
     productId: string;
@@ -88,7 +88,7 @@ export default function ProductRequestForm({
         setIsAddressModalOpen(true);
     };
 
-    const handleSaveAddress = async (data: ProfileData) => {
+    const handleSaveAddress = async (data: any) => {
         const newAddress = {
             id: editingAddress?.id || `temp-${Date.now()}`,
             userId,
@@ -191,18 +191,9 @@ export default function ProductRequestForm({
         }
     };
 
-    const getModalInitialData = (): ProfileData => {
-        const defaults = {
-            dateOfBirth: userDetails?.dob || "",
-            preferredLanguage: userDetails?.preferredLanguage || "English",
-            name: userDetails?.name || "",
-            email: userDetails?.email || "",
-            phone: userDetails?.phone || ""
-        };
-
+    const getModalInitialData = () => {
         if (editingAddress) {
             return {
-                ...defaults,
                 addressLine1: editingAddress.line1 || "",
                 addressLine2: editingAddress.line2 || "",
                 landmark: editingAddress.landmark || "",
@@ -213,7 +204,6 @@ export default function ProductRequestForm({
             };
         }
         return {
-            ...defaults,
             addressLine1: "",
             addressLine2: "",
             landmark: "",
@@ -392,13 +382,11 @@ export default function ProductRequestForm({
 
             {/* NESTED ADDRESS MODAL */}
             {isAddressModalOpen && (
-                <ProfileEditModal
+                <AddressModal
                     isOpen={isAddressModalOpen}
                     onClose={() => setIsAddressModalOpen(false)}
                     initialData={getModalInitialData()}
                     onSave={handleSaveAddress}
-                    isEmailLocked={true}
-                    isPhoneLocked={true}
                 />
             )}
         </div>

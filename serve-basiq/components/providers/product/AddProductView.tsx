@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
-import { uploadImage } from '@/lib/upload';
 import { X } from 'lucide-react';
+
+// 🌟 Import your new reusable upload function!
+import { uploadToBackend } from '@/lib/uploadToBackend';
 
 // Import New 2-Step Components
 import { Step1Details } from './Step1Info';
@@ -84,6 +86,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
+    // 🚀 UPDATED: Uses uploadToBackend for the main image
     const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, target: 'main') => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -92,7 +95,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField(target);
 
         try {
-            const url = await uploadImage(file);
+            const url = await uploadToBackend(file);
             setForm(prev => ({ ...prev, productImage: url }));
             showToast("Main image uploaded!", "success");
         } catch (e) {
@@ -104,6 +107,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         }
     }, [showToast]);
 
+    // 🚀 UPDATED: Uses uploadToBackend for multiple gallery images/videos
     const handleGalleryUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
 
@@ -111,7 +115,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField('gallery');
 
         try {
-            const uploadPromises = files.map(file => uploadImage(file));
+            // Uploading all selected media concurrently
+            const uploadPromises = files.map(file => uploadToBackend(file));
             const uploadedUrls = await Promise.all(uploadPromises);
 
             setForm(prev => ({
@@ -119,10 +124,10 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                 gallery: [...prev.gallery, ...uploadedUrls]
             }));
 
-            showToast(`${uploadedUrls.length} images added to gallery`, "success");
+            showToast(`${uploadedUrls.length} items added to gallery`, "success");
         } catch (e) {
             console.error(e);
-            showToast("One or more images failed to upload", "error");
+            showToast("One or more items failed to upload", "error");
         } finally {
             setUploading(false);
             setActiveUploadField(null);
@@ -139,7 +144,12 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!form.productImage) return showToast("Main product image is required", "error");
+
+        // Final validation before sending to the backend hook
+        if (!form.productImage) {
+            showToast("Main product image is required", "error");
+            return;
+        }
 
         const payload = {
             id: editingProduct?.id,
@@ -160,7 +170,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const closeForm = useCallback(() => setActiveView('products'), [setActiveView]);
 
     return (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-2xl w-full mx-auto relative flex flex-col max-h-[90vh]">
 
                 <button onClick={closeForm} className="absolute top-4 right-4 z-10 text-white/70 hover:text-white transition">
