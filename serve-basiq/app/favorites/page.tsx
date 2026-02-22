@@ -7,16 +7,14 @@ import { FaArrowLeft, FaHeart, FaBoxOpen, FaBriefcase, FaKey } from 'react-icons
 import { HeartCrack, Loader2 } from 'lucide-react';
 import ServiceCard from '@/components/ui/ServiceCard';
 import ProductCard from '@/components/ui/ProductCard';
-import RentalCard from '@/components/ui/RentalCard'; // ✅ Added RentalCard
+import RentalCard from '@/components/ui/RentalCard'; 
 
 export default function FavoritesPage() {
     const router = useRouter();
     const queryClient = useQueryClient();
 
-    // ✅ Added RENTALS tab
     const [activeTab, setActiveTab] = useState<'SERVICES' | 'PRODUCTS' | 'RENTALS'>('SERVICES');
 
-    // 1. Fetch Detailed Favorites
     const { data, isLoading } = useQuery({
         queryKey: ['favorites', 'details'],
         queryFn: async () => {
@@ -26,7 +24,6 @@ export default function FavoritesPage() {
         },
     });
 
-    // 2. Toggle Favorite Mutation
     const toggleFavMutation = useMutation({
         mutationFn: async ({ id, type }: { id: string, type: 'SERVICE' | 'PRODUCT' | 'RENTAL' }) => {
             await fetch('/api/favorites/toggle', {
@@ -40,17 +37,14 @@ export default function FavoritesPage() {
         }
     });
 
-    // Safe access with defaults
     const services = data?.services || [];
     const products = data?.products || [];
     const rentals = data?.rentals || [];
 
-    // Determine which list to render
     const activeList = activeTab === 'SERVICES' ? services : (activeTab === 'PRODUCTS' ? products : rentals);
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
-            {/* Header */}
             <div className="bg-white border-b sticky top-0 z-10 px-4 py-4 shadow-sm">
                 <div className="max-w-5xl mx-auto flex items-center gap-4">
                     <button onClick={() => router.back()} className="p-2 hover:bg-slate-100 rounded-full text-slate-600 transition-colors">

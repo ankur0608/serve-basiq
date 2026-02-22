@@ -5,7 +5,6 @@ export async function PATCH(req: Request) {
     try {
         const { bookingId, status } = await req.json();
 
-        // ✅ Updated Valid Statuses based on your new Schema
         const validStatuses = [
             'REQUESTED',
             'ACCEPTED',

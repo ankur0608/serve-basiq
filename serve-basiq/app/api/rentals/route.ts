@@ -142,12 +142,11 @@ export async function GET(req: Request) {
         // Filters
         const userId = searchParams.get("userId");
         const categoryId = searchParams.get("categoryId");
-        const subcategoryId = searchParams.get("subcategoryId"); // 👈 Added
+        const subcategoryId = searchParams.get("subcategoryId");
         const search = searchParams.get("search");
-        const location = searchParams.get("location"); // 👈 Added
-        const sort = searchParams.get("sort"); // 👈 Added
+        const location = searchParams.get("location"); 
+        const sort = searchParams.get("sort"); 
 
-        // 🔒 STRICT REQUIREMENT: Verified rentals and users only
         const where: any = {
             isVerified: true,
             user: { isVerified: true }
@@ -157,7 +156,6 @@ export async function GET(req: Request) {
         if (categoryId) where.categoryId = categoryId;
         if (subcategoryId) where.subCategoryId = subcategoryId;
 
-        // ✅ LOCATION FILTER: Using Address table Work type
         if (location) {
             where.user = {
                 ...where.user,
@@ -170,7 +168,6 @@ export async function GET(req: Request) {
             };
         }
 
-        // Add Search safely
         if (search) {
             where.AND = [
                 {
@@ -182,7 +179,6 @@ export async function GET(req: Request) {
             ];
         }
 
-        // --- BUILD PRISMA ORDER BY CLAUSE ---
         let orderBy: any = { createdAt: "desc" };
         switch (sort) {
             case "price_asc":
@@ -194,19 +190,16 @@ export async function GET(req: Request) {
             case "popular":
                 orderBy = { reviews: { _count: "desc" } };
                 break;
-            // Add rating here if added to schema later
         }
 
-        // Include relations
         const includeObj = {
             category: { select: { id: true, name: true } },
             subcategory: { select: { id: true, name: true } },
-            _count: { select: { reviews: true } }, // 👈 Needed for sorting popular
+            _count: { select: { reviews: true } }, 
             user: {
                 select: {
                     id: true, name: true, image: true, phone: true,
                     isVerified: true, shopName: true,
-                    // Pull the Work address so frontend can map the location
                     addresses: {
                         where: { type: 'Work' },
                         select: { city: true }
@@ -241,14 +234,10 @@ export async function GET(req: Request) {
     }
 }
 
-// ... POST handler remains completely unchanged ...
-
-// --- POST HANDLER ---
 export async function POST(req: Request) {
     try {
         const body = await req.json();
 
-        // Destructure body
         const {
             id, userId, name, desc, rentalImg, coverImg, gallery,
             categoryId, subCategoryId, subCategoryIds,
@@ -257,7 +246,6 @@ export async function POST(req: Request) {
             itemCondition, securityDeposit, minDuration, rentalMode
         } = body;
 
-        // Validation
         if (!userId || !name || !rentalImg || !price || !categoryId) {
             return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
         }

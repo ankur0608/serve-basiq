@@ -3,7 +3,6 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// --- RATE LIMITER SETUP ---
 const globalForVerifyLimit = globalThis as unknown as { otpVerifyMap: Map<string, number[]> };
 const otpVerifyMap = globalForVerifyLimit.otpVerifyMap || new Map<string, number[]>();
 if (process.env.NODE_ENV !== "production") globalForVerifyLimit.otpVerifyMap = otpVerifyMap;
@@ -19,7 +18,6 @@ function checkVerifyRateLimit(key: string, limit: number, windowMs: number) {
   otpVerifyMap.set(key, recentAttempts);
   return true;
 }
-// --------------------------
 
 export async function POST(req: Request) {
   try {
@@ -32,14 +30,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing phone or OTP" }, { status: 400 });
     }
 
-    // ⏳ RATE LIMIT: Max 5 verification attempts per 5 minutes
     const isAllowed = checkVerifyRateLimit(`verify_${phone}`, 5, 5 * 60 * 1000);
     if (!isAllowed) {
       console.log("❌ [API] Rate limit exceeded for:", phone);
       return NextResponse.json({ error: "Too many attempts. Try again in 5 minutes." }, { status: 429 });
     }
 
-    // 1. Verify OTP
     console.log("🔍 [API] Searching for OTP record...");
     const record = await prisma.otp.findFirst({
       where: { phone, code: otp },
@@ -57,14 +53,10 @@ export async function POST(req: Request) {
 
     console.log("✅ [API] OTP Verified successfully.");
 
-    // (Clear rate limit map for this phone upon success so they aren't punished for future logins)
     otpVerifyMap.delete(`verify_${phone}`);
 
     let user;
 
-    // ============================================================
-    // SCENARIO A: Account Linking (userId provided)
-    // ============================================================
     if (userId) {
       console.log(`🔗 [API] Scenario A: Linking phone to UserID: ${userId}`);
 
@@ -81,10 +73,6 @@ export async function POST(req: Request) {
       });
       console.log("✅ [API] Account Linked Successfully.");
     }
-
-    // ============================================================
-    // SCENARIO B: Login / Register (No userId provided)
-    // ============================================================
     else {
       console.log("👤 [API] Scenario B: Standard Login/Register Flow");
 
@@ -132,7 +120,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Cleanup
     console.log("🧹 [API] Deleting used OTP...");
     await prisma.otp.deleteMany({ where: { phone } });
 

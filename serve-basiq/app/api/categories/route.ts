@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CategoryType } from "@prisma/client";
 
-// Force dynamic ensures we don't cache stale data on the server side
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {

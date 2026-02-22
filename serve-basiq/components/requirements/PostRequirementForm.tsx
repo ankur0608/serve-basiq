@@ -8,7 +8,6 @@ import clsx from 'clsx';
 import Input from '@/components/ui/Input';
 import LoginModal from '@/components/auth/LoginModal';
 
-// Adjust these relative imports based on where you save this file!
 import SuccessScreen from './SuccessScreen';
 import RequirementTypeSelector from './RequirementTypeSelector';
 import TimelineDropdown, { TimelineType } from './TimelineDropdown';

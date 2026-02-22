@@ -24,12 +24,10 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
         }
 
-        // ✅ Date Handling: Ensure empty string doesn't crash Date constructor
         const validDob = dob && dob !== "" ? new Date(dob) : null;
 
         await prisma.$transaction(async (tx) => {
 
-            // 🔍 LOG: See what we are about to save to the User table
             console.log("📝 UPDATING USER:", {
                 userId,
                 name: fullName,
@@ -47,8 +45,8 @@ export async function POST(req: Request) {
                     providerType: providerType || "BOTH",
                     shopName,
                     gender,
-                    dob: validDob, // ✅ Fixed Date Logic
-                    preferredLanguage: preferredLanguage || "English", // ✅ Default fallback
+                    dob: validDob, 
+                    preferredLanguage: preferredLanguage || "English", 
                     instagramUrl,
                     facebookUrl,
                     youtubeUrl,
@@ -85,7 +83,6 @@ export async function POST(req: Request) {
 
             console.log("⛓️ 3. Standardizing Address Logic...");
 
-            // Prepare address objects
             const homeData = {
                 line1: addressLine1,
                 line2: addressLine2 || "",
@@ -106,7 +103,6 @@ export async function POST(req: Request) {
                 country: "India"
             };
 
-            // Home Address Logic
             const existingHome = await tx.address.findFirst({ where: { userId, type: "Home" } });
             if (existingHome) {
                 await tx.address.update({ where: { id: existingHome.id }, data: homeData });
@@ -114,7 +110,6 @@ export async function POST(req: Request) {
                 await tx.address.create({ data: { ...homeData, userId, type: "Home" } });
             }
 
-            // Work Address Logic
             const existingWork = await tx.address.findFirst({ where: { userId, type: "Work" } });
             if (existingWork) {
                 await tx.address.update({ where: { id: existingWork.id }, data: workData });

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { OrderStatus } from '@prisma/client'; // ✅ Import Enum
+import { OrderStatus } from '@prisma/client';
 
 export async function PATCH(req: Request) {
     try {
@@ -28,7 +28,6 @@ export async function PATCH(req: Request) {
         const updatedOrder = await prisma.order.update({
             where: { id: orderId },
             data: {
-                // ✅ Cast the string to the specific Enum type
                 status: status as OrderStatus
             },
         });

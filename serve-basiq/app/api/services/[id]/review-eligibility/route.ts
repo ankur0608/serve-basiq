@@ -3,13 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
-// Define the type for the params promise
 type Props = {
     params: Promise<{ id: string }>
 }
 
 export async function GET(req: Request, props: Props) {
-    // 1. AWAIT the params here 👇
     const params = await props.params;
     const serviceId = params.id;
 
@@ -19,7 +17,6 @@ export async function GET(req: Request, props: Props) {
         return NextResponse.json({ canReview: false, reason: 'NOT_LOGGED_IN' });
     }
 
-    // Use session.user.id directly if available
     const userId = session.user.id;
 
     const hasBooking = await prisma.booking.findFirst({

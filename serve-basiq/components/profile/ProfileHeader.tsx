@@ -5,7 +5,6 @@ import { useUIStore } from '@/lib/store';
 import { useSession } from 'next-auth/react';
 import { FaPhone, FaRightFromBracket, FaPencil, FaGaugeHigh } from 'react-icons/fa6';
 import clsx from 'clsx';
-import Image from 'next/image';
 
 interface ProfileHeaderProps {
     onEditClick: () => void;
@@ -18,16 +17,12 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
     const { currentUser } = useUIStore();
     const { data: session } = useSession();
 
-    // Safe access to worker status
-    // @ts-ignore - 'isWorker' might not be in default NextAuth session types yet
     const isWorker = currentUser?.isWorker || session?.user?.isWorker || false;
 
     const displayName = currentUser?.name || session?.user?.name || "User";
 
-    // IMAGE LOGIC
     const displayImage = userImage || currentUser?.img || session?.user?.image;
 
-    // @ts-ignore - 'phone' might not be in default NextAuth session types
     const displayPhone = currentUser?.phone || session?.user?.phone;
 
     const getInitials = () => displayName.substring(0, 2).toUpperCase();
@@ -45,7 +40,6 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
 
             <div className="max-w-4xl mx-auto relative z-10 flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
 
-                {/* Profile Image Circle */}
                 <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl font-bold text-white shadow-2xl border-4 border-white/10 overflow-hidden relative shrink-0">
                     {displayImage ? (
                         <img
@@ -89,7 +83,6 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
                     </div>
                 </div>
 
-                {/* ✅ Action Buttons - ONLY renders if isWorker is true */}
                 {isWorker && (
                     <div className="flex items-center gap-3">
                         <button

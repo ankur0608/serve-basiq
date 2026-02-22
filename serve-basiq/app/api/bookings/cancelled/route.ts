@@ -14,22 +14,17 @@ export async function GET() {
 
         if (!user) return new NextResponse("User not found", { status: 404 });
 
-        // Fetch Cancelled Bookings
         const cancelledBookings = await prisma.booking.findMany({
             where: {
                 userId: user.id,
                 status: 'CANCELLED',
             },
             include: {
-                service: true, // Get service details for image/name
+                service: true, 
                 address: true,
             },
             orderBy: { updatedAt: 'desc' }
         });
-
-        // Optional: If you have Orders (Products), fetch those too
-        // const cancelledOrders = await prisma.order.findMany(...)
-
         return NextResponse.json(cancelledBookings);
 
     } catch (error) {

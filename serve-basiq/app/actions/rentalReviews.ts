@@ -4,18 +4,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { uploadToR2 } from "@/lib/r2"; // ✅ Import R2 Uploader
+import { uploadToR2 } from "@/lib/r2"; 
 
 export async function submitRentalReview(formData: FormData) {
     try {
-        // 1. Validate Session
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
             return { success: false, error: "You must be logged in." };
         }
-
-        // 2. Extract Data
-        // Note: The frontend uses "serviceId" as the generic key for the ID
         const rentalId = (formData.get("rentalId") || formData.get("serviceId")) as string;
         const rating = parseInt(formData.get("rating") as string);
         const comment = formData.get("comment") as string;
@@ -25,7 +21,6 @@ export async function submitRentalReview(formData: FormData) {
             return { success: false, error: "Missing required fields." };
         }
 
-        // 3. Fetch Rental to get the Owner's ID (userId)
         const rental = await prisma.rental.findUnique({
             where: { id: rentalId },
             select: { userId: true }
@@ -35,7 +30,6 @@ export async function submitRentalReview(formData: FormData) {
             return { success: false, error: "Rental not found." };
         }
 
-        // 4. Handle Image Uploads (Same logic as Service Review)
         const files = formData.getAll("images") as File[];
         const uploadedImageUrls: string[] = [];
 
@@ -46,11 +40,9 @@ export async function submitRentalReview(formData: FormData) {
                 const arrayBuffer = await file.arrayBuffer();
                 const buffer = Buffer.from(arrayBuffer);
 
-                // Sanitize filename
                 const timestamp = Date.now();
                 const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "");
 
-                // ✅ STORE IN 'reviews/' FOLDER
                 const key = `reviews/${timestamp}-${safeName}`;
 
                 const url = await uploadToR2(key, buffer, file.type);
@@ -58,19 +50,17 @@ export async function submitRentalReview(formData: FormData) {
             }
         }
 
-        // 5. Create Review
         await prisma.review.create({
             data: {
                 rating,
                 comment,
                 rentalId: rentalId,
-                authorId: authorId,    // The Renter
-                userId: rental.userId, // The Owner
-                images: uploadedImageUrls // ✅ Save image URLs
+                authorId: authorId,    
+                userId: rental.userId, 
+                images: uploadedImageUrls 
             },
         });
 
-        // 6. Revalidate
         revalidatePath(`/rentals/${rentalId}`);
 
         return { success: true };

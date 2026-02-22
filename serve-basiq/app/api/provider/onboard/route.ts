@@ -6,13 +6,11 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
 
-        // 🔍 Log for debugging
         console.log("📦 Onboard Payload:", body);
 
 
         const validData = onboardSchema.parse(body);
-        const { userId, providerType } = body; // Extract providerType directly from body
-
+        const { userId, providerType } = body; 
         if (!userId) {
             return NextResponse.json({ success: false, message: "User ID required" }, { status: 400 });
         }
@@ -21,7 +19,6 @@ export async function POST(req: Request) {
                 where: { email: validData.email },
             });
 
-            // If user exists AND it is NOT the current user -> CONFLICT
             if (existingUser && existingUser.id !== userId) {
                 return NextResponse.json(
                     {
@@ -42,22 +39,17 @@ export async function POST(req: Request) {
                     phone: validData.phone,
                     profileImage: validData.profileImage,
 
-                    // ✅ New Personal Fields
                     gender: validData.gender,
                     dob: validData.dob ? new Date(validData.dob) : null,
                     preferredLanguage: validData.preferredLanguage,
 
-                    // ✅ SAVE PROVIDER TYPE (Default to BOTH if missing)
-                    // Make sure your Prisma Schema has this field added to the User model!
                     providerType: providerType || "BOTH",
 
-                    // Flags
                     isWorker: true,
                     isWebsite: false,
                 },
             });
 
-            // 3. Create or Update Home Address
             const existingAddress = await tx.address.findFirst({
                 where: { userId, type: "Home" }
             });

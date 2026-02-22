@@ -49,8 +49,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "End date must be after start date" }, { status: 400 });
     }
 
-    // 2. Handle Address Logic
-    // Explicitly define type to allow null assignment
     let finalAddressId: string | null | undefined = data.addressId;
 
     if (data.deliveryType === 'DELIVERY') {
@@ -58,7 +56,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Address is required for delivery" }, { status: 400 });
       }
 
-      // Create new address if temp ID is sent
       if (finalAddressId.startsWith("temp-")) {
         if (!data.newAddress) {
           return NextResponse.json({ success: false, message: "New address details missing" }, { status: 400 });
@@ -79,11 +76,9 @@ export async function POST(req: Request) {
         finalAddressId = createdAddress.id;
       }
     } else {
-      // For Pickup, address is explicitly null
       finalAddressId = null;
     }
 
-    // 3. Fetch Rental Item & Prices
     const rentalItem = await prisma.rental.findUnique({
       where: { id: data.rentalId },
       select: {
@@ -99,13 +94,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Rental item not found" }, { status: 404 });
     }
 
-    // 4. Calculate Price
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
 
     let finalTotalPrice = 0;
 
-    // Fallback logic
     let appliedDailyPrice = rentalItem.dailyPrice ?? rentalItem.price;
     let appliedMonthlyPrice = rentalItem.monthlyPrice ?? (rentalItem.price * 30);
     let appliedFixedPrice = rentalItem.fixedPrice ?? rentalItem.price;
@@ -123,15 +116,10 @@ export async function POST(req: Request) {
         break;
     }
 
-    // 5. Check Availability (Using rentalBooking model)
-    // We check against 'ACCEPTED' and 'IN_PROGRESS' because those mean the item is currently busy.
-    // Assuming your RentalStatus enum uses these values.
     const conflict = await prisma.rentalBooking.findFirst({
       where: {
         rentalId: data.rentalId,
-        // Statuses that block the calendar
         status: { in: ['ACCEPTED', 'IN_PROGRESS'] },
-        // Overlap Logic: (StartA <= EndB) and (EndA >= StartB)
         AND: [
           { startDate: { lte: end } },
           { endDate: { gte: start } }
@@ -143,13 +131,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Item is already booked for these dates" }, { status: 409 });
     }
 
-    // 6. Create Rental Booking (Using rentalBooking model)
     const newBooking = await prisma.rentalBooking.create({
       data: {
         userId: session.user.id,
         rentalId: data.rentalId,
-        addressId: finalAddressId, // This can be null now
-
+        addressId: finalAddressId, 
         startDate: start,
         endDate: end,
         totalDays: diffDays,
@@ -157,7 +143,6 @@ export async function POST(req: Request) {
         pricingModel: data.pricingModel,
         minDuration: data.minDuration,
 
-        // Save price snapshots if fields exist in schema
         dailyRentalPrice: appliedDailyPrice,
         monthlyRentalPrice: appliedMonthlyPrice,
         fixedRentalPrice: appliedFixedPrice,

@@ -15,11 +15,10 @@ export async function GET() {
         const orders = await prisma.order.findMany({
             where: {
                 userId: user.id,
-                // You can filter out cancelled if you want, but typically "My Orders" shows everything
             },
             include: {
                 product: {
-                    include: { user: true } // ✅ Fetch Seller details
+                    include: { user: true } 
                 },
                 address: true
             },
@@ -28,14 +27,12 @@ export async function GET() {
             }
         });
 
-        // ✅ Normalize Data for ActivityTabs
         const formattedOrders = orders.map((o: any) => ({
             ...o,
             type: 'PRODUCT',
             title: o.product?.name || "Product",
             image: o.product?.images?.[0] || o.product?.image || o.product?.productImage,
             price: o.totalPrice,
-            // ✅ Standardized Owner (Seller)
             bookingOwner: o.product?.user
         }));
 

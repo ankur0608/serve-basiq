@@ -7,7 +7,6 @@ export async function POST(req: Request) {
   console.log("🔵 [API] POST /api/favorites/toggle called");
 
   try {
-    // 1. Check Session
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user || !session.user.id) {
@@ -15,7 +14,6 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized: Please log in", { status: 401 });
     }
 
-    // 2. Parse Body
     const body = await req.json();
     console.log("🔵 [API] Request Body:", body);
 
@@ -28,7 +26,6 @@ export async function POST(req: Request) {
 
     const userId = session.user.id;
 
-    // 3. Logic for Service
     if (type === 'SERVICE') {
       const existing = await prisma.favoriteService.findUnique({
         where: { userId_serviceId: { userId, serviceId: itemId } }
@@ -45,7 +42,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Logic for Product
     else if (type === 'PRODUCT') {
       const existing = await prisma.favoriteProduct.findUnique({
         where: { userId_productId: { userId, productId: itemId } }
@@ -62,7 +58,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // 5. Logic for Rental (NEW)
     else if (type === 'RENTAL') {
       const existing = await prisma.favoriteRental.findUnique({
         where: { userId_rentalId: { userId, rentalId: itemId } }

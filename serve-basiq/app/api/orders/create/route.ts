@@ -2,19 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// ✅ 1. Zod Schema for Validation
 const OrderSchema = z.object({
     userId: z.string().min(1, "User ID is required"),
     productId: z.string().min(1, "Product ID is required"),
     quantity: z.number().min(1, "Quantity must be at least 1"),
     addressId: z.string().min(1, "Address is required"),
 
-    // 🔄 Updated Timeline Enum
     timeline: z.enum(['URGENT', 'IMMEDIATE', 'LATER', 'FLEXIBLE']),
 
-    specialInstructions: z.string().optional(), // Renamed from 'notes' to match DB
+    specialInstructions: z.string().optional(), 
 
-    // Optional: Only needed if addressId is temporary
     newAddress: z.object({
         line1: z.string(),
         line2: z.string(),
@@ -42,7 +39,6 @@ export async function POST(req: Request) {
         const data = validation.data;
         let finalAddressId = data.addressId;
 
-        // 3. Handle "New Address" Logic (if ID starts with temp-)
         if (data.addressId.startsWith("temp-")) {
             console.log("🆕 Detected New Address. Creating...");
 

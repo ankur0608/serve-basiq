@@ -18,13 +18,9 @@ export async function GET(req: Request) {
         const limitParam = searchParams.get('limit');
         const limit = limitParam ? parseInt(limitParam) : undefined;
 
-        // ✅ LOGIC: 
-        // If userId is provided (Dashboard), show ALL their items.
-        // If no userId (Public Feed), show ONLY Verified items.
         const whereClause = userId ? { userId: userId } : { isVerified: true };
 
         const [services, rentals] = await Promise.all([
-            // 1. Fetch Services
             prisma.service.findMany({
                 where: whereClause,
                 take: limit,
@@ -37,7 +33,6 @@ export async function GET(req: Request) {
                 orderBy: { createdAt: 'desc' },
             }),
 
-            // 2. Fetch Rentals
             prisma.rental.findMany({
                 where: whereClause,
                 take: limit,
@@ -57,7 +52,6 @@ export async function GET(req: Request) {
     }
 }
 
-// ✅ FIXED DELETE: Uses 'type' and 'id' correctly
 export async function DELETE(req: Request) {
     try {
         const { userId, id, type } = await req.json();

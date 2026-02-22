@@ -15,26 +15,23 @@ export async function GET() {
         const userId = user.id;
 
         const [
-            activeBookings, // Services
-            activeOrders,   // Products
-            activeRentals,  // ✅ RENTALS (New)
+            activeBookings, 
+            activeOrders,   
+            activeRentals,  
             cancelledBookings,
             cancelledOrders,
-            cancelledRentals // ✅ CANCELLED RENTALS (New)
+            cancelledRentals
         ] = await Promise.all([
-            // Count Active
             prisma.booking.count({ where: { userId, status: { not: "CANCELLED" } } }),
             prisma.order.count({ where: { userId, status: { not: "CANCELLED" } } }),
-            prisma.rentalBooking.count({ where: { userId, status: { not: "CANCELLED" } } }), // ✅ Add this
+            prisma.rentalBooking.count({ where: { userId, status: { not: "CANCELLED" } } }),
 
-            // Count Cancelled
             prisma.booking.count({ where: { userId, status: "CANCELLED" } }),
             prisma.order.count({ where: { userId, status: "CANCELLED" } }),
-            prisma.rentalBooking.count({ where: { userId, status: "CANCELLED" } }) // ✅ Add this
+            prisma.rentalBooking.count({ where: { userId, status: "CANCELLED" } }) 
         ]);
 
         return NextResponse.json({
-            // Sum up ALL three types
             bookings: activeBookings + activeOrders + activeRentals,
             cancellations: cancelledBookings + cancelledOrders + cancelledRentals,
         });

@@ -11,12 +11,11 @@ export async function PATCH(req: Request) {
             return NextResponse.json({ success: false, message: 'Missing ID or status' }, { status: 400 });
         }
 
-        // ✅ STRICTLY enforcing your existing Rental Enum
         const validStatuses = [
             'REQUESTED',
-            'ACCEPTED',     // Use this for "Approved"
-            'IN_PROGRESS',  // Use this for "Active"
-            'COMPLETED',    // Use this for "Returned"
+            'ACCEPTED',    
+            'IN_PROGRESS',  
+            'COMPLETED',   
             'CANCELLED'
         ];
 

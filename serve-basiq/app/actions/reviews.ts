@@ -20,19 +20,17 @@ export async function submitServiceReview(formData: FormData) {
         const rating = Number(formData.get("rating"));
         const comment = formData.get("comment") as string;
 
-        // 1. Validation: Ensure User Booked the Service
         const booking = await prisma.booking.findFirst({
             where: {
                 userId: session.user.id,
                 serviceId: serviceId,
-                status: "COMPLETED", // Only completed bookings can be reviewed
+                status: "COMPLETED", 
             },
             include: {
                 service: true,
             }
         });
 
-        // NOTE: For testing, you might comment this check out, but keep it for production!
         if (!booking || !booking.service) {
             return {
                 success: false,
@@ -40,7 +38,6 @@ export async function submitServiceReview(formData: FormData) {
             };
         }
 
-        // 2. Handle Image Uploads
         const files = formData.getAll("images") as File[];
         const uploadedImageUrls: string[] = [];
 
@@ -53,40 +50,33 @@ export async function submitServiceReview(formData: FormData) {
                 const arrayBuffer = await file.arrayBuffer();
                 const buffer = Buffer.from(arrayBuffer);
 
-                // Sanitize filename
                 const timestamp = Date.now();
                 const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "");
 
-                // ✅ STORE IN 'reviews/' FOLDER
                 const key = `reviews/${timestamp}-${safeName}`;
 
-                // Upload to R2
                 const url = await uploadToR2(key, buffer, file.type);
                 if (url) uploadedImageUrls.push(url);
             }
         }
 
-        // 3. Database Transaction
         await prisma.$transaction(async (tx) => {
-            // Create the Review
             await tx.review.create({
                 data: {
                     rating,
                     comment,
                     serviceId,
                     authorId: session.user.id,
-                    userId: booking.service.userId, // Link to Provider
-                    images: uploadedImageUrls, // ✅ Store URLs in DB
+                    userId: booking.service.userId, 
+                    images: uploadedImageUrls,
                 },
             });
 
-            // Calculate New Average Rating
             const avgData = await tx.review.aggregate({
                 where: { serviceId },
                 _avg: { rating: true },
             });
 
-            // Update Service with New Rating
             await tx.service.update({
                 where: { id: serviceId },
                 data: { rating: avgData._avg.rating || rating },

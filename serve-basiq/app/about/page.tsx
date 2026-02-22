@@ -1,4 +1,3 @@
-import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -12,7 +11,6 @@ export default function AboutPage() {
         <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
 
             <main>
-                {/* HERO */}
                 <section className="bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 text-white">
                     <div className="max-w-6xl mx-auto px-4 py-24 text-center">
                         <span className="inline-block mb-4 px-4 py-1 rounded-full bg-white/20 text-sm font-medium">
@@ -30,10 +28,8 @@ export default function AboutPage() {
                     </div>
                 </section>
 
-                {/* CONTENT */}
                 <div className="max-w-5xl mx-auto px-4 py-20 space-y-24">
 
-                    {/* STORY */}
                     <section className="text-center">
                         <h2 className="text-3xl font-bold mb-4">Why ServeBasiq Exists</h2>
                         <p className="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
@@ -46,7 +42,6 @@ export default function AboutPage() {
                         </p>
                     </section>
 
-                    {/* SERVICES / PRODUCTS */}
                     <section className="grid sm:grid-cols-2 gap-10">
                         <div className="bg-white rounded-3xl p-10 shadow-md hover:shadow-xl transition-shadow">
                             <span className="text-sm font-semibold text-indigo-600 uppercase tracking-wide">Services</span>
@@ -67,7 +62,6 @@ export default function AboutPage() {
                         </div>
                     </section>
 
-                    {/* HOW IT HELPS */}
                     <section>
                         <h2 className="text-3xl font-bold text-center mb-12">How ServeBasiq Helps</h2>
                         <div className="grid md:grid-cols-2 gap-10">
@@ -93,7 +87,6 @@ export default function AboutPage() {
                         </div>
                     </section>
 
-                    {/* MISSION / VISION */}
                     <section className="grid sm:grid-cols-2 gap-10">
                         <div className="bg-gradient-to-br from-white to-slate-100 rounded-3xl p-8 border border-slate-200">
                             <h3 className="text-xl font-bold mb-3">Our Mission</h3>
@@ -112,7 +105,6 @@ export default function AboutPage() {
                         </div>
                     </section>
 
-                    {/* CTA */}
                     <section className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-[2.5rem] p-12 text-center shadow-xl">
                         <h2 className="text-3xl font-extrabold mb-4">
                             Start Exploring What’s Near You

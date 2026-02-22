@@ -102,8 +102,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadToR2 } from "@/lib/r2";
 
-// --- CONFIGURATION ---
-// 1. Increased to 50MB for video support
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
 
 const ALLOWED_MIME_TYPES = [
@@ -111,8 +109,8 @@ const ALLOWED_MIME_TYPES = [
   "image/png",
   "image/webp",
   "image/jpg",
-  "video/mp4",  // ✅ Added Video
-  "video/webm"  // ✅ Added Video
+  "video/mp4", 
+  "video/webm"  
 ];
 
 export async function POST(req: NextRequest) {
@@ -128,7 +126,6 @@ export async function POST(req: NextRequest) {
 
     const fileSizeInMB = (file.size / 1024 / 1024).toFixed(2);
 
-    // 2. 🛡️ STRICT VALIDATION: File Size
     if (file.size > MAX_UPLOAD_SIZE) {
       return NextResponse.json(
         {
@@ -139,7 +136,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. 🛡️ STRICT VALIDATION: File Type
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       return NextResponse.json(
         {
@@ -150,15 +146,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Convert & Upload
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Sanitize filename
     const timestamp = Date.now();
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "");
 
-    // ✅ CHANGED PATH: Storing in 'services/' folder
     const key = `services/${timestamp}-${safeName}`;
 
     console.log(`⬆️ [API] Uploading to R2: ${key}`);

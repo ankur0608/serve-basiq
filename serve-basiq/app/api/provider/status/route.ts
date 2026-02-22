@@ -29,8 +29,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       user,
-      bookings: [], // Return empty array so .map() in frontend doesn't break
-      orders: [],   // Return empty array so .map() in frontend doesn't break
+      bookings: [],
+      orders: [],
       isSetupComplete: !!(user.kycDetails && user.kycDetails.status !== "NOT_STARTED"),
       stats,
     });

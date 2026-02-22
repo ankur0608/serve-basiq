@@ -12,7 +12,6 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // 1. Fetch Service Bookings
         const bookings = await prisma.booking.findMany({
             where: {
                 userId: user.id,
@@ -20,14 +19,13 @@ export async function GET() {
             },
             include: {
                 service: {
-                    include: { user: true } // ✅ Changed 'provider' to 'user'
+                    include: { user: true } 
                 },
                 address: true
             },
             orderBy: { createdAt: 'desc' }
         });
 
-        // 2. Fetch Product Orders
         const orders = await prisma.order.findMany({
             where: {
                 userId: user.id,
@@ -35,14 +33,13 @@ export async function GET() {
             },
             include: {
                 product: {
-                    include: { user: true } // ✅ Changed 'seller' to 'user'
+                    include: { user: true } 
                 },
                 address: true
             },
             orderBy: { createdAt: 'desc' }
         });
 
-        // 3. Fetch Rental Bookings
         const rentals = await prisma.rentalBooking.findMany({
             where: {
                 userId: user.id,
@@ -50,32 +47,28 @@ export async function GET() {
             },
             include: {
                 rental: {
-                    include: { user: true } // ✅ Changed 'owner' to 'user'
+                    include: { user: true } 
                 },
-                // address: true 
             },
             orderBy: { createdAt: 'desc' }
         });
 
-        // 4. Combine & Normalize Data
-        // We cast to 'any' inside the map to prevent TypeScript from strictly checking 
-        // inferred types if your schema generation is slightly behind.
         const combined = [
             ...bookings.map((b: any) => ({
                 ...b,
                 type: 'SERVICE',
                 title: b.service?.name || "Service",
                 image: b.service?.images?.[0] || b.service?.image,
-                price: b.totalPrice || b.price, // ✅ Fallback for price
-                bookingOwner: b.service?.user // ✅ Using the corrected relation
+                price: b.totalPrice || b.price,
+                bookingOwner: b.service?.user
             })),
             ...orders.map((o: any) => ({
                 ...o,
                 type: 'PRODUCT',
                 title: o.product?.name || "Product",
                 image: o.product?.images?.[0] || o.product?.image,
-                price: o.totalPrice, // ✅ Corrected from 'totalAmount' to 'totalPrice'
-                bookingOwner: o.product?.user // ✅ Using the corrected relation
+                price: o.totalPrice,
+                bookingOwner: o.product?.user 
             })),
             ...rentals.map((r: any) => ({
                 ...r,
@@ -83,7 +76,7 @@ export async function GET() {
                 title: r.rental?.name || "Rental",
                 image: r.rental?.images?.[0] || r.rental?.image,
                 price: r.totalPrice,
-                bookingOwner: r.rental?.user // ✅ Using the corrected relation
+                bookingOwner: r.rental?.user 
             }))
         ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 

@@ -67,29 +67,23 @@ export default function AllCategoriesPage() {
             if (!res.ok) throw new Error('Network response was not ok');
             return res.json() as Promise<Category[]>;
         },
-        // Cache Configuration:
-        staleTime: 1000 * 60 * 10, // Data is fresh for 10 minutes (won't refetch)
-        gcTime: 1000 * 60 * 30,    // Keep in garbage collector for 30 minutes
-        refetchOnWindowFocus: false, // Don't refetch just because user clicked alt-tab
+        staleTime: 1000 * 60 * 10, 
+        gcTime: 1000 * 60 * 30,   
+        refetchOnWindowFocus: false,
     });
 
-    // --- 2. Client-Side Filtering Logic ---
     const processedData = useMemo(() => {
         let data = allCategories;
 
-        // Step A: Filter by Tab (Type)
         if (activeTab !== 'ALL') {
             data = data.filter(cat => cat.type === activeTab || cat.type === 'BOTH');
         }
 
-        // Step B: Filter by Search Query
         const query = searchQuery.toLowerCase();
         if (query) {
             if (selectedCategory) {
-                // If inside a category, we are searching subcategories (handled in render logic)
                 return data;
             } else {
-                // Global search
                 data = data.filter(cat =>
                     cat.name.toLowerCase().includes(query) ||
                     cat.children.some(sub => sub.name.toLowerCase().includes(query))
@@ -100,21 +94,17 @@ export default function AllCategoriesPage() {
         return data;
     }, [allCategories, activeTab, searchQuery, selectedCategory]);
 
-    // --- 3. Derived Display Items ---
     const displayItems = useMemo(() => {
         if (selectedCategory) {
-            // If drilled down, show Subcategories
             const query = searchQuery.toLowerCase();
             return selectedCategory.children.filter(sub =>
                 sub.name.toLowerCase().includes(query)
             );
         }
-        // Otherwise show filtered Categories
         return processedData;
     }, [selectedCategory, processedData, searchQuery]);
 
 
-    // --- Handlers ---
     const handleCategoryClick = (cat: Category) => {
         setSelectedCategory(cat);
         setSearchQuery('');
@@ -126,7 +116,6 @@ export default function AllCategoriesPage() {
         setSearchQuery('');
     };
 
-    // --- Icons (Fallback if no image) ---
     const getIcon = (type: string, size = 24) => {
         switch (type) {
             case 'SERVICE': return <FaWrench size={size} className="text-purple-500" />;
@@ -139,14 +128,11 @@ export default function AllCategoriesPage() {
     return (
         <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 selection:bg-indigo-100 selection:text-indigo-900">
 
-            {/* --- Sticky Header Section --- */}
             <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-zinc-200/60 shadow-sm transition-all">
                 <div className="max-w-7xl mx-auto px-4 py-3">
 
-                    {/* Top Row: Nav & Search */}
                     <div className="flex flex-col md:flex-row md:items-center gap-4">
 
-                        {/* Title / Back Button */}
                         <div className="flex items-center gap-3 min-w-fit">
                             {selectedCategory ? (
                                 <button
@@ -175,7 +161,6 @@ export default function AllCategoriesPage() {
                             </div>
                         </div>
 
-                        {/* Search Bar */}
                         <div className="relative flex-1 group">
                             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                                 <FaMagnifyingGlass className="text-zinc-400 group-focus-within:text-indigo-500 transition-colors" size={14} />
@@ -198,7 +183,6 @@ export default function AllCategoriesPage() {
                         </div>
                     </div>
 
-                    {/* Tabs (Only in Main View) */}
                     {!selectedCategory && (
                         <div className="mt-3 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto scrollbar-hide">
                             <div className="flex gap-2 pb-1">
@@ -223,7 +207,6 @@ export default function AllCategoriesPage() {
                 </div>
             </div>
 
-            {/* --- Content Area --- */}
             <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 pb-32">
 
                 {isLoading ? (
@@ -251,7 +234,6 @@ export default function AllCategoriesPage() {
                     </div>
                 ) : (
                     <>
-                        {/* --- VIEW 1: Subcategories (Detailed Grid) --- */}
                         {selectedCategory ? (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -291,7 +273,6 @@ export default function AllCategoriesPage() {
                                 </div>
                             </div>
                         ) : (
-                            /* --- VIEW 2: Main Categories (Modern Card Grid) --- */
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 {(displayItems as Category[]).map((cat) => (
                                     <div

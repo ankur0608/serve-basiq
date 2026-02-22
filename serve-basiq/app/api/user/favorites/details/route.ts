@@ -9,15 +9,13 @@ export async function GET() {
     try {
         const session = await getServerSession(authOptions);
 
-        // ✅ FIX: Check for ID, not Email. 
         if (!session?.user?.id) {
-            // Return empty arrays instead of error so UI doesn't crash
-            // Added rentals to the fallback
+          
             return NextResponse.json({ services: [], products: [], rentals: [] });
         }
 
         const user = await prisma.user.findUnique({
-            where: { id: session.user.id }, // ✅ FIX: Lookup by ID
+            where: { id: session.user.id }, 
             include: {
                 favoriteServices: {
                     include: { service: true },
@@ -27,7 +25,6 @@ export async function GET() {
                     include: { product: true },
                     orderBy: { createdAt: 'desc' }
                 },
-                // ✅ Fetch the new FavoriteRental records
                 favoriteRentals: {
                     include: { rental: true },
                     orderBy: { createdAt: 'desc' }
@@ -52,14 +49,12 @@ export async function GET() {
             isFavorite: true
         }));
 
-        // ✅ Format rental data to match the UI requirements
         const rentals = user.favoriteRentals.map((f) => ({
             ...f.rental,
             image: f.rental.rentalImg || f.rental.coverImg || "/placeholder.jpg",
             isFavorite: true
         }));
 
-        // ✅ Return all three categories
         return NextResponse.json({ services, products, rentals });
 
     } catch (error) {

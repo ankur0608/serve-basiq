@@ -2,18 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// ✅ Updated Schema: Now matches the new Timeline Enum values
 const BookingSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
   serviceId: z.string().min(1, "Service ID is required"),
   addressId: z.string().min(1, "Address is required"),
 
-  // 🔄 UPDATE: Changed to match your new Prisma Enum
   timeline: z.enum(['URGENT', 'IMMEDIATE', 'LATER', 'FLEXIBLE']),
 
   specialInstructions: z.string().optional(),
 
-  // Optional: Only needed if addressId is temporary (starts with "temp-")
   newAddress: z.object({
     line1: z.string(),
     line2: z.string(),
@@ -30,7 +27,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log("📝 [API] Booking Request:", body);
 
-    // Validate input against the new schema
     const validation = BookingSchema.safeParse(body);
 
     if (!validation.success) {
@@ -41,7 +37,6 @@ export async function POST(req: Request) {
     const data = validation.data;
     let finalAddressId = data.addressId;
 
-    // 🚩 CHECK: Is this a temporary address?
     if (data.addressId.startsWith("temp-")) {
       console.log("🆕 Detected New Address. Creating...");
 
@@ -52,7 +47,6 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
 
-      // 1. Create the Address First
       const createdAddress = await prisma.address.create({
         data: {
           userId: data.userId,
@@ -71,14 +65,12 @@ export async function POST(req: Request) {
       finalAddressId = createdAddress.id;
     }
 
-    // 2. Create the Booking with the REAL Address ID
     const booking = await prisma.booking.create({
       data: {
         userId: data.userId,
         serviceId: data.serviceId,
         addressId: finalAddressId,
 
-        // This will now successfully map because we validated it with Zod above
         timeline: data.timeline,
 
         specialInstructions: data.specialInstructions,

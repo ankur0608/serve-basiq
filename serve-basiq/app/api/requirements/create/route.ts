@@ -42,7 +42,6 @@ export async function POST(req: Request) {
                 description: data.description,
                 status: "OPEN",
 
-                // ✅ FIXED: You must include this field to save it to DB
                 timeline: data.timeline
             }
         });

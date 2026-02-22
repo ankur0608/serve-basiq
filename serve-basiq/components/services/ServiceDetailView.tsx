@@ -13,15 +13,13 @@ import RatingForm from '@/components/Rating/RatingForm';
 import { Session } from 'next-auth';
 import { useServicePageData } from '@/app/hook/useServicePageData';
 import AppVideo from '../ui/AppVideo';
-import ProductSlider from '@/components/products/ProductSlider'; // 👈 Import the Slider
+import ProductSlider from '@/components/products/ProductSlider'; 
 
-// --- HELPER: Detect Video Files ---
 const isVideo = (url: string | null | undefined) => {
     if (!url) return false;
     return url.match(/\.(mp4|webm|mov|mkv)$/i);
 };
 
-// --- TYPES ---
 interface ServiceDetailViewProps {
     service: {
         id: string;
@@ -72,20 +70,18 @@ interface ServiceDetailViewProps {
     };
     loggedInUser: any;
     session: Session | null;
-    relatedServices?: any[]; // 👈 NEW: Added prop for related services
+    relatedServices?: any[];
 }
 
 export default function ServiceDetailView({ service, loggedInUser: initialUser, session, relatedServices = [] }: ServiceDetailViewProps) {
     const displayName = service.user.shopName || service.name;
 
-    // --- 📡 DATA FETCHING ---
     const { currentUser, eligibility, isEligibilityLoading } = useServicePageData({
         serviceId: service.id,
         initialUser,
         session
     });
 
-    // --- 🖼️ HERO IMAGE LOGIC ---
     const heroImage =
         service.coverImg ||
         service.serviceimg ||
@@ -387,7 +383,6 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                     </div>
                 </div>
 
-                {/* 👉 NEW: Reusing the ProductSlider mapped to Services */}
                 {formattedRelatedServices.length > 0 && (
                     <ProductSlider
                         title="Related Services"

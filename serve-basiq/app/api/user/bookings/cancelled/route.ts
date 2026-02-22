@@ -12,7 +12,6 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // 1. Fetch Cancelled Service Bookings
         const cancelledServices = await prisma.booking.findMany({
             where: {
                 userId: user.id,
@@ -24,7 +23,6 @@ export async function GET() {
             }
         });
 
-        // 2. Fetch Cancelled Product Orders
         const cancelledProducts = await prisma.order.findMany({
             where: {
                 userId: user.id,
@@ -36,7 +34,6 @@ export async function GET() {
             }
         });
 
-        // 3. Combine and sort by date (newest first)
         const allCancellations = [
             ...cancelledServices.map(b => ({ ...b, type: 'SERVICE' })),
             ...cancelledProducts.map(o => ({ ...o, type: 'PRODUCT' }))

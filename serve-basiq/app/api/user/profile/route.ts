@@ -119,8 +119,6 @@ export async function PATCH(request: Request) {
       await prisma.user.update({ where: { id: userId }, data: userUpdateData });
     }
 
-    // 2. Update Address
-    // Check if we have ANY address data to save
     const hasAddressData = addressLine1 || city || state || pincode || district;
 
     if (hasAddressData) {
@@ -129,26 +127,23 @@ export async function PATCH(request: Request) {
         line2: addressLine2 || '',
         landmark: landmark || '',
         city: city || '',
-        district: district || '', // ✅ Ensure district is saved
+        district: district || '', 
         state: state || '',
         pincode: pincode || '',
         country: country || 'India'
       };
 
-      // Find the most recent address for this user
       const existingAddress = await prisma.address.findFirst({
         where: { userId },
-        orderBy: { createdAt: 'desc' } // Get the latest one
+        orderBy: { createdAt: 'desc' } 
       });
 
       if (existingAddress) {
-        // Update existing
         await prisma.address.update({
           where: { id: existingAddress.id },
           data: addressData
         });
       } else {
-        // Create new
         await prisma.address.create({
           data: {
             userId,
@@ -175,14 +170,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action, name, userId: bodyUserId } = body;
 
-    // Security check: Ensure the session user matches the requested update
-    // @ts-ignore
     const sessionUserId = session.user.id;
     if (sessionUserId !== bodyUserId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // ⚡ Handle the UPDATE_NAME action sent by your NameModal
     if (action === "UPDATE_NAME") {
       if (!name || name.trim().length < 2) {
         return NextResponse.json({ error: 'Invalid name' }, { status: 400 });

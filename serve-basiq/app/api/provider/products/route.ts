@@ -15,7 +15,6 @@ export async function POST(req: Request) {
       },
       include: {
         category: true,
-        // ✅ FIXED: Changed 'subcategories' to 'subcategory' to match your new Schema
         subcategory: true,
       },
       orderBy: {

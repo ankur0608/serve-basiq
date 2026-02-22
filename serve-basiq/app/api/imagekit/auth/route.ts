@@ -3,19 +3,16 @@ import ImageKit from "imagekit";
 
 export async function GET() {
   try {
-    // 1. Initialize ImageKit INSIDE the function to avoid build errors
     const imagekit = new ImageKit({
       publicKey: process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY || "",
       privateKey: process.env.IMAGEKIT_PRIVATE_KEY || "",
       urlEndpoint: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || "",
     });
 
-    // 2. Check if variables are actually present (Runtime check)
     if (!process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT) {
       throw new Error("Missing NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT env variable");
     }
 
-    // 3. Get Authentication Parameters
     const authenticationParameters = imagekit.getAuthenticationParameters();
 
     return NextResponse.json(authenticationParameters);

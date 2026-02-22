@@ -4,12 +4,11 @@ import { useUIStore } from '@/lib/store';
 import { FaArrowLeft, FaCalendarCheck, FaMagnifyingGlass } from 'react-icons/fa6';
 import Link from 'next/link';
 import ActivityTabs from '@/components/profile/ActivityTabs';
-import { useActiveBookings } from '@/app/hook/useProfileQueries'; // ✅ Import the hook
+import { useActiveBookings } from '@/app/hook/useProfileQueries'; 
 
 export default function MyBookingsPage() {
     const { currentUser } = useUIStore();
 
-    // ✅ Use React Query Hook
     const { data: bookings = [], isLoading } = useActiveBookings();
 
     return (

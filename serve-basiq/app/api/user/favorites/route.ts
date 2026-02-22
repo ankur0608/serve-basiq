@@ -14,7 +14,6 @@ export async function GET() {
 
         if (!session?.user?.id) {
             console.log("🔴 [API] 401: No User ID in session");
-            // Return empty arrays instead of 401 to keep UI from crashing
             return NextResponse.json({ services: [], products: [] });
         }
 

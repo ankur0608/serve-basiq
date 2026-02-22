@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// =======================
-// 🔹 GET PRODUCT BY ID
-// =======================
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -11,10 +8,9 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // ❌ REMOVED: const productId = parseInt(id); (IDs are strings now)
 
     const product = await prisma.product.findUnique({
-      where: { id }, // Uses string UUID directly
+      where: { id },
       include: {
         user: {
           select: {
@@ -33,7 +29,6 @@ export async function GET(
 
     const formatted = {
       ...product,
-      // Map for frontend consistency
       img: product.productImage,
       supplier: product.user?.shopName || product.user?.name || "Verified Seller",
       supplierImg: product.user?.profileImage,
@@ -47,9 +42,6 @@ export async function GET(
   }
 }
 
-// =======================
-// 🔹 UPDATE PRODUCT (PATCH)
-// =======================
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -57,26 +49,23 @@ export async function PATCH(
   try {
     const { id } = await params;
 
-    // ❌ REMOVED: parseInt check. UUIDs are strings.
 
     const body = await req.json();
     console.log("📝 Received Update Payload:", body);
 
-    // Destructure strictly what the Prisma Model allows
     const {
       name,
-      category, // Was 'cat'
+      category, 
       price,
       moq,
       desc,
-      productImage, // Was 'img'
+      productImage,
       gallery,
       stockStatus,
       unit,
       deliveryType
     } = body;
 
-    // Create a sanitized update object
     const updateData: any = {};
 
     if (name !== undefined) updateData.name = name;
@@ -85,11 +74,9 @@ export async function PATCH(
     if (productImage !== undefined) updateData.productImage = productImage;
     if (gallery !== undefined) updateData.gallery = gallery;
 
-    // Numbers
     if (price !== undefined) updateData.price = parseFloat(price);
-    if (moq !== undefined) updateData.moq = parseInt(moq); // ✅ Ensure Int
+    if (moq !== undefined) updateData.moq = parseInt(moq); 
 
-    // Enums
     if (stockStatus !== undefined) updateData.stockStatus = stockStatus;
     if (unit !== undefined) updateData.unit = unit;
     if (deliveryType !== undefined) updateData.deliveryType = deliveryType;
@@ -97,7 +84,7 @@ export async function PATCH(
     console.log("✅ Sanitized Update Data:", updateData);
 
     const updated = await prisma.product.update({
-      where: { id }, // UUID String
+      where: { id }, 
       data: updateData,
     });
 
@@ -119,9 +106,6 @@ export async function PATCH(
   }
 }
 
-// =======================
-// 🔹 DELETE PRODUCT
-// =======================
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -129,10 +113,9 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // ❌ REMOVED: parseInt check
 
     await prisma.product.delete({
-      where: { id }, // UUID String
+      where: { id }, 
     });
 
     return NextResponse.json({ success: true });

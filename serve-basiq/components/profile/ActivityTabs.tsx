@@ -60,26 +60,22 @@ export default function ActivityTabs({
                 const isOrder = type === "orders";
                 const isRental = item.type === "RENTAL";
 
-                // ✅ FIX 1: Robust Title Logic
                 const title = item.title ||
                     item.product?.name ||
                     item.service?.name ||
                     item.rental?.name;
 
-                // ✅ FIX 2: Robust Image Logic (Check rentalImg)
                 const image = item.image ||
                     item.product?.productImage ||
                     item.service?.mainimg ||
                     item.rental?.rentalImg ||
                     item.rental?.coverImg;
 
-                // ✅ FIX 3: Robust Price Logic (Check totalPrice)
                 const price = item.price ||
                     item.totalPrice ||
                     item.service?.price ||
                     0;
 
-                // Provider Details
                 const providerName = item.bookingOwner?.name ||
                     item.bookingOwner?.shopName ||
                     "Unknown Provider";

@@ -4,21 +4,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { uploadToR2 } from "@/lib/r2"; // ✅ Import R2 Uploader
+import { uploadToR2 } from "@/lib/r2"; 
 
 export async function submitProductReview(formData: FormData) {
     console.log("🔥 [SERVER ACTION] submitProductReview started");
 
     try {
-        // 1. Validate Session
         const session = await getServerSession(authOptions);
 
         if (!session?.user?.id) {
             return { success: false, error: "You must be logged in." };
         }
-
-        // 2. Extract Data
-        // Note: The frontend uses "serviceId" or "productId" as the key
         const productId = (formData.get("productId") || formData.get("serviceId")) as string;
         const rating = parseInt(formData.get("rating") as string);
         const comment = formData.get("comment") as string;
@@ -28,7 +24,6 @@ export async function submitProductReview(formData: FormData) {
             return { success: false, error: "Missing required fields." };
         }
 
-        // 3. Fetch Product Owner
         const product = await prisma.product.findUnique({
             where: { id: productId },
             select: { userId: true }
@@ -38,7 +33,6 @@ export async function submitProductReview(formData: FormData) {
             return { success: false, error: "Product not found." };
         }
 
-        // 4. Handle Image Uploads (Same logic as Service Review)
         const files = formData.getAll("images") as File[];
         const uploadedImageUrls: string[] = [];
 
@@ -50,11 +44,9 @@ export async function submitProductReview(formData: FormData) {
                 const arrayBuffer = await file.arrayBuffer();
                 const buffer = Buffer.from(arrayBuffer);
 
-                // Sanitize filename
                 const timestamp = Date.now();
                 const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "");
 
-                // ✅ STORE IN 'reviews/' FOLDER
                 const key = `reviews/${timestamp}-${safeName}`;
 
                 const url = await uploadToR2(key, buffer, file.type);
@@ -62,19 +54,17 @@ export async function submitProductReview(formData: FormData) {
             }
         }
 
-        // 5. Create Review
         await prisma.review.create({
             data: {
                 rating,
                 comment,
                 productId: productId,
-                authorId: authorId,    // The Buyer
-                userId: product.userId, // The Seller
-                images: uploadedImageUrls // ✅ Save image URLs
+                authorId: authorId,   
+                userId: product.userId, 
+                images: uploadedImageUrls 
             },
         });
 
-        // 6. Revalidate
         revalidatePath(`/products/${productId}`);
 
         return { success: true };

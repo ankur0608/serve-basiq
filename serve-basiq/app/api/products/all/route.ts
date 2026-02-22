@@ -7,19 +7,15 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
 
-    // --- PAGINATION PARAMS ---
     const limit = parseInt(searchParams.get('limit') || '24');
     const cursor = searchParams.get('cursor');
 
-    // --- FILTER PARAMS ---
     const categoryId = searchParams.get('categoryId');
     const subcategoryId = searchParams.get('subcategoryId');
     const search = searchParams.get('search');
     const location = searchParams.get('location');
     const sort = searchParams.get('sort');
 
-    // --- BUILD PRISMA WHERE CLAUSE ---
-    // 🔒 STRICT REQUIREMENT: Only verified products from verified users
     const whereClause: any = {
       isVerified: true,
       user: { isVerified: true }
@@ -28,10 +24,9 @@ export async function GET(request: Request) {
     if (categoryId) whereClause.categoryId = categoryId;
     if (subcategoryId) whereClause.subCategoryId = subcategoryId;
 
-    // ✅ LOCATION FILTER: Look inside the User's Address table for "Work"
     if (location) {
       whereClause.user = {
-        ...whereClause.user, // Keep the isVerified check!
+        ...whereClause.user,
         addresses: {
           some: {
             type: { equals: 'Work', mode: 'insensitive' },
@@ -70,10 +65,8 @@ export async function GET(request: Request) {
       case "popular":
         orderBy = { reviews: { _count: "desc" } };
         break;
-      // Note: Since 'rating' doesn't exist on Product schema yet, we skip sorting by it
     }
 
-    // --- DB QUERY ---
     const products = await prisma.product.findMany({
       where: whereClause,
       orderBy,
@@ -84,7 +77,6 @@ export async function GET(request: Request) {
         user: {
           select: {
             id: true, shopName: true, name: true, isVerified: true, profileImage: true, image: true,
-            // ✅ Pull the Work address so the frontend can display the location!
             addresses: {
               where: { type: 'Work' },
               select: { city: true }
@@ -103,14 +95,12 @@ export async function GET(request: Request) {
       }
     });
 
-    // --- CURSOR LOGIC ---
     let nextCursor = undefined;
     if (products.length > limit) {
       const nextItem = products.pop();
       nextCursor = nextItem?.id;
     }
 
-    // --- FORMATTING ---
     const formattedProducts = products.map(product => ({
       id: product.id,
       name: product.name,
@@ -131,7 +121,6 @@ export async function GET(request: Request) {
         : (product.productImage ? [product.productImage] : []),
       image: product.productImage || (product.gallery.length > 0 ? product.gallery[0] : ""),
 
-      // ✅ Map the city dynamically from the user's work address
       location: product.user?.addresses?.[0]?.city || "Worldwide",
 
       provider: {

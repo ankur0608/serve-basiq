@@ -7,11 +7,9 @@ export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
 
-        // --- PAGINATION ---
         const limit = parseInt(searchParams.get("limit") || "12");
         const cursor = searchParams.get("cursor");
 
-        // --- FILTERS ---
         const userId = searchParams.get("userId");
         const categoryId = searchParams.get("categoryId");
         const subcategoryId = searchParams.get("subcategoryId");
@@ -19,11 +17,10 @@ export async function GET(req: Request) {
         const location = searchParams.get("location");
         const sort = searchParams.get("sort");
 
-        // --- BUILD PRISMA WHERE CLAUSE ---
         const where: any = {
-            isVerified: true, // Service must be verified
+            isVerified: true, 
             user: {
-                isVerified: true, // User must be verified
+                isVerified: true, 
             }
         };
 
@@ -31,20 +28,18 @@ export async function GET(req: Request) {
         if (categoryId) where.categoryId = categoryId;
         if (subcategoryId) where.subCategoryId = subcategoryId;
 
-        // ✅ NEW LOGIC: Look inside the User's Address table for "Work"
         if (location) {
             where.user = {
-                ...where.user, // Keep the isVerified: true check
+                ...where.user, 
                 addresses: {
                     some: {
-                        type: { equals: 'Work', mode: 'insensitive' }, // Targets your 'Work' type
-                        city: { equals: location, mode: 'insensitive' } // Matches the city
+                        type: { equals: 'Work', mode: 'insensitive' },
+                        city: { equals: location, mode: 'insensitive' } 
                     }
                 }
             };
         }
 
-        // Add search filter safely
         if (search) {
             where.AND = [
                 {
@@ -56,7 +51,6 @@ export async function GET(req: Request) {
             ];
         }
 
-        // --- BUILD PRISMA ORDER BY CLAUSE ---
         let orderBy: any = { createdAt: "desc" };
 
         switch (sort) {
@@ -74,7 +68,6 @@ export async function GET(req: Request) {
                 break;
         }
 
-        // --- EXECUTE QUERY ---
         const services = await prisma.service.findMany({
             where,
             include: {
@@ -85,7 +78,6 @@ export async function GET(req: Request) {
                     select: {
                         id: true, name: true, image: true, phone: true,
                         isVerified: true, shopName: true,
-                        // ✅ Pull the Work address so the frontend can use it!
                         addresses: {
                             where: { type: 'Work' },
                             select: { city: true }
@@ -151,15 +143,12 @@ export async function POST(req: Request) {
             pincode
         } = body;
 
-        // Validation
         if (!userId || !name || !serviceimg || !price) {
             return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
         }
 
-        // Handle Subcategory Logic
         const finalSubId = subCategoryId || (Array.isArray(subCategoryIds) && subCategoryIds.length > 0 ? subCategoryIds[0] : null);
 
-        // Prepare Data Payload
         const dataPayload: any = {
             name,
             desc,
@@ -179,8 +168,6 @@ export async function POST(req: Request) {
             closeTime,
         };
 
-        // ✅ FIX 2: Handle Relations robustly for Update vs Create
-        // Only add connection logic if IDs are actually provided
         if (categoryId) {
             dataPayload.category = { connect: { id: categoryId } };
         }
@@ -192,17 +179,12 @@ export async function POST(req: Request) {
         let service;
 
         if (id) {
-            // ✅ UPDATE Service
-            // If updating, we might need to disconnect old relations if they changed, 
-            // but `connect` usually overwrites specific 1-to-many relations in Prisma 
-            // if it's a single relation field. 
-            // Ensure your schema allows updating this way.
+          
             service = await prisma.service.update({
                 where: { id },
                 data: dataPayload
             });
         } else {
-            // ✅ CREATE Service
             service = await prisma.service.create({
                 data: {
                     user: { connect: { id: userId } },

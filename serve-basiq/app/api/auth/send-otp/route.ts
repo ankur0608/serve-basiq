@@ -3,7 +3,6 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// --- RATE LIMITER SETUP ---
 const globalForRateLimit = globalThis as unknown as { otpRequestMap: Map<string, number[]> };
 const otpRequestMap = globalForRateLimit.otpRequestMap || new Map<string, number[]>();
 if (process.env.NODE_ENV !== "production") globalForRateLimit.otpRequestMap = otpRequestMap;
@@ -13,13 +12,12 @@ function checkRateLimit(key: string, limit: number, windowMs: number) {
   const timestamps = otpRequestMap.get(key) || [];
   const recentRequests = timestamps.filter((time) => now - time < windowMs);
   
-  if (recentRequests.length >= limit) return false; // Rate limit exceeded
+  if (recentRequests.length >= limit) return false; 
   
   recentRequests.push(now);
   otpRequestMap.set(key, recentRequests);
-  return true; // Allowed
+  return true; 
 }
-// --------------------------
 
 export async function POST(req: Request) {
   const { phone } = await req.json();
@@ -31,7 +29,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // ⏳ RATE LIMIT: Max 3 OTP requests per 5 minutes per phone number
   const isAllowed = checkRateLimit(`send_${phone}`, 3, 5 * 60 * 1000);
   if (!isAllowed) {
     return NextResponse.json(
@@ -40,17 +37,14 @@ export async function POST(req: Request) {
     );
   }
 
-  // 1. Check if user exists
   const existingUser = await prisma.user.findUnique({
     where: { phone },
   });
 
-  const isNewUser = !existingUser; // True if user is NOT in DB
+  const isNewUser = !existingUser; 
 
-  // 2. Generate OTP
   const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
-  // 3. Save OTP
   await prisma.otp.deleteMany({ where: { phone } });
 
   await prisma.otp.create({
@@ -66,7 +60,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     success: true,
     otp,
-    isNewUser, // ✅ Send this flag to frontend
+    isNewUser, 
   });
 }
 
