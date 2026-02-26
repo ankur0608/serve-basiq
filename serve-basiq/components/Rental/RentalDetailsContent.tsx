@@ -14,12 +14,18 @@ import AppImage from '@/components/ui/AppImage';
 import RatingForm from '@/components/Rating/RatingForm';
 import RentalBookingWrapper from '@/components/Rental/RentalBookingWrapper';
 import AppVideo from '../ui/AppVideo';
-import ProductSlider from '@/components/products/ProductSlider'; // 👈 Import the Slider
+import ProductSlider from '@/components/products/ProductSlider';
 
 // ✅ HELPER: Detect Video Files
 const isVideo = (url: string | null | undefined) => {
     if (!url) return false;
     return url.match(/\.(mp4|webm|mov|mkv)$/i);
+};
+
+// ✅ HELPER: Format Enum text (e.g., "EXCELLENT" -> "Excellent")
+const formatEnum = (str?: string) => {
+    if (!str) return 'N/A';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase().replace(/_/g, ' ');
 };
 
 interface Props {
@@ -54,7 +60,7 @@ export default async function RentalDetailsContent({ id }: Props) {
 
     if (!rental) return notFound();
 
-    // 👉 NEW: Fetch Related Rentals (Same category, excluding current)
+    // 👉 Fetch Related Rentals (Same category, excluding current)
     const relatedRentalsRaw = await prisma.rental.findMany({
         where: {
             categoryId: rental.categoryId,
@@ -81,7 +87,7 @@ export default async function RentalDetailsContent({ id }: Props) {
         productImage: r.coverImg || r.rentalImg,
         gallery: Array.isArray(r.gallery) ? (r.gallery as string[]) : [],
         category: r.category,
-        listingType: 'RENTAL' as const // ✅ Tell the slider these are rentals!
+        listingType: 'RENTAL' as const
     }));
 
     // 2. LOGIC: CHECK REVIEW ELIGIBILITY
@@ -159,11 +165,6 @@ export default async function RentalDetailsContent({ id }: Props) {
         { icon: <FaGlobe size={20} />, url: provider?.websiteUrl, styleClass: "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-600 hover:text-white" },
     ].filter(s => s.url && s.url !== "null");
 
-    // Prices
-    const safeDailyPrice = rental.dailyPrice ?? undefined;
-    const safeMonthlyPrice = rental.monthlyPrice ?? undefined;
-    const safeFixedPrice = rental.fixedPrice ?? undefined;
-
     return (
         <div className="pb-40 bg-slate-50 min-h-screen">
             {/* --- HERO BANNER --- */}
@@ -186,7 +187,6 @@ export default async function RentalDetailsContent({ id }: Props) {
                     {/* LEFT COLUMN */}
                     <div className="lg:col-span-2 space-y-8">
                         {/* MAIN INFO */}
-                        {/* ... (Kept exactly the same) ... */}
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
                             <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
                                 <div>
@@ -245,13 +245,13 @@ export default async function RentalDetailsContent({ id }: Props) {
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                                     <p className="text-[10px] text-slate-400 font-bold uppercase">Condition</p>
                                     <div className="flex items-center gap-1 font-bold text-slate-900 mt-1">
-                                        <FaBoxOpen className="text-slate-400" /> {rental.itemCondition || "Good"}
+                                        <FaBoxOpen className="text-slate-400" /> {formatEnum(rental.itemCondition)}
                                     </div>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                                     <p className="text-[10px] text-slate-400 font-bold uppercase">Min Duration</p>
                                     <div className="flex items-center gap-1 font-bold text-slate-900 mt-1">
-                                        <FaClock className="text-slate-400" /> {rental.minDuration || "1"} Days
+                                        <FaClock className="text-slate-400" /> {rental.minDuration || "1"}
                                     </div>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
@@ -357,19 +357,42 @@ export default async function RentalDetailsContent({ id }: Props) {
 
                     {/* RIGHT COLUMN */}
                     <div className="space-y-6">
-                        {/* Availability */}
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-                            <h4 className="font-bold text-slate-900 mb-4">Availability</h4>
-                            <p className="text-slate-500 text-sm mb-2">Contact owner for schedule.</p>
-                        </div>
 
                         {/* Booking Card */}
                         <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 sticky top-24 z-20">
-                            <div className="mb-6">
-                                <p className="text-slate-400 text-sm font-medium">{rental.priceType === 'FIXED' ? 'Fixed Price' : 'Starting from'}</p>
+                            <div className="mb-6 border-b border-slate-100 pb-6">
+                                <p className="text-slate-400 text-sm font-medium mb-1">Base Price</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-4xl font-black text-slate-900">₹{rental.price}</span>
-                                    <span className="text-slate-400 font-bold">/{rental.priceType?.toLowerCase() || 'day'}</span>
+                                    <span className="text-slate-400 font-bold">/{formatEnum(rental.priceType)}</span>
+                                </div>
+
+                                {/* ✅ DISPLAY ALL APPLICABLE RATE TIERS */}
+                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                    {rental.hourlyPrice && (
+                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Hourly Rate</p>
+                                            <p className="font-bold text-slate-700 text-sm">₹{rental.hourlyPrice}</p>
+                                        </div>
+                                    )}
+                                    {rental.dailyPrice && (
+                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Daily Rate</p>
+                                            <p className="font-bold text-slate-700 text-sm">₹{rental.dailyPrice}</p>
+                                        </div>
+                                    )}
+                                    {rental.weeklyPrice && (
+                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Weekly Rate</p>
+                                            <p className="font-bold text-slate-700 text-sm">₹{rental.weeklyPrice}</p>
+                                        </div>
+                                    )}
+                                    {rental.monthlyPrice && (
+                                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Monthly Rate</p>
+                                            <p className="font-bold text-slate-700 text-sm">₹{rental.monthlyPrice}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -399,9 +422,14 @@ export default async function RentalDetailsContent({ id }: Props) {
                                 rentalName={displayName}
                                 rentalImage={mainImg}
                                 ownerLocation={fullAddress}
-                                dailyPrice={safeDailyPrice}
-                                monthlyPrice={safeMonthlyPrice}
-                                fixedPrice={safeFixedPrice}
+
+                                // ✅ Passing all prices down
+                                hourlyPrice={rental.hourlyPrice ?? undefined}
+                                dailyPrice={rental.dailyPrice ?? undefined}
+                                weeklyPrice={rental.weeklyPrice ?? undefined}
+                                monthlyPrice={rental.monthlyPrice ?? undefined}
+                                fixedPrice={rental.fixedPrice ?? undefined}
+
                                 currentUser={session?.user || null}
                                 userAddresses={[]}
                             />
@@ -409,15 +437,13 @@ export default async function RentalDetailsContent({ id }: Props) {
                     </div>
                 </div>
 
-            
                 {relatedRentals.length > 0 && (
                     <ProductSlider
                         title="Related Rentals"
                         products={relatedRentals}
-                        currentUser={session?.user || null} // ✅ Pass user down
+                        currentUser={session?.user || null}
                     />
                 )}
-
             </div>
         </div>
     );

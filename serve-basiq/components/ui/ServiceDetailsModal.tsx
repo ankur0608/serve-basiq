@@ -2,14 +2,14 @@
 
 import {
     X, MapPin, ShieldCheck, Clock, Calendar, Truck,
-    Package, Image as ImageIcon, PlayCircle, Info, User, CheckCircle2
+    Package, Image as ImageIcon, PlayCircle, Info, User, CheckCircle2, CalendarDays
 } from 'lucide-react';
 import clsx from 'clsx';
 
 interface ServiceDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    data: any; // The JSON data you provided
+    data: any;
 }
 
 export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsModalProps) {
@@ -47,7 +47,7 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
                 </div>
 
                 {/* Scrollable Content */}
-                <div className="overflow-y-auto w-full">
+                <div className="overflow-y-auto w-full custom-scrollbar">
 
                     {/* Cover Image Banner */}
                     <div className="w-full h-48 sm:h-64 bg-slate-100 relative">
@@ -111,7 +111,7 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
                                             <p className="font-bold text-slate-700">₹{data.monthlyPrice}</p>
                                         </div>
                                     )}
-                                    {data.securityDeposit !== null && data.securityDeposit !== undefined && (
+                                    {data.securityDeposit !== null && data.securityDeposit !== undefined && data.securityDeposit > 0 && (
                                         <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-100 col-span-2 flex justify-between items-center">
                                             <span className="text-[10px] text-amber-600 font-bold uppercase flex items-center gap-1">
                                                 <ShieldCheck size={14} /> Security Deposit
@@ -126,11 +126,11 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
                             <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-center">
                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Provided By</h4>
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                                    <div className="w-14 h-14 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
                                         {data.user?.profileImage ? (
                                             <img src={data.user.profileImage} alt={data.user.name} className="w-full h-full object-cover" />
                                         ) : (
-                                            <User size={24} className="text-slate-400 m-auto h-full" />
+                                            <User size={24} className="text-slate-400" />
                                         )}
                                     </div>
                                     <div>
@@ -145,36 +145,61 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
 
                         </div>
 
-                        {/* Rules & Logistics Grid */}
+                        {/* Rules & Logistics Grid - ✅ DYNAMIC FOR SERVICES VS RENTALS */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div className="p-3 bg-white border border-slate-100 rounded-xl flex items-center gap-3">
-                                <Truck size={20} className="text-blue-400" />
-                                <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Mode</p>
-                                    <p className="text-xs font-bold text-slate-700">{data.rentalMode || 'N/A'}</p>
-                                </div>
-                            </div>
-                            <div className="p-3 bg-white border border-slate-100 rounded-xl flex items-center gap-3">
-                                <Clock size={20} className="text-emerald-400" />
-                                <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Min Time</p>
-                                    <p className="text-xs font-bold text-slate-700">{data.minDuration || 'N/A'}</p>
-                                </div>
-                            </div>
-                            <div className="p-3 bg-white border border-slate-100 rounded-xl flex items-center gap-3">
-                                <Calendar size={20} className="text-orange-400" />
-                                <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Max Time</p>
-                                    <p className="text-xs font-bold text-slate-700">{data.maxDuration || 'Unlimited'}</p>
-                                </div>
-                            </div>
-                            <div className="p-3 bg-white border border-slate-100 rounded-xl flex items-center gap-3">
-                                <Package size={20} className="text-purple-400" />
-                                <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Condition</p>
-                                    <p className="text-xs font-bold text-slate-700">{data.itemCondition || 'N/A'}</p>
-                                </div>
-                            </div>
+                            {isRental ? (
+                                <>
+                                    <div className="p-3 bg-white border border-slate-100 rounded-xl flex items-center gap-3">
+                                        <Truck size={20} className="text-blue-400 shrink-0" />
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Mode</p>
+                                            <p className="text-xs font-bold text-slate-700">{data.rentalMode || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-white border border-slate-100 rounded-xl flex items-center gap-3">
+                                        <Clock size={20} className="text-emerald-400 shrink-0" />
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Min Time</p>
+                                            <p className="text-xs font-bold text-slate-700">{data.minDuration || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-white border border-slate-100 rounded-xl flex items-center gap-3">
+                                        <Calendar size={20} className="text-orange-400 shrink-0" />
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Max Time</p>
+                                            <p className="text-xs font-bold text-slate-700">{data.maxDuration || 'Unlimited'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-white border border-slate-100 rounded-xl flex items-center gap-3">
+                                        <Package size={20} className="text-purple-400 shrink-0" />
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Condition</p>
+                                            <p className="text-xs font-bold text-slate-700">{data.itemCondition || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="p-4 bg-white border border-slate-100 rounded-xl flex items-center gap-3 col-span-2">
+                                        <Clock size={24} className={data.is24x7 ? "text-emerald-500 shrink-0" : "text-blue-500 shrink-0"} />
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Working Hours</p>
+                                            <p className="text-sm font-bold text-slate-700">
+                                                {data.is24x7 ? "24/7 Available" : `${data.openTime || 'N/A'} - ${data.closeTime || 'N/A'}`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-white border border-slate-100 rounded-xl flex items-center gap-3 col-span-2">
+                                        <CalendarDays size={24} className="text-orange-500 shrink-0" />
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Working Days</p>
+                                            <p className="text-sm font-bold text-slate-700 line-clamp-1">
+                                                {data.workingDays?.length ? data.workingDays.join(', ') : 'All Days'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {/* Location */}

@@ -77,7 +77,7 @@ export default function ProductWrapper({
 
     const handleRequestSuccess = () => {
         setIsFormOpen(false);
-        setIsSuccessOpen(true); 
+        setIsSuccessOpen(true);
     };
 
     const checkAndProceed = () => {
@@ -161,7 +161,7 @@ export default function ProductWrapper({
                             userId={activeUser?.id}
                             userAddresses={effectiveAddresses}
                             userDetails={activeUser}
-                            onSuccess={handleRequestSuccess} 
+                            onSuccess={handleRequestSuccess}
                             onRequestClose={handleClose}
                         />
                     </div>
@@ -184,7 +184,7 @@ export default function ProductWrapper({
                                     userId={activeUser?.id}
                                     userAddresses={effectiveAddresses}
                                     userDetails={activeUser}
-                                    onSuccess={handleRequestSuccess} 
+                                    onSuccess={handleRequestSuccess}
                                     onRequestClose={handleClose}
                                 />
                             </div>

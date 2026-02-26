@@ -7,14 +7,16 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
-import AddressModal from '@/components/booking/AddressModal'; 
+import AddressModal from '@/components/booking/AddressModal';
 
 interface RentalFormProps {
     rentalId: string;
     rentalName: string;
 
-    // Split prices
+    // ✅ Split prices (Updated)
+    hourlyPrice?: number;
     dailyPrice?: number;
+    weeklyPrice?: number;
     monthlyPrice?: number;
     fixedPrice?: number;
 
@@ -30,7 +32,9 @@ interface RentalFormProps {
 export default function RentalBookingForm({
     rentalId,
     rentalName,
+    hourlyPrice,
     dailyPrice,
+    weeklyPrice,
     monthlyPrice,
     fixedPrice,
     rentalImage,
@@ -56,13 +60,15 @@ export default function RentalBookingForm({
     // --- Pricing Model State ---
     const availableModels = useMemo(() => {
         const models = [];
+        if (hourlyPrice && hourlyPrice > 0) models.push({ id: 'HOURLY', label: 'Hourly', price: hourlyPrice });
         if (dailyPrice && dailyPrice > 0) models.push({ id: 'DAILY', label: 'Daily', price: dailyPrice });
+        if (weeklyPrice && weeklyPrice > 0) models.push({ id: 'WEEKLY', label: 'Weekly', price: weeklyPrice });
         if (monthlyPrice && monthlyPrice > 0) models.push({ id: 'MONTHLY', label: 'Monthly', price: monthlyPrice });
         if (fixedPrice && fixedPrice > 0) models.push({ id: 'FIXED', label: 'Fixed Price', price: fixedPrice });
         return models;
-    }, [dailyPrice, monthlyPrice, fixedPrice]);
+    }, [hourlyPrice, dailyPrice, weeklyPrice, monthlyPrice, fixedPrice]);
 
-    const [pricingModel, setPricingModel] = useState<'DAILY' | 'MONTHLY' | 'FIXED'>(
+    const [pricingModel, setPricingModel] = useState<string>(
         (availableModels[0]?.id as any) || 'DAILY'
     );
 
@@ -88,9 +94,18 @@ export default function RentalBookingForm({
         let unitPrice = 0;
 
         switch (pricingModel) {
+            case 'HOURLY':
+                unitPrice = hourlyPrice || 0;
+                calculatedPrice = (days * 24) * unitPrice; // Fallback math: 24hrs per day
+                break;
             case 'DAILY':
                 unitPrice = dailyPrice || 0;
                 calculatedPrice = days * unitPrice;
+                break;
+            case 'WEEKLY':
+                unitPrice = weeklyPrice || 0;
+                const weeks = Math.max(1, Math.ceil(days / 7));
+                calculatedPrice = weeks * unitPrice;
                 break;
             case 'MONTHLY':
                 unitPrice = monthlyPrice || 0;
@@ -108,7 +123,7 @@ export default function RentalBookingForm({
             totalPrice: calculatedPrice,
             activePrice: unitPrice
         };
-    }, [startDate, endDate, pricingModel, dailyPrice, monthlyPrice, fixedPrice]);
+    }, [startDate, endDate, pricingModel, hourlyPrice, dailyPrice, weeklyPrice, monthlyPrice, fixedPrice]);
 
     // --- HANDLERS ---
     const handleAddAddress = () => {
@@ -248,8 +263,13 @@ export default function RentalBookingForm({
                     <div className="text-2xl mt-7 font-black text-white tracking-tight flex items-center justify-end">
                         <IndianRupee size={20} strokeWidth={3} className="mt-0.5" />{totalPrice}
                     </div>
+                    {/* ✅ Display appropriate unit metric based on plan */}
                     <span className="block text-[11px] font-medium text-slate-300">
-                        {pricingModel === 'FIXED' ? 'Fixed Price' : `${totalDays} Day${totalDays > 1 ? 's' : ''}`}
+                        {pricingModel === 'FIXED' ? 'Fixed Price' :
+                            pricingModel === 'HOURLY' ? `${totalDays * 24} Hours` :
+                                pricingModel === 'WEEKLY' ? `${Math.max(1, Math.ceil(totalDays / 7))} Week(s)` :
+                                    pricingModel === 'MONTHLY' ? `${Math.max(1, Math.ceil(totalDays / 30))} Month(s)` :
+                                        `${totalDays} Day${totalDays > 1 ? 's' : ''}`}
                     </span>
                 </div>
             </div>
@@ -291,7 +311,7 @@ export default function RentalBookingForm({
                 {availableModels.length > 1 && (
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Select Rate Plan</label>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {availableModels.map((model) => (
                                 <button
                                     key={model.id}

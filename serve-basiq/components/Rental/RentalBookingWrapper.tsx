@@ -19,8 +19,10 @@ interface Props {
     rentalImage?: string;
     ownerLocation?: string;
 
-    // ✅ UPDATED: Accept specific prices instead of generic pricePerDay
+    // ✅ UPDATED: Accept all pricing models from schema
+    hourlyPrice?: number;
     dailyPrice?: number;
+    weeklyPrice?: number;
     monthlyPrice?: number;
     fixedPrice?: number;
 
@@ -37,7 +39,9 @@ export default function RentalBookingWrapper({
     ownerLocation,
 
     // ✅ Destructure new price props
+    hourlyPrice,
     dailyPrice,
+    weeklyPrice,
     monthlyPrice,
     fixedPrice,
 
@@ -162,8 +166,10 @@ export default function RentalBookingWrapper({
                             rentalImage={rentalImage}
                             ownerLocation={ownerLocation}
 
-                            // ✅ Pass prices
+                            // ✅ Pass all prices down
+                            hourlyPrice={hourlyPrice}
                             dailyPrice={dailyPrice}
+                            weeklyPrice={weeklyPrice}
                             monthlyPrice={monthlyPrice}
                             fixedPrice={fixedPrice}
 
@@ -187,8 +193,10 @@ export default function RentalBookingWrapper({
                                     rentalImage={rentalImage}
                                     ownerLocation={ownerLocation}
 
-                                    // ✅ Pass prices
+                                    // ✅ Pass all prices down
+                                    hourlyPrice={hourlyPrice}
                                     dailyPrice={dailyPrice}
+                                    weeklyPrice={weeklyPrice}
                                     monthlyPrice={monthlyPrice}
                                     fixedPrice={fixedPrice}
 

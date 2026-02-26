@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
     FaArrowLeft, FaLocationDot, FaStar,
     FaShieldHalved, FaBoxOpen, FaTruckFast,
-    FaCircleCheck, FaStore, FaCube,
+    FaCircleCheck, FaStore, FaCube, FaTags,
     FaInstagram, FaFacebook, FaYoutube, FaGlobe
 } from 'react-icons/fa6';
 import { getServerSession } from "next-auth";
@@ -15,7 +15,8 @@ import AppImage from '@/components/ui/AppImage';
 import SupplierProfileModal from '@/components/products/SupplierProfileModal';
 import RatingForm from '@/components/Rating/RatingForm';
 import AppVideo from '@/components/ui/AppVideo';
-import ProductSlider from '@/components/products/ProductSlider'; // 👈 Import the new component
+import ProductSlider from '@/components/products/ProductSlider';
+
 // ✅ HELPER: Detect Video Files
 const isVideo = (url: string | null | undefined) => {
     if (!url) return false;
@@ -23,7 +24,7 @@ const isVideo = (url: string | null | undefined) => {
 };
 
 interface Props {
-    id: string; // Takes the resolved string ID directly
+    id: string;
 }
 
 export default async function ProductDetailContent({ id }: Props) {
@@ -71,6 +72,7 @@ export default async function ProductDetailContent({ id }: Props) {
             category: { select: { name: true } }
         }
     });
+
     // 2. LOGIC: STRICT CHECK REVIEW ELIGIBILITY
     let canReview = false;
 
@@ -169,13 +171,17 @@ export default async function ProductDetailContent({ id }: Props) {
                         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
                             <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
                                 <div className="w-full md:w-auto">
-                                    <div className="flex items-center gap-2 mb-3">
+                                    <div className="flex flex-wrap items-center gap-2 mb-3">
                                         <span className="text-blue-600 text-[10px] md:text-xs font-bold uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
                                             {product.category?.name || "Product"}
                                         </span>
                                         <span className={`flex items-center gap-1 text-[10px] md:text-xs font-bold px-3 py-1 rounded-full border ${isInStock ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
                                             <span className={`w-2 h-2 rounded-full ${isInStock ? "bg-green-500 animate-pulse" : "bg-amber-500"}`}></span>
                                             {isInStock ? `In Stock` : "Out of Stock"}
+                                        </span>
+                                        {/* ✅ Added Condition Badge */}
+                                        <span className="flex items-center gap-1 text-[10px] md:text-xs font-bold px-3 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200 uppercase tracking-widest">
+                                            <FaTags className="text-slate-400" /> {product.condition || 'NEW'}
                                         </span>
                                     </div>
 
@@ -332,7 +338,8 @@ export default async function ProductDetailContent({ id }: Props) {
                             <div className="mb-6">
                                 <p className="text-slate-400 text-sm font-medium">Starting at</p>
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-black text-slate-900">₹{product.price}</span>
+                                    {/* ✅ Added toLocaleString() for better formatting */}
+                                    <span className="text-4xl font-black text-slate-900">₹{Number(product.price).toLocaleString()}</span>
                                     <span className="text-slate-400 font-bold">/ {product.unit}</span>
                                 </div>
                                 <p className="text-xs text-slate-400 mt-1">+ GST if applicable</p>

@@ -15,6 +15,7 @@ interface BookingFormProps {
   price: number;
   userId: string;
   userAddresses: any[];
+  is24x7?: boolean; // ✅ Added is24x7 prop
   userDetails?: {
     name?: string;
     email?: string;
@@ -38,6 +39,7 @@ export default function BookingForm({
   price,
   userId,
   userAddresses: initialAddresses,
+  is24x7 = false, // ✅ Default to false
   userDetails,
   onRequestClose,
   onSuccess
@@ -50,6 +52,10 @@ export default function BookingForm({
 
   const [timeline, setTimeline] = useState('IMMEDIATE');
   const [instructions, setInstructions] = useState('');
+
+  // ✅ Added state for date and time
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
 
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<any>(null);
@@ -105,6 +111,9 @@ export default function BookingForm({
         addressId,
         timeline,
         specialInstructions: instructions,
+        // ✅ If 24/7 is true, pass empty strings. Otherwise, pass the selected date and time.
+        bookingDate: is24x7 ? "" : bookingDate,
+        bookingTime: is24x7 ? "" : bookingTime,
       };
 
       if (addressId.toString().startsWith('temp-') && selectedAddressObj) {
@@ -146,7 +155,6 @@ export default function BookingForm({
     }
   };
 
-  // simplified heavily - no longer needs user profile data
   const getModalInitialData = () => {
     if (editingAddress) {
       return {
@@ -193,6 +201,12 @@ export default function BookingForm({
           instructions={instructions}
           setInstructions={setInstructions}
           timelineOptions={TIMELINE_OPTIONS}
+          // ✅ Passing the new props to BookingPreferences
+          is24x7={is24x7}
+          bookingDate={bookingDate}
+          setBookingDate={setBookingDate}
+          bookingTime={bookingTime}
+          setBookingTime={setBookingTime}
         />
 
         <AddressSelection
@@ -216,7 +230,7 @@ export default function BookingForm({
           Cancel
         </button>
         <button
-          type="button" // Changed from submit so we don't accidentally trigger a form wrap 
+          type="button"
           onClick={handleSubmit}
           disabled={loading || !addressId}
           className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"

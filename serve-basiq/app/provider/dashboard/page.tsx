@@ -145,12 +145,10 @@ export default function ProviderDashboard() {
                 </div>
             </aside>
 
-            {/* --- MAIN CONTENT AREA --- */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 h-20 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20">
                     <div className="flex items-center gap-4">
 
-                        {/* ✅ New Mobile Logo */}
                         <div className="md:hidden flex items-center h-full">
                             <img
                                 src="/navbar.png"
@@ -159,7 +157,6 @@ export default function ProviderDashboard() {
                             />
                         </div>
 
-                        {/* Desktop Header Text */}
                         <div className="hidden md:block">
                             <div className="flex items-center gap-2">
                                 <h2 className="text-xl font-bold text-slate-900 capitalize">
@@ -203,7 +200,6 @@ export default function ProviderDashboard() {
                 </main>
             </div>
 
-            {/* --- MOBILE BOTTOM NAV --- */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 z-50 pb-safe shadow-lg">
                 <div className="flex justify-around items-center h-16">
                     <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeNavId} set={handleViewChange} />

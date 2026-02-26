@@ -36,11 +36,19 @@ const TIMELINE_OPTIONS = [
     { label: 'Flexible', value: 'FLEXIBLE' }
 ];
 
+// 👇 UPDATED: Added all new units to match Prisma UnitType Enum
 const UNIT_OPTIONS = [
     { label: 'Piece', value: 'PIECE' },
     { label: 'Kg', value: 'KG' },
+    { label: 'Gram', value: 'GRAM' },
+    { label: 'Liter', value: 'LITER' },
+    { label: 'ML', value: 'ML' },
     { label: 'Box', value: 'BOX' },
-    { label: 'Liter', value: 'LITER' }
+    { label: 'Pack', value: 'PACK' },
+    { label: 'Set', value: 'SET' },
+    { label: 'Meter', value: 'METER' },
+    { label: 'Sq Ft', value: 'SQ_FT' },
+    { label: 'Ton', value: 'TON' }
 ];
 
 export default function ProductRequestForm({
