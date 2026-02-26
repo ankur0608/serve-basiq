@@ -161,12 +161,11 @@ export default function ProductWrapper({
                             userId={activeUser?.id}
                             userAddresses={effectiveAddresses}
                             userDetails={activeUser}
-                            onSuccess={handleRequestSuccess} // ✅ Pass Success Handler
+                            onSuccess={handleRequestSuccess} 
                             onRequestClose={handleClose}
                         />
                     </div>
                 ) : (
-                    // Portal Mode
                     createPortal(
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                             <div className="relative w-full max-w-sm bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -185,7 +184,7 @@ export default function ProductWrapper({
                                     userId={activeUser?.id}
                                     userAddresses={effectiveAddresses}
                                     userDetails={activeUser}
-                                    onSuccess={handleRequestSuccess} // ✅ Pass Success Handler
+                                    onSuccess={handleRequestSuccess} 
                                     onRequestClose={handleClose}
                                 />
                             </div>
@@ -195,7 +194,6 @@ export default function ProductWrapper({
                 )
             )}
 
-            {/* ✅ 4. SUCCESS MODAL */}
             {mounted && isSuccessOpen && (
                 <SuccessModal
                     isOpen={isSuccessOpen}
