@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useProviderDashboard } from '@/app/hook/useProviderDashboard';
 import {
     LayoutGrid, ClipboardList, Package, UserCircle,
-    BellRing, ArrowLeft, Loader2, AlertTriangle, Settings
+    BellRing, ArrowLeft, Loader2, AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -73,9 +73,9 @@ export default function ProviderDashboard() {
 
     const getActiveNavId = (view: string) => {
         if (['settings', 'products', 'add-product'].includes(view)) return 'settings';
-        if (['profile', 'edit-profile'].includes(view)) return 'profile';        
-        if (['requests'].includes(view)) return 'requests';                           
-        return 'dashboard';                                                           
+        if (['profile', 'edit-profile'].includes(view)) return 'profile';
+        if (['requests'].includes(view)) return 'requests';
+        return 'dashboard';
     };
 
     const activeNavId = getActiveNavId(activeView);
@@ -115,13 +115,18 @@ export default function ProviderDashboard() {
                 </div>
             )}
 
+            {/* --- DESKTOP SIDEBAR --- */}
             <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-sm">
-                <div className="flex items-center gap-3 h-20 px-8 border-b border-slate-100">
-                    <div className="bg-blue-600 text-white p-2 rounded-xl"><Settings size={24} /></div>
-                    <div>
-                        <h1 className="text-slate-900 font-black text-xl leading-none">ServeBasiq</h1>
-                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter mt-1">Provider Admin</p>
-                    </div>
+                <div className="flex items-center gap-2 h-20 px-6 border-b border-slate-100">
+                    {/* ✅ New Desktop Logo */}
+                    <img
+                        src="/navbar.png"
+                        alt="ServeBasiq Logo"
+                        className="h-24 object-contain"
+                    />
+                    <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-widest mt-1">
+                        Provider
+                    </span>
                 </div>
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
                     <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeNavId} set={handleViewChange} />
@@ -140,10 +145,21 @@ export default function ProviderDashboard() {
                 </div>
             </aside>
 
+            {/* --- MAIN CONTENT AREA --- */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 h-20 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20">
                     <div className="flex items-center gap-4">
-                        <div className="md:hidden font-black text-blue-600 text-lg">SB</div>
+
+                        {/* ✅ New Mobile Logo */}
+                        <div className="md:hidden flex items-center h-full">
+                            <img
+                                src="/navbar.png"
+                                alt="ServeBasiq Logo"
+                                className="h-24 object-contain"
+                            />
+                        </div>
+
+                        {/* Desktop Header Text */}
                         <div className="hidden md:block">
                             <div className="flex items-center gap-2">
                                 <h2 className="text-xl font-bold text-slate-900 capitalize">
@@ -187,6 +203,7 @@ export default function ProviderDashboard() {
                 </main>
             </div>
 
+            {/* --- MOBILE BOTTOM NAV --- */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 z-50 pb-safe shadow-lg">
                 <div className="flex justify-around items-center h-16">
                     <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeNavId} set={handleViewChange} />

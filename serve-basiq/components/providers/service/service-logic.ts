@@ -4,8 +4,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import imageCompression from 'browser-image-compression';
 
-// 🌟 Import your reusable upload function!
-import { uploadToBackend } from '@/lib/uploadToBackend'; 
+import { uploadToBackend } from '@/lib/uploadToBackend';
 
 export interface SubCategory {
     id: string;
@@ -114,6 +113,7 @@ export function useServiceForm({
         workingDays: serviceData?.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
         openTime: serviceData?.openTime || '09:00',
         closeTime: serviceData?.closeTime || '18:00',
+        is24x7: serviceData?.is24x7 || false,
     }));
 
     const activeSubCategories = useMemo(() => {
@@ -158,7 +158,6 @@ export function useServiceForm({
         });
     };
 
-    // ✅ UPDATED: Compresses images, converts to WebP, and leaves video alone
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
@@ -183,7 +182,7 @@ export function useServiceForm({
 
                         // Rename the file to ensure it has a .webp extension
                         const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
-                        
+
                         // Convert Blob back to a standard File object
                         uploadFile = new File([compressedBlob], newFileName, {
                             type: "image/webp",
@@ -256,7 +255,11 @@ export function useServiceForm({
                 itemCondition: form.itemCondition,
                 securityDeposit: Number(form.securityDeposit),
                 minDuration: form.minDuration,
-                rentalMode: form.rentalMode
+                rentalMode: form.rentalMode,
+                // ✅ Empty the schedule fields if 24x7 is selected
+                workingDays: form.is24x7 ? [] : form.workingDays,
+                openTime: form.is24x7 ? null : form.openTime,
+                closeTime: form.is24x7 ? null : form.closeTime,
             };
 
             const endpoint = listingType === 'RENTAL' ? '/api/rentals' : '/api/services';

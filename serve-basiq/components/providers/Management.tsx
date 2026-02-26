@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useMemo, useCallback, memo } from 'react';
-import { Package, Plus, Loader2, Pencil, Trash2, Layers } from 'lucide-react';
+import { Package, Plus, Loader2, Pencil, Trash2, Layers, Eye } from 'lucide-react'; // ✅ Added Eye
 import { useServices } from '@/app/hook/useServices';
 import { ServiceSettingsView } from '@/components/providers/service/ServiceSettingsView';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { ViewDetailsModal } from '@/components/ui/ViewDetailsModal'; // ✅ Import new modal
+import { ServiceDetailsModal } from '../ui/ServiceDetailsModal';
 
 interface ManagementViewProps {
     currentUser: any;
@@ -14,11 +17,12 @@ interface ManagementViewProps {
 }
 
 const ServiceTableRow = memo(
-    ({ s, index, onEdit, onDelete }: {
+    ({ s, index, onEdit, onDelete, onView }: {
         s: any;
         index: number;
         onEdit: (s: any) => void;
         onDelete: (payload: { id: string; type: 'SERVICE' | 'RENTAL' }) => void;
+        onView: (s: any) => void; // ✅ Added onView prop
     }) => {
 
         const imageSrc = s.img || "";
@@ -31,6 +35,10 @@ const ServiceTableRow = memo(
                 default: return 'fix';
             }
         };
+
+        const shortDesc = s.desc
+            ? (s.desc.length > 50 ? s.desc.substring(0, 50) + '...' : s.desc)
+            : 'No description provided';
 
         return (
             <tr className="group border-b border-slate-100 last:border-none hover:bg-slate-50/50 transition-colors">
@@ -55,8 +63,8 @@ const ServiceTableRow = memo(
                                 </span>
                             </div>
 
-                            <p className="text-[10px] text-slate-400 line-clamp-1 hidden sm:block">
-                                {s.desc || 'No description provided'}
+                            <p className="text-[10px] text-slate-400 truncate max-w-[200px] sm:max-w-[250px] hidden sm:block" title={s.desc}>
+                                {shortDesc}
                             </p>
 
                             <div className="flex flex-wrap items-center gap-2 mt-2 sm:hidden">
@@ -103,10 +111,14 @@ const ServiceTableRow = memo(
 
                 <td className="py-4 pr-4 md:pr-6 align-middle text-right">
                     <div className="flex justify-end gap-1.5 sm:gap-2">
-                        <button onClick={() => onEdit(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-400 transition-colors">
+                        {/* ✅ Added View Button */}
+                        <button onClick={() => onView(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-400 transition-colors" title="View Details">
+                            <Eye size={14} />
+                        </button>
+                        <button onClick={() => onEdit(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-400 transition-colors" title="Edit">
                             <Pencil size={14} />
                         </button>
-                        <button onClick={() => onDelete({ id: s.id, type: s.listingType as 'SERVICE' | 'RENTAL' })} className="p-2 border border-slate-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-colors">
+                        <button onClick={() => onDelete({ id: s.id, type: s.listingType as 'SERVICE' | 'RENTAL' })} className="p-2 border border-slate-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-colors" title="Delete">
                             <Trash2 size={14} />
                         </button>
                     </div>
@@ -130,6 +142,12 @@ export function ManagementView({
     const [selectedServiceToEdit, setSelectedServiceToEdit] = useState<any>(null);
     const [isEditingService, setIsEditingService] = useState(false);
     const [isCreatingService, setIsCreatingService] = useState(false);
+
+    const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; payload: { id: string; type: 'SERVICE' | 'RENTAL' } | null }>({ isOpen: false, payload: null });
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // ✅ View Modal State
+    const [viewModalState, setViewModalState] = useState<{ isOpen: boolean; payload: any | null }>({ isOpen: false, payload: null });
 
     const allListings = useMemo(() => {
         const sList = (rawServices || []).map((svc: any) => ({
@@ -161,19 +179,29 @@ export function ManagementView({
         setIsEditingService(true);
     }, []);
 
-    const handleDelete = useCallback(
-        async ({ id, type }: { id: string; type: 'SERVICE' | 'RENTAL' }) => {
-            if (!confirm("Are you sure you want to delete this listing?")) return;
+    // ✅ Open View Modal
+    const handleView = useCallback((service: any) => {
+        setViewModalState({ isOpen: true, payload: service });
+    }, []);
 
-            try {
-                await deleteItem({ id, type });
-                showToast("Deleted successfully", "success");
-            } catch {
-                showToast("Failed to delete", "error");
-            }
-        },
-        [deleteItem, showToast]
-    );
+    const confirmDeletePrompt = useCallback((payload: { id: string; type: 'SERVICE' | 'RENTAL' }) => {
+        setDeleteModalState({ isOpen: true, payload });
+    }, []);
+
+    const executeDelete = async () => {
+        if (!deleteModalState.payload) return;
+
+        setIsDeleting(true);
+        try {
+            await deleteItem(deleteModalState.payload);
+            showToast("Deleted successfully", "success");
+        } catch {
+            showToast("Failed to delete", "error");
+        } finally {
+            setIsDeleting(false);
+            setDeleteModalState({ isOpen: false, payload: null });
+        }
+    };
 
     const handleCreateNew = useCallback(() => {
         setSelectedServiceToEdit(null);
@@ -183,6 +211,7 @@ export function ManagementView({
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 space-y-6">
 
+            {/* ... Keep the View Toggles and Header exactly the same as before ... */}
             {providerType === 'BOTH' && !isEditingService && !isCreatingService && (
                 <div className="flex bg-white rounded-xl mb-1 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
                     <button onClick={() => setActiveView('settings')} className="flex-1 py-4 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all">Services</button>
@@ -191,6 +220,7 @@ export function ManagementView({
             )}
 
             {isEditingService || isCreatingService ? (
+                // ... Keep editing view the same ...
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mx-4 md:mx-0">
                     <div className="px-6 py-5 border-b bg-white flex justify-between items-center">
                         <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
@@ -248,7 +278,14 @@ export function ManagementView({
                                     </thead>
                                     <tbody>
                                         {allListings.map((s: any, index: number) => (
-                                            <ServiceTableRow key={s.id} index={index} s={s} onEdit={handleEdit} onDelete={handleDelete} />
+                                            <ServiceTableRow
+                                                key={s.id}
+                                                index={index}
+                                                s={s}
+                                                onEdit={handleEdit}
+                                                onDelete={confirmDeletePrompt}
+                                                onView={handleView} // ✅ Passed View prop down
+                                            />
                                         ))}
                                     </tbody>
                                 </table>
@@ -257,6 +294,25 @@ export function ManagementView({
                     )}
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={deleteModalState.isOpen}
+                onClose={() => setDeleteModalState({ isOpen: false, payload: null })}
+                onConfirm={executeDelete}
+                title={`Delete ${deleteModalState.payload?.type === 'RENTAL' ? 'Rental' : 'Service'}?`}
+                message="Are you sure you want to delete this listing? This action cannot be undone."
+                confirmText="Delete Listing"
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
+            {/* ✅ Mount the Details Modal */}
+            <ServiceDetailsModal
+                isOpen={viewModalState.isOpen}
+                onClose={() => setViewModalState({ isOpen: false, payload: null })}
+                data={viewModalState.payload}
+            />
+
         </div>
     );
 }

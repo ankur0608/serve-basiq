@@ -55,7 +55,7 @@ export default function MobileNav() {
     { href: "/", label: "Home", icon: FaHouse },
     { href: "/services", label: "Services", icon: FaScrewdriverWrench },
     { href: "/rentals", label: "Rentals", icon: FaScrewdriverWrench },
-    { href: "/products", label: "Products", icon: FaBoxOpen, badge: "Shop" },
+    { href: "/products", label: "Products", icon: FaBoxOpen },
     { href: "/profile", label: "Profile", icon: FaUser },
   ];
 

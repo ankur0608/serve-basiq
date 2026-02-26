@@ -17,6 +17,7 @@ export interface ProductProps {
     gallery: string[];
     stockStatus: string;
     deliveryType: string;
+    condition: string; // ✅ Added Condition
 }
 
 const fetchProductsFn = async (userId?: string): Promise<ProductProps[]> => {
@@ -64,7 +65,8 @@ const fetchProductsFn = async (userId?: string): Promise<ProductProps[]> => {
         desc: item.desc || "",
         gallery: item.gallery || [],
         stockStatus: item.stockStatus || "IN_STOCK",
-        deliveryType: item.deliveryType || "DELIVERY"
+        deliveryType: item.deliveryType || "DELIVERY",
+        condition: item.condition || "NEW" // ✅ Mapped Condition
     }));
 };
 

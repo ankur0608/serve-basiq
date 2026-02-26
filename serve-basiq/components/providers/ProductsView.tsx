@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, memo } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
-import { Plus, Package, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Package, Loader2, Pencil, Trash2, Eye } from 'lucide-react'; // ✅ Added Eye
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { ViewDetailsModal } from '@/components/ui/ViewDetailsModal'; // ✅ Import new modal
 
 interface ProductsViewProps {
     setActiveView: (view: string) => void;
@@ -12,19 +14,20 @@ interface ProductsViewProps {
     providerType?: string;
 }
 
-// ✅ ProductTableRow: Redesigned for perfect Mobile & Desktop viewing
-const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: number, onEdit: (p: any) => void, onDelete: (id: string) => void }) => {
+const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, index: number, onEdit: (p: any) => void, onDelete: (id: string) => void, onView: (p: any) => void }) => {
     const isInStock = p.stockStatus === 'IN_STOCK';
     const categoryName = typeof p.category === 'object' ? p.category?.name : (p.category || 'General');
 
+    const shortDesc = p.desc
+        ? (p.desc.length > 50 ? p.desc.substring(0, 50) + '...' : p.desc)
+        : 'No description provided';
+
     return (
         <tr className="group border-b border-slate-100 last:border-none hover:bg-slate-50/50 transition-colors">
-            {/* 1. Index (Hidden on mobile) */}
             <td className="py-4 pl-4 md:pl-6 align-middle hidden md:table-cell w-12">
                 <span className="text-sm font-bold text-slate-400">{index + 1 < 10 ? `0${index + 1}` : index + 1}</span>
             </td>
 
-            {/* 2. Product Info (Always visible, adapts to mobile) */}
             <td className="py-4 pl-4 md:pl-0 align-middle w-full sm:w-auto">
                 <div className="flex items-start sm:items-center gap-3 md:gap-4">
                     <div className="h-12 w-12 sm:h-10 sm:w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
@@ -39,12 +42,10 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
                             <p className="font-bold text-slate-900 text-sm truncate max-w-[160px] sm:max-w-[200px] lg:max-w-[300px]">{p.name}</p>
                         </div>
 
-                        {/* Desktop Description */}
-                        <p className="text-[10px] text-slate-400 line-clamp-1 hidden sm:block">
-                            {p.desc || 'No description provided'}
+                        <p className="text-[10px] text-slate-400 truncate max-w-[200px] sm:max-w-[250px] hidden sm:block" title={p.desc}>
+                            {shortDesc}
                         </p>
 
-                        {/* Mobile-Only Info Block (Visible only on small screens) */}
                         <div className="flex flex-wrap items-center gap-2 mt-2 sm:hidden">
                             <span className="font-bold text-slate-700 text-xs">
                                 ₹{p.price}
@@ -60,14 +61,12 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
                 </div>
             </td>
 
-            {/* 3. Category (Hidden on medium/small screens) */}
             <td className="py-4 align-middle hidden lg:table-cell">
                 <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">
                     {categoryName}
                 </span>
             </td>
 
-            {/* 4. Sub-Category (Hidden on medium/small screens) */}
             <td className="py-4 align-middle hidden lg:table-cell">
                 <div className="flex flex-wrap gap-1 max-w-[150px]">
                     {p.subcategory ? (
@@ -80,25 +79,26 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete }: { p: any, index: n
                 </div>
             </td>
 
-            {/* 5. Rate (Hidden on mobile) */}
             <td className="py-4 align-middle font-bold text-slate-700 text-sm hidden sm:table-cell">
                 ₹{p.price}
             </td>
 
-            {/* 6. Status (Hidden on mobile) */}
             <td className="py-4 align-middle hidden md:table-cell">
                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${isInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                     {p.stockStatus?.replace('_', ' ') || 'Active'}
                 </span>
             </td>
 
-            {/* 7. Actions (Always visible) */}
             <td className="py-4 pr-4 md:pr-6 align-middle text-right">
                 <div className="flex justify-end gap-1.5 sm:gap-2">
-                    <button onClick={() => onEdit(p)} className="p-2 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-400 transition-colors">
+                    {/* ✅ Added View Button */}
+                    <button onClick={() => onView(p)} className="p-2 border border-slate-200 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-400 transition-colors" title="View Details">
+                        <Eye size={14} />
+                    </button>
+                    <button onClick={() => onEdit(p)} className="p-2 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-400 transition-colors" title="Edit">
                         <Pencil size={14} />
                     </button>
-                    <button onClick={() => onDelete(p.id)} className="p-2 border border-slate-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-colors">
+                    <button onClick={() => onDelete(p.id)} className="p-2 border border-slate-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-colors" title="Delete">
                         <Trash2 size={14} />
                     </button>
                 </div>
@@ -113,21 +113,38 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
 
     const { products, loading, deleteProduct, isDeleting } = useProducts(userId);
 
+    const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; productId: string | null }>({ isOpen: false, productId: null });
+
+    // ✅ View Modal State
+    const [viewModalState, setViewModalState] = useState<{ isOpen: boolean; payload: any | null }>({ isOpen: false, payload: null });
+
     const handleEdit = useCallback((product: any) => {
         setSelectedProduct(product);
         setActiveView('add-product');
     }, [setSelectedProduct, setActiveView]);
 
-    const handleDelete = useCallback(async (id: string) => {
-        if (!confirm("Are you sure you want to delete this product?")) return;
+    // ✅ Open View Modal
+    const handleView = useCallback((product: any) => {
+        setViewModalState({ isOpen: true, payload: product });
+    }, []);
+
+    const confirmDeletePrompt = useCallback((id: string) => {
+        setDeleteModalState({ isOpen: true, productId: id });
+    }, []);
+
+    const executeDelete = async () => {
+        if (!deleteModalState.productId) return;
+
         try {
-            await deleteProduct(id);
+            await deleteProduct(deleteModalState.productId);
             showToast("Product deleted successfully", "success");
         } catch (error) {
             console.error(error);
             showToast("Failed to delete", "error");
+        } finally {
+            setDeleteModalState({ isOpen: false, productId: null });
         }
-    }, [deleteProduct, showToast]);
+    };
 
     const handleCreateNew = useCallback(() => {
         setSelectedProduct(null);
@@ -135,7 +152,7 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
     }, [setSelectedProduct, setActiveView]);
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 p-4 md:p-0">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 p-4 md:p-0 relative">
 
             {/* View Toggle */}
             {providerType === 'BOTH' && (
@@ -194,7 +211,6 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-100 bg-slate-50/50">
-                                    {/* Responsive Header Hiding */}
                                     <th className="py-4 pl-4 md:pl-6 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell w-12">No.</th>
                                     <th className="py-4 pl-4 md:pl-0 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product</th>
                                     <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden lg:table-cell">Category</th>
@@ -211,7 +227,8 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                                         index={index}
                                         p={p}
                                         onEdit={handleEdit}
-                                        onDelete={handleDelete}
+                                        onDelete={confirmDeletePrompt}
+                                        onView={handleView} // ✅ Passed View prop down
                                     />
                                 ))}
                             </tbody>
@@ -219,6 +236,26 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={deleteModalState.isOpen}
+                onClose={() => setDeleteModalState({ isOpen: false, productId: null })}
+                onConfirm={executeDelete}
+                title="Delete Product?"
+                message="Are you sure you want to delete this product? This action cannot be undone."
+                confirmText="Delete Product"
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
+            {/* ✅ Mount the Details Modal */}
+            <ViewDetailsModal
+                isOpen={viewModalState.isOpen}
+                onClose={() => setViewModalState({ isOpen: false, payload: null })}
+                data={viewModalState.payload}
+                type="PRODUCT"
+            />
+
         </div>
     );
 }

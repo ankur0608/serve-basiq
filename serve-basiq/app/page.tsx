@@ -5,12 +5,12 @@ import TrendingProducts from '@/components/sections/TrendingProducts';
 import Hero from '@/components/home/Hero';
 import ServiceCategories from '@/components/home/ServiceCategories';
 import ProductCategories from '@/components/home/ProductCategories'; // ✅ Import
+import HowItWorks from '@/components/home/HowItWorks';
 
 import {
   FaWrench, FaBoxesStacked, FaPenFancy, FaStore,
-  FaShieldHalved, FaWallet, FaHeadset, FaArrowRight
+  FaShieldHalved, FaWallet, FaHeadset, FaArrowRight, FaToolbox // ✅ Added FaTools here
 } from 'react-icons/fa6';
-import HowItWorks from '@/components/home/HowItWorks';
 
 export default async function Home() {
 
@@ -53,37 +53,43 @@ export default async function Home() {
 
         {/* 2. QUICK NAVIGATION CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+          {/* 1. Book Services */}
           <Link href="/services" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
             <div className="w-12 h-12 mx-auto bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
               <FaWrench />
             </div>
             <h3 className="font-bold text-slate-900">Book Services</h3>
-            <p className="text-xs text-gray-500 mt-1">Plumbers, Cleaners...</p>
+            <p className="text-xs text-gray-500 mt-1">Plumbers • Electricians</p>
           </Link>
 
+          {/* 2. Buy Products */}
           <Link href="/products" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
             <div className="w-12 h-12 mx-auto bg-green-50 text-green-600 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
               <FaBoxesStacked />
             </div>
-            <h3 className="font-bold text-slate-900">Wholesale</h3>
-            <p className="text-xs text-gray-500 mt-1">Bulk Products</p>
+            <h3 className="font-bold text-slate-900">Buy Products</h3>
+            <p className="text-xs text-gray-500 mt-1">Local Shops • Wholesale</p>
           </Link>
 
-          <Link href="/post-requirement" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
+          {/* 3. Rent Items */}
+          <Link href="/rentals" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
             <div className="w-12 h-12 mx-auto bg-purple-50 text-purple-600 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
+              <FaToolbox />
+            </div>
+            <h3 className="font-bold text-slate-900">Rent Items</h3>
+            <p className="text-xs text-gray-500 mt-1">Tools • Equipment</p>
+          </Link>
+
+          {/* 4. Post Requirement */}
+          <Link href="/post-requirement" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
+            <div className="w-12 h-12 mx-auto bg-orange-50 text-orange-500 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
               <FaPenFancy />
             </div>
-            <h3 className="font-bold text-slate-900">Post Request</h3>
-            <p className="text-xs text-gray-500 mt-1">Get Custom Quotes</p>
+            <h3 className="font-bold text-slate-900">Post Requirement</h3>
+            <p className="text-xs text-gray-500 mt-1">Get Quotes Fast</p>
           </Link>
 
-          <Link href="/auth/register" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
-            <div className="w-12 h-12 mx-auto bg-orange-50 text-orange-500 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
-              <FaStore />
-            </div>
-            <h3 className="font-bold text-slate-900">S  tart Selling</h3>
-            <p className="text-xs text-gray-500 mt-1">Join as Partner</p>
-          </Link>
         </div>
 
         {/* 3. CATEGORIES SECTION WRAPPER */}

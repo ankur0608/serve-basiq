@@ -8,17 +8,19 @@ import {
     User,
     MapPin,
     FileText,
-    Link as LinkIcon, // Icon for Social
+    Link as LinkIcon,
     X,
     Loader2,
     Instagram,
     Facebook,
     Youtube,
-    Globe
+    Globe,
+    Calendar,
+    Languages
 } from 'lucide-react';
 
 import StepOnePersonal from './StepOneProfile';
-import StepSocial from './StepSocial'; // ✅ Imported StepSocial
+import StepSocial from './StepSocial';
 import StepTwoAddress from './StepTwoAddress';
 import StepThreeKYC from './StepThreeKYC';
 
@@ -61,7 +63,6 @@ interface ProfileViewProps {
 
 export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     const router = useRouter();
-    // ✅ Added 'SOCIAL' to state
     const [activeModal, setActiveModal] = useState<'PERSONAL' | 'SOCIAL' | 'ADDRESS' | 'KYC' | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -118,7 +119,7 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     const getInputClass = (field: string) =>
         `w-full border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all ${errors[field] ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-white hover:border-slate-300'}`;
 
-    // Handle Save Logic (For Modals)
+    // Handle Save Logic
     const handleSave = async () => {
         setLoading(true);
         try {
@@ -164,6 +165,21 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     // Helper to count social links
     const socialCount = [user?.instagramUrl, user?.facebookUrl, user?.youtubeUrl, user?.websiteUrl].filter(Boolean).length;
 
+    // Helpers for display format
+    const formatDate = (dateString: string) => {
+        if (!dateString) return "N/A";
+        return new Date(dateString).toLocaleDateString('en-IN', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
+    const formatGender = (gender: string) => {
+        if (!gender) return "N/A";
+        return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 relative">
 
@@ -178,7 +194,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 <StepOnePersonal form={form} updateField={updateField} errors={errors} getInputClass={getInputClass} />
             </EditModal>
 
-            {/* ✅ New SOCIAL Modal */}
             <EditModal
                 isOpen={activeModal === 'SOCIAL'}
                 onClose={() => setActiveModal(null)}
@@ -225,9 +240,14 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                     </div>
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 mt-4">{user?.name || "Provider Name"}</h2>
-                <p className="text-slate-500 text-sm font-medium flex items-center justify-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    {user?.role === 'ADMIN' ? 'Administrator' : 'Service Provider'} • {user?.isVerified ? 'Verified' : 'Pending Verification'}
+
+                {/* ✅ DYNAMIC STATUS COLOR */}
+                <p className="text-slate-500 text-sm font-medium flex items-center justify-center gap-2 mt-1">
+                    <span className={`w-2.5 h-2.5 rounded-full ${user?.isVerified ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`}></span>
+                    {user?.role === 'ADMIN' ? 'Administrator' : 'Service Provider'} •
+                    <span className={user?.isVerified ? 'text-emerald-700' : 'text-amber-700'}>
+                        {user?.isVerified ? ' Verified' : ' Pending Verification'}
+                    </span>
                 </p>
             </div>
 
@@ -251,11 +271,22 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                         <p className="text-slate-600 flex justify-between"><strong>Full Name:</strong> <span className="text-slate-900">{user?.name || "N/A"}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Email:</strong> <span className="text-slate-900">{user?.email || "N/A"}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Phone:</strong> <span className="text-slate-900">{user?.phone || "N/A"}</span></p>
-                        <p className="text-slate-600 flex justify-between"><strong>Account Type:</strong> <span className="text-slate-900 font-bold">{user?.providerType || "BOTH"}</span></p>
+
+                        {/* ✅ NEW FIELDS ADDED HERE */}
+                        <p className="text-slate-600 flex justify-between"><strong>Gender:</strong> <span className="text-slate-900">{formatGender(user?.gender)}</span></p>
+                        <p className="text-slate-600 flex justify-between"><strong>Date of Birth:</strong> <span className="text-slate-900">{formatDate(user?.dob)}</span></p>
+                        <p className="text-slate-600 flex justify-between"><strong>Language:</strong> <span className="text-slate-900">{user?.preferredLanguage || "English"}</span></p>
+
+                        <div className="pt-2 mt-2 border-t border-slate-50">
+                            <p className="text-slate-600 flex justify-between items-center">
+                                <strong>Account Type:</strong>
+                                <span className="px-2 py-1 bg-slate-100 rounded text-slate-900 font-bold text-xs">{user?.providerType || "BOTH"}</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                {/* 2. ✅ Social Profiles Card (New) */}
+                {/* 2. Social Profiles Card */}
                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-pink-500 p-6 relative overflow-hidden group">
                     <button
                         onClick={() => setActiveModal('SOCIAL')}
@@ -325,7 +356,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                                 )}
                             </div>
                         ) : (
-                            /* Original full-empty fallback */
                             <div className="flex flex-col items-center justify-center py-4 text-slate-400">
                                 <LinkIcon size={32} className="mb-2 opacity-50" />
                                 <p className="text-xs">No social profiles linked</p>

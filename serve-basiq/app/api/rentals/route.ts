@@ -125,7 +125,6 @@
 //     }
 // }
 
-
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -144,8 +143,8 @@ export async function GET(req: Request) {
         const categoryId = searchParams.get("categoryId");
         const subcategoryId = searchParams.get("subcategoryId");
         const search = searchParams.get("search");
-        const location = searchParams.get("location"); 
-        const sort = searchParams.get("sort"); 
+        const location = searchParams.get("location");
+        const sort = searchParams.get("sort");
 
         const where: any = {
             isVerified: true,
@@ -195,7 +194,7 @@ export async function GET(req: Request) {
         const includeObj = {
             category: { select: { id: true, name: true } },
             subcategory: { select: { id: true, name: true } },
-            _count: { select: { reviews: true } }, 
+            _count: { select: { reviews: true } },
             user: {
                 select: {
                     id: true, name: true, image: true, phone: true,
@@ -253,7 +252,11 @@ export async function POST(req: Request) {
         // Logic
         const finalSubId = subCategoryId || (Array.isArray(subCategoryIds) && subCategoryIds.length > 0 ? subCategoryIds[0] : null);
         const numericPrice = parseFloat(price);
-        const selectedPriceType = priceType || 'DAILY';
+
+        // Ensure values strictly match the Enums by enforcing uppercase
+        const selectedPriceType = priceType ? priceType.toUpperCase() : 'DAILY';
+        const formattedCondition = itemCondition ? itemCondition.toUpperCase() : 'GOOD';
+        const formattedMode = rentalMode ? rentalMode.toUpperCase() : 'PICKUP';
 
         const dataPayload = {
             name, desc, rentalImg, coverImg, gallery,
@@ -269,10 +272,10 @@ export async function POST(req: Request) {
             addressLine1, addressLine2, city, state, pincode,
             category: categoryId ? { connect: { id: categoryId } } : undefined,
             subcategory: finalSubId ? { connect: { id: finalSubId } } : undefined,
-            itemCondition,
+            itemCondition: formattedCondition, // ✅ Strict Enum Map
             securityDeposit: securityDeposit ? parseFloat(securityDeposit) : 0,
             minDuration,
-            rentalMode
+            rentalMode: formattedMode // ✅ Strict Enum Map
         };
 
         let rental;

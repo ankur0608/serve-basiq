@@ -73,15 +73,15 @@ export default async function RentalDetailsContent({ id }: Props) {
         }
     });
 
-    // Map the rental data to match the format the ProductSlider expects
     const relatedRentals = relatedRentalsRaw.map((r) => ({
         id: r.id,
         name: r.name,
         price: r.price || 0,
-        unit: r.priceType?.toLowerCase() || 'day', // Uses priceType (e.g., 'daily', 'monthly') as the unit
-        productImage: r.coverImg || r.rentalImg, // Maps rental image to slider image
+        unit: r.priceType?.toLowerCase() || 'day',
+        productImage: r.coverImg || r.rentalImg,
         gallery: Array.isArray(r.gallery) ? (r.gallery as string[]) : [],
-        category: r.category
+        category: r.category,
+        listingType: 'RENTAL' as const // ✅ Tell the slider these are rentals!
     }));
 
     // 2. LOGIC: CHECK REVIEW ELIGIBILITY
@@ -409,11 +409,14 @@ export default async function RentalDetailsContent({ id }: Props) {
                     </div>
                 </div>
 
-                {/* 👉 NEW: Reusing the ProductSlider mapped to Rentals */}
-                <ProductSlider
-                    title="Related Rentals"
-                    products={relatedRentals}
-                />
+            
+                {relatedRentals.length > 0 && (
+                    <ProductSlider
+                        title="Related Rentals"
+                        products={relatedRentals}
+                        currentUser={session?.user || null} // ✅ Pass user down
+                    />
+                )}
 
             </div>
         </div>

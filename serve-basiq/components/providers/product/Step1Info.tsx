@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, Scale, ChevronRight, LayoutGrid, Box, AlertCircle, BadgeIndianRupee, Truck } from 'lucide-react';
+import { Package, Scale, ChevronRight, LayoutGrid, Box, AlertCircle, BadgeIndianRupee, Truck, Tag } from 'lucide-react';
 import { ProductForm, Category, SubCategory } from './AddProductView';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
@@ -69,7 +69,8 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                         className={getErrorClass(!!errors.unit)}
                         options={[
                             { label: 'Select Unit', value: '' },
-                            ...['PIECE', 'KG', 'BOX', 'LITER'].map(u => ({ label: u, value: u }))
+                            // ✅ Expanded Unit Types
+                            ...['PIECE', 'KG', 'GRAM', 'LITER', 'ML', 'BOX', 'PACK', 'SET', 'METER', 'SQ_FT', 'TON'].map(u => ({ label: u, value: u }))
                         ]}
                     />
                 </div>
@@ -132,8 +133,22 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                 </div>
             </div>
 
-            {/* Stock & Logistics */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* ✅ Stock, Logistics, & Condition (3-Column Grid) */}
+            <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                    <Select
+                        label="CONDITION"
+                        icon={<Tag size={18} className="text-slate-400" />}
+                        value={form.condition}
+                        onChange={e => onFieldChange('condition', e.target.value)}
+                        className="bg-slate-50/50"
+                        options={[
+                            { label: 'New', value: 'NEW' },
+                            { label: 'Used', value: 'USED' },
+                            { label: 'Refurbished', value: 'REFURBISHED' }
+                        ]}
+                    />
+                </div>
                 <div className="space-y-1">
                     <Select
                         label="STOCK STATUS"
@@ -143,20 +158,23 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                         className="bg-slate-50/50"
                         options={[
                             { label: 'In Stock', value: 'IN_STOCK' },
-                            { label: 'On Demand', value: 'ON_DEMAND' }
+                            { label: 'Out of Stock', value: 'OUT_OF_STOCK' },
+                            { label: 'On Demand', value: 'ON_DEMAND' },
+                            { label: 'Made to Order', value: 'MADE_TO_ORDER' }
                         ]}
                     />
                 </div>
                 <div className="space-y-1">
                     <Select
-                        label="LOGISTICS"
+                        label="DELIVERY TYPE"
                         icon={<Truck size={18} className="text-slate-400" />}
                         value={form.deliveryType}
                         onChange={e => onFieldChange('deliveryType', e.target.value)}
                         className="bg-slate-50/50"
                         options={[
+                            { label: 'Pickup', value: 'PICKUP' },
                             { label: 'Delivery', value: 'DELIVERY' },
-                            { label: 'Pickup Only', value: 'PICKUP' }
+                            { label: 'Both', value: 'BOTH' }
                         ]}
                     />
                 </div>

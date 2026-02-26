@@ -41,9 +41,10 @@ export default function ServiceFiltersMobile({
     const [isOpen, setIsOpen] = useState(false);
 
     const handleApply = () => setIsOpen(false);
+
+    // 👇 Updated: Now it only resets filters and leaves the modal open
     const handleReset = () => {
         resetFilters();
-        setIsOpen(false);
     };
 
     return (
@@ -63,7 +64,7 @@ export default function ServiceFiltersMobile({
                     />
                 </div>
                 <button
-                    type="button" // 👈 Added type="button"
+                    type="button"
                     onClick={() => setIsOpen(true)}
                     className="bg-slate-900 text-white w-12 rounded-lg flex items-center justify-center active:scale-95 transition shadow-md"
                 >
@@ -80,7 +81,7 @@ export default function ServiceFiltersMobile({
                         <div className="flex items-center justify-between p-4 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-900">Filters</h3>
                             <button
-                                type="button" // 👈 Added type="button"
+                                type="button"
                                 onClick={() => setIsOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
                                 <X size={20} />
                             </button>
@@ -169,13 +170,15 @@ export default function ServiceFiltersMobile({
                         {/* Footer */}
                         <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
                             <button
-                                type="button" // 👈 Added type="button"
-                                onClick={handleReset} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition text-sm">
+                                type="button"
+                                onClick={handleReset}
+                                className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition text-sm">
                                 Reset
                             </button>
                             <button
-                                type="button" // 👈 Added type="button"
-                                onClick={handleApply} className="flex-[2] py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-lg text-sm">
+                                type="button"
+                                onClick={handleApply}
+                                className="flex-[2] py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-lg text-sm">
                                 Apply Filters
                             </button>
                         </div>

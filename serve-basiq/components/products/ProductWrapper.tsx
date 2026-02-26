@@ -10,7 +10,6 @@ import { useQuery } from '@tanstack/react-query';
 
 import ProductRequestForm from './ProductRequestForm';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
-// ✅ 1. Import Success Modal
 import SuccessModal from '@/components/ui/SuccessModal';
 
 interface Props {
@@ -41,7 +40,6 @@ export default function ProductWrapper({
     // States
     const [isFormOpen, setIsFormOpen] = useState(defaultOpen);
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
-    // ✅ 2. Add Success State
     const [isSuccessOpen, setIsSuccessOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
@@ -52,9 +50,6 @@ export default function ProductWrapper({
         setMounted(true);
     }, []);
 
-    // ------------------------------------------------------------------
-    // 🔍 SMART USER FETCHING LOGIC
-    // ------------------------------------------------------------------
     const isPropUserIncomplete = currentUser && (currentUser.isPhoneVerified === undefined || !currentUser.addresses);
     const shouldFetch = status === "authenticated" && (!currentUser || isPropUserIncomplete);
 
@@ -74,17 +69,15 @@ export default function ProductWrapper({
     const effectiveAddresses = (activeUser?.addresses && activeUser.addresses.length > 0)
         ? activeUser.addresses
         : (userAddresses || []);
-    // ------------------------------------------------------------------
 
     const handleClose = () => {
         setIsFormOpen(false);
         if (onRequestClose) onRequestClose();
     };
 
-    // ✅ 3. Handle Success
     const handleRequestSuccess = () => {
-        setIsFormOpen(false); // Close Form
-        setIsSuccessOpen(true); // Open Success Modal
+        setIsFormOpen(false);
+        setIsSuccessOpen(true); 
     };
 
     const checkAndProceed = () => {
@@ -109,7 +102,6 @@ export default function ProductWrapper({
         if (defaultOpen && mounted) {
             checkAndProceed();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [defaultOpen, mounted, status, isFetchingUser, activeUser]);
 
     const handleRequestClick = (e: React.MouseEvent) => {
@@ -138,7 +130,6 @@ export default function ProductWrapper({
                 </button>
             )}
 
-            {/* MOBILE VERIFICATION MODAL */}
             {mounted && isMobileModalOpen && (
                 <MobileVerificationModal
                     userId={activeUser?.id || (session?.user as any)?.id}

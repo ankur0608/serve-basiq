@@ -100,24 +100,6 @@ export default function SettingsPage() {
                         <InfoRow label="Language" value={currentUser?.preferredLanguage} icon={<FaIdCard />} />
                     </div>
                 </div>
-
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-lg text-slate-900 mb-6">Account Details</h3>
-                    <div className="space-y-5">
-                        <InfoRow label="Account Role" value={currentUser?.role} icon={<FaShieldHalved />} />
-                        <InfoRow
-                            label="Account Type"
-                            value={currentUser?.isWorker ? "Service Provider" : "Customer"}
-                            icon={<FaBriefcase />}
-                        />
-                        <InfoRow
-                            label="Phone Verification"
-                            value={currentUser?.isPhoneVerified ? "Verified" : "Unverified"}
-                            icon={currentUser?.isPhoneVerified ? <FaCircleCheck className="text-green-500" /> : <FaCircleXmark className="text-red-500" />}
-                        />
-                    </div>
-                </div>
-
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-lg text-slate-900">Saved Addresses</h3>

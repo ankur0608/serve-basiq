@@ -6,7 +6,7 @@ import { SearchX, Loader2 } from 'lucide-react';
 import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
 
 import { useServicesExplorer } from '@/app/hook/useServicesExplorer';
-import { useDebounce } from '@/app/hook/useDebounce'; // <-- Added import
+import { useDebounce } from '@/app/hook/useDebounce';
 import ServiceCard from '@/components/ui/ServiceCard';
 import ServiceCategories from '../home/ServiceCategories';
 import ServiceFiltersDesktop from './ServiceFiltersDesktop';
@@ -19,7 +19,7 @@ export default function ServicesExplorer() {
 
     // --- FILTERS STATE ---
     const [searchTerm, setSearchTerm] = useState('');
-    const debouncedSearchTerm = useDebounce(searchTerm, 500); // <-- 500ms delay
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
     const [selectedLocation, setSelectedLocation] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
@@ -41,7 +41,7 @@ export default function ServicesExplorer() {
         hasNextPage,
         isFetchingNextPage
     } = useServicesExplorer({
-        search: debouncedSearchTerm, // <-- Using debounced term for the API call
+        search: debouncedSearchTerm,
         category: selectedCategory,
         subcategory: selectedSubcategory,
         location: selectedLocation,
@@ -96,12 +96,30 @@ export default function ServicesExplorer() {
     // --- INITIAL LOADING ---
     if (isLoading) return <ProductsSkeleton />;
 
+    // Detect if we are actively filtering (but not just loading the next page of infinite scroll)
+    const isFiltering = isFetching && !isFetchingNextPage;
+
     return (
         <section className="min-h-screen bg-slate-50 text-slate-800 pb-10">
             {/* --- HEADER --- */}
             <div className="pt-4 md:pt-6 bg-slate-50">
                 <div className="container mx-auto max-w-7xl px-4 mb-2">
-                    <ServiceCategories categories={categories} />
+                    {/* ✅ CATEGORY SKELETON: Matches the boxy UI */}
+                    {isFiltering ? (
+                        <div className="flex gap-4 overflow-hidden animate-pulse mb-6 pb-2">
+                            {[1, 2, 3, 4, 5, 6].map((i) => (
+                                <div key={i} className="w-[130px] md:w-[160px] h-[90px] md:h-[110px] bg-white border border-slate-100 rounded-2xl flex flex-col items-center justify-center shrink-0 shadow-sm p-3">
+                                    <div className="w-10 h-10 bg-slate-100 rounded-xl mb-3 flex items-center justify-center">
+                                        <div className="w-5 h-5 bg-slate-200 rounded-md"></div>
+                                    </div>
+                                    <div className="h-2 w-3/4 bg-slate-200 rounded mb-1.5"></div>
+                                    <div className="h-2 w-1/2 bg-slate-200 rounded hidden md:block"></div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <ServiceCategories categories={categories} />
+                    )}
                 </div>
                 <div className="container mx-auto max-w-7xl px-4">
                     <ServiceFiltersMobile
@@ -137,8 +155,7 @@ export default function ServicesExplorer() {
                     <div className="hidden md:block mb-6">
                         <div className="relative w-full">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                {/* UX UPGRADE: Show spinner right inside the search bar instead of magnifying glass when loading */}
-                                {isFetching && !isFetchingNextPage ? (
+                                {isFiltering ? (
                                     <Loader2 className="animate-spin text-blue-500" size={18} />
                                 ) : (
                                     <FaMagnifyingGlass className="text-slate-400" size={18} />
@@ -157,9 +174,21 @@ export default function ServicesExplorer() {
                         </div>
                     </div>
 
-                    {/* UX UPGRADE: Removed full-screen loader. Content dims gracefully while fetching. */}
-                    <div className={`transition-opacity duration-300 ${isFetching && !isFetchingNextPage ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                        {services.length === 0 ? (
+                    {/* ✅ DYNAMIC GRID / SKELETON */}
+                    <div className="transition-opacity duration-300">
+                        {isFiltering ? (
+                            // INLINE GRID SKELETON (Shows immediately when typing or filtering)
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                                {[1, 2, 3, 4, 5, 6].map((i) => (
+                                    <div key={i} className="bg-slate-200 animate-pulse rounded-2xl h-[280px] w-full border border-slate-100 flex flex-col p-4 justify-end">
+                                        <div className="h-4 bg-slate-300 rounded w-3/4 mb-2"></div>
+                                        <div className="h-3 bg-slate-300 rounded w-1/2 mb-4"></div>
+                                        <div className="h-8 bg-slate-300 rounded w-full"></div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : services.length === 0 ? (
+                            // EMPTY STATE
                             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
                                 <div className="p-4 bg-slate-50 rounded-full mb-4">
                                     <SearchX className="text-slate-400" size={40} />

@@ -13,7 +13,7 @@ import RatingForm from '@/components/Rating/RatingForm';
 import { Session } from 'next-auth';
 import { useServicePageData } from '@/app/hook/useServicePageData';
 import AppVideo from '../ui/AppVideo';
-import ProductSlider from '@/components/products/ProductSlider'; 
+import ProductSlider from '@/components/products/ProductSlider';
 
 const isVideo = (url: string | null | undefined) => {
     if (!url) return false;
@@ -126,9 +126,10 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
         unit: s.priceType === 'HOURLY' ? 'hour' : 'fixed',
         productImage: s.coverImg || s.serviceimg || s.mainimg || null,
         gallery: Array.isArray(s.gallery) ? s.gallery : [],
-        category: s.category
+        category: s.category,
+        listingType: 'SERVICE' as const, // Tell the slider it's a service
+        ownerLocation: s.city || s.loc || 'Location not specified'
     }));
-
     return (
         <div className="pb-40 bg-slate-50 min-h-screen">
             {/* HERO SECTION */}
@@ -387,6 +388,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                     <ProductSlider
                         title="Related Services"
                         products={formattedRelatedServices}
+                        currentUser={currentUser} // Pass currentUser down!
                     />
                 )}
 

@@ -55,7 +55,7 @@ export async function PATCH(
 
     const {
       name,
-      category, 
+      category,
       price,
       moq,
       desc,
@@ -75,7 +75,7 @@ export async function PATCH(
     if (gallery !== undefined) updateData.gallery = gallery;
 
     if (price !== undefined) updateData.price = parseFloat(price);
-    if (moq !== undefined) updateData.moq = parseInt(moq); 
+    if (moq !== undefined) updateData.moq = parseInt(moq);
 
     if (stockStatus !== undefined) updateData.stockStatus = stockStatus;
     if (unit !== undefined) updateData.unit = unit;
@@ -84,7 +84,7 @@ export async function PATCH(
     console.log("✅ Sanitized Update Data:", updateData);
 
     const updated = await prisma.product.update({
-      where: { id }, 
+      where: { id },
       data: updateData,
     });
 
@@ -105,7 +105,6 @@ export async function PATCH(
     );
   }
 }
-
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -113,10 +112,17 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-
-    await prisma.product.delete({
-      where: { id }, 
-    });
+    // We pass a second argument to $transaction to increase the timeout
+    await prisma.$transaction(async (tx) => {
+      await tx.favoriteProduct.deleteMany({ where: { productId: id } });
+      await tx.review.deleteMany({ where: { productId: id } });
+      await tx.order.deleteMany({ where: { productId: id } });
+      await tx.product.delete({ where: { id } });
+    },
+      {
+        maxWait: 5000,  // Wait up to 5 seconds to connect to the database
+        timeout: 30000, // Give the transaction 30 seconds to finish (instead of 5)
+      });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

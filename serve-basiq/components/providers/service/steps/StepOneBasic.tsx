@@ -628,6 +628,7 @@
 //         </div>
 //     );
 // };
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -649,19 +650,19 @@ const isVideo = (url: string) => {
     return url.match(/\.(mp4|webm|mov|mkv)$/i);
 };
 
-// ==========================================
-// STEP 1: Details, Schedule & Pricing
-// ==========================================
 export const StepOneDetails = ({
     form, handleChange, categories, loadingCats, activeSubCategories,
     setStep, listingType, onBack, handleGetLocation, gettingLoc, toggleDay
 }: any) => {
     const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const PRICING_OPTIONS = listingType === 'RENTAL' ? ['DAILY', 'MONTHLY', 'FIXED'] : ['FIXED', 'HOURLY'];
+    
+    // ✅ Includes all Rental Pricing Types
+    const PRICING_OPTIONS = listingType === 'RENTAL' 
+        ? ['HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'FIXED'] 
+        : ['FIXED', 'HOURLY'];
 
     return (
         <div className="space-y-8 animate-in slide-in-from-right duration-300">
-            {/* Header / Change Type Option */}
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 text-sm font-bold text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg">
                     {listingType === 'SERVICE' ? (
@@ -677,7 +678,6 @@ export const StepOneDetails = ({
                 )}
             </div>
 
-            {/* --- SECTION: BASIC INFO --- */}
             <div>
                 <h3 className={sectionTitleClass}>Basic Information</h3>
                 <div className="space-y-4">
@@ -771,8 +771,10 @@ export const StepOneDetails = ({
                             onChange={(e: any) => handleChange('itemCondition', e.target.value)}
                             className="bg-white/50 cursor-pointer"
                             options={[
-                                { label: 'New', value: 'New' }, { label: 'Like New', value: 'Like New' },
-                                { label: 'Good', value: 'Good' }, { label: 'Fair', value: 'Fair' }
+                                { label: 'New', value: 'NEW' }, 
+                                { label: 'Excellent', value: 'EXCELLENT' },
+                                { label: 'Good', value: 'GOOD' }, 
+                                { label: 'Used', value: 'USED' }
                             ]}
                         />
                         <Input
@@ -820,13 +822,13 @@ export const StepOneDetails = ({
                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                     <div className="flex justify-between items-center mb-4">
                         <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Pricing Model</label>
-                        <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                        <div className="flex flex-wrap bg-white p-1 rounded-lg border border-slate-200 shadow-sm gap-1">
                             {PRICING_OPTIONS.map(t => (
                                 <button
                                     key={t}
                                     type="button"
                                     onClick={() => handleChange('priceType', t)}
-                                    className={`px-4 py-1.5 text-[10px] font-bold rounded-md transition-all ${form.priceType === t ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                                    className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${form.priceType === t ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
                                 >
                                     {t}
                                 </button>
@@ -852,6 +854,8 @@ export const StepOneDetails = ({
             <div>
                 <h3 className={sectionTitleClass}>Availability & Location</h3>
                 <div className="space-y-5">
+                    
+                    {/* Location Block */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Input
@@ -875,41 +879,69 @@ export const StepOneDetails = ({
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">Working Days</label>
-                        <div className="flex flex-wrap gap-2">
-                            {DAYS.map((day: string) => {
-                                const isSelected = form.workingDays.includes(day);
-                                return (
-                                    <button
-                                        key={day}
-                                        type="button"
-                                        onClick={() => toggleDay(day)}
-                                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all border shadow-sm ${isSelected ? 'bg-slate-900 text-white border-slate-900 transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
-                                    >
-                                        {day}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
+                    {/* ✅ Scheduling Block (Hidden for Rentals, Collapses if 24x7) */}
+                    {listingType === 'SERVICE' && (
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            
+                            {/* 24x7 Toggle */}
+                            <div className="flex items-center justify-between mb-2">
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-900 uppercase">24x7 Availability</h4>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">I am available all day, every day.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer" 
+                                        checked={form.is24x7 || false} 
+                                        onChange={(e) => handleChange('is24x7', e.target.checked)} 
+                                    />
+                                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className={labelClass}>Opens At</label>
-                            <div className="relative">
-                                <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
-                                <input type="time" className={`${inputClass} pl-9`} value={form.openTime} onChange={(e: any) => handleChange('openTime', e.target.value)} />
-                            </div>
+                            {/* Conditionally render Working Days and Times */}
+                            {!form.is24x7 && (
+                                <div className="space-y-4 pt-4 border-t border-slate-200 mt-2">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">Working Days</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {DAYS.map((day: string) => {
+                                                const isSelected = form.workingDays?.includes(day);
+                                                return (
+                                                    <button
+                                                        key={day}
+                                                        type="button"
+                                                        onClick={() => toggleDay(day)}
+                                                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all border shadow-sm ${isSelected ? 'bg-slate-900 text-white border-slate-900 transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
+                                                    >
+                                                        {day}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelClass}>Opens At</label>
+                                            <div className="relative">
+                                                <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
+                                                <input type="time" className={`${inputClass} pl-9`} value={form.openTime || ''} onChange={(e: any) => handleChange('openTime', e.target.value)} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Closes At</label>
+                                            <div className="relative">
+                                                <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
+                                                <input type="time" className={`${inputClass} pl-9`} value={form.closeTime || ''} onChange={(e: any) => handleChange('closeTime', e.target.value)} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <label className={labelClass}>Closes At</label>
-                            <div className="relative">
-                                <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
-                                <input type="time" className={`${inputClass} pl-9`} value={form.closeTime} onChange={(e: any) => handleChange('closeTime', e.target.value)} />
-                            </div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
@@ -945,7 +977,8 @@ export const StepTwoMedia = ({
 
                     {form.mainimg ? (
                         <>
-                            <AppImage src={form.mainimg} alt="Main Service" type="card" className="w-full h-full object-cover" />                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-0">
+                            <AppImage src={form.mainimg} alt="Main Service" type="card" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-0">
                                 <p className="text-white text-xs font-bold flex items-center gap-2"><Camera size={16} /> Change Photo</p>
                             </div>
                         </>
@@ -1023,7 +1056,7 @@ export const StepTwoMedia = ({
                 </div>
             </div>
 
-            {/* Final Submission Buttons */}
+            {   }
             <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">
                 <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">
                     Back

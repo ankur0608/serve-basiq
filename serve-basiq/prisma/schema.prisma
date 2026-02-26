@@ -1,6 +1,6 @@
 generator client {
-    provider        = "prisma-client-js"
-    engineType      = "library"
+    provider   = "prisma-client-js"
+    engineType = "library"
     // previewFeatures = ["driverAdapters"]
 }
 
@@ -67,19 +67,35 @@ enum PaymentMode {
 
 enum StockStatus {
     IN_STOCK
+    OUT_OF_STOCK
     ON_DEMAND
+    MADE_TO_ORDER
 }
 
 enum UnitType {
     PIECE
     KG
-    BOX
+    GRAM
     LITER
+    ML
+    BOX
+    PACK
+    SET
+    METER
+    SQ_FT
+    TON
+}
+
+enum Condition {
+    NEW
+    USED
+    REFURBISHED
 }
 
 enum DeliveryType {
     PICKUP
     DELIVERY
+    BOTH
 }
 
 enum PayoutMethod {
@@ -115,12 +131,32 @@ enum RentalPricingModel {
     FIXED
 }
 
+enum RentalMode {
+    PICKUP
+    DELIVERY
+    BOTH
+}
+
+enum RentalCondition {
+    NEW
+    EXCELLENT
+    GOOD
+    USED
+}
+
 enum MinRentalDuration {
     ONE_HOUR
     ONE_DAY
     SEVEN_DAYS
     FIFTEEN_DAYS
     THIRTY_DAYS
+}
+
+enum RentalPricingType {
+    HOURLY
+    DAILY
+    WEEKLY
+    MONTHLY
 }
 
 model RentalBooking {
@@ -157,43 +193,92 @@ model RentalBooking {
     updatedAt           DateTime @updatedAt
 }
 
+// model Rental {
+//     id     String @id @default(uuid())
+//     userId String
+//     user   User   @relation(fields: [userId], references: [id])
+
+//     name      String
+//     desc      String
+//     rentalImg String
+//     coverImg  String?
+//     gallery   String[]
+
+//     categoryId String?
+//     category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
+
+//     subCategoryId String?
+//     subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
+
+//     price     Float  @default(0)
+//     priceType String
+//     stock     Int    @default(1)
+
+//     dailyPrice   Float?
+//     monthlyPrice Float?
+//     fixedPrice   Float?
+
+//     itemCondition   String? @default("Good")
+//     securityDeposit Float?  @default(0)
+//     minDuration     String?
+//     maxDuration     String?
+//     rentalMode      String? @default("PICKUP")
+
+//     addressLine1 String?
+//     addressLine2 String?
+//     city         String?
+//     state        String?
+//     pincode      String?
+//     latitude     Decimal?
+//     longitude    Decimal?
+//     radiusKm     Int?     @default(10)
+
+//     isVerified     Boolean          @default(false)
+//     createdAt      DateTime         @default(now())
+//     updatedAt      DateTime         @updatedAt
+//     bookings       Booking[]
+//     favoritedBy    FavoriteRental[]
+//     rentalBookings RentalBooking[]
+//     reviews        Review[]
+// }
+
 model Rental {
     id     String @id @default(uuid())
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
-    // --- Basic Info ---
     name      String
     desc      String
     rentalImg String
     coverImg  String?
     gallery   String[]
 
-    // --- Category ---
     categoryId String?
     category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
 
     subCategoryId String?
     subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
 
-    // --- Pricing & Stock ---
-    price     Float  @default(0)
-    priceType String
-    stock     Int    @default(1)
+    price Float @default(0)
 
-    // ✅ ADD THESE NEW FIELDS TO FIX THE API ERROR
+    priceType RentalPricingType @default(DAILY)
+
+    stock Int @default(1)
+
+    hourlyPrice  Float?
     dailyPrice   Float?
+    weeklyPrice  Float?
     monthlyPrice Float?
     fixedPrice   Float?
 
-    // --- New Fields From Previous Updates ---
-    itemCondition   String? @default("Good")
+    itemCondition RentalCondition @default(GOOD)
+
     securityDeposit Float?  @default(0)
     minDuration     String?
     maxDuration     String?
-    rentalMode      String? @default("PICKUP")
 
-    // --- Location ---
+    rentalMode RentalMode @default(PICKUP)
+
     addressLine1 String?
     addressLine2 String?
     city         String?
@@ -203,15 +288,22 @@ model Rental {
     longitude    Decimal?
     radiusKm     Int?     @default(10)
 
-    // --- System ---
-    isVerified      Boolean          @default(false)
-    createdAt       DateTime         @default(now())
-    updatedAt       DateTime         @updatedAt
-    bookings        Booking[]
-    favoritedBy     FavoriteRental[]
-    rentalBookings  RentalBooking[]
-    reviews         Review[]
-    // favoriteRentals FavoriteRental[]
+    isVerified Boolean  @default(false)
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    bookings       Booking[]
+    favoritedBy    FavoriteRental[]
+    rentalBookings RentalBooking[]
+    reviews        Review[]
+
+    @@index([userId])
+    @@index([categoryId])
+    @@index([subCategoryId])
+    @@index([city])
+    @@index([pincode])
+    @@index([latitude, longitude])
+    @@index([isVerified, itemCondition, priceType])
 }
 
 model Category {
@@ -339,14 +431,14 @@ model User {
     upiId                 String?
     preferredPayoutMethod PayoutMethod? @default(BANK)
 
-    kycDetails      KycDetails?
-    accounts        Account[]
-    services        Service[]
-    addresses       Address[]
-    products        Product[]
-    reviews         Review[]
-    bookings        Booking[]
-    requirements    Requirement[]
+    kycDetails   KycDetails?
+    accounts     Account[]
+    services     Service[]
+    addresses    Address[]
+    products     Product[]
+    reviews      Review[]
+    bookings     Booking[]
+    requirements Requirement[]
 
     createdAt        DateTime          @default(now())
     updatedAt        DateTime          @updatedAt
@@ -449,8 +541,9 @@ model Otp {
 model Service {
     id String @id @default(uuid())
 
-    userId     String
-    user       User    @relation(fields: [userId], references: [id])
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
     name       String
     desc       String
     serviceimg String
@@ -459,11 +552,9 @@ model Service {
     coverImg   String?
     mainimg    String?
 
-    // ✅ 1. Main Category
     categoryId String?
     category   Category? @relation("MainCategory", fields: [categoryId], references: [id])
 
-    // ✅ 2. Subcategory
     subCategoryId String?
     subcategory   Category? @relation("ServiceSubCategory", fields: [subCategoryId], references: [id])
 
@@ -475,26 +566,36 @@ model Service {
     city         String?
     state        String?
     pincode      String?
-
-    latitude  Decimal?
-    longitude Decimal?
-    radiusKm  Int?     @default(10)
+    latitude     Decimal?
+    longitude    Decimal?
+    radiusKm     Int?     @default(10)
+    loc          String?
 
     workingDays String[]
-    openTime    String?
+    openTime    String? 
     closeTime   String?
 
+    is24x7 Boolean @default(false)
+
     rating     Float    @default(5.0)
-    loc        String?
     isVerified Boolean  @default(false)
     gallery    String[]
     reviews    Review[]
 
-    createdAt   DateTime          @default(now())
-    updatedAt   DateTime          @updatedAt
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
     bookings    Booking[]
     favoritedBy FavoriteService[]
     categories  Category[]
+
+    @@index([userId])
+    @@index([categoryId])
+    @@index([subCategoryId])
+    @@index([city])
+    @@index([pincode])
+    @@index([latitude, longitude])
+    @@index([isVerified, priceType])
 }
 
 model Review {
@@ -525,6 +626,37 @@ model Review {
     createdAt DateTime @default(now())
 }
 
+// model Product {
+//     id String @id @default(uuid())
+
+//     userId String
+//     user   User   @relation(fields: [userId], references: [id])
+
+//     name String
+//     desc String
+
+//     categoryId String?
+//     category   Category? @relation("ProductMainCategory", fields: [categoryId], references: [id])
+
+//     subCategoryId String?
+//     subcategory   Category? @relation("ProductSubCategory", fields: [subCategoryId], references: [id])
+
+//     productImage String
+//     gallery      String[]
+//     price        Float
+//     moq          Int
+
+//     stockStatus  StockStatus       @default(IN_STOCK)
+//     unit         UnitType          @default(PIECE)
+//     deliveryType DeliveryType      @default(DELIVERY)
+//     isVerified   Boolean           @default(false)
+//     createdAt    DateTime          @default(now())
+//     orders       Order[]
+//     favoritedBy  FavoriteProduct[]
+//     categories   Category[]
+//     reviews      Review[]
+// }
+
 model Product {
     id String @id @default(uuid())
 
@@ -534,11 +666,9 @@ model Product {
     name String
     desc String
 
-    // ✅ 1. Main Category
     categoryId String?
     category   Category? @relation("ProductMainCategory", fields: [categoryId], references: [id])
 
-    // ✅ 2. Subcategory
     subCategoryId String?
     subcategory   Category? @relation("ProductSubCategory", fields: [subCategoryId], references: [id])
 
@@ -547,15 +677,24 @@ model Product {
     price        Float
     moq          Int
 
-    stockStatus  StockStatus       @default(IN_STOCK)
-    unit         UnitType          @default(PIECE)
-    deliveryType DeliveryType      @default(DELIVERY)
-    isVerified   Boolean           @default(false)
-    createdAt    DateTime          @default(now())
-    orders       Order[]
-    favoritedBy  FavoriteProduct[]
-    categories   Category[]
-    reviews      Review[]
+    condition Condition @default(NEW)
+
+    stockStatus  StockStatus  @default(IN_STOCK)
+    unit         UnitType     @default(PIECE)
+    deliveryType DeliveryType @default(DELIVERY)
+    isVerified   Boolean      @default(false)
+    createdAt    DateTime     @default(now())
+
+    orders      Order[]
+    favoritedBy FavoriteProduct[]
+    categories  Category[]
+    reviews     Review[]
+
+    @@index([userId])
+    @@index([categoryId])
+    @@index([subCategoryId])
+    @@index([isVerified, stockStatus, condition])
+    @@index([createdAt])
 }
 
 model FavoriteService {

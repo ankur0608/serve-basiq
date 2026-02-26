@@ -13,7 +13,8 @@ import {
     FaXmark,
     FaChevronRight
 } from 'react-icons/fa6';
-import { Loader2, Sparkles, ImageOff } from 'lucide-react';
+import { Loader2, Sparkles, FolderOpen } from 'lucide-react';
+import AppImage from '@/components/ui/AppImage';
 
 // --- Types ---
 type SubCategory = {
@@ -67,8 +68,8 @@ export default function AllCategoriesPage() {
             if (!res.ok) throw new Error('Network response was not ok');
             return res.json() as Promise<Category[]>;
         },
-        staleTime: 1000 * 60 * 10, 
-        gcTime: 1000 * 60 * 30,   
+        staleTime: 1000 * 60 * 10,
+        gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
     });
 
@@ -104,7 +105,6 @@ export default function AllCategoriesPage() {
         return processedData;
     }, [selectedCategory, processedData, searchQuery]);
 
-
     const handleCategoryClick = (cat: Category) => {
         setSelectedCategory(cat);
         setSearchQuery('');
@@ -128,11 +128,12 @@ export default function AllCategoriesPage() {
     return (
         <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 selection:bg-indigo-100 selection:text-indigo-900">
 
+            {/* --- STICKY HEADER --- */}
             <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-zinc-200/60 shadow-sm transition-all">
                 <div className="max-w-7xl mx-auto px-4 py-3">
-
                     <div className="flex flex-col md:flex-row md:items-center gap-4">
 
+                        {/* Back Button & Title */}
                         <div className="flex items-center gap-3 min-w-fit">
                             {selectedCategory ? (
                                 <button
@@ -161,6 +162,7 @@ export default function AllCategoriesPage() {
                             </div>
                         </div>
 
+                        {/* Search Bar */}
                         <div className="relative flex-1 group">
                             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                                 <FaMagnifyingGlass className="text-zinc-400 group-focus-within:text-indigo-500 transition-colors" size={14} />
@@ -183,6 +185,7 @@ export default function AllCategoriesPage() {
                         </div>
                     </div>
 
+                    {/* Filter Tabs (Only show on main view) */}
                     {!selectedCategory && (
                         <div className="mt-3 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto scrollbar-hide">
                             <div className="flex gap-2 pb-1">
@@ -207,9 +210,11 @@ export default function AllCategoriesPage() {
                 </div>
             </div>
 
+            {/* --- MAIN CONTENT --- */}
             <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 pb-32">
 
                 {isLoading ? (
+                    // LOADING STATE
                     <div className="flex flex-col items-center justify-center py-32 space-y-4">
                         <div className="relative">
                             <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full"></div>
@@ -217,7 +222,22 @@ export default function AllCategoriesPage() {
                         </div>
                         <p className="text-zinc-400 font-medium text-sm animate-pulse">Loading categories...</p>
                     </div>
+                ) : allCategories.length === 0 ? (
+                    // DATABASE EMPTY STATE (NO CATEGORIES AT ALL)
+                    <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-3xl border border-dashed border-zinc-200 mx-auto max-w-lg mt-8">
+                        <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6">
+                            <FolderOpen className="text-indigo-400" size={40} />
+                        </div>
+                        <h3 className="text-xl font-black text-zinc-900 mb-2">No Categories Yet</h3>
+                        <p className="text-zinc-500 text-sm max-w-sm mx-auto leading-relaxed">
+                            It looks like there are no categories available on the platform right now. Check back later!
+                        </p>
+                        <Link href="/" className="mt-8 px-6 py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-colors">
+                            Return Home
+                        </Link>
+                    </div>
                 ) : displayItems.length === 0 ? (
+                    // SEARCH NO MATCHES STATE
                     <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-zinc-200 mx-auto max-w-lg">
                         <div className="w-16 h-16 bg-zinc-50 rounded-2xl flex items-center justify-center mb-4 rotate-3">
                             <Sparkles className="text-zinc-400" size={32} />
@@ -233,8 +253,10 @@ export default function AllCategoriesPage() {
                         )}
                     </div>
                 ) : (
+                    // CONTENT GRID
                     <>
                         {selectedCategory ? (
+                            // SUBCATEGORY VIEW
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                     {(displayItems as SubCategory[]).map((sub) => (
@@ -251,11 +273,12 @@ export default function AllCategoriesPage() {
                                         >
                                             <div className="w-full aspect-square mb-4 rounded-xl bg-zinc-50 flex items-center justify-center overflow-hidden border border-zinc-100 group-hover:border-indigo-500/10 transition-colors relative">
                                                 {sub.image ? (
-                                                    <img
+                                                    // ✅ AppImage Used Here
+                                                    <AppImage
                                                         src={sub.image}
                                                         alt={sub.name}
+                                                        type="thumbnail"
                                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                                        loading="lazy"
                                                     />
                                                 ) : (
                                                     <span className="text-3xl font-black text-zinc-200 group-hover:text-indigo-200 transition-colors">
@@ -273,6 +296,7 @@ export default function AllCategoriesPage() {
                                 </div>
                             </div>
                         ) : (
+                            // MAIN CATEGORY VIEW
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 {(displayItems as Category[]).map((cat) => (
                                     <div
@@ -286,11 +310,11 @@ export default function AllCategoriesPage() {
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="w-16 h-16 rounded-2xl bg-zinc-50 flex items-center justify-center overflow-hidden border border-zinc-100 shadow-sm group-hover:scale-105 transition-transform duration-300 relative">
                                                     {cat.image ? (
-                                                        <img
+                                                        <AppImage
                                                             src={cat.image}
                                                             alt={cat.name}
+                                                            type="thumbnail"
                                                             className="w-full h-full object-cover"
-                                                            loading="lazy"
                                                         />
                                                     ) : (
                                                         getIcon(cat.type, 28)
@@ -308,7 +332,7 @@ export default function AllCategoriesPage() {
                                                 </h3>
                                                 <div className="flex items-center justify-between mt-2">
                                                     <p className="text-sm text-zinc-500 font-medium">
-                                                        {cat.children.length} collections
+                                                        {cat.children.length} subcategories
                                                     </p>
                                                     <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                                                         <FaChevronRight size={12} />

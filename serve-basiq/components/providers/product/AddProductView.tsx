@@ -4,14 +4,11 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
 import { X } from 'lucide-react';
 
-// 🌟 Import your new reusable upload function!
 import { uploadToBackend } from '@/lib/uploadToBackend';
 
-// Import New 2-Step Components
 import { Step1Details } from './Step1Info';
 import { Step2Media } from './Step2Images';
 
-// --- Shared Types ---
 export interface SubCategory { id: string; name: string; }
 export interface Category { id: string; name: string; children: SubCategory[]; }
 
@@ -27,6 +24,7 @@ export interface ProductForm {
     stockStatus: string;
     unit: string;
     deliveryType: string;
+    condition: string; // ✅ Added Condition
 }
 
 interface AddProductProps {
@@ -54,10 +52,10 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         moq: editingProduct?.moq ? String(editingProduct.moq) : '1',
         stockStatus: editingProduct?.stockStatus || 'IN_STOCK',
         unit: editingProduct?.unit || 'PIECE',
-        deliveryType: editingProduct?.deliveryType || 'DELIVERY'
+        deliveryType: editingProduct?.deliveryType || 'DELIVERY',
+        condition: editingProduct?.condition || 'NEW' // ✅ Added Condition
     });
 
-    // --- Fetch Categories ---
     useEffect(() => {
         const fetchCategories = async () => {
             try {
@@ -86,7 +84,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
-    // 🚀 UPDATED: Uses uploadToBackend for the main image
     const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, target: 'main') => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -107,7 +104,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         }
     }, [showToast]);
 
-    // 🚀 UPDATED: Uses uploadToBackend for multiple gallery images/videos
     const handleGalleryUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
 
@@ -115,7 +111,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField('gallery');
 
         try {
-            // Uploading all selected media concurrently
             const uploadPromises = files.map(file => uploadToBackend(file));
             const uploadedUrls = await Promise.all(uploadPromises);
 
@@ -145,7 +140,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Final validation before sending to the backend hook
         if (!form.productImage) {
             showToast("Main product image is required", "error");
             return;
