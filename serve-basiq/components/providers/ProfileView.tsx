@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Pencil,
@@ -26,21 +26,47 @@ import StepThreeKYC from './StepThreeKYC';
 
 // Helper to wrap the form steps in a modal
 const EditModal = ({ isOpen, onClose, title, children, onSave, loading }: any) => {
+
+    // Prevent background scrolling when modal is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-white sticky top-0 z-10">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Container - Strict flex layout for perfect centering and internal scrolling */}
+            <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] md:max-h-[85vh]">
+
+                {/* Header (Fixed) */}
+                <div className="shrink-0 flex justify-between items-center p-6 border-b border-slate-100">
                     <h3 className="text-xl font-bold text-slate-900">{title}</h3>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <button onClick={onClose} className="p-2 -mr-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors">
                         <X size={20} className="text-slate-500" />
                     </button>
                 </div>
-                <div className="p-6 overflow-y-auto">
+
+                {/* Scrollable Content Body */}
+                <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                     {children}
                 </div>
-                <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 sticky bottom-0 z-10">
-                    <button onClick={onClose} className="px-5 py-2.5 font-bold text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl transition-all">Cancel</button>
+
+                {/* Footer (Fixed) */}
+                <div className="shrink-0 p-6 border-t border-slate-100 bg-slate-50/80 flex justify-end gap-3 rounded-b-3xl">
+                    <button
+                        onClick={onClose}
+                        className="px-5 py-2.5 font-bold text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl transition-all"
+                    >
+                        Cancel
+                    </button>
                     <button
                         onClick={onSave}
                         disabled={loading}
@@ -50,6 +76,7 @@ const EditModal = ({ isOpen, onClose, title, children, onSave, loading }: any) =
                         Save Changes
                     </button>
                 </div>
+
             </div>
         </div>
     );
@@ -221,7 +248,7 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 onSave={handleSave}
                 loading={loading}
             >
-                <StepThreeKYC form={form} updateField={updateField} showToast={(msg) => alert(msg)} errors={errors} getInputClass={getInputClass} />
+                <StepThreeKYC form={form} updateField={updateField} showToast={(msg: string) => alert(msg)} errors={errors} getInputClass={getInputClass} />
             </EditModal>
 
 

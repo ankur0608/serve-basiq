@@ -2,9 +2,9 @@
 
 import { useState, useCallback, memo } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
-import { Plus, Package, Loader2, Pencil, Trash2, Eye } from 'lucide-react'; // ✅ Added Eye
+import { Plus, Package, Loader2, Pencil, Trash2, Eye } from 'lucide-react';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { ViewDetailsModal } from '@/components/ui/ViewDetailsModal'; // ✅ Import new modal
+import { ViewDetailsModal } from '@/components/ui/ViewDetailsModal';
 
 interface ProductsViewProps {
     setActiveView: (view: string) => void;
@@ -22,6 +22,11 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
         ? (p.desc.length > 50 ? p.desc.substring(0, 50) + '...' : p.desc)
         : 'No description provided';
 
+    // ✅ Get the first image from the new array, fallback to old productImage string if needed
+    const mainImage = p.productImages && p.productImages.length > 0
+        ? p.productImages[0]
+        : p.productImage;
+
     return (
         <tr className="group border-b border-slate-100 last:border-none hover:bg-slate-50/50 transition-colors">
             <td className="py-4 pl-4 md:pl-6 align-middle hidden md:table-cell w-12">
@@ -31,8 +36,9 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
             <td className="py-4 pl-4 md:pl-0 align-middle w-full sm:w-auto">
                 <div className="flex items-start sm:items-center gap-3 md:gap-4">
                     <div className="h-12 w-12 sm:h-10 sm:w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
-                        {p.productImage ? (
-                            <img src={p.productImage} alt={p.name} className="h-full w-full object-cover" />
+                        {/* ✅ Updated to use mainImage */}
+                        {mainImage ? (
+                            <img src={mainImage} alt={p.name} className="h-full w-full object-cover" />
                         ) : (
                             <Package size={16} className="text-slate-300 m-auto absolute inset-0" />
                         )}
@@ -91,7 +97,6 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
 
             <td className="py-4 pr-4 md:pr-6 align-middle text-right">
                 <div className="flex justify-end gap-1.5 sm:gap-2">
-                    {/* ✅ Added View Button */}
                     <button onClick={() => onView(p)} className="p-2 border border-slate-200 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-400 transition-colors" title="View Details">
                         <Eye size={14} />
                     </button>
@@ -114,8 +119,6 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
     const { products, loading, deleteProduct, isDeleting } = useProducts(userId);
 
     const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; productId: string | null }>({ isOpen: false, productId: null });
-
-    // ✅ View Modal State
     const [viewModalState, setViewModalState] = useState<{ isOpen: boolean; payload: any | null }>({ isOpen: false, payload: null });
 
     const handleEdit = useCallback((product: any) => {
@@ -123,7 +126,6 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
         setActiveView('add-product');
     }, [setSelectedProduct, setActiveView]);
 
-    // ✅ Open View Modal
     const handleView = useCallback((product: any) => {
         setViewModalState({ isOpen: true, payload: product });
     }, []);
@@ -228,7 +230,7 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                                         p={p}
                                         onEdit={handleEdit}
                                         onDelete={confirmDeletePrompt}
-                                        onView={handleView} // ✅ Passed View prop down
+                                        onView={handleView}
                                     />
                                 ))}
                             </tbody>
@@ -248,7 +250,6 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                 isLoading={isDeleting}
             />
 
-            {/* ✅ Mount the Details Modal */}
             <ViewDetailsModal
                 isOpen={viewModalState.isOpen}
                 onClose={() => setViewModalState({ isOpen: false, payload: null })}

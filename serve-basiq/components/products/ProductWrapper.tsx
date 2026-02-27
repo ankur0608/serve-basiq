@@ -103,7 +103,18 @@ export default function ProductWrapper({
             checkAndProceed();
         }
     }, [defaultOpen, mounted, status, isFetchingUser, activeUser]);
+    useEffect(() => {
+        if (isFormOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
 
+        // Cleanup function in case component unmounts
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isFormOpen]);
     const handleRequestClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();

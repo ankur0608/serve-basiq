@@ -101,39 +101,51 @@ export async function GET(request: Request) {
       nextCursor = nextItem?.id;
     }
 
-    const formattedProducts = products.map(product => ({
-      id: product.id,
-      name: product.name,
-      description: product.desc,
-      category: {
-        id: product.category?.id,
-        name: product.category?.name || "General"
-      },
-      subcategory: {
-        id: product.subcategory?.id,
-        name: product.subcategory?.name
-      },
-      price: Number(product.price) || 0,
-      minOrderQty: Number(product.moq) || 1,
-      unit: product.unit || "Pcs",
-      images: product.gallery.length > 0
-        ? product.gallery
-        : (product.productImage ? [product.productImage] : []),
-      image: product.productImage || (product.gallery.length > 0 ? product.gallery[0] : ""),
+    const formattedProducts = products.map(product => {
+      // ✅ Safely extract the best available images
+      const fallbackImages = product.productImages?.length > 0
+        ? product.productImages
+        : (product.productImage ? [product.productImage] : []);
 
-      location: product.user?.addresses?.[0]?.city || "Worldwide",
+      const bestImageArray = product.gallery.length > 0 ? product.gallery : fallbackImages;
 
-      provider: {
-        id: product.user?.id,
-        name: product.user?.name,
-        shopName: product.user?.shopName || product.user?.name || "Seller",
-        image: product.user?.profileImage || product.user?.image || "",
-        verified: product.user?.isVerified || false
-      },
-      rating: 0,
-      reviewsCount: product._count?.reviews || 0,
-      stock: 100
-    }));
+      const bestSingleImage = product.productImage
+        || (product.productImages?.length > 0 ? product.productImages[0] : (product.gallery.length > 0 ? product.gallery[0] : ""));
+
+      return {
+        id: product.id,
+        name: product.name,
+        description: product.desc,
+        category: {
+          id: product.category?.id,
+          name: product.category?.name || "General"
+        },
+        subcategory: {
+          id: product.subcategory?.id,
+          name: product.subcategory?.name
+        },
+        price: Number(product.price) || 0,
+        minOrderQty: Number(product.moq) || 1,
+        unit: product.unit || "Pcs",
+
+        // ✅ Updated correctly for the frontend
+        images: bestImageArray,
+        image: bestSingleImage,
+
+        location: product.user?.addresses?.[0]?.city || "Worldwide",
+
+        provider: {
+          id: product.user?.id,
+          name: product.user?.name,
+          shopName: product.user?.shopName || product.user?.name || "Seller",
+          image: product.user?.profileImage || product.user?.image || "",
+          verified: product.user?.isVerified || false
+        },
+        rating: 0,
+        reviewsCount: product._count?.reviews || 0,
+        stock: 100
+      };
+    });
 
     return NextResponse.json({
       success: true,

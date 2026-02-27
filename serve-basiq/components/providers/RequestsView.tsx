@@ -1,43 +1,26 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
 import {
     Loader2, Calendar, Clock, MapPin,
     CheckCircle2, XCircle, Filter, Package,
-    Truck, Briefcase, ShoppingBag,
-    User as UserIcon, BoxSelect, KeyRound,
-    AlertTriangle
+    Briefcase, ShoppingBag, User as UserIcon,
+    BoxSelect, KeyRound, AlertTriangle, Search, X
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '@/lib/store';
-import { useProviderRequests } from '@/app/hook/useProviderRequests';
+import { useRequestsLogic, STATUS_TABS } from '@/app/hook/useRequestsLogic';
+import FilterModal from './FilterModal';
 
-interface RequestsViewProps {
-    showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
-    providerType: string;
-}
-
-type TabType = 'ALL' | 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
-type ViewMode = 'SERVICES' | 'PRODUCTS';
-
+// --- Utility function ---
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0
+        style: 'currency', currency: 'INR', maximumFractionDigits: 0
     }).format(amount);
 };
 
-const RequestCard = ({
-    data,
-    onAction,
-    isProcessing
-}: {
-    data: any;
-    onAction: (id: string, status: string, isRental: boolean) => void;
-    isProcessing: boolean;
-}) => {
-
+// --- Sub-component: RequestCard ---
+// Keeping this in the same file to avoid excessive fragmentation, but it is modular.
+const RequestCard = ({ data, onAction, isProcessing }: any) => {
     const getStatusColor = (status: string) => {
         const map: Record<string, string> = {
             'REQUESTED': 'bg-amber-100 text-amber-700 border-amber-200',
@@ -59,7 +42,6 @@ const RequestCard = ({
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full relative group">
-
             {isProcessing && (
                 <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
                     <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
@@ -67,6 +49,7 @@ const RequestCard = ({
                 </div>
             )}
 
+            {/* Header info */}
             <div className="px-5 py-3 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-2">
                     {data.type === 'RENTAL' ? (
@@ -82,7 +65,6 @@ const RequestCard = ({
                             <Package size={10} /> ORDER
                         </span>
                     )}
-
                     <span className={clsx("px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border", getStatusColor(data.displayStatus))}>
                         {data.displayStatus.replace('_', ' ')}
                     </span>
@@ -92,6 +74,7 @@ const RequestCard = ({
                 </div>
             </div>
 
+            {/* Content body */}
             <div className="p-5 flex-1">
                 <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -143,6 +126,7 @@ const RequestCard = ({
                 </div>
             </div>
 
+            {/* Actions footer */}
             <div className="p-4 pt-0 mt-auto">
                 {['REQUESTED', 'PENDING'].includes(data.displayStatus) && (
                     <div className="grid grid-cols-2 gap-3">
@@ -218,138 +202,50 @@ const RequestCard = ({
     );
 };
 
-export default function RequestsView({ showToast, providerType }: RequestsViewProps) {
+// --- Main Component ---
+export default function RequestsView({ showToast, providerType }: { showToast: any, providerType: string }) {
     const { currentUser } = useUIStore();
-    const [viewMode, setViewMode] = useState<ViewMode>(providerType === 'PRODUCT' ? 'PRODUCTS' : 'SERVICES');
-    const { data, isLoading, refetch } = useProviderRequests(currentUser?.id, providerType);
-    const bookings = data?.bookings || [];
-    const orders = data?.orders || [];
-    const [activeTab, setActiveTab] = useState<TabType>('PENDING');
-    const [processingId, setProcessingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (providerType === 'PRODUCT') setViewMode('PRODUCTS');
-        else if (providerType === 'SERVICE') setViewMode('SERVICES');
-    }, [providerType]);
+    // Extracted logic entirely to Custom Hook
+    const {
+        viewMode, setViewMode,
+        activeTab, setActiveTab,
+        searchTerm, setSearchTerm,
+        isFilterModalOpen, setIsFilterModalOpen,
+        processingId, isLoading,
+        currentData, filteredRequests, handleUpdateStatus
+    } = useRequestsLogic(providerType, currentUser?.id, showToast);
 
-    const currentData = useMemo(() => {
-        if (viewMode === 'SERVICES') {
-            return bookings.map((b: any) => {
-                const isRental = !!b.rental;
-                return {
-                    ...b,
-                    type: isRental ? 'RENTAL' : 'BOOKING',
-                    date: b.createdAt || b.bookingDate,
-                    displayStatus: b.status,
-                    title: isRental ? b.rental?.name : (b.service?.name || "Unknown Service"),
-                    price: isRental ? b.totalPrice : (b.service?.price || 0),
-                    img: b.user?.profileImage || b.user?.image || "",
-                    timeSlot: isRental
-                        ? `${b.totalDays || 1} Day(s) • ${new Date(b.startDate).toLocaleDateString()} - ${new Date(b.endDate).toLocaleDateString()}`
-                        : (b.openTime ? `${b.openTime} - ${b.closeTime}` : "Scheduled"),
-                    paymentStatus: 'PENDING'
-                };
-            });
-        } else {
-            return orders.map((o: any) => ({
-                ...o,
-                type: 'ORDER',
-                date: o.createdAt,
-                displayStatus: o.status,
-                title: o.product ? `${o.product.name} (x${o.quantity})` : "Unknown Product",
-                price: o.totalPrice || 0,
-                img: o.user?.profileImage || o.user?.image || "",
-                deliveryType: o.product?.deliveryType || 'DELIVERY',
-                paymentStatus: o.paymentStatus
-            }));
-        }
-    }, [viewMode, bookings, orders]);
-
-    const filteredRequests = useMemo(() => {
-        const sorted = [...currentData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        return sorted.filter((i: any) => {
-            const s = i.displayStatus;
-            if (activeTab === 'ALL') return true;
-            if (activeTab === 'PENDING') return ['PENDING', 'REQUESTED'].includes(s);
-            if (activeTab === 'CANCELLED') return ['CANCELLED', 'REJECTED', 'RETURNED'].includes(s);
-            if (activeTab === 'COMPLETED') return ['COMPLETED', 'DELIVERED', 'RETURNED'].includes(s);
-            if (activeTab === 'ACTIVE') return ['ACCEPTED', 'APPROVED', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'IN_PROGRESS', 'ACTIVE', 'OVERDUE'].includes(s);
-            return false;
-        });
-    }, [currentData, activeTab]);
-
-    const handleUpdateStatus = async (id: string, newStatus: string, isRental: boolean) => {
-        setProcessingId(id);
-        let endpoint = '';
-        let bodyKey = 'bookingId';
-
-        if (viewMode === 'SERVICES') {
-            if (isRental) {
-                endpoint = '/api/rentals/update-status';
-                bodyKey = 'bookingId';
-            } else {
-                endpoint = '/api/bookings/update-status';
-                bodyKey = 'bookingId';
-            }
-        } else {
-            endpoint = '/api/orders/update-status';
-            bodyKey = 'orderId';
-        }
-
-        try {
-            const res = await fetch(endpoint, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [bodyKey]: id, status: newStatus })
-            });
-            const data = await res.json();
-            if (data.success) {
-                showToast(`Status updated to ${newStatus}`, "success");
-                refetch();
-            } else {
-                showToast(data.message || "Update failed", "error");
-            }
-        } catch (error) {
-            showToast("Network error occurred", "error");
-        } finally {
-            setProcessingId(null);
-        }
-    };
-
-    const statusTabs: { id: TabType; label: string; icon: any }[] = [
-        { id: 'ALL', label: 'All', icon: Filter },
-        { id: 'PENDING', label: 'Pending', icon: Clock },
-        { id: 'ACTIVE', label: 'Active', icon: Truck },
-        { id: 'COMPLETED', label: 'Done', icon: CheckCircle2 },
-        { id: 'CANCELLED', label: 'Rejected', icon: XCircle },
-    ];
-
-    if (isLoading) return <div className="h-96 flex flex-col items-center justify-center text-slate-400"><Loader2 className="animate-spin text-blue-600 mb-2" size={32} /><p className="text-sm font-medium">Loading requests...</p></div>;
+    if (isLoading) {
+        return (
+            <div className="h-96 flex flex-col items-center justify-center text-slate-400">
+                <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
+                <p className="text-sm font-medium">Loading requests...</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6 animate-in fade-in duration-500 relative">
+
+            {/* Header Content */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 {providerType === 'BOTH' ? (
                     <div className="flex w-full md:w-auto bg-white rounded-xl mb-1 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
                         <button
-                            onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); }}
+                            onClick={() => { setViewMode('SERVICES'); setActiveTab('PENDING'); setSearchTerm(''); }}
                             className={clsx(
                                 "flex-1 px-2 md:px-16 py-4 text-sm font-bold rounded-lg transition-all whitespace-nowrap",
-                                viewMode === 'SERVICES'
-                                    ? "bg-slate-900 text-white shadow-md"
-                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                                viewMode === 'SERVICES' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                             )}
                         >
                             Services
                         </button>
-
                         <button
-                            onClick={() => { setViewMode('PRODUCTS'); setActiveTab('PENDING'); }}
+                            onClick={() => { setViewMode('PRODUCTS'); setActiveTab('PENDING'); setSearchTerm(''); }}
                             className={clsx(
                                 "flex-1 px-2 md:px-16 py-3 text-sm font-bold rounded-lg transition-all whitespace-nowrap",
-                                viewMode === 'PRODUCTS'
-                                    ? "bg-slate-900 text-white shadow-md"
-                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                                viewMode === 'PRODUCTS' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                             )}
                         >
                             Products
@@ -366,28 +262,72 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
                 )}
             </div>
 
-            <div className="border-b border-slate-200">
-                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 w-full">
-                    {statusTabs.map((tab) => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={clsx("px-4 py-2.5 text-sm font-bold transition-all flex items-center gap-2 border-b-2 whitespace-nowrap flex-shrink-0", activeTab === tab.id ? "border-slate-900 text-slate-900 bg-slate-50/50 rounded-t-lg" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg")}>
-                            <tab.icon size={16} className={activeTab === tab.id ? (viewMode === 'SERVICES' ? "text-blue-600" : "text-purple-600") : ""} />
-                            {tab.label}
-                            <span className={clsx("ml-1 px-1.5 py-0.5 rounded-full text-[10px]", activeTab === tab.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}>
-                                {currentData.filter((i: any) => {
-                                    const s = i.displayStatus;
-                                    if (tab.id === 'ALL') return true;
-                                    if (tab.id === 'PENDING') return ['PENDING', 'REQUESTED'].includes(s);
-                                    if (tab.id === 'CANCELLED') return ['CANCELLED', 'REJECTED', 'RETURNED'].includes(s);
-                                    if (tab.id === 'COMPLETED') return ['COMPLETED', 'DELIVERED', 'RETURNED'].includes(s);
-                                    if (tab.id === 'ACTIVE') return ['ACCEPTED', 'APPROVED', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'IN_PROGRESS', 'ACTIVE', 'OVERDUE'].includes(s);
-                                    return false;
-                                }).length}
-                            </span>
+            {/* Search and Mobile Filter Row */}
+            <div className="flex items-center gap-2 w-full">
+                <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search size={18} className="text-slate-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search by ID, Customer, or Item..."
+                        className="w-full pl-10 pr-10 py-3.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-medium shadow-sm"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {searchTerm && (
+                        <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-red-500 transition-colors">
+                            <X size={18} />
                         </button>
-                    ))}
+                    )}
+                </div>
+
+                <button
+                    onClick={() => setIsFilterModalOpen(true)}
+                    className="md:hidden shrink-0 flex items-center justify-center w-[52px] h-[52px] bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors shadow-sm relative"
+                >
+                    <Filter size={20} />
+                    {activeTab !== 'ALL' && <span className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-blue-600 border-2 border-white"></span>}
+                </button>
+            </div>
+
+            {/* Desktop Tabs */}
+            <div className="hidden md:block border-b border-slate-200">
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 w-full">
+                    {STATUS_TABS.map((tab) => {
+                        const count = currentData.filter((i: any) => {
+                            const s = i.displayStatus;
+                            if (tab.id === 'ALL') return true;
+                            if (tab.id === 'PENDING') return ['PENDING', 'REQUESTED'].includes(s);
+                            if (tab.id === 'CANCELLED') return ['CANCELLED', 'REJECTED', 'RETURNED'].includes(s);
+                            if (tab.id === 'COMPLETED') return ['COMPLETED', 'DELIVERED', 'RETURNED'].includes(s);
+                            if (tab.id === 'ACTIVE') return ['ACCEPTED', 'APPROVED', 'CONFIRMED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'IN_PROGRESS', 'ACTIVE', 'OVERDUE'].includes(s);
+                            return false;
+                        }).length;
+
+                        return (
+                            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={clsx("px-4 py-2.5 text-sm font-bold transition-all flex items-center gap-2 border-b-2 whitespace-nowrap flex-shrink-0", activeTab === tab.id ? "border-slate-900 text-slate-900 bg-slate-50/50 rounded-t-lg" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg")}>
+                                <tab.icon size={16} className={activeTab === tab.id ? (viewMode === 'SERVICES' ? "text-blue-600" : "text-purple-600") : ""} />
+                                {tab.label}
+                                <span className={clsx("ml-1 px-1.5 py-0.5 rounded-full text-[10px]", activeTab === tab.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
+            {/* Separated Modal Component */}
+            <FilterModal
+                isOpen={isFilterModalOpen}
+                onClose={() => setIsFilterModalOpen(false)}
+                activeTab={activeTab}
+                onSelectTab={setActiveTab}
+                currentData={currentData}
+            />
+
+            {/* Content List */}
             <div className="min-h-100">
                 {filteredRequests.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-80 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
@@ -395,10 +335,10 @@ export default function RequestsView({ showToast, providerType }: RequestsViewPr
                             <Filter size={32} className="text-slate-300" />
                         </div>
                         <h3 className="font-bold text-slate-700 text-lg">No requests found</h3>
-                        <p className="text-sm mt-1 text-slate-500">There are no {activeTab.toLowerCase()} requests at the moment.</p>
+                        <p className="text-sm mt-1 text-slate-500">There are no {activeTab.toLowerCase()} requests matching your search.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pb-20">
                         {filteredRequests.map((req: any) => (
                             <RequestCard key={req.id} data={req} onAction={handleUpdateStatus} isProcessing={processingId === req.id} />
                         ))}

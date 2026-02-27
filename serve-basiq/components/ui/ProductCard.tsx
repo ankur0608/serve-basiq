@@ -1,16 +1,14 @@
 'use client';
 
-import React, { useState, useMemo, memo } from 'react';
+import React, { useState, useMemo, memo, useEffect } from 'react';
 import Image from 'next/image';
-import { useSession } from 'next-auth/react'; // Removed signIn
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FaHeart, FaRegHeart, FaPaperPlane, FaXmark } from "react-icons/fa6";
 import { BadgeCheck, Box, Tag } from 'lucide-react';
 
-// Components
 import ProductWrapper from '@/components/products/ProductWrapper';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
-// 👉 NOTE: Ensure this path points correctly to your LoginModal file
 import LoginModal from '@/components/auth/LoginModal';
 
 interface ProductCardProps {
@@ -24,10 +22,21 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
     const { data: session, update } = useSession();
     const router = useRouter();
 
-    // Modal States
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
-    const [showLoginModal, setShowLoginModal] = useState(false); // ✅ Added Login Modal State
+    const [showLoginModal, setShowLoginModal] = useState(false);
+
+    useEffect(() => {
+        if (showRequestModal || showVerifyModal || showLoginModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [showRequestModal, showVerifyModal, showLoginModal]);
 
     if (!product) return null;
 
@@ -66,7 +75,6 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
         e.preventDefault();
         e.stopPropagation();
 
-        // ✅ Changed: Open custom LoginModal instead of redirecting
         if (!session) {
             setShowLoginModal(true);
             return;
@@ -80,7 +88,8 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
     };
 
     const handleDetailsClick = (e: React.MouseEvent) => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         router.push(`/products/${id}`);
     };
 
@@ -97,7 +106,10 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                 className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full"
             >
                 {/* --- IMAGE SECTION --- */}
-                <div className="relative w-full aspect-[4/3] bg-slate-50 overflow-hidden">
+                <div
+                    className="relative w-full aspect-[4/3] bg-slate-50 overflow-hidden cursor-pointer"
+                    onClick={handleDetailsClick}
+                >
                     <Image
                         src={displayImage}
                         alt={name}
@@ -107,15 +119,16 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                         loading="lazy"
                     />
 
-                    {/* Category Badge */}
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm z-10">
-                        <Tag size={12} className="text-blue-600" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700">
+                    <div
+                        title={categoryName}
+                        className="absolute top-3 left-3 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm z-10 max-w-[calc(100%-3rem)]"
+                    >
+                        <Tag size={12} className="text-blue-600 shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 truncate">
                             {categoryName}
                         </span>
                     </div>
 
-                    {/* Favorite Button */}
                     {toggleFav && (
                         <button
                             onClick={(e) => { e.stopPropagation(); toggleFav(e); }}
@@ -131,34 +144,38 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                 </div>
 
                 {/* --- CONTENT SECTION --- */}
-                <div className="p-4 flex flex-col flex-1 gap-3">
+                <div className="p-3 sm:p-4 flex flex-col flex-1 gap-3">
                     {/* Title & Seller */}
                     <div>
-                        <h3 className="text-base font-bold text-slate-800 line-clamp-1 mb-1 group-hover:text-blue-600 transition-colors">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-800 line-clamp-1 mb-1 group-hover:text-blue-600 transition-colors">
                             {name}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium">
-                            <BadgeCheck size={14} className="text-blue-500 fill-blue-50" />
+                        <div className="flex items-center gap-1.5 text-slate-500 text-[11px] sm:text-xs font-medium">
+                            <BadgeCheck size={14} className="text-blue-500 fill-blue-50 shrink-0" />
                             <span className="truncate">{sellerName}</span>
                         </div>
                     </div>
 
-                    {/* Price & MOQ Row */}
-                    <div className="flex items-end justify-between mt-auto border-t border-slate-50 pt-3">
-                        <div>
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Price</p>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-lg font-bold text-slate-900">₹{price.toLocaleString()}</span>
-                                <span className="text-xs text-slate-500 font-medium">/ {unit}</span>
+                    {/* ✅ FIXED: Price & MOQ Row */}
+                    <div className="flex flex-wrap items-end justify-between gap-x-1 gap-y-2 mt-auto border-t border-slate-50 pt-3">
+                        {/* Price Column */}
+                        <div className="flex-1 min-w-[50%]">
+                            <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Price</p>
+                            {/* whitespace-nowrap prevents the unit from breaking to a new line */}
+                            <div className="flex items-baseline whitespace-nowrap">
+                                <span className="text-sm sm:text-base font-bold text-slate-900">₹{price.toLocaleString()}</span>
+                                <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium ml-1">/ {unit}</span>
                             </div>
                         </div>
 
-                        <div className="text-right">
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5 flex items-center justify-end gap-1">
+                        {/* MOQ Column */}
+                        <div className="text-right shrink-0">
+                            <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5 flex items-center justify-end gap-1">
                                 MOQ <Box size={10} />
                             </p>
-                            <span className="text-sm font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
-                                {moqValue} {unit}s
+                            {/* whitespace-nowrap keeps the number and unit safely together */}
+                            <span className="inline-block text-[10px] sm:text-[11px] font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                {moqValue} {unit}
                             </span>
                         </div>
                     </div>
@@ -167,13 +184,13 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                     <div className="grid grid-cols-2 gap-2 mt-1">
                         <button
                             onClick={handleDetailsClick}
-                            className="py-2.5 px-4 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors"
+                            className="py-2 px-2 sm:px-4 text-[11px] sm:text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors"
                         >
                             Details
                         </button>
                         <button
                             onClick={handleRequestClick}
-                            className="py-2.5 px-4 text-xs font-bold text-white bg-slate-900 hover:bg-blue-600 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm"
+                            className="py-2 px-2 sm:px-4 text-[11px] sm:text-xs font-bold text-white bg-slate-900 hover:bg-blue-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                         >
                             Quote <FaPaperPlane size={10} />
                         </button>
@@ -182,8 +199,6 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
             </div>
 
             {/* --- MODALS --- */}
-
-            {/* ✅ Added Custom Login Modal */}
             <LoginModal
                 isOpen={showLoginModal}
                 onClose={() => setShowLoginModal(false)}
@@ -197,18 +212,26 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
             />
 
             {showRequestModal && (
-                <div
-                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-                    onClick={(e) => { e.stopPropagation(); setShowRequestModal(false); }}
-                >
-                    <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => setShowRequestModal(false)} className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all border border-white/20 shadow-sm">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 animate-in fade-in duration-200">
+                    <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <button
+                            onClick={() => setShowRequestModal(false)}
+                            className="absolute top-4 right-4 z-50 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-all border border-gray-200 shadow-sm"
+                        >
                             <FaXmark size={20} />
                         </button>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50">
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 rounded-2xl">
                             <ProductWrapper
-                                productId={id} productName={name} productPrice={price} productUnit={unit} moq={moqValue}
-                                currentUser={effectiveUser} userAddresses={effectiveUser?.addresses || []} defaultOpen={true} onRequestClose={() => setShowRequestModal(false)}
+                                productId={id}
+                                productName={name}
+                                productPrice={price}
+                                productUnit={unit}
+                                moq={moqValue}
+                                currentUser={effectiveUser}
+                                userAddresses={effectiveUser?.addresses || []}
+                                defaultOpen={true}
+                                onRequestClose={() => setShowRequestModal(false)}
                             />
                         </div>
                     </div>

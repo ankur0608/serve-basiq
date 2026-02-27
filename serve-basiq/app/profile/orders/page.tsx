@@ -74,46 +74,51 @@ export default function MyOrdersPage() {
                         </div>
 
                         {/* --- SEARCH & FILTER BAR --- */}
-                        <div className="flex flex-col md:flex-row gap-3">
+                        {/* --- SEARCH & FILTER BAR --- */}
+                        <div className="flex items-center gap-2 w-full">
                             {/* Search Input */}
                             <div className="relative flex-1">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <FaMagnifyingGlass className="text-slate-400" />
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <FaMagnifyingGlass className="text-slate-400 text-sm" />
                                 </div>
                                 <input
                                     type="text"
-                                    placeholder="Search by product name or Order ID..."
-                                    className="w-full pl-11 pr-10 py-3.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium shadow-sm"
+                                    placeholder="Search orders..."
+                                    className="w-full pl-9 pr-8 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium shadow-sm"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                                 {searchTerm && (
                                     <button
                                         onClick={() => setSearchTerm('')}
-                                        className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-red-500 transition-colors"
+                                        className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-red-500 transition-colors"
                                     >
-                                        <FaXmark size={18} />
+                                        <FaXmark size={16} />
                                     </button>
                                 )}
                             </div>
 
                             {/* Status Filter Dropdown */}
-                            <div className="relative shrink-0">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <FaFilter className="text-slate-400" />
+                            <div className="relative shrink-0 w-36 sm:w-48">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <FaFilter className="text-slate-400 text-sm" />
                                 </div>
                                 <select
-                                    className="w-full md:w-48 pl-11 pr-8 py-3.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-bold text-slate-700 appearance-none cursor-pointer shadow-sm"
+                                    className="w-full pl-9 pr-6 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-bold text-slate-700 appearance-none cursor-pointer shadow-sm truncate"
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value)}
                                 >
-                                    <option value="ALL">All Statuses</option>
+                                    <option value="ALL">All Status</option>
                                     <option value="REQUESTED">Requested</option>
                                     <option value="ACCEPTED">Accepted</option>
                                     <option value="SHIPPED">Shipped</option>
                                     <option value="DELIVERED">Delivered</option>
                                     <option value="CANCELLED">Cancelled</option>
                                 </select>
+                                {/* Custom Dropdown Arrow to replace default appearance */}
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
                             </div>
                         </div>
 

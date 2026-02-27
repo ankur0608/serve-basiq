@@ -3,9 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
 import { X } from 'lucide-react';
-
 import { uploadToBackend } from '@/lib/uploadToBackend';
-
 import { Step1Details } from './Step1Info';
 import { Step2Media } from './Step2Images';
 
@@ -17,14 +15,14 @@ export interface ProductForm {
     desc: string;
     categoryId: string;
     subCategoryId: string;
-    productImage: string;
+    productImages: string[]; // ✅ Multi-image array
     gallery: string[];
     price: string;
     moq: string;
     stockStatus: string;
     unit: string;
     deliveryType: string;
-    condition: string; // ✅ Added Condition
+    condition: string;
 }
 
 interface AddProductProps {
@@ -38,7 +36,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const { saveProduct, isSaving } = useProducts(userId);
     const [step, setStep] = useState(1);
     const [uploading, setUploading] = useState(false);
-    const [activeUploadField, setActiveUploadField] = useState<'main' | 'gallery' | null>(null);
+    const [activeUploadField, setActiveUploadField] = useState<'productImages' | 'gallery' | null>(null);
     const [categories, setCategories] = useState<Category[]>([]);
 
     const [form, setForm] = useState<ProductForm>({
@@ -46,29 +44,44 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         desc: editingProduct?.desc || '',
         categoryId: editingProduct?.categoryId || '',
         subCategoryId: editingProduct?.subCategoryId || editingProduct?.subcategory?.id || '',
-        productImage: editingProduct?.productImage || editingProduct?.image || '',
+        // ✅ Pre-fill with existing array or fallback for old single-image data
+        productImages: editingProduct?.productImages || (editingProduct?.productImage ? [editingProduct.productImage] : []),
         gallery: editingProduct?.gallery || [],
         price: editingProduct?.price ? String(editingProduct.price) : '',
         moq: editingProduct?.moq ? String(editingProduct.moq) : '1',
         stockStatus: editingProduct?.stockStatus || 'IN_STOCK',
         unit: editingProduct?.unit || 'PIECE',
         deliveryType: editingProduct?.deliveryType || 'DELIVERY',
-        condition: editingProduct?.condition || 'NEW' // ✅ Added Condition
+        condition: editingProduct?.condition || 'NEW'
     });
 
+    // Inside AddProductView.tsx
+
     useEffect(() => {
+        let isMounted = true;
+
         const fetchCategories = async () => {
+            // Prevent fetching if we already have categories
+            if (categories.length > 0) return;
+
             try {
                 const res = await fetch('/api/categories?type=PRODUCT');
                 const data = await res.json();
-                if (Array.isArray(data)) setCategories(data);
+                if (isMounted && Array.isArray(data)) {
+                    setCategories(data);
+                }
             } catch (error) {
-                console.error("Failed to load categories");
-                showToast("Failed to load categories", "error");
+                console.error("Failed to load categories", error);
             }
         };
+
         fetchCategories();
-    }, [showToast]);
+
+        return () => {
+            isMounted = false;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // ✅ Empty dependency array ensures this runs exactly ONCE when the component mounts
 
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(c => c.id === form.categoryId);
@@ -84,17 +97,27 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
-    const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, target: 'main') => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    // ✅ Multi-image upload handler
+    const handleProductImagesUpload = useCallback(async (files: File[]) => {
+        if (!files || files.length === 0) return;
+
+        if (form.productImages.length + files.length > 5) {
+            showToast("You can only add up to 5 product images", "error");
+            return;
+        }
 
         setUploading(true);
-        setActiveUploadField(target);
+        setActiveUploadField('productImages');
 
         try {
-            const url = await uploadToBackend(file);
-            setForm(prev => ({ ...prev, productImage: url }));
-            showToast("Main image uploaded!", "success");
+            const uploadPromises = files.map(file => uploadToBackend(file));
+            const uploadedUrls = await Promise.all(uploadPromises);
+
+            setForm(prev => ({
+                ...prev,
+                productImages: [...prev.productImages, ...uploadedUrls].slice(0, 5)
+            }));
+            showToast(`${uploadedUrls.length} product images uploaded!`, "success");
         } catch (e) {
             console.error(e);
             showToast("Upload failed", "error");
@@ -102,7 +125,15 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
             setUploading(false);
             setActiveUploadField(null);
         }
-    }, [showToast]);
+    }, [form.productImages.length, showToast]);
+
+    const removeProductImage = useCallback((index: number) => {
+        setForm(prev => {
+            const newImages = [...prev.productImages];
+            newImages.splice(index, 1);
+            return { ...prev, productImages: newImages };
+        });
+    }, []);
 
     const handleGalleryUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
@@ -140,8 +171,9 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!form.productImage) {
-            showToast("Main product image is required", "error");
+        // ✅ Require at least 1 image
+        if (!form.productImages || form.productImages.length === 0) {
+            showToast("At least 1 product image is required", "error");
             return;
         }
 
@@ -202,7 +234,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                             form={form}
                             uploading={uploading}
                             activeUploadField={activeUploadField}
-                            handleImageUpload={handleImageUpload}
+                            handleProductImagesUpload={handleProductImagesUpload}
+                            removeProductImage={removeProductImage}
                             handleGalleryUpload={handleGalleryUpload}
                             removeGalleryImg={removeGalleryImg}
                             setStep={setStep}

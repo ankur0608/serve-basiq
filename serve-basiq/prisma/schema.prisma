@@ -572,7 +572,7 @@ model Service {
     loc          String?
 
     workingDays String[]
-    openTime    String? 
+    openTime    String?
     closeTime   String?
 
     is24x7 Boolean @default(false)
@@ -672,10 +672,11 @@ model Product {
     subCategoryId String?
     subcategory   Category? @relation("ProductSubCategory", fields: [subCategoryId], references: [id])
 
-    productImage String
-    gallery      String[]
-    price        Float
-    moq          Int
+    productImage  String?
+    productImages String[]
+    gallery       String[]
+    price         Float
+    moq           Int
 
     condition Condition @default(NEW)
 

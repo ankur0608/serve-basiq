@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 // Component imports
 import BookingPreferences from './BookingPreferences';
 import AddressSelection from './AddressSelection';
-import AddressModal from './AddressModal'; // Adjust path depending on where you saved it
+import AddressModal from './AddressModal';
 
 interface BookingFormProps {
   serviceId: string;
@@ -15,7 +15,7 @@ interface BookingFormProps {
   price: number;
   userId: string;
   userAddresses: any[];
-  is24x7?: boolean; // ✅ Added is24x7 prop
+  is24x7?: boolean;
   userDetails?: {
     name?: string;
     email?: string;
@@ -39,7 +39,7 @@ export default function BookingForm({
   price,
   userId,
   userAddresses: initialAddresses,
-  is24x7 = false, // ✅ Default to false
+  is24x7 = false,
   userDetails,
   onRequestClose,
   onSuccess
@@ -48,12 +48,11 @@ export default function BookingForm({
   const router = useRouter();
 
   const [addresses, setAddresses] = useState(initialAddresses || []);
-  const [addressId, setAddressId] = useState(addresses.length === 1 ? addresses[0].id : '');
+  const [addressId, setAddressId] = useState(addresses.length > 0 ? addresses[0].id : '');
 
   const [timeline, setTimeline] = useState('IMMEDIATE');
   const [instructions, setInstructions] = useState('');
 
-  // ✅ Added state for date and time
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
 
@@ -105,13 +104,14 @@ export default function BookingForm({
 
     try {
       const selectedAddressObj = addresses.find((a: any) => a.id === addressId);
-      const payload: any = {
+
+      // ✅ FIXED: Changed 'const' to 'let' so we can attach 'newAddress' later
+      let payload: any = {
         userId,
         serviceId,
         addressId,
         timeline,
         specialInstructions: instructions,
-        // ✅ If 24/7 is true, pass empty strings. Otherwise, pass the selected date and time.
         bookingDate: is24x7 ? "" : bookingDate,
         bookingTime: is24x7 ? "" : bookingTime,
       };
@@ -182,26 +182,26 @@ export default function BookingForm({
     <div className="bg-white w-full h-full flex flex-col overflow-hidden relative">
 
       {/* --- HEADER --- */}
-      <div className="bg-slate-900 px-6 py-5 text-white flex justify-between items-center shrink-0 shadow-md z-10">
-        <div className='flex flex-col justify-center'>
-          <h2 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1">Requesting Service</h2>
-          <p className="text-white font-bold text-lg leading-tight truncate max-w-[220px]">{serviceName}</p>
+      {/* ✅ FIXED: Adjusted padding and layout so the text doesn't clash with any close buttons injected from the wrapper */}
+      <div className="bg-slate-900 px-5 sm:px-6 py-4 sm:py-5 text-white flex justify-between items-center shrink-0 shadow-md z-10 rounded-t-3xl sm:rounded-t-none">
+        <div className='flex flex-col justify-center max-w-[60%]'>
+          <h2 className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-0.5">Requesting Service</h2>
+          <p className="text-white font-bold text-base sm:text-lg leading-tight truncate">{serviceName}</p>
         </div>
         <div className="text-right flex flex-col items-end justify-center">
-          <span className="block text-xs font-medium text-slate-400 mb-0.5 mt-7">Total Amount</span>
-          <span className="text-xl font-bold text-white tracking-tight">₹{price}</span>
+          <span className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-0.5 mt-4 sm:mt-7">Total Amount</span>
+          <span className="text-lg sm:text-xl font-bold text-white tracking-tight">₹{price}</span>
         </div>
       </div>
 
       {/* --- BODY --- */}
-      <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 p-5 sm:p-6 space-y-6">
         <BookingPreferences
           timeline={timeline}
           setTimeline={setTimeline}
           instructions={instructions}
           setInstructions={setInstructions}
           timelineOptions={TIMELINE_OPTIONS}
-          // ✅ Passing the new props to BookingPreferences
           is24x7={is24x7}
           bookingDate={bookingDate}
           setBookingDate={setBookingDate}
@@ -216,16 +216,15 @@ export default function BookingForm({
           handleAddAddress={handleAddAddress}
           handleEditAddress={handleEditAddress}
         />
-
-        <div className="h-4"></div>
       </div>
 
       {/* --- FOOTER --- */}
-      <div className="p-4 px-6 bg-white border-t border-slate-100 shrink-0 flex gap-3 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] z-10">
+      {/* ✅ FIXED: Added padding-bottom for safe areas on mobile devices (pb-safe or explicitly adding pb-6/pb-8) to prevent cutoff */}
+      <div className="p-4 sm:px-6 pb-6 sm:pb-4 bg-white border-t border-slate-100 shrink-0 flex gap-3 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] z-10">
         <button
           type="button"
           onClick={onRequestClose}
-          className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition"
+          className="flex-1 py-3 border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition"
         >
           Cancel
         </button>
@@ -233,13 +232,13 @@ export default function BookingForm({
           type="button"
           onClick={handleSubmit}
           disabled={loading || !addressId}
-          className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-[2] bg-slate-900 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? <Loader2 className="animate-spin" /> : 'Confirm Booking'}
         </button>
       </div>
 
-      {/* NEW Address Edit/Add Modal */}
+      {/* Address Edit/Add Modal */}
       <AddressModal
         isOpen={isAddressModalOpen}
         onClose={() => setIsAddressModalOpen(false)}

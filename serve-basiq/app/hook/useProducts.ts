@@ -9,15 +9,15 @@ export interface ProductProps {
     price: number;
     moq: number;
     unit: string;
-    image: string;
-    productImage: string;
+    productImage: string; // ✅ Added back
+    productImages: string[]; // ✅ Kept array
     supplier: string;
     isVerified: boolean;
     desc: string;
     gallery: string[];
     stockStatus: string;
     deliveryType: string;
-    condition: string; // ✅ Added Condition
+    condition: string;
 }
 
 const fetchProductsFn = async (userId?: string): Promise<ProductProps[]> => {
@@ -57,8 +57,10 @@ const fetchProductsFn = async (userId?: string): Promise<ProductProps[]> => {
         price: Number(item.price) || 0,
         moq: Number(item.moq) || 1,
         unit: item.unit || 'PIECE',
-        image: item?.productImage || item.image || item.img || "",
-        productImage: item?.productImage || item.image || "",
+
+        // ✅ Extract correctly for both fields
+        productImage: item.productImage || (item.productImages?.length > 0 ? item.productImages[0] : ""),
+        productImages: item.productImages?.length > 0 ? item.productImages : (item.productImage ? [item.productImage] : []),
 
         supplier: item.user?.shopName || item.user?.name || "Verified Supplier",
         isVerified: Boolean(item.isVerified),
@@ -66,7 +68,7 @@ const fetchProductsFn = async (userId?: string): Promise<ProductProps[]> => {
         gallery: item.gallery || [],
         stockStatus: item.stockStatus || "IN_STOCK",
         deliveryType: item.deliveryType || "DELIVERY",
-        condition: item.condition || "NEW" // ✅ Mapped Condition
+        condition: item.condition || "NEW"
     }));
 };
 
