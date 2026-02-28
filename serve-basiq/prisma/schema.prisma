@@ -193,68 +193,19 @@ model RentalBooking {
     updatedAt           DateTime @updatedAt
 }
 
-// model Rental {
-//     id     String @id @default(uuid())
-//     userId String
-//     user   User   @relation(fields: [userId], references: [id])
-
-//     name      String
-//     desc      String
-//     rentalImg String
-//     coverImg  String?
-//     gallery   String[]
-
-//     categoryId String?
-//     category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
-
-//     subCategoryId String?
-//     subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
-
-//     price     Float  @default(0)
-//     priceType String
-//     stock     Int    @default(1)
-
-//     dailyPrice   Float?
-//     monthlyPrice Float?
-//     fixedPrice   Float?
-
-//     itemCondition   String? @default("Good")
-//     securityDeposit Float?  @default(0)
-//     minDuration     String?
-//     maxDuration     String?
-//     rentalMode      String? @default("PICKUP")
-
-//     addressLine1 String?
-//     addressLine2 String?
-//     city         String?
-//     state        String?
-//     pincode      String?
-//     latitude     Decimal?
-//     longitude    Decimal?
-//     radiusKm     Int?     @default(10)
-
-//     isVerified     Boolean          @default(false)
-//     createdAt      DateTime         @default(now())
-//     updatedAt      DateTime         @updatedAt
-//     bookings       Booking[]
-//     favoritedBy    FavoriteRental[]
-//     rentalBookings RentalBooking[]
-//     reviews        Review[]
-// }
-
 model Rental {
     id     String @id @default(uuid())
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
-    name      String
-    desc      String
-    rentalImg String
-    coverImg  String?
-    gallery   String[]
-
-    categoryId String?
-    category   Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
+    name         String
+    desc         String
+    rentalImg    String
+    coverImg     String?
+    gallery      String[]
+    rentalImages String[]
+    categoryId   String?
+    category     Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
 
     subCategoryId String?
     subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
@@ -577,10 +528,11 @@ model Service {
 
     is24x7 Boolean @default(false)
 
-    rating     Float    @default(5.0)
-    isVerified Boolean  @default(false)
-    gallery    String[]
-    reviews    Review[]
+    rating        Float    @default(5.0)
+    isVerified    Boolean  @default(false)
+    gallery       String[]
+    serviceImages String[]
+    reviews       Review[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -625,37 +577,6 @@ model Review {
 
     createdAt DateTime @default(now())
 }
-
-// model Product {
-//     id String @id @default(uuid())
-
-//     userId String
-//     user   User   @relation(fields: [userId], references: [id])
-
-//     name String
-//     desc String
-
-//     categoryId String?
-//     category   Category? @relation("ProductMainCategory", fields: [categoryId], references: [id])
-
-//     subCategoryId String?
-//     subcategory   Category? @relation("ProductSubCategory", fields: [subCategoryId], references: [id])
-
-//     productImage String
-//     gallery      String[]
-//     price        Float
-//     moq          Int
-
-//     stockStatus  StockStatus       @default(IN_STOCK)
-//     unit         UnitType          @default(PIECE)
-//     deliveryType DeliveryType      @default(DELIVERY)
-//     isVerified   Boolean           @default(false)
-//     createdAt    DateTime          @default(now())
-//     orders       Order[]
-//     favoritedBy  FavoriteProduct[]
-//     categories   Category[]
-//     reviews      Review[]
-// }
 
 model Product {
     id String @id @default(uuid())

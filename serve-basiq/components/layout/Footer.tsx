@@ -12,7 +12,7 @@ const Footer = () => {
           {/* Brand & Social Section - Aligned Left */}
           <div className="col-span-2 md:col-span-1 text-left">
             <h2 className="text-2xl font-bold text-white">
-              Serve<span className="text-indigo-500">Basicq</span>
+              Serve<span className="text-indigo-500">Basiq</span>
             </h2>
 
             <p className="mt-4 text-gray-400 leading-relaxed text-sm md:text-base max-w-sm">

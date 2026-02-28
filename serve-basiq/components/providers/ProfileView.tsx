@@ -18,6 +18,7 @@ import {
     Calendar,
     Languages
 } from 'lucide-react';
+import toast from 'react-hot-toast'; // ✅ Imported toast
 
 import StepOnePersonal from './StepOneProfile';
 import StepSocial from './StepSocial';
@@ -27,7 +28,6 @@ import StepThreeKYC from './StepThreeKYC';
 // Helper to wrap the form steps in a modal
 const EditModal = ({ isOpen, onClose, title, children, onSave, loading }: any) => {
 
-    // Prevent background scrolling when modal is open
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -43,23 +43,16 @@ const EditModal = ({ isOpen, onClose, title, children, onSave, loading }: any) =
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Container - Strict flex layout for perfect centering and internal scrolling */}
             <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] md:max-h-[85vh]">
-
-                {/* Header (Fixed) */}
                 <div className="shrink-0 flex justify-between items-center p-6 border-b border-slate-100">
                     <h3 className="text-xl font-bold text-slate-900">{title}</h3>
                     <button onClick={onClose} className="p-2 -mr-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors">
                         <X size={20} className="text-slate-500" />
                     </button>
                 </div>
-
-                {/* Scrollable Content Body */}
                 <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                     {children}
                 </div>
-
-                {/* Footer (Fixed) */}
                 <div className="shrink-0 p-6 border-t border-slate-100 bg-slate-50/80 flex justify-end gap-3 rounded-b-3xl">
                     <button
                         onClick={onClose}
@@ -76,7 +69,6 @@ const EditModal = ({ isOpen, onClose, title, children, onSave, loading }: any) =
                         Save Changes
                     </button>
                 </div>
-
             </div>
         </div>
     );
@@ -93,7 +85,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     const [activeModal, setActiveModal] = useState<'PERSONAL' | 'SOCIAL' | 'ADDRESS' | 'KYC' | null>(null);
     const [loading, setLoading] = useState(false);
 
-    // Form State (initialized with user data for editing)
     const [form, setForm] = useState({
         userId: user?.id,
         fullName: user?.name || '',
@@ -104,30 +95,22 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
         preferredLanguage: user?.preferredLanguage || 'English',
         providerType: user?.providerType || 'BOTH',
         shopName: user?.shopName || '',
-
-        // Social Links
         instagramUrl: user?.instagramUrl || '',
         facebookUrl: user?.facebookUrl || '',
         youtubeUrl: user?.youtubeUrl || '',
         websiteUrl: user?.websiteUrl || '',
-
-        // Addresses
         addressLine1: user?.addresses?.find((a: any) => a.type === 'Home')?.line1 || '',
         addressLine2: user?.addresses?.find((a: any) => a.type === 'Home')?.line2 || '',
         landmark: user?.addresses?.find((a: any) => a.type === 'Home')?.landmark || '',
         city: user?.addresses?.find((a: any) => a.type === 'Home')?.city || '',
         state: user?.addresses?.find((a: any) => a.type === 'Home')?.state || '',
         pincode: user?.addresses?.find((a: any) => a.type === 'Home')?.pincode || '',
-
-        // Business Address
         bizAddressLine1: user?.addresses?.find((a: any) => a.type === 'Work')?.line1 || '',
         bizAddressLine2: user?.addresses?.find((a: any) => a.type === 'Work')?.line2 || '',
         bizCity: user?.addresses?.find((a: any) => a.type === 'Work')?.city || '',
         bizState: user?.addresses?.find((a: any) => a.type === 'Work')?.state || '',
         bizPincode: user?.addresses?.find((a: any) => a.type === 'Work')?.pincode || '',
         sameAsPersonal: false,
-
-        // KYC
         idProofType: user?.kycDetails?.idProofType || 'Aadhaar',
         idProofNumber: user?.kycDetails?.idProofNumber || '',
         idProofImg: user?.kycDetails?.idProofFrontImg || '',
@@ -137,7 +120,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Update Field Helper
     const updateField = (field: string, value: any) => {
         setForm(prev => ({ ...prev, [field]: value }));
         if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
@@ -146,11 +128,9 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     const getInputClass = (field: string) =>
         `w-full border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all ${errors[field] ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-white hover:border-slate-300'}`;
 
-    // Handle Save Logic
     const handleSave = async () => {
         setLoading(true);
         try {
-            // Check for Provider Type change to trigger Status API
             if (activeModal === 'PERSONAL' && form.providerType !== user?.providerType) {
                 await fetch('/api/user/status', {
                     method: 'POST',
@@ -162,7 +142,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 });
             }
 
-            // Update Profile API
             const res = await fetch('/api/provider/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -172,27 +151,24 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
             if (res.ok) {
                 setActiveModal(null);
                 router.refresh();
+                toast.success('Profile updated successfully');
             } else {
-                alert('Failed to update profile');
+                toast.error('Failed to update profile'); 
             }
         } catch (error) {
             console.error(error);
-            alert('An error occurred');
+            toast.error('An error occurred');
         } finally {
             setLoading(false);
         }
     };
 
-    // Derived Display Data
     const imageUrl = user?.profileImage || user?.img || "https://i.pravatar.cc/150";
     const homeAddress = user?.addresses?.find((a: any) => a.type === 'Home');
     const workAddress = user?.addresses?.find((a: any) => a.type === 'Work') || homeAddress;
     const kyc = user?.kycDetails || {};
-
-    // Helper to count social links
     const socialCount = [user?.instagramUrl, user?.facebookUrl, user?.youtubeUrl, user?.websiteUrl].filter(Boolean).length;
 
-    // Helpers for display format
     const formatDate = (dateString: string) => {
         if (!dateString) return "N/A";
         return new Date(dateString).toLocaleDateString('en-IN', {
@@ -210,7 +186,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 relative">
 
-            {/* --- MODALS --- */}
             <EditModal
                 isOpen={activeModal === 'PERSONAL'}
                 onClose={() => setActiveModal(null)}
@@ -248,11 +223,10 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 onSave={handleSave}
                 loading={loading}
             >
-                <StepThreeKYC form={form} updateField={updateField} showToast={(msg: string) => alert(msg)} errors={errors} getInputClass={getInputClass} />
+                {/* ✅ Updated showToast to use toast() */}
+                <StepThreeKYC form={form} updateField={updateField} showToast={(msg: string) => toast(msg)} errors={errors} getInputClass={getInputClass} />
             </EditModal>
 
-
-            {/* Summary Card */}
             <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center relative overflow-hidden group max-w-4xl mx-auto">
                 <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500 to-purple-600 opacity-10"></div>
                 <div className="relative inline-block cursor-pointer" onClick={onEdit}>
@@ -268,7 +242,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 mt-4">{user?.name || "Provider Name"}</h2>
 
-                {/* ✅ DYNAMIC STATUS COLOR */}
                 <p className="text-slate-500 text-sm font-medium flex items-center justify-center gap-2 mt-1">
                     <span className={`w-2.5 h-2.5 rounded-full ${user?.isVerified ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`}></span>
                     {user?.role === 'ADMIN' ? 'Administrator' : 'Service Provider'} •
@@ -278,10 +251,8 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 </p>
             </div>
 
-            {/* Info Grid */}
+            {/* Grid & Cards remain unchanged below this line, I've kept the file complete for easy copy-pasting */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-
-                {/* 1. Account & Personal Details Card */}
                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-blue-500 p-6 relative overflow-hidden group">
                     <button
                         onClick={() => setActiveModal('PERSONAL')}
@@ -298,12 +269,9 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                         <p className="text-slate-600 flex justify-between"><strong>Full Name:</strong> <span className="text-slate-900">{user?.name || "N/A"}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Email:</strong> <span className="text-slate-900">{user?.email || "N/A"}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Phone:</strong> <span className="text-slate-900">{user?.phone || "N/A"}</span></p>
-
-                        {/* ✅ NEW FIELDS ADDED HERE */}
                         <p className="text-slate-600 flex justify-between"><strong>Gender:</strong> <span className="text-slate-900">{formatGender(user?.gender)}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Date of Birth:</strong> <span className="text-slate-900">{formatDate(user?.dob)}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Language:</strong> <span className="text-slate-900">{user?.preferredLanguage || "English"}</span></p>
-
                         <div className="pt-2 mt-2 border-t border-slate-50">
                             <p className="text-slate-600 flex justify-between items-center">
                                 <strong>Account Type:</strong>
@@ -313,7 +281,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                     </div>
                 </div>
 
-                {/* 2. Social Profiles Card */}
                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-pink-500 p-6 relative overflow-hidden group">
                     <button
                         onClick={() => setActiveModal('SOCIAL')}
@@ -330,7 +297,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                     <div className="relative z-10">
                         {socialCount > 0 ? (
                             <div className="grid grid-cols-2 gap-3">
-                                {/* Instagram */}
                                 {user?.instagramUrl ? (
                                     <a href={user.instagramUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-pink-50 hover:text-pink-600 transition-colors">
                                         <Instagram size={14} className="text-pink-500" /> Instagram
@@ -342,8 +308,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                                         <span className="ml-auto text-[10px] font-semibold opacity-50">N/A</span>
                                     </div>
                                 )}
-
-                                {/* Facebook */}
                                 {user?.facebookUrl ? (
                                     <a href={user.facebookUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
                                         <Facebook size={14} className="text-blue-600" /> Facebook
@@ -355,8 +319,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                                         <span className="ml-auto text-[10px] font-semibold opacity-50">N/A</span>
                                     </div>
                                 )}
-
-                                {/* YouTube */}
                                 {user?.youtubeUrl ? (
                                     <a href={user.youtubeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors">
                                         <Youtube size={14} className="text-red-600" /> YouTube
@@ -368,8 +330,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                                         <span className="ml-auto text-[10px] font-semibold opacity-50">N/A</span>
                                     </div>
                                 )}
-
-                                {/* Website */}
                                 {user?.websiteUrl ? (
                                     <a href={user.websiteUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-slate-700 p-2 bg-slate-50 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                                         <Globe size={14} className="text-emerald-500" /> Website
@@ -391,7 +351,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                     </div>
                 </div>
 
-                {/* 3. Location & Business Card */}
                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-orange-500 p-6 relative overflow-hidden group">
                     <button
                         onClick={() => setActiveModal('ADDRESS')}
@@ -416,7 +375,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                     </div>
                 </div>
 
-                {/* 4. KYC Card */}
                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-purple-500 p-6 relative overflow-hidden group">
                     <button
                         onClick={() => setActiveModal('KYC')}

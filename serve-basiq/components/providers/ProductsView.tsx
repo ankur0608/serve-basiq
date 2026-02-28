@@ -2,7 +2,7 @@
 
 import { useState, useCallback, memo } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
-import { Plus, Package, Loader2, Pencil, Trash2, Eye } from 'lucide-react';
+import { Plus, Package, Loader2, Pencil, Trash2, Eye, CheckCircle2, AlertCircle } from 'lucide-react'; // ✅ Added CheckCircle2 & AlertCircle
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ViewDetailsModal } from '@/components/ui/ViewDetailsModal';
 
@@ -46,6 +46,16 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
                     <div className="flex-1 min-w-0 pr-2">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                             <p className="font-bold text-slate-900 text-sm truncate max-w-[160px] sm:max-w-[200px] lg:max-w-[300px]">{p.name}</p>
+                            
+                            {/* ✅ Added Verification Badge Here */}
+                            <span className={`flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${
+                                p.isVerified 
+                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                                    : 'bg-amber-50 text-amber-600 border-amber-100'
+                            }`}>
+                                {p.isVerified ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                                {p.isVerified ? 'Verified' : 'Pending'}
+                            </span>
                         </div>
 
                         <p className="text-[10px] text-slate-400 truncate max-w-[200px] sm:max-w-[250px] hidden sm:block" title={p.desc}>

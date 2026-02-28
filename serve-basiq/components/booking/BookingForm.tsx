@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast'; // ✅ Imported toast
 
 // Component imports
 import BookingPreferences from './BookingPreferences';
@@ -99,7 +100,10 @@ export default function BookingForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addressId) return;
+    if (!addressId) {
+      toast.error('Please select an address.'); // ✅ Added quick validation toast
+      return;
+    }
     setLoading(true);
 
     try {
@@ -140,16 +144,16 @@ export default function BookingForm({
         if (onSuccess) {
           onSuccess();
         } else {
-          alert('Booking Request Sent Successfully!');
+          toast.success('Booking Request Sent Successfully!'); 
           onRequestClose();
         }
         router.refresh();
       } else {
-        alert(data.message || 'Booking failed');
+        toast.error(data.message || 'Booking failed');
       }
     } catch (error) {
       console.error(error);
-      alert('Something went wrong');
+      toast.error('Something went wrong'); 
     } finally {
       setLoading(false);
     }

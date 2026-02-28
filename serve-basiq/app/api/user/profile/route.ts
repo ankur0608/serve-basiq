@@ -34,28 +34,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Flatten Address - Get the most recent one (index 0)
-    // const primaryAddress = user.addresses[0] || {};
-    // Flatten Address - Prioritize 'Home' type, otherwise use the newest one
     const primaryAddress =
       user.addresses.find((addr) => addr.type === "Home") ||
       user.addresses[0] ||
       {};
-    // Helper: convert null/undefined to empty string
     const val = (v: any) => (v === null || v === undefined ? "" : v);
 
     const formattedDob = user.dob
       ? new Date(user.dob).toISOString().split('T')[0]
       : "";
 
-    // ✅ Construct Response with FULL address details
     const finalUserData = {
       id: user.id,
       name: val(user.name),
       email: val(user.email),
       phone: val(user.phone),
-      img: val(user.image), // Normalized key
-      image: val(user.image), // Normalized key
+      img: val(user.image), 
+      image: val(user.image), 
       dob: formattedDob,
       dateOfBirth: formattedDob,
       preferredLanguage: val(user.preferredLanguage) || "English",
@@ -64,7 +59,6 @@ export async function GET(request: Request) {
       isWorker: user.isWorker,
       isPhoneVerified: user.isPhoneVerified,
 
-      // ✅ Address Fields (Mapped directly from primaryAddress)
       addressLine1: val(primaryAddress.line1),
       addressLine2: val(primaryAddress.line2),
       landmark: val(primaryAddress.landmark),
@@ -76,7 +70,6 @@ export async function GET(request: Request) {
 
       addresses: user.addresses,
 
-      // 🔴 FIX 2: Actually send the bookings to the frontend
       bookings: user.bookings,
 
       isFullProfile: true
@@ -96,7 +89,6 @@ export async function PATCH(request: Request) {
     if (!session || !session.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    // @ts-ignore
     const userId = session.user.id;
 
     const {
@@ -104,7 +96,6 @@ export async function PATCH(request: Request) {
       addressLine1, addressLine2, landmark, city, state, district, pincode, country
     } = body;
 
-    // 1. Update User Basic Info
     const userUpdateData: any = {};
     if (name) userUpdateData.name = name;
     if (email) userUpdateData.email = email;

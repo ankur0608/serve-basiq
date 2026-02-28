@@ -3,8 +3,8 @@
 import { ShieldCheck, UploadCloud, Loader2, Check } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import clsx from 'clsx';
-// ✅ Import the compression library
 import imageCompression from 'browser-image-compression';
+import { useVerification } from '@/app/hook/useVerification'; // Ensure this path is correct
 
 export default function StepThreeKYC({
     form,
@@ -20,8 +20,8 @@ export default function StepThreeKYC({
     getInputClass: (f: string) => string;
 }) {
     const [uploading, setUploading] = useState<Record<string, boolean>>({});
+    const { uploadDocument } = useVerification();
 
-    // Helper to determine the label text based on selection
     const getUploadLabel = () => {
         switch (form.idProofType) {
             case 'PAN': return 'Upload PAN Card';
@@ -37,43 +37,34 @@ export default function StepThreeKYC({
         try {
             let fileToUpload = file;
 
-            // ✅ COMPRESSION LOGIC
-            // Only compress if it is an image
+            // Compress image if applicable
             if (file.type.startsWith('image/')) {
                 const options = {
-                    maxSizeMB: 1,          // Max size in MB
-                    maxWidthOrHeight: 1920, // Max width/height
-                    useWebWorker: true,    // Use web worker for better performance
-                    initialQuality: 0.8    // Initial quality (0 to 1)
+                    maxSizeMB: 1,
+                    maxWidthOrHeight: 1920,
+                    useWebWorker: true,
+                    initialQuality: 0.8
                 };
-
                 try {
-                    // console.log(`Original size: ${file.size / 1024 / 1024} MB`);
                     fileToUpload = await imageCompression(file, options);
-                    // console.log(`Compressed size: ${fileToUpload.size / 1024 / 1024} MB`);
                 } catch (err) {
                     console.error("Compression failed, uploading original file:", err);
-                    // We fall back to the original file if compression fails
                 }
             }
 
-            const formData = new FormData();
-            formData.append('file', fileToUpload);
+            // Upload via Presigned URL hook
+            const publicUrl = await uploadDocument(fileToUpload);
 
-            const res = await fetch('/api/upload', { method: 'POST', body: formData });
-            if (!res.ok) throw new Error('Upload failed');
-
-            const data = await res.json();
-            updateField(field, data.url || data.key);
+            updateField(field, publicUrl);
             showToast('Document uploaded successfully', 'success');
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            showToast('Upload failed', 'error');
+            showToast(error.message || 'Upload failed', 'error');
         } finally {
             setUploading((p) => ({ ...p, [field]: false }));
         }
-    }, [updateField, showToast]);
+    }, [updateField, showToast, uploadDocument]);
 
     const FileUploadBox = ({ field, label }: { field: string; label: string }) => (
         <div className="space-y-2">
@@ -96,7 +87,7 @@ export default function StepThreeKYC({
                         const file = e.target.files?.[0];
                         if (!file) return;
                         handleUpload(file, field);
-                        e.target.value = ''; // Reset input so same file can be selected again if needed
+                        e.target.value = '';
                     }}
                 />
 
@@ -123,7 +114,6 @@ export default function StepThreeKYC({
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border-l-4 border-purple-500 p-6 md:p-8 animate-in fade-in slide-in-from-right-4 duration-500">
-            {/* Header */}
             <div className="flex items-center gap-3 mb-6 border-b border-slate-50 pb-4">
                 <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                     <ShieldCheck size={20} />
@@ -135,7 +125,6 @@ export default function StepThreeKYC({
             </div>
 
             <div className="space-y-6">
-                {/* ID Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">ID Proof Type</label>
@@ -161,10 +150,8 @@ export default function StepThreeKYC({
                     </div>
                 </div>
 
-                {/* Single Image Picker with Dynamic Label */}
                 <FileUploadBox field="idProofImg" label={getUploadLabel()} />
 
-                {/* GST Section */}
                 <div className="space-y-4 pt-4 border-t border-slate-50">
                     <div className="bg-slate-50 p-4 rounded-xl flex items-center gap-3 border border-slate-100">
                         <input

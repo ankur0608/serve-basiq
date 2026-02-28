@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Hammer, Truck } from 'lucide-react';
+import { X, Hammer, Truck, CheckCircle2, AlertCircle } from 'lucide-react'; // ✅ Imported badge icons
 import { useServiceForm, ServiceSettingsProps } from './service-logic';
 
 import { StepOneDetails, StepTwoMedia } from './steps/StepOneBasic';
@@ -65,9 +65,9 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
 function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & { initialType: 'SERVICE' | 'RENTAL', onBack?: () => void }) {
   const {
     step, setStep, loading, form, categories, loadingCats, activeSubCategories,
-    gettingLoc, activeUploadField, listingType,
-    uploading,
-    handleChange, toggleSubCategory, toggleDay, handleImageUpload, removeGalleryImg,
+    gettingLoc, activeUploadField, listingType, uploading,
+    handleChange, toggleSubCategory, toggleDay, handleImageUpload,
+    uploadMultipleFiles, removeGalleryImg, removeServiceImage, // ✅ Destructured
     handleGetLocation, handleSubmit
   } = useServiceForm({ ...props, preSelectedType: initialType });
 
@@ -81,12 +81,26 @@ function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & {
       {/* Header */}
       <div className="bg-slate-900 p-6 text-white relative shrink-0">
         <div className="flex justify-between items-center mb-1">
-          <h2 className="text-xl font-bold">
-            {props.serviceData
-              ? `Edit ${listingType === 'RENTAL' ? 'Rental' : 'Service'}`
-              : `Create ${listingType === 'RENTAL' ? 'Rental' : 'Service'}`
-            }
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold">
+              {props.serviceData
+                ? `Edit ${listingType === 'RENTAL' ? 'Rental' : 'Service'}`
+                : `Create ${listingType === 'RENTAL' ? 'Rental' : 'Service'}`
+              }
+            </h2>
+
+            {/* ✅ VERIFICATION BADGE ADDED HERE */}
+            {props.serviceData && (
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${props.serviceData.isVerified
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                }`}>
+                {props.serviceData.isVerified ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                {props.serviceData.isVerified ? 'Verified' : 'Pending Verification'}
+              </div>
+            )}
+          </div>
+
           <span className="text-xs font-bold bg-white/10 px-2 py-1 rounded text-slate-300">
             Step {step} of 2
           </span>
@@ -120,8 +134,10 @@ function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & {
               form={form}
               setStep={setStep}
               handleImageUpload={handleImageUpload}
+              uploadMultipleFiles={uploadMultipleFiles} // ✅ Passed down
               activeUploadField={activeUploadField}
               removeGalleryImg={removeGalleryImg}
+              removeServiceImage={removeServiceImage}   // ✅ Passed down
               processingMsg={uploading ? "Uploading..." : undefined}
               loading={loading}
               serviceData={props.serviceData}

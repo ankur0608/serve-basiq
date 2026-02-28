@@ -15,7 +15,8 @@ export interface ProductForm {
     desc: string;
     categoryId: string;
     subCategoryId: string;
-    productImages: string[]; // ✅ Multi-image array
+    productImage: string;    // ✅ ADDED BACK
+    productImages: string[];
     gallery: string[];
     price: string;
     moq: string;
@@ -36,7 +37,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const { saveProduct, isSaving } = useProducts(userId);
     const [step, setStep] = useState(1);
     const [uploading, setUploading] = useState(false);
-    const [activeUploadField, setActiveUploadField] = useState<'productImages' | 'gallery' | null>(null);
+    const [activeUploadField, setActiveUploadField] = useState<'main' | 'productImages' | 'gallery' | null>(null); // ✅ Added 'main'
     const [categories, setCategories] = useState<Category[]>([]);
 
     const [form, setForm] = useState<ProductForm>({
@@ -44,8 +45,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         desc: editingProduct?.desc || '',
         categoryId: editingProduct?.categoryId || '',
         subCategoryId: editingProduct?.subCategoryId || editingProduct?.subcategory?.id || '',
-        // ✅ Pre-fill with existing array or fallback for old single-image data
-        productImages: editingProduct?.productImages || (editingProduct?.productImage ? [editingProduct.productImage] : []),
+        productImage: editingProduct?.productImage || '', // ✅ Pre-fill main image
+        productImages: editingProduct?.productImages || [],
         gallery: editingProduct?.gallery || [],
         price: editingProduct?.price ? String(editingProduct.price) : '',
         moq: editingProduct?.moq ? String(editingProduct.moq) : '1',
@@ -55,33 +56,21 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         condition: editingProduct?.condition || 'NEW'
     });
 
-    // Inside AddProductView.tsx
-
     useEffect(() => {
         let isMounted = true;
-
         const fetchCategories = async () => {
-            // Prevent fetching if we already have categories
             if (categories.length > 0) return;
-
             try {
                 const res = await fetch('/api/categories?type=PRODUCT');
                 const data = await res.json();
-                if (isMounted && Array.isArray(data)) {
-                    setCategories(data);
-                }
+                if (isMounted && Array.isArray(data)) setCategories(data);
             } catch (error) {
                 console.error("Failed to load categories", error);
             }
         };
-
         fetchCategories();
-
-        return () => {
-            isMounted = false;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // ✅ Empty dependency array ensures this runs exactly ONCE when the component mounts
+        return () => { isMounted = false; };
+    }, [categories.length]);
 
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(c => c.id === form.categoryId);
@@ -90,17 +79,34 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
     const handleChange = useCallback((field: keyof ProductForm, value: any) => {
         setForm(prev => {
-            if (field === 'categoryId') {
-                return { ...prev, [field]: value, subCategoryId: '' };
-            }
+            if (field === 'categoryId') return { ...prev, [field]: value, subCategoryId: '' };
             return { ...prev, [field]: value };
         });
     }, []);
 
-    // ✅ Multi-image upload handler
+    // ✅ ADDED HANDLER FOR MAIN IMAGE
+    const handleMainImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        setActiveUploadField('main');
+
+        try {
+            const url = await uploadToBackend(file);
+            setForm(prev => ({ ...prev, productImage: url }));
+            showToast("Main image uploaded!", "success");
+        } catch (e) {
+            showToast("Upload failed", "error");
+        } finally {
+            setUploading(false);
+            setActiveUploadField(null);
+        }
+    }, [showToast]);
+
+
     const handleProductImagesUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
-
         if (form.productImages.length + files.length > 5) {
             showToast("You can only add up to 5 product images", "error");
             return;
@@ -112,14 +118,9 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         try {
             const uploadPromises = files.map(file => uploadToBackend(file));
             const uploadedUrls = await Promise.all(uploadPromises);
-
-            setForm(prev => ({
-                ...prev,
-                productImages: [...prev.productImages, ...uploadedUrls].slice(0, 5)
-            }));
+            setForm(prev => ({ ...prev, productImages: [...prev.productImages, ...uploadedUrls].slice(0, 5) }));
             showToast(`${uploadedUrls.length} product images uploaded!`, "success");
         } catch (e) {
-            console.error(e);
             showToast("Upload failed", "error");
         } finally {
             setUploading(false);
@@ -144,15 +145,9 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         try {
             const uploadPromises = files.map(file => uploadToBackend(file));
             const uploadedUrls = await Promise.all(uploadPromises);
-
-            setForm(prev => ({
-                ...prev,
-                gallery: [...prev.gallery, ...uploadedUrls]
-            }));
-
+            setForm(prev => ({ ...prev, gallery: [...prev.gallery, ...uploadedUrls] }));
             showToast(`${uploadedUrls.length} items added to gallery`, "success");
         } catch (e) {
-            console.error(e);
             showToast("One or more items failed to upload", "error");
         } finally {
             setUploading(false);
@@ -171,9 +166,9 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // ✅ Require at least 1 image
-        if (!form.productImages || form.productImages.length === 0) {
-            showToast("At least 1 product image is required", "error");
+        // ✅ Require Main Image
+        if (!form.productImage) {
+            showToast("Main Product Image is required", "error");
             return;
         }
 
@@ -205,12 +200,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
                 <div className="bg-slate-900 p-6 text-white relative shrink-0">
                     <div className="flex justify-between items-center mb-1">
-                        <h2 className="text-xl font-bold">
-                            {editingProduct ? 'Edit Product' : 'Add Product'}
-                        </h2>
-                        <span className="text-xs font-bold bg-white/10 px-2 py-1 rounded text-slate-300">
-                            Step {step} of 2
-                        </span>
+                        <h2 className="text-xl font-bold">{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
+                        <span className="text-xs font-bold bg-white/10 px-2 py-1 rounded text-slate-300">Step {step} of 2</span>
                     </div>
                     <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-800">
                         <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${(step / 2) * 100}%` }} />
@@ -234,6 +225,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                             form={form}
                             uploading={uploading}
                             activeUploadField={activeUploadField}
+                            handleMainImageUpload={handleMainImageUpload} // ✅ PASSING MAIN IMAGE HANDLER
                             handleProductImagesUpload={handleProductImagesUpload}
                             removeProductImage={removeProductImage}
                             handleGalleryUpload={handleGalleryUpload}

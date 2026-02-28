@@ -26,12 +26,10 @@ export default async function ServiceDetailPage({ params }: Props) {
           isVerified: true,
           phone: true,
           shopName: true,
-          // Socials
           instagramUrl: true,
           facebookUrl: true,
           youtubeUrl: true,
           websiteUrl: true,
-          // ✅ FETCH PROVIDER ADDRESSES
           addresses: true
         }
       },
@@ -45,11 +43,11 @@ export default async function ServiceDetailPage({ params }: Props) {
 
   if (!rawService) return notFound();
 
-  // 👉 2. NEW: Fetch Related Services for the Slider
+  // 👉 2. Fetch Related Services for the Slider
   const rawRelatedServices = await prisma.service.findMany({
     where: {
       categoryId: rawService.categoryId,
-      id: { not: id } // Exclude the current service
+      id: { not: id }
     },
     take: 8,
     select: {
@@ -60,32 +58,30 @@ export default async function ServiceDetailPage({ params }: Props) {
       coverImg: true,
       serviceimg: true,
       mainimg: true,
+      serviceImages: true, // ✅ Added array
       gallery: true,
       category: { select: { name: true } },
       user: { select: { shopName: true } }
     }
   });
 
-  // Convert Prisma Decimal to Number for the Client Component
   const relatedServices = rawRelatedServices.map(rs => ({
     ...rs,
     price: Number(rs.price),
   }));
 
-  // 3. ✅ SMART ADDRESS LOGIC
-  // Priority: 1. Service Specific Address -> 2. Provider Work Address -> 3. Provider Home Address
+  // 3. SMART ADDRESS LOGIC
   const providerAddresses = rawService.user.addresses || [];
   const providerWorkAddr = providerAddresses.find(a => a.type === 'Work');
   const providerHomeAddr = providerAddresses.find(a => a.type === 'Home');
   const fallbackAddr = providerWorkAddr || providerHomeAddr || providerAddresses[0];
 
-  // Determine final values
   const finalAddressLine1 = rawService.addressLine1 || fallbackAddr?.line1 || null;
   const finalAddressLine2 = rawService.addressLine2 || fallbackAddr?.line2 || null;
   const finalCity = rawService.city || fallbackAddr?.city || null;
   const finalState = rawService.state || fallbackAddr?.state || null;
   const finalPincode = rawService.pincode || fallbackAddr?.pincode || null;
-  const finalLandmark = fallbackAddr?.landmark || null; // Service model usually doesn't have landmark, so we take from Provider
+  const finalLandmark = fallbackAddr?.landmark || null;
 
   // 4. Data Mapping
   const service = {
@@ -95,15 +91,13 @@ export default async function ServiceDetailPage({ params }: Props) {
     latitude: rawService.latitude ? Number(rawService.latitude) : 0,
     longitude: rawService.longitude ? Number(rawService.longitude) : 0,
 
-    // ✅ Mapped Address Fields
     addressLine1: finalAddressLine1,
     addressLine2: finalAddressLine2,
     city: finalCity,
     state: finalState,
     pincode: finalPincode,
-    landmark: finalLandmark, // Passed to frontend
+    landmark: finalLandmark,
 
-    // Socials Mapping (Service Level)
     instagramUrl: (rawService as any).instagramUrl || null,
     facebookUrl: (rawService as any).facebookUrl || null,
     youtubeUrl: (rawService as any).youtubeUrl || null,
@@ -112,7 +106,6 @@ export default async function ServiceDetailPage({ params }: Props) {
     createdAt: rawService.createdAt.toISOString(),
     updatedAt: rawService.updatedAt.toISOString(),
 
-    // User Mapping
     user: {
       ...rawService.user,
       instagramUrl: (rawService.user as any).instagramUrl || null,
@@ -150,7 +143,7 @@ export default async function ServiceDetailPage({ params }: Props) {
       service={service as any}
       loggedInUser={loggedInUser}
       session={session}
-      relatedServices={relatedServices} // 👉 NEW: Pass the related services here
+      relatedServices={relatedServices}
     />
   );
 }

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useMemo, useCallback, memo } from 'react';
-import { Package, Plus, Loader2, Pencil, Trash2, Layers, Eye } from 'lucide-react'; // ✅ Added Eye
+import { Package, Plus, Loader2, Pencil, Trash2, Layers, Eye, CheckCircle2, AlertCircle } from 'lucide-react'; // ✅ Added CheckCircle2 & AlertCircle
 import { useServices } from '@/app/hook/useServices';
 import { ServiceSettingsView } from '@/components/providers/service/ServiceSettingsView';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { ViewDetailsModal } from '@/components/ui/ViewDetailsModal'; // ✅ Import new modal
+import { ViewDetailsModal } from '@/components/ui/ViewDetailsModal';
 import { ServiceDetailsModal } from '../ui/ServiceDetailsModal';
 
 interface ManagementViewProps {
@@ -22,7 +22,7 @@ const ServiceTableRow = memo(
         index: number;
         onEdit: (s: any) => void;
         onDelete: (payload: { id: string; type: 'SERVICE' | 'RENTAL' }) => void;
-        onView: (s: any) => void; // ✅ Added onView prop
+        onView: (s: any) => void;
     }) => {
 
         const imageSrc = s.img || "";
@@ -58,8 +58,18 @@ const ServiceTableRow = memo(
                         <div className="flex-1 min-w-0 pr-2">
                             <div className="flex flex-wrap items-center gap-2 mb-1">
                                 <p className="font-bold text-slate-900 text-sm truncate max-w-[160px] sm:max-w-[200px] lg:max-w-[300px]">{s.name}</p>
+
                                 <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${s.listingType === 'RENTAL' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
                                     {s.listingType === 'RENTAL' ? 'Rental' : 'Service'}
+                                </span>
+
+                                {/* ✅ Added Verification Badge Here */}
+                                <span className={`flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${s.isVerified
+                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                        : 'bg-amber-50 text-amber-600 border-amber-100'
+                                    }`}>
+                                    {s.isVerified ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                                    {s.isVerified ? 'Verified' : 'Pending'}
                                 </span>
                             </div>
 
@@ -111,7 +121,6 @@ const ServiceTableRow = memo(
 
                 <td className="py-4 pr-4 md:pr-6 align-middle text-right">
                     <div className="flex justify-end gap-1.5 sm:gap-2">
-                        {/* ✅ Added View Button */}
                         <button onClick={() => onView(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-400 transition-colors" title="View Details">
                             <Eye size={14} />
                         </button>
@@ -146,7 +155,6 @@ export function ManagementView({
     const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; payload: { id: string; type: 'SERVICE' | 'RENTAL' } | null }>({ isOpen: false, payload: null });
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // ✅ View Modal State
     const [viewModalState, setViewModalState] = useState<{ isOpen: boolean; payload: any | null }>({ isOpen: false, payload: null });
 
     const allListings = useMemo(() => {
@@ -179,7 +187,6 @@ export function ManagementView({
         setIsEditingService(true);
     }, []);
 
-    // ✅ Open View Modal
     const handleView = useCallback((service: any) => {
         setViewModalState({ isOpen: true, payload: service });
     }, []);
@@ -211,7 +218,6 @@ export function ManagementView({
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 space-y-6">
 
-            {/* ... Keep the View Toggles and Header exactly the same as before ... */}
             {providerType === 'BOTH' && !isEditingService && !isCreatingService && (
                 <div className="flex bg-white rounded-xl mb-1 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
                     <button onClick={() => setActiveView('settings')} className="flex-1 py-4 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all">Services</button>
@@ -220,7 +226,6 @@ export function ManagementView({
             )}
 
             {isEditingService || isCreatingService ? (
-                // ... Keep editing view the same ...
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mx-4 md:mx-0">
                     <div className="px-6 py-5 border-b bg-white flex justify-between items-center">
                         <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
@@ -284,7 +289,7 @@ export function ManagementView({
                                                 s={s}
                                                 onEdit={handleEdit}
                                                 onDelete={confirmDeletePrompt}
-                                                onView={handleView} // ✅ Passed View prop down
+                                                onView={handleView}
                                             />
                                         ))}
                                     </tbody>
@@ -306,7 +311,6 @@ export function ManagementView({
                 isLoading={isDeleting}
             />
 
-            {/* ✅ Mount the Details Modal */}
             <ServiceDetailsModal
                 isOpen={viewModalState.isOpen}
                 onClose={() => setViewModalState({ isOpen: false, payload: null })}

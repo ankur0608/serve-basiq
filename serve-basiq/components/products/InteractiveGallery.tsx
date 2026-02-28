@@ -42,14 +42,13 @@ export default function InteractiveProductGallery({
                     priority
                 />
 
-                {/* 🔥 Scroll Button */}
-                <button
+                {/* <button
                     onClick={scrollToGallery}
                     className="absolute bottom-6 left-6 bg-white shadow-xl border border-slate-200 text-slate-900 font-semibold px-6 py-3 rounded-2xl flex items-center gap-2 hover:shadow-2xl hover:scale-105 transition-all duration-300"
                 >
                     <FaImages className="text-blue-600 text-lg" />
                     View Full Gallery
-                </button>
+                </button> */}
             </div>
 
             {/* THUMBNAILS */}

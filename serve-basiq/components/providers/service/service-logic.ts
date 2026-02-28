@@ -3,20 +3,10 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import imageCompression from 'browser-image-compression';
-
 import { uploadToBackend } from '@/lib/uploadToBackend';
 
-export interface SubCategory {
-    id: string;
-    name: string;
-}
-
-export interface Category {
-    id: string;
-    name: string;
-    children?: SubCategory[];
-    subcategories?: SubCategory[];
-}
+export interface SubCategory { id: string; name: string; }
+export interface Category { id: string; name: string; children?: SubCategory[]; subcategories?: SubCategory[]; }
 
 export interface ServiceSettingsProps {
     userId: string;
@@ -34,26 +24,13 @@ const normalizeSubIds = (data: any): string[] => {
     return subs?.id ? [subs.id] : [];
 };
 
-export function useServiceForm({
-    userId,
-    serviceData,
-    userData,
-    userAddress,
-    onComplete,
-    showToast,
-    preSelectedType
-}: ServiceSettingsProps) {
+export function useServiceForm({ userId, serviceData, userData, userAddress, onComplete, showToast, preSelectedType }: ServiceSettingsProps) {
     const queryClient = useQueryClient();
 
-    // Initialize listing type
     const [listingType, setListingType] = useState<'SERVICE' | 'RENTAL'>(() => {
         if (preSelectedType) return preSelectedType;
         if (!serviceData) return 'SERVICE';
-        return serviceData.listingType === 'RENTAL' ||
-            serviceData.stock !== undefined ||
-            serviceData.rentalImg
-            ? 'RENTAL'
-            : 'SERVICE';
+        return serviceData.listingType === 'RENTAL' || serviceData.stock !== undefined || serviceData.rentalImg ? 'RENTAL' : 'SERVICE';
     });
 
     const [step, setStep] = useState(1);
@@ -62,7 +39,6 @@ export function useServiceForm({
     const [activeUploadField, setActiveUploadField] = useState<string | null>(null);
     const [gettingLoc, setGettingLoc] = useState(false);
 
-    // Optimized Caching Logic
     const { data: categories = [], isLoading: loadingCats } = useQuery({
         queryKey: ['categories', listingType],
         queryFn: async () => {
@@ -76,7 +52,6 @@ export function useServiceForm({
         refetchOnMount: false
     });
 
-    // Initialize State
     const [form, setForm] = useState(() => ({
         name: serviceData?.name || '',
         desc: serviceData?.desc || '',
@@ -88,6 +63,8 @@ export function useServiceForm({
 
         // Images
         mainimg: serviceData?.serviceimg || serviceData?.rentalImg || serviceData?.mainimg || '',
+        // ✅ Gracefully handles BOTH serviceImages and rentalImages depending on what was fetched
+        serviceImages: serviceData?.serviceImages || serviceData?.rentalImages || [],
         coverImg: serviceData?.coverImg || '',
         gallery: serviceData?.gallery || [],
 
@@ -125,37 +102,36 @@ export function useServiceForm({
     }, [categories, form.categoryId, serviceData]);
 
     const handleChange = (field: string, value: any) => {
-        setForm(prev =>
-            field === 'categoryId'
-                ? { ...prev, categoryId: value, subCategoryIds: [] }
-                : { ...prev, [field]: value }
-        );
+        setForm(prev => field === 'categoryId' ? { ...prev, categoryId: value, subCategoryIds: [] } : { ...prev, [field]: value });
     };
 
     const toggleSubCategory = (subId: string) => {
-        setForm(prev => ({
-            ...prev,
-            subCategoryIds: prev.subCategoryIds.includes(subId)
-                ? prev.subCategoryIds.filter(id => id !== subId)
-                : [...prev.subCategoryIds, subId],
-        }));
+        setForm(prev => ({ ...prev, subCategoryIds: prev.subCategoryIds.includes(subId) ? prev.subCategoryIds.filter(id => id !== subId) : [...prev.subCategoryIds, subId], }));
     };
 
     const toggleDay = (day: string) => {
-        setForm(prev => ({
-            ...prev,
-            workingDays: prev.workingDays.includes(day)
-                ? prev.workingDays.filter((d: string) => d !== day)
-                : [...prev.workingDays, day],
-        }));
+        setForm(prev => ({ ...prev, workingDays: prev.workingDays.includes(day) ? prev.workingDays.filter((d: string) => d !== day) : [...prev.workingDays, day], }));
     };
 
     const removeGalleryImg = (index: number) => {
-        setForm(prev => {
-            const newGallery = [...prev.gallery];
-            newGallery.splice(index, 1);
-            return { ...prev, gallery: newGallery };
-        });
+        setForm(prev => { const newGallery = [...prev.gallery]; newGallery.splice(index, 1); return { ...prev, gallery: newGallery }; });
+    };
+    const removeServiceImage = (index: number) => {
+        setForm(prev => { const newArr = [...prev.serviceImages]; newArr.splice(index, 1); return { ...prev, serviceImages: newArr }; });
+    };
+
+    const processFile = async (file: File) => {
+        let uploadFile = file;
+        if (file.type.startsWith('image/')) {
+            try {
+                const compressedBlob = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: "image/webp" });
+                const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+                uploadFile = new File([compressedBlob], newFileName, { type: "image/webp" });
+            } catch (err) {
+                console.error("Image compress failed", err);
+            }
+        }
+        return await uploadToBackend(uploadFile);
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
@@ -166,58 +142,34 @@ export function useServiceForm({
         setActiveUploadField(field);
 
         try {
-            // Helper to process a single file
-            const processFile = async (file: File) => {
-                let uploadFile = file;
-
-                // 📸 Only compress and convert images. Videos skip this block!
-                if (file.type.startsWith('image/')) {
-                    try {
-                        const compressedBlob = await imageCompression(file, {
-                            maxSizeMB: 1, // 1MB limit per image
-                            maxWidthOrHeight: 1920,
-                            useWebWorker: true,
-                            fileType: "image/webp", // 🎯 Forces conversion to WebP!
-                        });
-
-                        // Rename the file to ensure it has a .webp extension
-                        const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
-
-                        // Convert Blob back to a standard File object
-                        uploadFile = new File([compressedBlob], newFileName, {
-                            type: "image/webp",
-                        });
-
-                    } catch (err) {
-                        console.error("Image compress failed, uploading original", err);
-                    }
-                }
-
-                // 🚀 Upload the file (WebP image or raw MP4 video) directly via Presigned URL
-                return await uploadToBackend(uploadFile);
-            };
-
-            if (field === 'gallery') {
-                // --- MULTIPLE FILE UPLOAD LOGIC ---
-                const uploadPromises = Array.from(files).map(file => processFile(file));
-                const newUrls = await Promise.all(uploadPromises);
-
-                handleChange('gallery', [...form.gallery, ...newUrls]);
-                showToast?.(`${newUrls.length} items uploaded`, 'success');
-            } else {
-                // --- SINGLE FILE UPLOAD LOGIC ---
-                const url = await processFile(files[0]);
-                handleChange(field, url);
-                showToast?.('Uploaded successfully', 'success');
-            }
-
+            const url = await processFile(files[0]);
+            handleChange(field, url);
+            showToast?.('Uploaded successfully', 'success');
         } catch (error: any) {
-            console.error(error);
             showToast?.(error.message || 'Upload failed', 'error');
         } finally {
             setUploading(false);
             setActiveUploadField(null);
-            e.target.value = ''; // Reset input
+            e.target.value = '';
+        }
+    };
+
+    const uploadMultipleFiles = async (files: File[], field: 'gallery' | 'serviceImages') => {
+        if (!files || files.length === 0) return;
+        setUploading(true);
+        setActiveUploadField(field);
+
+        try {
+            const uploadPromises = files.map(file => processFile(file));
+            const newUrls = await Promise.all(uploadPromises);
+
+            setForm(prev => ({ ...prev, [field]: [...prev[field], ...newUrls] }));
+            showToast?.(`${newUrls.length} items uploaded`, 'success');
+        } catch (error: any) {
+            showToast?.('Upload failed', 'error');
+        } finally {
+            setUploading(false);
+            setActiveUploadField(null);
         }
     };
 
@@ -225,14 +177,7 @@ export function useServiceForm({
         if (!navigator.geolocation) return;
         setGettingLoc(true);
         navigator.geolocation.getCurrentPosition(
-            pos => {
-                setForm(prev => ({
-                    ...prev,
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude,
-                }));
-                setGettingLoc(false);
-            },
+            pos => { setForm(prev => ({ ...prev, latitude: pos.coords.latitude, longitude: pos.coords.longitude, })); setGettingLoc(false); },
             () => setGettingLoc(false)
         );
     };
@@ -251,12 +196,13 @@ export function useServiceForm({
                 latitude: Number(form.latitude),
                 longitude: Number(form.longitude),
                 subCategoryIds: form.subCategoryIds,
+                // ✅ Submit logic maps properly for both Rental and Service
                 [listingType === 'RENTAL' ? 'rentalImg' : 'serviceimg']: form.mainimg,
+                [listingType === 'RENTAL' ? 'rentalImages' : 'serviceImages']: form.serviceImages,
                 itemCondition: form.itemCondition,
                 securityDeposit: Number(form.securityDeposit),
                 minDuration: form.minDuration,
                 rentalMode: form.rentalMode,
-                // ✅ Empty the schedule fields if 24x7 is selected
                 workingDays: form.is24x7 ? [] : form.workingDays,
                 openTime: form.is24x7 ? null : form.openTime,
                 closeTime: form.is24x7 ? null : form.closeTime,
@@ -267,11 +213,7 @@ export function useServiceForm({
             const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId,
-                    id: serviceData?.id,
-                    ...payload,
-                }),
+                body: JSON.stringify({ userId, id: serviceData?.id, ...payload }),
             });
 
             const data = await res.json();
@@ -292,6 +234,6 @@ export function useServiceForm({
         categories, loadingCats, activeSubCategories,
         form, listingType, setListingType,
         handleChange, toggleSubCategory, toggleDay,
-        handleImageUpload, removeGalleryImg, handleGetLocation, handleSubmit,
+        handleImageUpload, uploadMultipleFiles, removeGalleryImg, removeServiceImage, handleGetLocation, handleSubmit,
     };
 }

@@ -31,8 +31,8 @@ export function useUserStats() {
             if (!res.ok) throw new Error('Failed to fetch stats');
             return res.json();
         },
-        staleTime: 1000 * 60 * 5, 
-        gcTime: 1000 * 60 * 30,   
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
     });
 }
@@ -80,97 +80,97 @@ export function useActiveBookings() {
     });
 }
 
-export function useUpdateProfile() {
-    const queryClient = useQueryClient();
-    const { update: updateSession, data: session } = useSession();
-    const { setCurrentUser, onCloseEditProfile } = useUIStore();
+// export function useUpdateProfile() {
+//     const queryClient = useQueryClient();
+//     const { update: updateSession, data: session } = useSession();
+//     const { setCurrentUser, onCloseEditProfile } = useUIStore();
 
-    return useMutation({
-        mutationFn: async ({ formData, file, currentUser }: UpdateProfileParams) => {
-            const userId = currentUser?.id || session?.user?.id;
-            if (!userId) throw new Error("User ID not found");
+//     return useMutation({
+//         mutationFn: async ({ formData, file, currentUser }: UpdateProfileParams) => {
+//             const userId = currentUser?.id || session?.user?.id;
+//             if (!userId) throw new Error("User ID not found");
 
-            let uploadedImageUrl = formData.image;
+//             let uploadedImageUrl = formData.image;
 
-            if (file) {
-                let fileToUpload = file;
-                if (file.type.startsWith("image/")) {
-                    try {
-                        const options = {
-                            maxSizeMB: 1,
-                            maxWidthOrHeight: 1080,
-                            useWebWorker: true,
-                            initialQuality: 0.8,
-                        };
-                        fileToUpload = await imageCompression(file, options);
-                    } catch (e) {
-                        console.warn("Compression failed", e);
-                    }
-                }
+//             if (file) {
+//                 let fileToUpload = file;
+//                 if (file.type.startsWith("image/")) {
+//                     try {
+//                         const options = {
+//                             maxSizeMB: 1,
+//                             maxWidthOrHeight: 1080,
+//                             useWebWorker: true,
+//                             initialQuality: 0.8,
+//                         };
+//                         fileToUpload = await imageCompression(file, options);
+//                     } catch (e) {
+//                         console.warn("Compression failed", e);
+//                     }
+//                 }
 
-                const uploadData = new FormData();
-                uploadData.append("file", fileToUpload);
+//                 const uploadData = new FormData();
+//                 uploadData.append("file", fileToUpload);
 
-                const res = await fetch("/api/upload", {
-                    method: "POST",
-                    body: uploadData,
-                });
+//                 const res = await fetch("/api/upload", {
+//                     method: "POST",
+//                     body: uploadData,
+//                 });
 
-                if (res.ok) {
-                    const d = await res.json();
-                    uploadedImageUrl = d.url || (d.key ? `${process.env.NEXT_PUBLIC_R2_DOMAIN}/${d.key}` : null);
-                }
-            }
+//                 if (res.ok) {
+//                     const d = await res.json();
+//                     uploadedImageUrl = d.url || (d.key ? `${process.env.NEXT_PUBLIC_R2_DOMAIN}/${d.key}` : null);
+//                 }
+//             }
 
-            const payload = {
-                userId,
-                ...formData,
-                image: uploadedImageUrl,
-                profileImage: uploadedImageUrl,
-            };
+//             const payload = {
+//                 userId,
+//                 ...formData,
+//                 image: uploadedImageUrl,
+//                 profileImage: uploadedImageUrl,
+//             };
 
-            const updateRes = await fetch("/api/user/profile", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
+//             const updateRes = await fetch("/api/user/profile", {
+//                 method: "PATCH",
+//                 headers: { "Content-Type": "application/json" },
+//                 body: JSON.stringify(payload),
+//             });
 
-            if (!updateRes.ok) throw new Error("Failed to update profile");
+//             if (!updateRes.ok) throw new Error("Failed to update profile");
 
-            return { payload, uploadedImageUrl };
-        },
-        onSuccess: async (data, variables) => {
-            const { payload, uploadedImageUrl } = data;
-            const { currentUser, formData } = variables;
+//             return { payload, uploadedImageUrl };
+//         },
+//         onSuccess: async (data, variables) => {
+//             const { payload, uploadedImageUrl } = data;
+//             const { currentUser, formData } = variables;
 
-            const updatedUser = {
-                ...currentUser,
-                ...formData,
-                img: uploadedImageUrl,
-                image: uploadedImageUrl,
-                addressLine1: formData.addressLine1,
-                addressLine2: formData.addressLine2,
-                city: formData.city,
-                district: formData.district,
-                state: formData.state,
-                pincode: formData.pincode,
-                landmark: formData.landmark,
-                isFullProfile: true,
-            };
+//             const updatedUser = {
+//                 ...currentUser,
+//                 ...formData,
+//                 img: uploadedImageUrl,
+//                 image: uploadedImageUrl,
+//                 addressLine1: formData.addressLine1,
+//                 addressLine2: formData.addressLine2,
+//                 city: formData.city,
+//                 district: formData.district,
+//                 state: formData.state,
+//                 pincode: formData.pincode,
+//                 landmark: formData.landmark,
+//                 isFullProfile: true,
+//             };
 
-            setCurrentUser(updatedUser);
+//             setCurrentUser(updatedUser);
 
-            await updateSession({ name: formData.name, image: uploadedImageUrl });
+//             await updateSession({ name: formData.name, image: uploadedImageUrl });
 
-            queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
+//             queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
 
-            onCloseEditProfile();
-        },
-        onError: (error) => {
-            console.error("Profile update error:", error);
-        }
-    });
-}
+//             onCloseEditProfile();
+//         },
+//         onError: (error) => {
+//             console.error("Profile update error:", error);
+//         }
+//     });
+// }
 
 export function useUserOrders() {
     return useQuery({
@@ -183,5 +183,52 @@ export function useUserOrders() {
         staleTime: 1000 * 60 * 5,
         gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
+    });
+}
+export function useUpdateProfile() {
+    const queryClient = useQueryClient();
+    const { update: updateSession } = useSession();
+    const { setCurrentUser } = useUIStore();
+
+    return useMutation({
+        mutationFn: async ({ formData, file, currentUser }: UpdateProfileParams) => {
+            const userId = currentUser?.id;
+            if (!userId) throw new Error("User ID not found");
+
+            let uploadedImageUrl = formData.image;
+
+            // ✅ Fix: Upload new file if provided
+            if (file) {
+                const uploadData = new FormData();
+                uploadData.append("file", file);
+
+                const res = await fetch("/api/upload", { method: "POST", body: uploadData });
+                if (res.ok) {
+                    const d = await res.json();
+                    uploadedImageUrl = d.url;
+                }
+            }
+
+            const payload = { ...formData, image: uploadedImageUrl };
+
+            const updateRes = await fetch("/api/user/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!updateRes.ok) throw new Error("Failed to update profile");
+            return { payload, uploadedImageUrl };
+        },
+        onSuccess: async (data) => {
+            // ✅ Fix: Invalidate cache immediately
+            await queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
+
+            // ✅ Fix: Update session display image
+            await updateSession({
+                name: data.payload.name,
+                image: data.uploadedImageUrl
+            });
+        }
     });
 }

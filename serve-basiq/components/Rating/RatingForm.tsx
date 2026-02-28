@@ -5,6 +5,7 @@ import { FaStar, FaCamera, FaXmark } from "react-icons/fa6";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
 import imageCompression from "browser-image-compression";
+import toast from "react-hot-toast"; // ✅ Imported toast
 
 // 🌟 Import your shiny new reusable upload function!
 import { uploadToBackend } from "@/lib/uploadToBackend";
@@ -42,7 +43,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
 
         // Limit to 5 images total
         if (images.length + selectedFiles.length > 5) {
-            alert("You can only upload a maximum of 5 images.");
+            toast.error("You can only upload a maximum of 5 images."); 
             return;
         }
 
@@ -72,7 +73,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
             setImages((prev) => [...prev, ...compressedFiles]);
         } catch (error) {
             console.error("Error compressing images:", error);
-            alert("Failed to process images. Please try again.");
+            toast.error("Failed to process images. Please try again.");
         } finally {
             setIsCompressing(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -87,8 +88,15 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (rating === 0) return alert("Please select a star rating!");
-        if (!activeId) return alert("Error: No ID provided for review.");
+        // ✅ Replaced alerts and fixed return statements
+        if (rating === 0) {
+            toast.error("Please select a star rating!");
+            return;
+        }
+        if (!activeId) {
+            toast.error("Error: No ID provided for review.");
+            return;
+        }
 
         setLoading(true);
 
@@ -136,11 +144,11 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
                 setImages([]);
                 if (fileInputRef.current) fileInputRef.current.value = "";
             } else {
-                alert(res?.error || "Something went wrong.");
+                toast.error(res?.error || "Something went wrong."); 
             }
         } catch (error) {
             console.error("Submission error:", error);
-            alert("Failed to submit review. Please try again.");
+            toast.error("Failed to submit review. Please try again.");
         } finally {
             setLoading(false);
         }

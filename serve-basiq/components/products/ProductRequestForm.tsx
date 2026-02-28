@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
+import toast from 'react-hot-toast'; // ✅ Imported toast
 import AddressModal from '@/components/booking/AddressModal';
 
 interface Props {
@@ -127,13 +128,14 @@ export default function ProductRequestForm({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // ✅ Replaced alerts
         if (quantity < 1) {
-            alert("Please enter a valid quantity.");
+            toast.error("Please enter a valid quantity.");
             return;
         }
 
         if (!addressId) {
-            alert("Please select a delivery address.");
+            toast.error("Please select a delivery address.");
             return;
         }
 
@@ -184,16 +186,16 @@ export default function ProductRequestForm({
                 if (onSuccess) {
                     onSuccess();
                 } else {
-                    alert('Request Sent Successfully!');
+                    toast.success('Request Sent Successfully!');
                     onRequestClose();
                 }
                 router.refresh();
             } else {
-                alert(data.message || 'Request failed.');
+                toast.error(data.message || 'Request failed.');
             }
         } catch (error) {
             console.error("Network Error:", error);
-            alert('Something went wrong. Please try again.');
+            toast.error('Something went wrong. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -258,17 +260,28 @@ export default function ProductRequestForm({
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Unit</label>
                         <div className="relative">
-                            <Package className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                            <Package
+                                className="absolute left-3 top-3.5 text-slate-400"
+                                size={18}
+                            />
                             <select
                                 value={selectedUnit}
                                 onChange={(e) => setSelectedUnit(e.target.value)}
-                                className="w-full pl-10 pr-8 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 appearance-none cursor-pointer"
+                                disabled
+                                className="w-full pl-10 pr-8 py-3 border border-slate-200 rounded-xl 
+               bg-slate-100 text-slate-500 cursor-not-allowed 
+               outline-none appearance-none font-medium"
                             >
                                 {UNIT_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
                                 ))}
                             </select>
-                            <ChevronRight className="absolute right-3 top-4 rotate-90 text-slate-400 pointer-events-none" size={14} />
+                            <ChevronRight
+                                className="absolute right-3 top-4 rotate-90 text-slate-400 pointer-events-none"
+                                size={14}
+                            />
                         </div>
                     </div>
                 </div>

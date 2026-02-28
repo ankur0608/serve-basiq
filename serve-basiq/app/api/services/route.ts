@@ -18,9 +18,9 @@ export async function GET(req: Request) {
         const sort = searchParams.get("sort");
 
         const where: any = {
-            isVerified: true, 
+            isVerified: true,
             user: {
-                isVerified: true, 
+                isVerified: true,
             }
         };
 
@@ -30,11 +30,11 @@ export async function GET(req: Request) {
 
         if (location) {
             where.user = {
-                ...where.user, 
+                ...where.user,
                 addresses: {
                     some: {
                         type: { equals: 'Work', mode: 'insensitive' },
-                        city: { equals: location, mode: 'insensitive' } 
+                        city: { equals: location, mode: 'insensitive' }
                     }
                 }
             };
@@ -121,17 +121,19 @@ export async function POST(req: Request) {
             name,
             desc,
             serviceimg,
+            serviceImages,
             coverImg,
             gallery,
             categoryId,
             subCategoryId,
-            subCategoryIds, // Frontend might send this array
+            subCategoryIds,
             price,
             priceType,
             experience,
             workingDays,
             openTime,
             closeTime,
+            is24x7,           // ✅ ADDED is24x7 HERE
             altPhone,
             radiusKm,
             latitude,
@@ -143,7 +145,7 @@ export async function POST(req: Request) {
             pincode
         } = body;
 
-        if (!userId || !name || !serviceimg || !price) {
+        if (!userId || !name || !serviceimg || price === undefined) {
             return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
         }
 
@@ -153,8 +155,9 @@ export async function POST(req: Request) {
             name,
             desc,
             serviceimg,
+            serviceImages: serviceImages || [],
             coverImg,
-            gallery,
+            gallery: gallery || [],
             price: parseFloat(price),
             priceType: priceType || 'FIXED',
             experience: experience ? parseInt(experience) : 0,
@@ -166,6 +169,7 @@ export async function POST(req: Request) {
             workingDays: workingDays || [],
             openTime,
             closeTime,
+            is24x7: is24x7 === true, // ✅ ADDED is24x7 TO DB PAYLOAD
         };
 
         if (categoryId) {
@@ -179,7 +183,6 @@ export async function POST(req: Request) {
         let service;
 
         if (id) {
-          
             service = await prisma.service.update({
                 where: { id },
                 data: dataPayload

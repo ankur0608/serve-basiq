@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import imageCompression from 'browser-image-compression';
 import { onboardSchema } from "@/lib/validators";
 import { useUIStore, User } from "@/lib/store";
+import toast from "react-hot-toast"; // ✅ Imported toast
 
 // 🌟 Import your global upload function!
 import { uploadToBackend } from "@/lib/uploadToBackend";
@@ -97,6 +98,7 @@ export function useProviderOnboarding() {
                 setCurrentUser(updatedUser);
             }
             queryClient.invalidateQueries({ queryKey: ["userProfile", currentUser?.id] });
+            toast.success("Welcome aboard! Your profile is ready."); // ✅ Added success toast
             router.push("/provider/dashboard?new=true");
         },
         onError: (error: any) => {
@@ -108,7 +110,7 @@ export function useProviderOnboarding() {
                 setErrors(formattedErrors);
                 window.scrollTo({ top: 0, behavior: "smooth" });
             } else {
-                alert(error.message || "Registration failed. Please try again.");
+                toast.error(error.message || "Registration failed. Please try again."); 
             }
         },
     });
@@ -126,7 +128,10 @@ export function useProviderOnboarding() {
     }, [errors]);
 
     const handleGetLocation = useCallback(() => {
-        if (!navigator.geolocation) return alert("Geolocation not supported");
+        if (!navigator.geolocation) {
+            toast.error("Geolocation not supported");
+            return;
+        }
         setGettingLoc(true);
         navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -138,7 +143,7 @@ export function useProviderOnboarding() {
                 setGettingLoc(false);
             },
             () => {
-                alert("Location access denied.");
+                toast.error("Location access denied.");
                 setGettingLoc(false);
             },
             { enableHighAccuracy: true }
@@ -151,11 +156,13 @@ export function useProviderOnboarding() {
         if (!file) return;
 
         if (file.size > MAX_FRONTEND_SIZE_MB * 1024 * 1024) {
-            return alert(`File is too large. Please select an image under ${MAX_FRONTEND_SIZE_MB}MB.`);
+            toast.error(`File is too large. Please select an image under ${MAX_FRONTEND_SIZE_MB}MB.`);
+            return;
         }
 
         if (!file.type.startsWith("image/")) {
-            return alert("Invalid file type. Please upload an image.");
+            toast.error("Invalid file type. Please upload an image."); 
+            return;
         }
 
         try {
@@ -184,7 +191,7 @@ export function useProviderOnboarding() {
             }
         } catch (err: any) {
             console.error("Upload Error:", err);
-            alert(err.message || "Failed to process and upload image.");
+            toast.error(err.message || "Failed to process and upload image."); 
         } finally {
             setUploading(false);
         }

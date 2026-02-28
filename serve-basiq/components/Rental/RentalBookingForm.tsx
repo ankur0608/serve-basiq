@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
+import toast from 'react-hot-toast'; // ✅ Imported toast
 import AddressModal from '@/components/booking/AddressModal';
 
 interface RentalFormProps {
@@ -165,12 +166,14 @@ export default function RentalBookingForm({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // ✅ Replaced alerts with toast.error
         if (new Date(endDate) <= new Date(startDate)) {
-            alert("End date must be after start date");
+            toast.error("End date must be after start date");
             return;
         }
         if (deliveryType === 'DELIVERY' && !addressId) {
-            alert("Please select a delivery address");
+            toast.error("Please select a delivery address");
             return;
         }
 
@@ -211,15 +214,16 @@ export default function RentalBookingForm({
 
             const data = await res.json();
             if (data.success) {
+                toast.success('Rental requested successfully!'); 
                 if (onSuccess) onSuccess();
                 else onRequestClose();
                 router.refresh();
             } else {
-                alert(data.message || 'Booking failed');
+                toast.error(data.message || 'Booking failed'); 
             }
         } catch (error) {
             console.error(error);
-            alert('Something went wrong');
+            toast.error('Something went wrong');
         } finally {
             setLoading(false);
         }

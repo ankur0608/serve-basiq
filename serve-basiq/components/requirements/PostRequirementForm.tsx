@@ -7,6 +7,7 @@ import { Loader2, ChevronRight, ArrowLeft, PenLine, FileText, Zap, Calendar, Cal
 import clsx from 'clsx';
 import Input from '@/components/ui/Input';
 import LoginModal from '@/components/auth/LoginModal';
+import toast from 'react-hot-toast'; // ✅ Imported toast
 
 import SuccessScreen from './SuccessScreen';
 import RequirementTypeSelector from './RequirementTypeSelector';
@@ -53,13 +54,15 @@ export default function PostRequirementForm() {
 
             if (data.success || res.ok) {
                 setStep(3); // Show Success Screen
+                // Optional: You can also add a success toast here if you want it alongside the SuccessScreen
+                // toast.success('Requirement posted successfully!');
             } else {
                 const errorMsg = data.errors?.timeline?._errors?.[0] || data.message || 'Failed to post requirement';
-                alert(errorMsg);
+                toast.error(errorMsg); 
             }
         } catch (error) {
             console.error(error);
-            alert('Error submitting form');
+            toast.error('Error submitting form'); 
         } finally {
             setLoading(false);
         }
