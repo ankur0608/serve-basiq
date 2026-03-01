@@ -103,6 +103,7 @@ export default function ProductWrapper({
             checkAndProceed();
         }
     }, [defaultOpen, mounted, status, isFetchingUser, activeUser]);
+
     useEffect(() => {
         if (isFormOpen) {
             document.body.style.overflow = 'hidden';
@@ -115,6 +116,7 @@ export default function ProductWrapper({
             document.body.style.overflow = 'unset';
         };
     }, [isFormOpen]);
+
     const handleRequestClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -131,13 +133,13 @@ export default function ProductWrapper({
 
     return (
         <>
-            {/* BUTTON */}
+            {/* 👉 UPDATED BUTTON DESIGN */}
             {!defaultOpen && (
                 <button
                     onClick={handleRequestClick}
-                    className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-black transition transform active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-200 transition-all active:scale-[0.98]"
                 >
-                    Request Quote <FaPaperPlane />
+                    Request Quote <FaPaperPlane size={16} />
                 </button>
             )}
 

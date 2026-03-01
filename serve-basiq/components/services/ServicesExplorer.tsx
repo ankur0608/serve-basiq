@@ -194,7 +194,7 @@ export default function ServicesExplorer() {
                                     <SearchX className="text-slate-400" size={40} />
                                 </div>
                                 <h4 className="text-xl font-bold text-slate-800">No results found</h4>
-                                <button type="button" onClick={resetFilters} className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">Clear Filters</button>
+                                {/* <button type="button" onClick={resetFilters} className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">Clear Filters</button> */}
                             </div>
                         ) : (
                             <>

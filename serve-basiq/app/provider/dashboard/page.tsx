@@ -36,6 +36,10 @@ export default function ProviderDashboard() {
         };
     }, [dashboardData]);
 
+    // 👉 1. EXTRACT RECENT DATA FROM API
+    const recentBookings = dashboardData?.bookings || [];
+    const recentOrders = dashboardData?.orders || [];
+
     const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3000);
@@ -118,7 +122,6 @@ export default function ProviderDashboard() {
             {/* --- DESKTOP SIDEBAR --- */}
             <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-sm">
                 <div className="flex items-center gap-2 h-20 px-6 border-b border-slate-100">
-                    {/* ✅ New Desktop Logo */}
                     <img
                         src="/navbar.png"
                         alt="ServeBasiq Logo"
@@ -196,6 +199,9 @@ export default function ProviderDashboard() {
                         refetchDashboard={refetchDashboard}
                         setSelectedProduct={setSelectedProduct}
                         selectedProduct={selectedProduct}
+                        // 👉 2. PASS PROPS
+                        recentBookings={recentBookings}
+                        recentOrders={recentOrders}
                     />
                 </main>
             </div>

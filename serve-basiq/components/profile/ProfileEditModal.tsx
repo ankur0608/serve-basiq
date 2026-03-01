@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom"; // 👉 IMPORT REACT PORTAL
 import {
     FaUser,
     FaMapLocation,
@@ -45,10 +46,9 @@ interface ProfileEditModalProps {
     onSave: (data: ProfileData, file: File | null) => Promise<void>;
     isEmailLocked?: boolean;
     isPhoneLocked?: boolean;
-    onAddPhoneClick?: () => void; // 👈 Triggers the parent component to open OTP modal
+    onAddPhoneClick?: () => void;
 }
 
-// --- HELPER: NORMALIZE DATA FOR COMPARISON ---
 const normalize = (data: ProfileData) => {
     return {
         name: data.name || "",
@@ -82,7 +82,25 @@ export default function ProfileEditModal({
     const [fetchingPincode, setFetchingPincode] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // 1. Reset form when Modal Opens
+    // 👉 STATE TO PREVENT HYDRATION ERRORS
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // 👉 Lock body scroll when modal is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "unset";
+        }
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [isOpen]);
+
     useEffect(() => {
         if (isOpen && initialData) {
             setFormData(initialData);
@@ -91,7 +109,6 @@ export default function ProfileEditModal({
         }
     }, [isOpen, initialData]);
 
-    // 2. DIRTY CHECKING
     const hasChanges = useMemo(() => {
         if (file) return true;
         const current = normalize(formData);
@@ -152,27 +169,28 @@ export default function ProfileEditModal({
         }
     };
 
-    if (!isOpen) return null;
+    // 👉 MUST CHECK IF MOUNTED FOR PORTALS
+    if (!isOpen || !mounted) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-            <div
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
-                onClick={onClose}
-            ></div>
+    // 👉 RENDER USING CREATEPORTAL TO BREAK OUT OF THE DOM HIERARCHY
+    return createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6" style={{ isolation: 'isolate' }}>
+            {/* Backdrop */}
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"></div>
 
-            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative z-10 flex flex-col max-h-[85dvh] sm:max-h-[90vh]">
+            {/* Modal Box */}
+            <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative z-10 flex flex-col max-h-[85dvh] sm:max-h-[90vh] animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div>
-                        <h2 className="text-xl font-extrabold text-slate-900 mt-5">
+                        <h2 className="text-xl font-extrabold text-slate-900 mt-2">
                             Edit Profile
                         </h2>
                         <p className="text-sm text-gray-500">Update personal details</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 bg-gray-50 rounded-full hover:bg-gray-100"
+                        className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition"
                     >
                         <FaXmark className="text-lg" />
                     </button>
@@ -188,7 +206,7 @@ export default function ProfileEditModal({
                                 className="relative group cursor-pointer"
                                 onClick={() => fileInputRef.current?.click()}
                             >
-                                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-100 shadow-sm relative bg-slate-100 flex items-center justify-center">
+                                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-100 shadow-sm relative bg-slate-100 flex items-center justify-center transition group-hover:border-blue-100">
                                     {preview ? (
                                         <AppImage
                                             src={preview}
@@ -263,7 +281,6 @@ export default function ProfileEditModal({
                                     />
                                 </div>
 
-                                {/* ✅ Enhanced Phone Input with Verification Action */}
                                 <div className="md:col-span-2">
                                     <Input
                                         label="Mobile Number"
@@ -276,13 +293,11 @@ export default function ProfileEditModal({
                                         placeholder="e.g. 9876543210"
                                         rightElement={
                                             <div className="flex items-center gap-2">
-                                                {/* Verified Badge */}
                                                 {formData.phone && (
                                                     <span className="hidden sm:flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md font-bold">
                                                         <FaCircleCheck /> Verified
                                                     </span>
                                                 )}
-                                                {/* Add/Change Button */}
                                                 {onAddPhoneClick && (
                                                     <button
                                                         type="button"
@@ -400,6 +415,7 @@ export default function ProfileEditModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body // 👉 MOUNTS DIRECTLY TO THE HTML BODY
     );
 }

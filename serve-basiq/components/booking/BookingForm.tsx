@@ -236,7 +236,7 @@ export default function BookingForm({
           type="button"
           onClick={handleSubmit}
           disabled={loading || !addressId}
-          className="flex-[2] bg-slate-900 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-[2] zbg-slate-900 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? <Loader2 className="animate-spin" /> : 'Confirm Booking'}
         </button>

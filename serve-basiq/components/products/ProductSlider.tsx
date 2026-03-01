@@ -5,7 +5,7 @@ import Link from "next/link";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import AppImage from "@/components/ui/AppImage";
 
-// Import your wrappers (Adjust paths if your folder structure is different)
+// Import your wrappers
 import ProductWrapper from '@/components/products/ProductWrapper';
 import RentalBookingWrapper from '@/components/Rental/RentalBookingWrapper';
 import BookingWrapper from '@/components/booking/BookingWrapper';
@@ -13,7 +13,7 @@ import BookingWrapper from '@/components/booking/BookingWrapper';
 export interface SliderItem {
     id: string;
     name: string;
-    price: number | string;
+    price: number;
     unit?: string;
     productImage: string | null;
     gallery?: string[];
@@ -22,7 +22,10 @@ export interface SliderItem {
     // Additional fields needed for the wrappers
     listingType?: 'PRODUCT' | 'SERVICE' | 'RENTAL';
     moq?: number;
+    hourlyPrice?: number | null;
     dailyPrice?: number | null;
+    // 👉 FIX 1: Added weeklyPrice to the interface
+    weeklyPrice?: number | null;
     monthlyPrice?: number | null;
     fixedPrice?: number | null;
     ownerLocation?: string;
@@ -31,7 +34,7 @@ export interface SliderItem {
 interface ProductSliderProps {
     title: string;
     products: SliderItem[];
-    currentUser?: any; // Added so wrappers can use it
+    currentUser?: any;
 }
 
 export default function ProductSlider({ title, products, currentUser }: ProductSliderProps) {
@@ -68,19 +71,17 @@ export default function ProductSlider({ title, products, currentUser }: ProductS
                 {products.map((prod) => {
                     const img = prod.productImage || (prod.gallery && prod.gallery[0]) || "https://images.unsplash.com/photo-1586769852044-692d6e3703f0";
 
-                    // Determine the correct link path based on type
                     const type = prod.listingType || 'PRODUCT';
                     let linkPath = `/products/${prod.id}`;
                     if (type === 'SERVICE') linkPath = `/services/${prod.id}`;
                     if (type === 'RENTAL') linkPath = `/rentals/${prod.id}`;
 
                     return (
-                        <div key={prod.id} className="group relative shrink-0 w-60 md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)] snap-start bg-white rounded-2xl border border-slate-100 hover:border-slate-200 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col overflow-hidden">
+                        <div key={prod.id} className="group relative shrink-0 w-64 md:w-[calc(33.333%-11px)] lg:w-[calc(25%-12px)] snap-start bg-white rounded-2xl border border-slate-100 hover:border-slate-200 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 flex flex-col overflow-hidden">
 
-                            {/* Top part is clickable (Image + Text) */}
                             <Link href={linkPath} className="grow flex flex-col outline-none">
                                 <div className="aspect-square w-full bg-slate-50 relative overflow-hidden">
-                                    <AppImage src={img} alt={prod.name} type="thumbnail" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
+                                    <AppImage src={img} alt={prod.name} type="thumbnail" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
                                     {prod.category && (
                                         <div className="absolute top-2 left-2 z-10">
                                             <span className="bg-white/90 backdrop-blur-md px-2 py-1 rounded-md text-[9px] font-extrabold text-slate-700 uppercase tracking-widest shadow-sm">
@@ -88,18 +89,17 @@ export default function ProductSlider({ title, products, currentUser }: ProductS
                                             </span>
                                         </div>
                                     )}
-                                    <div className="absolute inset-0 bg-slate-900/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 </div>
 
                                 <div className="p-4 pb-2 flex flex-col grow bg-white">
                                     <h4 className="font-bold text-slate-800 text-sm md:text-base leading-snug line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
                                         {prod.name}
                                     </h4>
-                                    <div className="mt-auto flex items-end justify-between">
+                                    <div className="mt-auto flex items-end justify-between pb-2">
                                         <div className="flex flex-col">
                                             <span className="text-slate-400 text-[10px] uppercase tracking-wider mb-0.5 font-bold">Price</span>
                                             <p className="text-sm font-medium text-slate-500">
-                                                <span className="text-slate-900 font-black text-lg md:text-xl">₹{prod.price}</span>
+                                                <span className="text-slate-900 font-black text-lg md:text-xl">₹{Number(prod.price).toLocaleString()}</span>
                                                 {prod.unit && <span className="text-slate-400 ml-0.5 text-xs">/{prod.unit}</span>}
                                             </p>
                                         </div>
@@ -107,7 +107,6 @@ export default function ProductSlider({ title, products, currentUser }: ProductS
                                 </div>
                             </Link>
 
-                            {/* Bottom part is NOT a link, contains the dynamic wrapper buttons */}
                             <div className="p-4 pt-2 bg-white relative z-20">
                                 {type === 'PRODUCT' && (
                                     <ProductWrapper
@@ -127,8 +126,11 @@ export default function ProductSlider({ title, products, currentUser }: ProductS
                                         rentalName={prod.name}
                                         rentalImage={img}
                                         ownerLocation={prod.ownerLocation || 'Location not specified'}
-                                        // ✅ FIXED TYPESCRIPT ERRORS: Replaced `|| null` with `?? undefined`
-                                        dailyPrice={prod.dailyPrice ?? Number(prod.price)}
+                                        price={Number(prod.price)}
+                                        hourlyPrice={prod.hourlyPrice ?? undefined}
+                                        dailyPrice={prod.dailyPrice ?? undefined}
+                                        // 👉 FIX 2: Passed weeklyPrice to the wrapper
+                                        weeklyPrice={prod.weeklyPrice ?? undefined}
                                         monthlyPrice={prod.monthlyPrice ?? undefined}
                                         fixedPrice={prod.fixedPrice ?? undefined}
                                         currentUser={currentUser}

@@ -4,7 +4,9 @@ import {
     TrendingUp, Briefcase, Bell, Star, PieChart,
     Wallet, Clock, CreditCard, QrCode, Check, Pencil, MapPin, User, FileText, Landmark,
     Loader2,
-    CalendarClock
+    CalendarClock,
+    // 👉 New icons for recent activity
+    Calendar, Package, ChevronRight, CheckCircle, XCircle
 } from 'lucide-react';
 import { StatCard, RequestCard, LeadCard } from './DashboardComponents';
 import { Line, Doughnut } from 'react-chartjs-2';
@@ -19,7 +21,6 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
-
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -44,17 +45,58 @@ const revenueData = {
     }]
 };
 
-const revenueOptions = {
+// Updated revenueOptions to satisfy Chart.js 4.x types
+const revenueOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    plugins: {
+        legend: {
+            display: false,
+        },
+        tooltip: {
+            mode: 'index',
+            intersect: false,
+        },
+    },
     scales: {
         y: {
-            grid: { borderDash: [4, 4], drawBorder: false },
-            ticks: { callback: (v: any) => '₹' + v + 'k', font: { weight: 'bold', size: 10 }, color: '#94a3b8' }
+            grid: {
+                display: true,
+                drawOnChartArea: true,
+                drawTicks: false,
+                color: 'rgba(148, 163, 184, 0.1)', // Subtle grid lines
+            },
+            border: {
+                display: false,
+                dash: [4, 4],
+            },
+            ticks: {
+                callback: (value: any) => '₹' + value + 'k',
+                font: {
+                    weight: 'bold',
+                    size: 10,
+                },
+                color: '#94a3b8',
+                padding: 10,
+            },
         },
-        x: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 }, color: '#94a3b8' } }
-    }
+        x: {
+            grid: {
+                display: false,
+            },
+            border: {
+                display: false,
+            },
+            ticks: {
+                font: {
+                    weight: 'bold',
+                    size: 10,
+                },
+                color: '#94a3b8',
+                padding: 10,
+            },
+        },
+    },
 };
 
 const trafficData = {
@@ -66,28 +108,120 @@ const trafficData = {
     }]
 };
 
-export function DashboardHomeView({ stats, setActiveView }: any) {
+// 👉 Updated props to receive the dynamic data
+export function DashboardHomeView({
+    stats, setActiveView, isVerified, recentBookings = [], recentOrders = [], providerType
+}: any) {
+
+    // 👉 Helper function for dynamic status badges
+    const getStatusBadge = (status: string) => {
+        switch (status?.toUpperCase()) {
+            case 'COMPLETED': case 'DELIVERED':
+                return <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-100 text-emerald-700"><CheckCircle size={12} /> Completed</span>;
+            case 'CANCELLED': case 'REJECTED':
+                return <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md bg-red-100 text-red-700"><XCircle size={12} /> Cancelled</span>;
+            default:
+                return <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md bg-amber-100 text-amber-700"><Clock size={12} /> Pending</span>;
+        }
+    };
+
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* 1. Top Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
-                <StatCard icon={TrendingUp} label="Total Income" value={`₹${stats?.stats.revenue.toLocaleString()}`} trend="12%" color="emerald" />
-                <StatCard icon={Briefcase} label="Total Orders" value={stats?.stats.jobsCompleted} trend="5%" color="blue" />
-                <StatCard icon={Bell} label="Pending Requests" value={stats?.stats.pendingRequests} color="orange" />
-                <StatCard icon={Star} label="Avg. Rating" value={stats?.stats.rating} trend="2%" color="purple" />
+                <StatCard icon={TrendingUp} label="Total Income" value={`₹${(stats?.stats?.revenue || 0).toLocaleString()}`} trend="12%" color="emerald" />
+                <StatCard icon={Briefcase} label="Total Orders" value={stats?.stats?.jobsCompleted || 0} trend="5%" color="blue" />
+                <StatCard icon={Bell} label="Pending Requests" value={stats?.stats?.pendingRequests || 0} color="orange" />
+                <StatCard icon={Star} label="Avg. Rating" value={(stats?.stats?.rating || 0).toFixed(1)} trend="2%" color="purple" />
             </div>
 
+            {/* 2. Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-2xl shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 p-6 lg:col-span-2">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2"><TrendingUp size={20} className="text-[#0284c7]" /> Revenue Overview</h3>
                         <select className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-lg px-2 py-1 outline-none text-slate-600"><option>This Year</option><option>Last Year</option></select>
                     </div>
-                    <div className="relative h-72 w-full"><Line data={revenueData} /></div>
+                    <div className="relative h-72 w-full"><Line data={revenueData} options={revenueOptions} /></div>
                 </div>
                 <div className="bg-white rounded-2xl shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 p-6">
                     <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2"><PieChart size={20} className="text-purple-600" /> Traffic Sources</h3>
                     <div className="relative h-64 w-full flex justify-center"><Doughnut data={trafficData} /></div>
                 </div>
+            </div>
+
+            {/* 👉 3. RECENT ACTIVITY SECTION (Dynamic) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* Recent Bookings (Only show if provider is SERVICE or BOTH) */}
+                {(providerType === 'SERVICE' || providerType === 'BOTH') && (
+                    <div className="bg-white rounded-2xl shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden flex flex-col">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Calendar size={18} /></div>
+                                <h3 className="font-bold text-slate-900">Recent Bookings</h3>
+                            </div>
+                            <button onClick={() => setActiveView('requests')} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center transition-colors">
+                                View All <ChevronRight size={14} />
+                            </button>
+                        </div>
+                        <div className="p-0 flex-1">
+                            {recentBookings.length === 0 ? (
+                                <div className="p-8 text-center text-slate-400 text-sm font-medium">No recent bookings found.</div>
+                            ) : (
+                                <div className="divide-y divide-slate-100">
+                                    {recentBookings.slice(0, 4).map((booking: any) => (
+                                        <div key={booking.id} className="p-4 hover:bg-slate-50 transition flex items-center justify-between cursor-pointer" onClick={() => setActiveView('requests')}>
+                                            <div>
+                                                <p className="font-bold text-sm text-slate-900">{booking.service?.title || 'Unknown Service'}</p>
+                                                <p className="text-xs text-slate-500 mt-0.5">{new Date(booking.createdAt).toLocaleDateString()}</p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1.5">
+                                                <p className="font-bold text-sm text-slate-900">₹{booking.price}</p>
+                                                {getStatusBadge(booking.status)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Recent Orders (Only show if provider is PRODUCT or BOTH) */}
+                {(providerType === 'PRODUCT' || providerType === 'BOTH') && (
+                    <div className="bg-white rounded-2xl shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden flex flex-col">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Package size={18} /></div>
+                                <h3 className="font-bold text-slate-900">Recent Orders</h3>
+                            </div>
+                            <button onClick={() => setActiveView('requests')} className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center transition-colors">
+                                View All <ChevronRight size={14} />
+                            </button>
+                        </div>
+                        <div className="p-0 flex-1">
+                            {recentOrders.length === 0 ? (
+                                <div className="p-8 text-center text-slate-400 text-sm font-medium">No recent orders found.</div>
+                            ) : (
+                                <div className="divide-y divide-slate-100">
+                                    {recentOrders.slice(0, 4).map((order: any) => (
+                                        <div key={order.id} className="p-4 hover:bg-slate-50 transition flex items-center justify-between cursor-pointer" onClick={() => setActiveView('requests')}>
+                                            <div>
+                                                <p className="font-bold text-sm text-slate-900">{order.product?.name || 'Unknown Product'}</p>
+                                                <p className="text-xs text-slate-500 mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1.5">
+                                                <p className="font-bold text-sm text-slate-900">₹{order.totalAmount}</p>
+                                                {getStatusBadge(order.status)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )
@@ -141,118 +275,3 @@ export function EarningsView() {
         </div>
     )
 }
-
-// export function ProfileView({ stats, user, onEdit }: any) {
-//     const router = useRouter();
-
-//     // Fallback to default avatar if user.img is missing
-//     const imageUrl = user?.profileImage || user?.img || "https://i.pravatar.cc/150";
-
-//     // Find addresses safely
-//     const homeAddress = user?.addresses?.find((a: any) => a.type === 'Home');
-//     const workAddress = user?.addresses?.find((a: any) => a.type === 'Work') || homeAddress;
-
-//     // ✅ EXTRACT KYC DETAILS
-//     const kyc = user?.kycDetails || {};
-
-//     // --- ACCOUNT MODE LOGIC ---
-//     const [showTypeModal, setShowTypeModal] = useState(false);
-//     const [updatingType, setUpdatingType] = useState(false);
-//     const [currentType, setCurrentType] = useState(user?.providerType || 'BOTH');
-
-//     const handleUpdateType = async (newType: string) => {
-//         if (!user?.id) return;
-//         setUpdatingType(true);
-//         try {
-//             const res = await fetch('/api/user/profile', {
-//                 method: 'POST',
-//                 headers: { 'Content-Type': 'application/json' },
-//                 body: JSON.stringify({ userId: user.id, providerType: newType })
-//             });
-//             if (res.ok) {
-//                 setCurrentType(newType);
-//                 setShowTypeModal(false);
-//                 router.refresh(); // Refresh to update server components if needed
-//             }
-//         } catch (error) {
-//             console.error("Failed to update type", error);
-//         } finally {
-//             setUpdatingType(false);
-//         }
-//     };
-
-//     const getTypeLabel = (type: string) => {
-//         if (type === 'SERVICE') return 'Service Provider Only';
-//         if (type === 'PRODUCT') return 'Product Seller Only';
-//         return 'Hybrid (Services & Products)';
-//     };
-
-//     return (
-//         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 relative">
-
-//             {/* Summary Card */}
-//             <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center relative overflow-hidden group max-w-4xl mx-auto">
-//                 <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500 to-purple-600 opacity-10"></div>
-//                 <div className="relative inline-block cursor-pointer" onClick={onEdit}>
-//                     <img src={imageUrl} className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-xl transition-transform group-hover:scale-105 bg-white" onError={(e) => e.currentTarget.src = "https://i.pravatar.cc/150"} alt="Profile" />
-//                     <div className="absolute bottom-2 right-2 bg-[#0f172a] text-white p-2 rounded-full shadow-lg border-2 border-white hover:bg-blue-600 transition-colors">
-//                         <Pencil size={16} />
-//                     </div>
-//                 </div>
-//                 <h2 className="text-2xl font-bold text-slate-900 mt-4">{user?.name || "Provider Name"}</h2>
-//                 <p className="text-slate-500 text-sm font-medium flex items-center justify-center gap-2">
-//                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-//                     {user?.role === 'ADMIN' ? 'Administrator' : 'Service Provider'} • {user?.isVerified ? 'Verified' : 'Pending Verification'}
-//                 </p>
-//             </div>
-
-//             {/* Info Grid */}
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-
-//                 {/* 2. Personal Details */}
-//                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-blue-500 p-6 relative overflow-hidden">
-//                     <User className="absolute top-4 right-4 text-blue-100 -rotate-12" size={48} />
-//                     <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2"><User size={14} /> Personal Details</h3>
-//                     <div className="space-y-3 text-sm">
-//                         <p className="text-slate-600 flex justify-between"><strong>Full Name:</strong> <span className="text-slate-900">{user?.name || "N/A"}</span></p>
-//                         <p className="text-slate-600 flex justify-between"><strong>Email:</strong> <span className="text-slate-900">{user?.email || "N/A"}</span></p>
-//                         <p className="text-slate-600 flex justify-between"><strong>Phone:</strong> <span className="text-slate-900">{user?.phone || "N/A"}</span></p>
-//                     </div>
-//                 </div>
-
-//                 {/* 3. Location */}
-//                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-orange-500 p-6 relative overflow-hidden">
-//                     <MapPin className="absolute top-4 right-4 text-orange-100 -rotate-12" size={48} />
-//                     <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2"><MapPin size={14} /> Location</h3>
-//                     <div className="space-y-3 text-sm">
-//                         <p className="text-slate-600 flex justify-between"><strong>Shop/Biz Name:</strong> <span className="text-slate-900">{stats?.service?.shopName || user?.shopName || "N/A"}</span></p>
-//                         <p className="text-slate-600 flex justify-between"><strong>City:</strong> <span className="text-slate-900">{workAddress?.city || "N/A"}</span></p>
-//                         <p className="text-slate-600 flex justify-between"><strong>Address:</strong> <span className="text-slate-900 truncate max-w-[200px]">{workAddress?.line1 || "N/A"}</span></p>
-//                     </div>
-//                 </div>
-
-//                 {/* 4. KYC */}
-//                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-purple-500 p-6 relative overflow-hidden">
-//                     <FileText className="absolute top-4 right-4 text-purple-100 -rotate-12" size={48} />
-//                     <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-50 pb-2 flex items-center gap-2"><FileText size={14} /> KYC Verification</h3>
-//                     <div className="space-y-3 text-sm">
-//                         <p className="text-slate-600 flex justify-between"><strong>ID Type:</strong> <span className="text-slate-900">{kyc.idProofType || "N/A"}</span></p>
-//                         <p className="text-slate-600 flex justify-between items-center"><strong>Status:</strong>
-//                             {kyc.idProofFrontImg ? (
-//                                 <span className="text-emerald-600 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full text-xs"><Check size={12} /> Uploaded</span>
-//                             ) : (
-//                                 <span className="text-red-500 font-bold text-xs">Missing</span>
-//                             )}
-//                         </p>
-//                     </div>
-//                 </div>
-//             </div>
-
-//             <div className="flex justify-center mt-8">
-//                 <button onClick={onEdit} className="px-8 py-3 bg-[#0f172a] text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 active:scale-95">
-//                     <Pencil size={16} /> Edit Profile Details
-//                 </button>
-//             </div>
-//         </div>
-//     )
-// }

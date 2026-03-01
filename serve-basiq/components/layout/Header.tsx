@@ -163,11 +163,11 @@ const Navbar = () => {
                             <Link href="/services" className="hover:text-blue-600 transition">Services</Link>
                             <Link href="/products" className="hover:text-blue-600 transition">Products</Link>
                             <Link href="/rentals" className="hover:text-blue-600 transition">Rentals</Link>
-                            <Link href="/categories" className="hover:text-blue-600 transition">Categories</Link>
+                            {/* <Link href="/categories" className="hover:text-blue-600 transition">Categories</Link> */}
                         </div>
 
                         <Link href="/post-requirement" className="text-sm font-bold text-gray-600 hover:text-blue-600 transition">
-                            Post Request
+                            Post Requirement
                         </Link>
 
                         {isLoggedIn ? (

@@ -6,21 +6,32 @@ import { useSession } from 'next-auth/react';
 import {
     FaArrowLeft, FaPencil, FaUser, FaPhone, FaEnvelope,
     FaCalendarCheck, FaIdCard, FaRightFromBracket, FaCircleCheck,
-    FaMapLocationDot, FaHouse, FaBriefcase, FaShieldHalved, FaCircleXmark
+    FaMapLocationDot, FaHouse, FaBriefcase, FaPlus
 } from 'react-icons/fa6';
 import Link from 'next/link';
 import { fullLogout } from '@/lib/logout';
 
+// 👉 IMPORT YOUR CUSTOM HOOK
+import { useUpdateProfile } from '@/app/hook/useProfileQueries';
+
 // Modals
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
+import AddressEditModal from '@/components/profile/AddressEditModal';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
 
 export default function SettingsPage() {
     const { data: session } = useSession();
     const { currentUser, setCurrentUser } = useUIStore();
 
+    // 👉 INITIALIZE THE HOOK
+    const { mutateAsync: updateProfile } = useUpdateProfile();
+
     const [showEditModal, setShowEditModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
+
+    // ADDRESS MODAL STATES
+    const [showAddressModal, setShowAddressModal] = useState(false);
+    const [editingAddress, setEditingAddress] = useState<any>(null);
 
     const isGoogleLogin = !!session?.user?.email;
 
@@ -34,7 +45,7 @@ export default function SettingsPage() {
     const addresses = currentUser?.addresses || [];
     const primaryAddress: any = addresses.length > 0 ? addresses[0] : {};
 
-    const modalInitialData = {
+    const profileModalInitialData = {
         name: currentUser?.name || '',
         email: currentUser?.email || session?.user?.email || '',
         phone: currentUser?.phone || '',
@@ -47,22 +58,77 @@ export default function SettingsPage() {
         district: primaryAddress.district || '',
         state: primaryAddress.state || '',
         pincode: primaryAddress.pincode || '',
+        image: currentUser?.image || currentUser?.img || '', // Ensure existing image is passed
     };
 
-    const handleSaveData = async (data: any) => {
+    // 👉 UPDATED TO ACCEPT BOTH DATA AND FILE, AND USE THE HOOK
+    const handleSaveProfileData = async (formData: any, file: File | null) => {
+        if (!currentUser?.id) return;
+
         try {
-            const res = await fetch('/api/user/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUser?.id, ...data }),
+            // This hook handles the image compression, S3/R2 upload, AND the PATCH request!
+            await updateProfile({
+                formData,
+                file,
+                currentUser
             });
+
+            // Refresh Local State after successful upload and save
+            const updated = await fetch(`/api/user/profile?identifier=${currentUser?.id}`).then(r => r.json());
+            setCurrentUser(updated);
+            setShowEditModal(false);
+
+        } catch (err) {
+            console.error('Profile save failed:', err);
+        }
+    };
+
+    // HANDLE ADDRESS SAVE
+    const handleSaveAddress = async (addressData: any) => {
+        try {
+            let updatedAddresses = [...addresses];
+
+            const formattedAddress = {
+                id: addressData.id || Date.now().toString(),
+                type: addressData.type,
+                line1: addressData.addressLine1,
+                line2: addressData.addressLine2,
+                landmark: addressData.landmark,
+                city: addressData.city,
+                district: addressData.district,
+                state: addressData.state,
+                pincode: addressData.pincode,
+                country: addressData.country || 'India'
+            };
+
+            if (addressData.id) {
+                updatedAddresses = updatedAddresses.map((a: any) => a.id === addressData.id ? formattedAddress : a);
+            } else {
+                updatedAddresses.push(formattedAddress);
+            }
+
+            const res = await fetch('/api/user/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser?.id, addresses: updatedAddresses }),
+            });
+
             if (res.ok) {
-                // Refresh data here
                 const updated = await fetch(`/api/user/profile?identifier=${currentUser?.id}`).then(r => r.json());
                 setCurrentUser(updated);
-                setShowEditModal(false);
+                setShowAddressModal(false);
             }
-        } catch (err) { console.error('Save failed:', err); }
+        } catch (err) { console.error('Address save failed:', err); }
+    };
+
+    const handleEditAddressClick = (addr: any) => {
+        setEditingAddress(addr);
+        setShowAddressModal(true);
+    };
+
+    const handleAddNewAddressClick = () => {
+        setEditingAddress(null);
+        setShowAddressModal(true);
     };
 
     return (
@@ -76,6 +142,7 @@ export default function SettingsPage() {
 
             <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
 
+                {/* --- 1. Personal Information --- */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-lg text-slate-900">Personal Information</h3>
@@ -100,32 +167,53 @@ export default function SettingsPage() {
                         <InfoRow label="Language" value={currentUser?.preferredLanguage} icon={<FaIdCard />} />
                     </div>
                 </div>
+
+                {/* --- 2. Saved Addresses --- */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-lg text-slate-900">Saved Addresses</h3>
+                        <button
+                            onClick={handleAddNewAddressClick}
+                            className="flex items-center gap-2 text-sm font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-100 transition"
+                        >
+                            <FaPlus /> Add New
+                        </button>
                     </div>
 
                     {addresses.length === 0 ? (
-                        <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                            <FaMapLocationDot className="mx-auto text-3xl text-slate-300 mb-2" />
-                            <p className="text-slate-500 text-sm font-medium">No addresses saved yet.</p>
+                        <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                            <FaMapLocationDot className="mx-auto text-3xl text-slate-300 mb-3" />
+                            <p className="text-slate-500 text-sm font-medium mb-4">No addresses saved yet.</p>
+                            <button
+                                onClick={handleAddNewAddressClick}
+                                className="text-sm font-bold text-white bg-slate-900 px-5 py-2 rounded-lg hover:bg-black transition"
+                            >
+                                Add Your First Address
+                            </button>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {addresses.map((addr: any, index: number) => (
-                                <div key={addr.id || index} className="p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm">
-                                            {addr.type?.toLowerCase() === 'home' ? <FaHouse /> : <FaBriefcase />}
+                                <div key={addr.id || index} className="p-5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors relative group">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm shrink-0">
+                                                {addr.type?.toLowerCase() === 'home' ? <FaHouse /> : <FaBriefcase />}
+                                            </div>
+                                            <span className="font-bold text-slate-900">{addr.type || 'Home'}</span>
                                         </div>
-                                        <span className="font-bold text-slate-900">{addr.type || 'Home'}</span>
+                                        <button
+                                            onClick={() => handleEditAddressClick(addr)}
+                                            className="w-8 h-8 rounded-full bg-white text-slate-400 shadow-sm border border-slate-200 flex items-center justify-center hover:text-blue-600 hover:border-blue-200 transition"
+                                        >
+                                            <FaPencil className="text-xs" />
+                                        </button>
                                     </div>
                                     <div className="text-sm font-medium text-slate-600 space-y-1">
                                         <p>{addr.line1}</p>
                                         {addr.line2 && <p>{addr.line2}</p>}
                                         {addr.landmark && <p className="text-xs text-slate-400">Landmark: {addr.landmark}</p>}
                                         <p>{addr.city}, {addr.state} - <span className="font-bold text-slate-900">{addr.pincode}</span></p>
-                                        <p className="text-xs text-slate-400 uppercase tracking-wide pt-1">{addr.country || 'India'}</p>
                                     </div>
                                 </div>
                             ))}
@@ -133,9 +221,9 @@ export default function SettingsPage() {
                     )}
                 </div>
 
-                {/* --- 4. Account Actions --- */}
+                {/* --- 3. Account Actions --- */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-lg text-slate-900 mb-4">Logout Options</h3>
+                    <h3 className="font-bold text-lg text-slate-900 mb-4">Account Actions</h3>
                     <button onClick={() => fullLogout()} className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition">
                         <FaRightFromBracket /> Logout
                     </button>
@@ -143,18 +231,28 @@ export default function SettingsPage() {
 
             </div>
 
-            {/* Modals */}
+            {/* --- Modals --- */}
             <ProfileEditModal
-                isOpen={showEditModal} onClose={() => setShowEditModal(false)}
-                initialData={modalInitialData} onSave={handleSaveData}
-                isEmailLocked={isGoogleLogin} isPhoneLocked={true}
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                initialData={profileModalInitialData}
+                onSave={handleSaveProfileData} // 👉 Now passes both formData and file correctly
+                isEmailLocked={isGoogleLogin}
+                isPhoneLocked={true}
                 onAddPhoneClick={() => { setShowEditModal(false); setTimeout(() => setShowVerifyModal(true), 200); }}
             />
+
+            <AddressEditModal
+                isOpen={showAddressModal}
+                onClose={() => setShowAddressModal(false)}
+                initialData={editingAddress}
+                onSave={handleSaveAddress}
+            />
+
             <MobileVerificationModal
                 isOpen={showVerifyModal} onClose={() => setShowVerifyModal(false)}
                 onSuccess={async () => {
                     setShowVerifyModal(false);
-                    // Refresh user data
                     const updated = await fetch(`/api/user/profile?identifier=${currentUser?.id}`).then(r => r.json());
                     setCurrentUser(updated);
                 }}

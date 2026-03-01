@@ -9,16 +9,17 @@ import {
     FaGear,
     FaChevronRight,
     FaSpinner,
-    FaBriefcase,
     FaHeart,
 } from "react-icons/fa6";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { fullLogout } from "@/lib/logout";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
 import ProfileEditModal, { ProfileData } from "@/components/profile/ProfileEditModal";
-import MobileVerificationModal from "@/components/auth/MobileVerificationModal"; 
+import MobileVerificationModal from "@/components/auth/MobileVerificationModal";
+import BecomeProviderBanner from "@/components/profile/BecomeProviderBanner";
+
 export default function ProfilePage() {
     const { data: session, status } = useSession();
 
@@ -31,38 +32,39 @@ export default function ProfilePage() {
         onCloseEditProfile,
     } = useUIStore();
 
+    // 1. Fetch fresh profile data from the API
     const { data: profileDataFromApi, isLoading, error, refetch } = useUserProfile();
-
-    const { mutateAsync: updateProfile, isPending: isSaving } = useUpdateProfile();
+    const { mutateAsync: updateProfile } = useUpdateProfile();
 
     const [isHydrated, setIsHydrated] = useState(false);
-
     const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
 
     useEffect(() => {
         setIsHydrated(true);
     }, []);
 
+    // Sync API data to global store
     useEffect(() => {
         if (profileDataFromApi) {
             setCurrentUser(profileDataFromApi);
         }
     }, [profileDataFromApi, setCurrentUser]);
 
-    // Handle Unauthorized Error
     useEffect(() => {
         if (error?.message === "Unauthorized") {
             logout();
         }
     }, [error, logout]);
 
-    // --- RENDER ---
+    // 👉 2. PREPARE STABLE USER DATA
+    // We prioritize API data (profileDataFromApi) > Store (currentUser) > Session
+    const userAny = useMemo(() => {
+        return profileDataFromApi || currentUser || (session?.user as any) || {};
+    }, [profileDataFromApi, currentUser, session]);
 
     if (!isHydrated) return null;
 
-    const userToShow = currentUser || (session?.user as any);
-
-    if ((status === "loading" || isLoading) && !userToShow) {
+    if ((status === "loading" || isLoading) && !userAny?.id) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <FaSpinner className="animate-spin text-4xl text-slate-300" />
@@ -73,12 +75,11 @@ export default function ProfilePage() {
     if (status === "unauthenticated")
         return <div className="p-10 text-center">Please Login</div>;
 
-    const userAny = userToShow || {};
+    const isGoogleLogin = !!session?.user?.email;
 
-    const primaryAddress =
-        userAny.addresses && userAny.addresses.length > 0
-            ? userAny.addresses[0]
-            : {};
+    const primaryAddress = userAny.addresses && userAny.addresses.length > 0
+        ? userAny.addresses[0]
+        : {};
 
     const profileData: ProfileData = {
         name: userAny.name || "",
@@ -107,28 +108,10 @@ export default function ProfilePage() {
             <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20 space-y-6">
                 <ProfileStats />
 
+                {/* 👉 FIXED LOGIC: Only show banner if isWorker is explicitly false */}
+                {/* If isWorker is true, the banner disappears */}
                 {!userAny.isWorker && (
-                    <div className="bg-slate-900 rounded-2xl p-6 relative overflow-hidden shadow-md">
-                        <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
-                            <FaBriefcase className="w-48 h-48 text-white" />
-                        </div>
-
-                        <div className="relative z-10">
-                            <h3 className="text-xl font-bold text-white mb-2">
-                                Become a Service Provider
-                            </h3>
-                            <p className="text-slate-300 text-sm mb-5">
-                                Earn money by offering your skills.
-                            </p>
-                            <Link
-                                href="/become-pro"
-                                className="inline-flex items-center gap-2 bg-white text-slate-900 px-5 py-2.5 rounded-xl font-bold hover:bg-slate-100 transition-colors text-sm"
-                            >
-                                <FaBriefcase />
-                                Apply Now
-                            </Link>
-                        </div>
-                    </div>
+                    <BecomeProviderBanner />
                 )}
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -144,11 +127,6 @@ export default function ProfilePage() {
                             label="My Orders"
                         />
                         <MenuLink
-                            href="/favorites"
-                            icon={<FaHeart className="text-pink-500" />}
-                            label="Favourites"
-                        />
-                        <MenuLink
                             href="/profile/settings"
                             icon={<FaGear className="text-slate-600" />}
                             label="Settings"
@@ -161,9 +139,10 @@ export default function ProfilePage() {
                     isOpen={isEditProfileOpen}
                     onClose={onCloseEditProfile}
                     initialData={profileData}
-                    isPhoneLocked={true} 
+                    isEmailLocked={isGoogleLogin}
+                    isPhoneLocked={true}
                     onAddPhoneClick={() => {
-                        onCloseEditProfile(); 
+                        onCloseEditProfile();
                         setIsPhoneModalOpen(true);
                     }}
                     onSave={async (formData, file) => {
@@ -171,7 +150,6 @@ export default function ProfilePage() {
                     }}
                 />
 
-                {/* 👉 NEW: MOBILE VERIFICATION MODAL */}
                 <MobileVerificationModal
                     userId={userAny.id}
                     isOpen={isPhoneModalOpen}
@@ -179,10 +157,10 @@ export default function ProfilePage() {
                         setIsPhoneModalOpen(false);
                         onOpenEditProfile();
                     }}
-                    onSuccess={() => {
+                    onSuccess={async () => {
                         setIsPhoneModalOpen(false);
-                        refetch();
-                        onOpenEditProfile(); 
+                        await refetch(); // Refresh API data
+                        onOpenEditProfile();
                     }}
                 />
             </div>
@@ -194,8 +172,7 @@ function MenuLink({ href, icon, label, isLast }: any) {
     return (
         <Link
             href={href}
-            className={`flex items-center justify-between p-5 hover:bg-gray-50 transition-colors ${!isLast ? "border-b border-gray-100" : ""
-                }`}
+            className={`flex items-center justify-between p-5 hover:bg-gray-50 transition-colors ${!isLast ? "border-b border-gray-100" : ""}`}
         >
             <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-lg">

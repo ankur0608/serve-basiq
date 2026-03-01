@@ -14,7 +14,7 @@ interface RentalFormProps {
     rentalId: string;
     rentalName: string;
 
-    // ✅ Split prices (Updated)
+    price: number;
     hourlyPrice?: number;
     dailyPrice?: number;
     weeklyPrice?: number;
@@ -34,6 +34,7 @@ export default function RentalBookingForm({
     rentalId,
     rentalName,
     hourlyPrice,
+    price,
     dailyPrice,
     weeklyPrice,
     monthlyPrice,
@@ -63,6 +64,15 @@ export default function RentalBookingForm({
         const models = [];
         if (hourlyPrice && hourlyPrice > 0) models.push({ id: 'HOURLY', label: 'Hourly', price: hourlyPrice });
         if (dailyPrice && dailyPrice > 0) models.push({ id: 'DAILY', label: 'Daily', price: dailyPrice });
+        // 👉 THE FIX: If no specific tier is found, use the base 'price' prop 
+        // and map it to the 'priceType' defined in the database (e.g., WEEKLY)
+        if (models.length === 0) {
+            models.push({
+                id: 'DAILY', // Defaulting to DAILY for calculation if unknown
+                label: 'Standard Rate',
+                price: price || 0
+            });
+        }
         if (weeklyPrice && weeklyPrice > 0) models.push({ id: 'WEEKLY', label: 'Weekly', price: weeklyPrice });
         if (monthlyPrice && monthlyPrice > 0) models.push({ id: 'MONTHLY', label: 'Monthly', price: monthlyPrice });
         if (fixedPrice && fixedPrice > 0) models.push({ id: 'FIXED', label: 'Fixed Price', price: fixedPrice });
@@ -91,32 +101,30 @@ export default function RentalBookingForm({
         let days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         if (days < 1 || isNaN(days)) days = 1;
 
-        let calculatedPrice = 0;
-        let unitPrice = 0;
+        // let calculatedPrice = 0;
+        // let unitPrice = 0;
+        const currentModel = availableModels.find(m => m.id === pricingModel);
+        const unitPrice = currentModel ? currentModel.price : (price || 0);
 
+        let calculatedPrice = 0;
         switch (pricingModel) {
             case 'HOURLY':
-                unitPrice = hourlyPrice || 0;
-                calculatedPrice = (days * 24) * unitPrice; // Fallback math: 24hrs per day
+                calculatedPrice = (days * 24) * unitPrice;
                 break;
             case 'DAILY':
-                unitPrice = dailyPrice || 0;
                 calculatedPrice = days * unitPrice;
                 break;
             case 'WEEKLY':
-                unitPrice = weeklyPrice || 0;
-                const weeks = Math.max(1, Math.ceil(days / 7));
-                calculatedPrice = weeks * unitPrice;
+                calculatedPrice = Math.max(1, Math.ceil(days / 7)) * unitPrice;
                 break;
             case 'MONTHLY':
-                unitPrice = monthlyPrice || 0;
-                const months = Math.max(1, Math.ceil(days / 30));
-                calculatedPrice = months * unitPrice;
+                calculatedPrice = Math.max(1, Math.ceil(days / 30)) * unitPrice;
                 break;
             case 'FIXED':
-                unitPrice = fixedPrice || 0;
                 calculatedPrice = unitPrice;
                 break;
+            default:
+                calculatedPrice = days * unitPrice;
         }
 
         return {
@@ -124,8 +132,7 @@ export default function RentalBookingForm({
             totalPrice: calculatedPrice,
             activePrice: unitPrice
         };
-    }, [startDate, endDate, pricingModel, hourlyPrice, dailyPrice, weeklyPrice, monthlyPrice, fixedPrice]);
-
+    }, [startDate, endDate, pricingModel, price, availableModels]);
     // --- HANDLERS ---
     const handleAddAddress = () => {
         setEditingAddress(null);
@@ -214,12 +221,12 @@ export default function RentalBookingForm({
 
             const data = await res.json();
             if (data.success) {
-                toast.success('Rental requested successfully!'); 
+                toast.success('Rental requested successfully!');
                 if (onSuccess) onSuccess();
                 else onRequestClose();
                 router.refresh();
             } else {
-                toast.error(data.message || 'Booking failed'); 
+                toast.error(data.message || 'Booking failed');
             }
         } catch (error) {
             console.error(error);

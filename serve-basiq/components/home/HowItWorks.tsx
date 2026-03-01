@@ -3,9 +3,15 @@
 import { useState } from 'react';
 import { Search, Users, ShieldCheck, ArrowRight } from 'lucide-react';
 import LoginModal from '@/components/auth/LoginModal';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function HowItWorks() {
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // 👉 Extract data as session alongside status
+    const { data: session, status } = useSession();
+    const router = useRouter();
 
     const steps = [
         {
@@ -33,6 +39,34 @@ export default function HowItWorks() {
             badgeClass: "bg-emerald-600 text-white"
         }
     ];
+
+    // 👉 Handle button click based on auth status and worker status
+    const handleGetStarted = () => {
+        if (status === 'authenticated') {
+            // Check if the user is a worker
+            const isWorker = (session?.user as any)?.isWorker;
+
+            if (isWorker) {
+                // Redirect workers to their dashboard
+                router.push('/provider/dashboard');
+            } else {
+                // Redirect normal users to become a pro
+                router.push('/become-pro');
+            }
+        } else {
+            // User is NOT logged in, open the modal
+            setIsModalOpen(true);
+        }
+    };
+
+    // Helper to determine what text to show on the button
+    const getButtonText = () => {
+        if (status === 'authenticated') {
+            const isWorker = (session?.user as any)?.isWorker;
+            return isWorker ? 'Go to Dashboard' : 'Become a Provider';
+        }
+        return 'Get Started for Free';
+    };
 
     return (
         <section className="bg-white pt-20 pb-12 relative overflow-hidden font-sans">
@@ -91,12 +125,12 @@ export default function HowItWorks() {
                             Find trusted professionals, reliable suppliers and rental partners today. No middlemen, transparent pricing.
                         </p>
 
-                        {/* Changed from <Link> to <button> to trigger modal */}
                         <button
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={handleGetStarted}
                             className="inline-flex items-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl font-bold hover:bg-slate-50 hover:scale-105 transition-all shadow-lg active:scale-95"
                         >
-                            Get Started for Free
+                            {/* 👉 Use the helper function for dynamic text */}
+                            {getButtonText()}
                             <ArrowRight size={18} />
                         </button>
                     </div>

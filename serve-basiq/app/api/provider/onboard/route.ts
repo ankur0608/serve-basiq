@@ -5,17 +5,19 @@ import { onboardSchema } from "@/lib/validators";
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-
         console.log("📦 Onboard Payload:", body);
 
-
+        // 1. Validate payload
         const validData = onboardSchema.parse(body);
-        const { userId, providerType } = body; 
+        const { userId, providerType } = body;
+
         if (!userId) {
             return NextResponse.json({ success: false, message: "User ID required" }, { status: 400 });
         }
+
+        // 2. Check for existing email safely (Using findFirst avoids crashes if @unique is missing in schema)
         if (validData.email) {
-            const existingUser = await prisma.user.findUnique({
+            const existingUser = await prisma.user.findFirst({
                 where: { email: validData.email },
             });
 
@@ -29,8 +31,10 @@ export async function POST(req: Request) {
                 );
             }
         }
+
+        // 3. Database Transaction
         await prisma.$transaction(async (tx) => {
-            // 2. Update User Profile
+            // Update User Profile
             await tx.user.update({
                 where: { id: userId },
                 data: {
@@ -50,6 +54,7 @@ export async function POST(req: Request) {
                 },
             });
 
+            // Handle Address
             const existingAddress = await tx.address.findFirst({
                 where: { userId, type: "Home" }
             });
@@ -81,18 +86,24 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json({ success: true });
+
     } catch (error: any) {
         console.error("❌ Onboard Error:", error);
+
+        // Handle Prisma Unique Constraint Violation
         if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
             return NextResponse.json(
                 { success: false, message: "Email already taken by another account." },
                 { status: 409 }
             );
         }
+
+        // Handle Zod Validation Errors
         if (error.issues) {
             return NextResponse.json({ success: false, error: "Validation Failed", details: error.issues }, { status: 400 });
         }
 
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+        // 👉 CHANGED: Return 500 for database timeouts or internal crashes, not 400!
+        return NextResponse.json({ success: false, error: error.message || "Internal Server Error" }, { status: 500 });
     }
 }

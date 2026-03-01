@@ -18,7 +18,7 @@ interface Props {
     rentalName: string;
     rentalImage?: string;
     ownerLocation?: string;
-
+    price: number,
     // ✅ UPDATED: Accept all pricing models from schema
     hourlyPrice?: number;
     dailyPrice?: number;
@@ -38,7 +38,7 @@ export default function RentalBookingWrapper({
     rentalImage,
     ownerLocation,
 
-    // ✅ Destructure new price props
+    price,
     hourlyPrice,
     dailyPrice,
     weeklyPrice,
@@ -165,14 +165,12 @@ export default function RentalBookingWrapper({
                             rentalName={rentalName}
                             rentalImage={rentalImage}
                             ownerLocation={ownerLocation}
-
-                            // ✅ Pass all prices down
-                            hourlyPrice={hourlyPrice}
+                            // 👉 Ensure this line is exactly like this
+                            price={price} hourlyPrice={hourlyPrice}
                             dailyPrice={dailyPrice}
                             weeklyPrice={weeklyPrice}
                             monthlyPrice={monthlyPrice}
                             fixedPrice={fixedPrice}
-
                             userId={activeUser?.id}
                             userAddresses={effectiveAddresses}
                             userDetails={activeUser}
@@ -192,14 +190,12 @@ export default function RentalBookingWrapper({
                                     rentalName={rentalName}
                                     rentalImage={rentalImage}
                                     ownerLocation={ownerLocation}
-
-                                    // ✅ Pass all prices down
-                                    hourlyPrice={hourlyPrice}
+                                    // 👉 Ensure this line is exactly like this
+                                    price={price} hourlyPrice={hourlyPrice}
                                     dailyPrice={dailyPrice}
                                     weeklyPrice={weeklyPrice}
                                     monthlyPrice={monthlyPrice}
                                     fixedPrice={fixedPrice}
-
                                     userId={activeUser?.id}
                                     userAddresses={effectiveAddresses}
                                     userDetails={activeUser}

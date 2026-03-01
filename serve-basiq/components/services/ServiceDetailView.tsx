@@ -5,7 +5,7 @@ import {
     FaArrowLeft, FaLocationDot, FaStar,
     FaShieldHalved, FaPhone,
     FaInstagram, FaFacebook, FaYoutube, FaGlobe,
-    FaCircleCheck, FaLock, FaTags, FaBoxOpen,
+    FaCircleCheck, FaLock, FaBoxOpen,
     FaTruckFast, FaCube, FaStore
 } from 'react-icons/fa6';
 import BookingWrapper from '@/components/booking/BookingWrapper';
@@ -55,7 +55,7 @@ interface ServiceDetailViewProps {
         workingDays: string[];
         openTime?: string | null;
         closeTime?: string | null;
-        is24x7?: boolean; // ✅ FIX 1: Added to interface to fix TypeScript error
+        is24x7?: boolean;
         gallery: string[];
         user: {
             id: string;
@@ -137,55 +137,60 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
     const mainImg = allImages[0];
 
     return (
-        <div className="pb-20 bg-slate-50 min-h-screen pt-4 md:pt-8">
+        <div className="pb-20 bg-slate-50 min-h-screen pt-4 md:pt-8 scroll-smooth">
             <div className="max-w-7xl mx-auto px-4">
 
                 {/* 1. BACK BUTTON */}
                 <div className="mb-6">
-                    <Link href="/services" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+                    <Link href="/services" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition px-4 py-2 rounded-xl">
                         <FaArrowLeft /> Back to services
                     </Link>
                 </div>
 
-                {/* 2. TITLE ROW - FULL WIDTH AT THE TOP */}
-                <div className="flex flex-wrap justify-between items-end gap-4 mb-8">
-                    <div className="w-full md:w-auto">
-                        <div className="flex items-center flex-wrap gap-2 mb-3">
-                            <span className="text-blue-600 text-[10px] md:text-xs font-bold uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                                {service.category?.name || "Service"}
-                                {service.subcategory?.name && ` • ${service.subcategory.name}`}
-                            </span>
-                            {isVerified && (
-                                <span className="flex items-center gap-1 text-emerald-600 text-[10px] md:text-xs font-bold bg-emerald-50 px-3 py-1 rounded-full">
-                                    <FaCircleCheck /> Verified
-                                </span>
-                            )}
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-black text-slate-900 leading-tight">{displayName}</h1>
-                        <p className="flex items-start gap-2 text-slate-500 mt-2 text-sm md:text-base font-medium">
-                            <FaLocationDot className="text-red-400 mt-1 shrink-0" />
-                            <span>{fullAddress}</span>
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3 bg-white px-6 py-3 rounded-2xl border border-slate-200 shadow-sm">
-                        <div className="flex flex-col items-center border-r border-slate-100 pr-4">
-                            <div className="flex items-center gap-1 text-amber-500">
-                                <FaStar />
-                                <span className="font-bold text-slate-900 text-lg">{ratingValue.toFixed(1)}</span>
-                            </div>
-                            <span className="text-slate-400 text-[10px] font-bold uppercase">Rating</span>
-                        </div>
-                        <div className="flex flex-col items-center pl-1">
-                            <span className="font-bold text-slate-900 text-lg">{service.reviews?.length || 0}</span>
-                            <span className="text-slate-400 text-[10px] font-bold uppercase">Reviews</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3. CONTENT GRID */}
+                {/* 2. MAIN GRID LAYOUT */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
+
+                    {/* ================= LEFT COLUMN ================= */}
+                    <div className="lg:col-span-2 space-y-8 order-1">
+
+                        {/* 👉 TITLE & CATEGORY ROW (Moved here to align with booking card) */}
+                        <div>
+                            {/* Badges */}
+                            <div className="flex items-center flex-wrap gap-2 mb-3">
+                                <span className="text-blue-600 text-[10px] md:text-xs font-bold uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                    {service.category?.name || "Service"}
+                                    {service.subcategory?.name && ` • ${service.subcategory.name}`}
+                                </span>
+                                {isVerified && (
+                                    <span className="flex items-center gap-1 text-emerald-600 text-[10px] md:text-xs font-bold bg-emerald-50 px-3 py-1 rounded-full">
+                                        <FaCircleCheck /> Verified
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Title and Rating */}
+                            <div className="flex flex-wrap items-center justify-start gap-4">
+                                <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-tight">
+                                    {displayName}
+                                </h1>
+
+                                {/* Rating Box (Inline) */}
+                                <div className="flex items-center gap-2 bg-white px-3 py-2 md:px-4 md:py-2 rounded-2xl border border-slate-200 shadow-sm shrink-0 w-fit">
+                                    <FaStar className="text-amber-500 text-lg md:text-xl" />
+                                    <span className="font-black text-slate-900 text-lg md:text-xl leading-none">{ratingValue.toFixed(1)}</span>
+                                    <span className="text-slate-300 mx-1">|</span>
+                                    <a href="#reviews" className="text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
+                                        ({service.reviews?.length || 0} Reviews)
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Location */}
+                            <div className="flex items-start gap-2 mt-4 text-sm md:text-base font-medium text-slate-600">
+                                <FaLocationDot className="text-red-400 text-lg shrink-0 mt-0.5" />
+                                <span>{fullAddress}</span>
+                            </div>
+                        </div>
 
                         {/* Interactive Gallery */}
                         <InteractiveProductGallery
@@ -262,7 +267,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                         )}
 
                         {/* Review Card */}
-                        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
+                        <div id="reviews" className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 scroll-mt-24">
                             <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-8">Customer Reviews</h3>
                             <div className="grid md:grid-cols-2 gap-10">
                                 <div className="space-y-6 max-h-150 overflow-y-auto pr-2 custom-scrollbar">
@@ -294,7 +299,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                 </div>
                                 <div>
                                     {!session ? null : isEligibilityLoading ? <p>Loading...</p> : eligibility?.canReview ? <RatingForm serviceId={service.id} /> : (
-                                        <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center sticky top-24">
+                                        <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center top-24">
                                             <FaLock className="mx-auto text-slate-400 text-2xl mb-2" />
                                             <p className="text-slate-800 text-sm font-bold">Verified Booking Only</p>
                                             <p className="text-slate-500 text-xs mt-2">Book the service and mark as complete to leave a review.</p>
@@ -305,16 +310,18 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                         </div>
                     </div>
 
-                    {/* ================= RIGHT COLUMN ================= */}
-                    <div className="space-y-6 order-1 lg:order-2 h-fit lg:sticky lg:top-24 z-20">
+                    {/* ================= RIGHT COLUMN (Price & Booking) ================= */}
+                    <div className="space-y-6 order-2 h-fit lg:top-24 z-20">
 
                         {/* Pricing & Booking Card */}
-                        <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
-                            <div className="mb-6">
+                        <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 mt-2">
+
+                            {/* Centralized Price Display */}
+                            <div className="mb-6 pb-6 border-b border-slate-100">
                                 <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Starting at</p>
                                 <div className="flex items-baseline gap-1 mt-1">
-                                    <span className="text-4xl font-black text-slate-900">₹{Number(service.price).toLocaleString()}</span>
-                                    <span className="text-slate-400 font-bold">{service.priceType === 'HOURLY' ? '/hour' : '/fixed'}</span>
+                                    <span className="text-5xl font-black text-slate-900">₹{Number(service.price).toLocaleString()}</span>
+                                    <span className="text-slate-400 font-bold text-lg">{service.priceType === 'HOURLY' ? '/hour' : '/fixed'}</span>
                                 </div>
                             </div>
 
@@ -362,12 +369,10 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
 
                             <div className="flex flex-wrap gap-2">
                                 {service.is24x7 ? (
-                                    // ✅ Show "Every Day" badge if 24x7 is true
                                     <span className="text-[10px] px-3 py-1.5 rounded-lg font-bold bg-green-50 text-green-700 border border-green-100 flex items-center gap-1">
                                         <FaCircleCheck size={10} /> Every Day (Monday - Sunday)
                                     </span>
                                 ) : (
-                                    // ✅ Show specific days if not 24x7
                                     service.workingDays && service.workingDays.length > 0 ? (
                                         service.workingDays.map((day: string) => (
                                             <span key={day} className="text-[10px] px-2 py-1 rounded-md font-bold bg-slate-900 text-white shadow-sm">

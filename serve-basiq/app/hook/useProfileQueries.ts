@@ -80,97 +80,101 @@ export function useActiveBookings() {
     });
 }
 
-// export function useUpdateProfile() {
-//     const queryClient = useQueryClient();
-//     const { update: updateSession, data: session } = useSession();
-//     const { setCurrentUser, onCloseEditProfile } = useUIStore();
+export function useUpdateProfile() {
+    const queryClient = useQueryClient();
+    const { update: updateSession } = useSession();
+    const { setCurrentUser, onCloseEditProfile } = useUIStore();
 
-//     return useMutation({
-//         mutationFn: async ({ formData, file, currentUser }: UpdateProfileParams) => {
-//             const userId = currentUser?.id || session?.user?.id;
-//             if (!userId) throw new Error("User ID not found");
+    return useMutation({
+        mutationFn: async ({ formData, file, currentUser }: UpdateProfileParams) => {
+            const userId = currentUser?.id;
+            if (!userId) throw new Error("User ID not found");
 
-//             let uploadedImageUrl = formData.image;
+            let uploadedImageUrl = formData.image;
 
-//             if (file) {
-//                 let fileToUpload = file;
-//                 if (file.type.startsWith("image/")) {
-//                     try {
-//                         const options = {
-//                             maxSizeMB: 1,
-//                             maxWidthOrHeight: 1080,
-//                             useWebWorker: true,
-//                             initialQuality: 0.8,
-//                         };
-//                         fileToUpload = await imageCompression(file, options);
-//                     } catch (e) {
-//                         console.warn("Compression failed", e);
-//                     }
-//                 }
+            if (file) {
+                let fileToUpload = file;
 
-//                 const uploadData = new FormData();
-//                 uploadData.append("file", fileToUpload);
+                if (file.type.startsWith("image/")) {
+                    try {
+                        const options = {
+                            maxSizeMB: 1,
+                            maxWidthOrHeight: 1080,
+                            useWebWorker: true,
+                            initialQuality: 0.8,
+                        };
+                        const compressedBlob = await imageCompression(file, options);
+                        fileToUpload = new File([compressedBlob], file.name, {
+                            type: compressedBlob.type,
+                        });
+                    } catch (e) {
+                        console.warn("Compression failed, using original file", e);
+                    }
+                }
 
-//                 const res = await fetch("/api/upload", {
-//                     method: "POST",
-//                     body: uploadData,
-//                 });
+                const presignedRes = await fetch("/api/upload", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        filename: fileToUpload.name,
+                        fileType: fileToUpload.type,
+                        fileSize: fileToUpload.size,
+                    }),
+                });
 
-//                 if (res.ok) {
-//                     const d = await res.json();
-//                     uploadedImageUrl = d.url || (d.key ? `${process.env.NEXT_PUBLIC_R2_DOMAIN}/${d.key}` : null);
-//                 }
-//             }
+                if (!presignedRes.ok) {
+                    const errorData = await presignedRes.json();
+                    throw new Error(errorData.message || "Failed to get upload URL");
+                }
 
-//             const payload = {
-//                 userId,
-//                 ...formData,
-//                 image: uploadedImageUrl,
-//                 profileImage: uploadedImageUrl,
-//             };
+                const { uploadUrl, publicUrl } = await presignedRes.json();
 
-//             const updateRes = await fetch("/api/user/profile", {
-//                 method: "PATCH",
-//                 headers: { "Content-Type": "application/json" },
-//                 body: JSON.stringify(payload),
-//             });
+                const uploadRes = await fetch(uploadUrl, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": fileToUpload.type,
+                    },
+                    body: fileToUpload,
+                });
 
-//             if (!updateRes.ok) throw new Error("Failed to update profile");
+                if (!uploadRes.ok) {
+                    throw new Error("Failed to upload image to storage container");
+                }
 
-//             return { payload, uploadedImageUrl };
-//         },
-//         onSuccess: async (data, variables) => {
-//             const { payload, uploadedImageUrl } = data;
-//             const { currentUser, formData } = variables;
+                uploadedImageUrl = publicUrl;
+            }
 
-//             const updatedUser = {
-//                 ...currentUser,
-//                 ...formData,
-//                 img: uploadedImageUrl,
-//                 image: uploadedImageUrl,
-//                 addressLine1: formData.addressLine1,
-//                 addressLine2: formData.addressLine2,
-//                 city: formData.city,
-//                 district: formData.district,
-//                 state: formData.state,
-//                 pincode: formData.pincode,
-//                 landmark: formData.landmark,
-//                 isFullProfile: true,
-//             };
+            const payload = { ...formData, image: uploadedImageUrl };
 
-//             setCurrentUser(updatedUser);
+            const updateRes = await fetch("/api/user/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
 
-//             await updateSession({ name: formData.name, image: uploadedImageUrl });
+            if (!updateRes.ok) throw new Error("Failed to update profile");
 
-//             queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
+            return { payload, uploadedImageUrl };
+        },
+        onSuccess: async (data) => {
+            // 👉 1. Invalidate cache immediately for profile
+            await queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
 
-//             onCloseEditProfile();
-//         },
-//         onError: (error) => {
-//             console.error("Profile update error:", error);
-//         }
-//     });
-// }
+            // 👉 2. IMPORTANT: Force Dashboard to fetch fresh data so DOB/Language appears
+            await queryClient.invalidateQueries({ queryKey: ['provider-dashboard'] });
+
+            // Update session display image
+            await updateSession({
+                name: data.payload.name,
+                image: data.uploadedImageUrl
+            });
+
+            if (onCloseEditProfile) {
+                onCloseEditProfile();
+            }
+        }
+    });
+}
 
 export function useUserOrders() {
     return useQuery({
@@ -183,52 +187,5 @@ export function useUserOrders() {
         staleTime: 1000 * 60 * 5,
         gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
-    });
-}
-export function useUpdateProfile() {
-    const queryClient = useQueryClient();
-    const { update: updateSession } = useSession();
-    const { setCurrentUser } = useUIStore();
-
-    return useMutation({
-        mutationFn: async ({ formData, file, currentUser }: UpdateProfileParams) => {
-            const userId = currentUser?.id;
-            if (!userId) throw new Error("User ID not found");
-
-            let uploadedImageUrl = formData.image;
-
-            // ✅ Fix: Upload new file if provided
-            if (file) {
-                const uploadData = new FormData();
-                uploadData.append("file", file);
-
-                const res = await fetch("/api/upload", { method: "POST", body: uploadData });
-                if (res.ok) {
-                    const d = await res.json();
-                    uploadedImageUrl = d.url;
-                }
-            }
-
-            const payload = { ...formData, image: uploadedImageUrl };
-
-            const updateRes = await fetch("/api/user/profile", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-
-            if (!updateRes.ok) throw new Error("Failed to update profile");
-            return { payload, uploadedImageUrl };
-        },
-        onSuccess: async (data) => {
-            // ✅ Fix: Invalidate cache immediately
-            await queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
-
-            // ✅ Fix: Update session display image
-            await updateSession({
-                name: data.payload.name,
-                image: data.uploadedImageUrl
-            });
-        }
     });
 }

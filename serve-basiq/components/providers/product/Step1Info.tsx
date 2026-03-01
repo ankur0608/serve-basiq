@@ -21,9 +21,9 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
         const newErrors: Record<string, string> = {};
 
         if (!form.name.trim()) newErrors.name = "Required";
-        if (!form.unit) newErrors.unit = "Required";
         if (!form.categoryId) newErrors.categoryId = "Required";
         if (!form.subCategoryId) newErrors.subCategoryId = "Required";
+        if (!form.unit) newErrors.unit = "Required";
         if (!form.desc.trim()) newErrors.desc = "Required";
         if (!form.price || Number(form.price) <= 0) newErrors.price = "Valid price required";
         if (!form.moq || Number(form.moq) <= 0) newErrors.moq = "Required";
@@ -47,36 +47,21 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
         hasError ? "!border-red-500 bg-red-50 focus:!border-red-500 text-red-900 placeholder:text-red-300" : "bg-slate-50/50";
 
     return (
-        <div className="space-y-5 animate-in slide-in-from-right duration-300">
-            {/* Name & Unit */}
-            <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 space-y-1">
-                    <Input
-                        label="PRODUCT NAME"
-                        icon={<Package size={18} className={errors.name ? "text-red-400" : "text-slate-400"} />}
-                        placeholder="e.g. Heavy Duty Drill"
-                        value={form.name}
-                        onChange={e => onFieldChange('name', e.target.value)}
-                        className={getErrorClass(!!errors.name)}
-                    />
-                </div>
-                <div className="space-y-1">
-                    <Select
-                        label="UNIT TYPE"
-                        icon={<Scale size={18} className={errors.unit ? "text-red-400" : "text-slate-400"} />}
-                        value={form.unit}
-                        onChange={e => onFieldChange('unit', e.target.value)}
-                        className={getErrorClass(!!errors.unit)}
-                        options={[
-                            { label: 'Select Unit', value: '' },
-                            // ✅ Expanded Unit Types
-                            ...['PIECE', 'KG', 'GRAM', 'LITER', 'ML', 'BOX', 'PACK', 'SET', 'METER', 'SQ_FT', 'TON'].map(u => ({ label: u, value: u }))
-                        ]}
-                    />
-                </div>
+        <div className="space-y-5 animate-in slide-in-from-right duration-300 pb-4">
+
+            {/* 1. Title / Name (Full Width) */}
+            <div className="space-y-1">
+                <Input
+                    label="PRODUCT NAME"
+                    icon={<Package size={18} className={errors.name ? "text-red-400" : "text-slate-400"} />}
+                    placeholder="e.g. Heavy Duty Drill"
+                    value={form.name}
+                    onChange={e => onFieldChange('name', e.target.value)}
+                    className={getErrorClass(!!errors.name)}
+                />
             </div>
 
-            {/* Categories */}
+            {/* 2. Category & Sub-Category (2 in a row) */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <Select
@@ -100,18 +85,33 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                         className={getErrorClass(!!errors.subCategoryId)}
                         disabled={!form.categoryId}
                         options={[
-                            { label: activeSubCategories.length === 0 ? "No Sub-categories" : "Select Sub-Category", value: '' },
+                            { label: activeSubCategories.length === 0 ? "No Sub-categories" : "Select", value: '' },
                             ...activeSubCategories.map(s => ({ label: s.name, value: s.id }))
                         ]}
                     />
                 </div>
             </div>
 
-            {/* Price & MOQ */}
+            {/* 3. Unit Type (Full Width) */}
+            <div className="space-y-1">
+                <Select
+                    label="UNIT TYPE"
+                    icon={<Scale size={18} className={errors.unit ? "text-red-400" : "text-slate-400"} />}
+                    value={form.unit}
+                    onChange={e => onFieldChange('unit', e.target.value)}
+                    className={getErrorClass(!!errors.unit)}
+                    options={[
+                        { label: 'Select Unit', value: '' },
+                        ...['PIECE', 'KG', 'GRAM', 'LITER', 'ML', 'BOX', 'PACK', 'SET', 'METER', 'SQ_FT', 'TON'].map(u => ({ label: u, value: u }))
+                    ]}
+                />
+            </div>
+
+            {/* 4. Price & MOQ (2 in a row) */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <Input
-                        label={`PRICE (PER ${form.unit || 'UNIT'})`}
+                        label={`PRICE (${form.unit || 'UNIT'})`}
                         type="number"
                         icon={<BadgeIndianRupee size={18} className={errors.price ? "text-red-400" : "text-slate-400"} />}
                         placeholder="0.00"
@@ -122,7 +122,7 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                 </div>
                 <div className="space-y-1">
                     <Input
-                        label="MIN ORDER QTY (MOQ)"
+                        label="MIN ORDER (MOQ)"
                         type="number"
                         icon={<Package size={18} className={errors.moq ? "text-red-400" : "text-slate-400"} />}
                         placeholder="1"
@@ -133,8 +133,8 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                 </div>
             </div>
 
-            {/* ✅ Stock, Logistics, & Condition (3-Column Grid) */}
-            <div className="grid grid-cols-3 gap-4">
+            {/* 5. Condition & Stock (2 in a row) */}
+            <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <Select
                         label="CONDITION"
@@ -164,32 +164,34 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                         ]}
                     />
                 </div>
-                <div className="space-y-1">
-                    <Select
-                        label="DELIVERY TYPE"
-                        icon={<Truck size={18} className="text-slate-400" />}
-                        value={form.deliveryType}
-                        onChange={e => onFieldChange('deliveryType', e.target.value)}
-                        className="bg-slate-50/50"
-                        options={[
-                            { label: 'Pickup', value: 'PICKUP' },
-                            { label: 'Delivery', value: 'DELIVERY' },
-                            { label: 'Both', value: 'BOTH' }
-                        ]}
-                    />
-                </div>
             </div>
 
-            {/* Description */}
+            {/* 6. Delivery Type (Full Width) */}
             <div className="space-y-1">
+                <Select
+                    label="DELIVERY TYPE"
+                    icon={<Truck size={18} className="text-slate-400" />}
+                    value={form.deliveryType}
+                    onChange={e => onFieldChange('deliveryType', e.target.value)}
+                    className="bg-slate-50/50"
+                    options={[
+                        { label: 'Pickup', value: 'PICKUP' },
+                        { label: 'Delivery', value: 'DELIVERY' },
+                        { label: 'Both', value: 'BOTH' }
+                    ]}
+                />
+            </div>
+
+            {/* 7. Description (Full Width) */}
+            <div className="space-y-1 pt-2">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">DESCRIPTION</label>
                 <textarea
                     className={clsx(
                         "w-full px-4 py-3 border rounded-xl outline-none text-sm font-medium transition-all resize-none",
                         errors.desc ? "border-red-500 bg-red-50 focus:ring-2 focus:ring-red-200 text-red-900" : "border-gray-200 bg-slate-50/50 focus:bg-white focus:border-blue-500"
                     )}
-                    rows={3}
-                    placeholder="Describe product features..."
+                    rows={4}
+                    placeholder="Describe product features, specifications, and details..."
                     value={form.desc}
                     onChange={e => onFieldChange('desc', e.target.value)}
                 />
@@ -197,19 +199,28 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
 
             {/* Global Error Notice if missing fields */}
             {Object.keys(errors).length > 0 && (
-                <p className="text-xs text-red-500 font-bold text-center"><AlertCircle size={14} className="inline mr-1" /> Please fill out all required fields properly.</p>
+                <p className="text-xs text-red-500 font-bold text-center bg-red-50 py-2 rounded-lg border border-red-100">
+                    <AlertCircle size={14} className="inline mr-1 -mt-0.5" /> Please fill out all required fields properly.
+                </p>
             )}
 
-            <button
-                type="button"
-                onClick={handleNext}
-                className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition active:scale-[0.99]"
-            >
-                Next: Add Media <ChevronRight size={18} />
-            </button>
-            <button type="button" onClick={closeForm} className="w-full text-xs font-bold text-slate-400 hover:text-slate-600 transition mt-2">
-                Cancel
-            </button>
+            {/* Actions */}
+            <div className="pt-4 space-y-3">
+                <button
+                    type="button"
+                    onClick={handleNext}
+                    className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition active:scale-[0.99] shadow-lg shadow-slate-200"
+                >
+                    Next: Add Media <ChevronRight size={18} />
+                </button>
+                <button
+                    type="button"
+                    onClick={closeForm}
+                    className="w-full py-3 text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                >
+                    Cancel
+                </button>
+            </div>
         </div>
     );
 }

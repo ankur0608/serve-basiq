@@ -1,6 +1,7 @@
 // app/search/page.tsx
 "use client";
 
+import { useState } from 'react'; // Added useState
 import { useSearchParams } from 'next/navigation';
 import { useGlobalSearch } from '@/app/hook/useGlobalSearch';
 import { useUIStore } from '@/lib/store';
@@ -13,7 +14,6 @@ import ServiceCard from '@/components/ui/ServiceCard';
 import ProductCard from '@/components/ui/ProductCard';
 import RentalCard from '@/components/ui/RentalCard';
 
-// 1. Separate the main logic into an inner component
 function SearchContent() {
     const searchParams = useSearchParams();
     const query = searchParams.get('q') || '';
@@ -23,6 +23,9 @@ function SearchContent() {
 
     // Fetch current user to pass to the cards (for booking/quoting features)
     const currentUser = useUIStore((state) => state.currentUser);
+
+    // Tab state
+    const [activeTab, setActiveTab] = useState<'All' | 'Services' | 'Products' | 'Rentals'>('All');
 
     const hasResults = data && (data.services.length > 0 || data.products.length > 0 || data.rentals.length > 0);
 
@@ -72,97 +75,140 @@ function SearchContent() {
 
                 {/* Results State */}
                 {!isLoading && hasResults && data && (
-                    <div className="space-y-16">
+                    <div className="w-full">
 
-                        {/* Services Results */}
-                        {data.services.length > 0 && (
-                            <section>
-                                <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-3">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">
-                                        <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                                        Services
-                                    </h3>
-                                    <span className="text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{data.services.length}</span>
-                                </div>
-                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                                    {data.services.map(service => (
-                                        <ServiceCard
-                                            key={service.id}
-                                            service={{
-                                                id: service.id,
-                                                name: service.name,
-                                                image: service.mainimg || service.serviceimg || '', // Map API field to Card field
-                                                location: service.city || 'Remote',
-                                                rating: service.rating || 0,
-                                                price: service.price,
-                                                priceType: service.priceType,
-                                                type: 'Service',
-                                                categoryName: 'Service'
-                                            }}
-                                            currentUser={currentUser}
-                                        />
-                                    ))}
-                                </div>
-                            </section>
-                        )}
+                        {/* Tabs Navigation */}
+                        <div className="flex flex-wrap gap-2 mb-8 border-b border-slate-200">
+                            <button
+                                onClick={() => setActiveTab('All')}
+                                className={`pb-3 px-4 font-bold border-b-2 transition-colors ${activeTab === 'All' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
+                                    }`}
+                            >
+                                All Results
+                            </button>
 
-                        {/* Products Results */}
-                        {data.products.length > 0 && (
-                            <section>
-                                <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-3">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">
-                                        <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                                        Products
-                                    </h3>
-                                    <span className="text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{data.products.length}</span>
-                                </div>
-                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                                    {data.products.map(product => (
-                                        <ProductCard
-                                            key={product.id}
-                                            product={product}
-                                            currentUser={currentUser}
-                                        />
-                                    ))}
-                                </div>
-                            </section>
-                        )}
+                            {data.services.length > 0 && (
+                                <button
+                                    onClick={() => setActiveTab('Services')}
+                                    className={`pb-3 px-4 font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'Services' ? 'border-blue-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
+                                        }`}
+                                >
+                                    Services <span className="bg-slate-100 text-slate-600 text-xs py-0.5 px-2 rounded-full">{data.services.length}</span>
+                                </button>
+                            )}
 
-                        {/* Rentals Results */}
-                        {data.rentals.length > 0 && (
-                            <section>
-                                <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-3">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">
-                                        <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-                                        Rentals
-                                    </h3>
-                                    <span className="text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{data.rentals.length}</span>
-                                </div>
-                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                                    {data.rentals.map(rental => (
-                                        <RentalCard
-                                            key={rental.id}
-                                            rental={{
-                                                id: rental.id,
-                                                name: rental.name,
-                                                image: rental.rentalImg || '', // Map API field to Card field
-                                                location: rental.city || 'Remote',
-                                                rating: 0, // Fallback since search API doesn't fetch rating
-                                                price: rental.price,
-                                                priceType: rental.priceType,
-                                                categoryName: 'Rental'
-                                            }}
-                                            currentUser={currentUser}
-                                        />
-                                    ))}
-                                </div>
-                            </section>
-                        )}
+                            {data.products.length > 0 && (
+                                <button
+                                    onClick={() => setActiveTab('Products')}
+                                    className={`pb-3 px-4 font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'Products' ? 'border-emerald-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
+                                        }`}
+                                >
+                                    Products <span className="bg-slate-100 text-slate-600 text-xs py-0.5 px-2 rounded-full">{data.products.length}</span>
+                                </button>
+                            )}
 
+                            {data.rentals.length > 0 && (
+                                <button
+                                    onClick={() => setActiveTab('Rentals')}
+                                    className={`pb-3 px-4 font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'Rentals' ? 'border-orange-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
+                                        }`}
+                                >
+                                    Rentals <span className="bg-slate-100 text-slate-600 text-xs py-0.5 px-2 rounded-full">{data.rentals.length}</span>
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Tab Content Area */}
+                        <div className="space-y-16">
+
+                            {/* Services Results */}
+                            {(activeTab === 'All' || activeTab === 'Services') && data.services.length > 0 && (
+                                <section>
+                                    <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-3">
+                                        <h3 className="text-xl font-bold flex items-center gap-2">
+                                            <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                                            Services
+                                        </h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                                        {data.services.map(service => (
+                                            <ServiceCard
+                                                key={service.id}
+                                                service={{
+                                                    id: service.id,
+                                                    name: service.name,
+                                                    image: service.mainimg || service.serviceimg || '',
+                                                    location: service.city || 'Remote',
+                                                    rating: service.rating || 0,
+                                                    price: service.price,
+                                                    priceType: service.priceType,
+                                                    type: 'Service',
+                                                    categoryName: 'Service'
+                                                }}
+                                                currentUser={currentUser}
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* Products Results */}
+                            {(activeTab === 'All' || activeTab === 'Products') && data.products.length > 0 && (
+                                <section>
+                                    <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-3">
+                                        <h3 className="text-xl font-bold flex items-center gap-2">
+                                            <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                                            Products
+                                        </h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                                        {data.products.map(product => (
+                                            <ProductCard
+                                                key={product.id}
+                                                product={product}
+                                                currentUser={currentUser}
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* Rentals Results */}
+                            {(activeTab === 'All' || activeTab === 'Rentals') && data.rentals.length > 0 && (
+                                <section>
+                                    <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-3">
+                                        <h3 className="text-xl font-bold flex items-center gap-2">
+                                            <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                                            Rentals
+                                        </h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                                        {data.rentals.map(rental => (
+                                            <RentalCard
+                                                key={rental.id}
+                                                rental={{
+                                                    id: rental.id,
+                                                    name: rental.name,
+                                                    image: rental.rentalImg || '',
+                                                    location: rental.city || 'Remote',
+                                                    rating: 0,
+                                                    price: rental.price,
+                                                    priceType: rental.priceType,
+                                                    categoryName: 'Rental'
+                                                }}
+                                                currentUser={currentUser}
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                        </div>
                     </div>
                 )}
             </div>
         </>
     );
 }
+
 export default SearchContent;

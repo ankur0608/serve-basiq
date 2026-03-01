@@ -21,9 +21,7 @@ export async function GET(request: Request) {
       include: {
         // ✅ Get all addresses, newest first
         addresses: { orderBy: { createdAt: 'desc' } },
-        orders: { take: 5 }, // Increased limit slightly
-
-        // 🔴 FIX 1: Remove 'take: 1'. We need the full history to check for reviews.
+        orders: { take: 5 },
         bookings: {
           orderBy: { createdAt: 'desc' }
         }
@@ -49,8 +47,8 @@ export async function GET(request: Request) {
       name: val(user.name),
       email: val(user.email),
       phone: val(user.phone),
-      img: val(user.image), 
-      image: val(user.image), 
+      img: val(user.image),
+      image: val(user.image),
       dob: formattedDob,
       dateOfBirth: formattedDob,
       preferredLanguage: val(user.preferredLanguage) || "English",
@@ -69,9 +67,7 @@ export async function GET(request: Request) {
       country: val(primaryAddress.country) || "India",
 
       addresses: user.addresses,
-
       bookings: user.bookings,
-
       isFullProfile: true
     };
 
@@ -92,10 +88,13 @@ export async function PATCH(request: Request) {
     const userId = session.user.id;
 
     const {
+      id, // Address ID (from AddressEditModal)
+      type, // Address Type
       name, email, phone, dateOfBirth, dob, preferredLanguage, profileImage, image,
       addressLine1, addressLine2, landmark, city, state, district, pincode, country
     } = body;
 
+    // 1. Update User Data
     const userUpdateData: any = {};
     if (name) userUpdateData.name = name;
     if (email) userUpdateData.email = email;
@@ -110,38 +109,48 @@ export async function PATCH(request: Request) {
       await prisma.user.update({ where: { id: userId }, data: userUpdateData });
     }
 
+    // 2. Update Address Data
     const hasAddressData = addressLine1 || city || state || pincode || district;
 
     if (hasAddressData) {
       const addressData = {
+        type: type || 'Home',
         line1: addressLine1 || '',
         line2: addressLine2 || '',
         landmark: landmark || '',
         city: city || '',
-        district: district || '', 
+        district: district || '',
         state: state || '',
         pincode: pincode || '',
         country: country || 'India'
       };
 
-      const existingAddress = await prisma.address.findFirst({
-        where: { userId },
-        orderBy: { createdAt: 'desc' } 
-      });
-
-      if (existingAddress) {
+      if (id) {
+        // ✅ Specific update: Modal passed an existing Address ID
         await prisma.address.update({
-          where: { id: existingAddress.id },
+          where: { id: id },
           data: addressData
         });
       } else {
-        await prisma.address.create({
-          data: {
-            userId,
-            type: 'Home',
-            ...addressData
-          }
+        // 🔄 Fallback: Update most recent address or create new (from ProfileEditModal)
+        const existingAddress = await prisma.address.findFirst({
+          where: { userId },
+          orderBy: { createdAt: 'desc' }
         });
+
+        if (existingAddress) {
+          await prisma.address.update({
+            where: { id: existingAddress.id },
+            data: addressData
+          });
+        } else {
+          await prisma.address.create({
+            data: {
+              userId,
+              ...addressData
+            }
+          });
+        }
       }
     }
 
@@ -151,6 +160,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
   }
 }
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -186,4 +196,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
-

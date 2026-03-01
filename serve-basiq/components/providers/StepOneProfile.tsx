@@ -48,19 +48,47 @@ export default function StepOnePersonal({ form, updateField, errors, getInputCla
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Full Name</label>
-                        <input className={getInputClass('fullName')} value={form.fullName} onChange={e => updateField('fullName', e.target.value)} placeholder="Alex Johnson" />
+                        <input
+                            className={getInputClass('fullName')}
+                            value={form.fullName}
+                            onChange={e => updateField('fullName', e.target.value)}
+                            placeholder="Alex Johnson"
+                        />
+                        {/* 👉 Added Error Display */}
+                        {errors.fullName && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.fullName}</p>}
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Email</label>
-                        <input className={getInputClass('email')} value={form.email} onChange={e => updateField('email', e.target.value)} placeholder="alex@example.com" />
+                        <input
+                            type="email"
+                            className={getInputClass('email')}
+                            value={form.email}
+                            onChange={e => updateField('email', e.target.value)}
+                            placeholder="alex@example.com"
+                        />
+                        {/* 👉 Added Error Display */}
+                        {errors.email && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.email}</p>}
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Mobile Number</label>
-                        <input className={getInputClass('phone')} value={form.phone} onChange={e => updateField('phone', e.target.value)} placeholder="9876543210" maxLength={10} />
+                        <input
+                            type="tel"
+                            className={getInputClass('phone')}
+                            value={form.phone}
+                            onChange={e => updateField('phone', e.target.value)}
+                            placeholder="9876543210"
+                            maxLength={10}
+                        />
+                        {/* 👉 Added Error Display */}
+                        {errors.phone && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.phone}</p>}
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Gender</label>
-                        <select value={form.gender} onChange={e => updateField('gender', e.target.value)} className={getInputClass('gender')}>
+                        <select
+                            value={form.gender}
+                            onChange={e => updateField('gender', e.target.value)}
+                            className={getInputClass('gender')}
+                        >
                             <option value="MALE">Male</option>
                             <option value="FEMALE">Female</option>
                             <option value="OTHER">Other</option>
@@ -68,15 +96,25 @@ export default function StepOnePersonal({ form, updateField, errors, getInputCla
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Date of Birth</label>
-                        <input type="date" className={getInputClass('dob')} value={form.dob} onChange={e => updateField('dob', e.target.value)} />
-                        {errors.dob && <p className="text-red-500 text-xs mt-1">{errors.dob}</p>}
+                        <input
+                            type="date"
+                            className={getInputClass('dob')}
+                            value={form.dob}
+                            onChange={e => updateField('dob', e.target.value)}
+                        />
+                        {errors.dob && <p className="text-red-500 text-xs mt-1 font-semibold">{errors.dob}</p>}
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Preferred Language</label>
-                        <select value={form.preferredLanguage} onChange={e => updateField('preferredLanguage', e.target.value)} className={getInputClass('preferredLanguage')}>
+                        <select
+                            value={form.preferredLanguage}
+                            onChange={e => updateField('preferredLanguage', e.target.value)}
+                            className={getInputClass('preferredLanguage')}
+                        >
                             <option value="English">English</option>
                             <option value="Hindi">Hindi</option>
                             <option value="Gujarati">Gujarati</option>
+                            <option value="Marathi">Marathi</option>
                         </select>
                     </div>
                 </div>

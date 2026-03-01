@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Check, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import clsx from 'clsx';
-import { useVerification } from '@/app/hook/useVerification'; // Adjust path if needed
+import { useVerification } from '@/app/hook/useVerification';
 
 import StepOnePersonal from './StepOneProfile';
 import StepSocial from './StepSocial';
@@ -21,7 +21,6 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
     const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // ✅ Import our unified hook
     const { submitVerificationData, isSubmitting } = useVerification();
 
     const [form, setForm] = useState({
@@ -34,9 +33,16 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
 
     useEffect(() => {
         if (!existingData) return;
+
         const kyc = existingData.kycDetails || {};
-        const home = existingData.addresses?.find((a: any) => a.type === 'Home');
+        const home = existingData.addresses?.find((a: any) => a.type === 'Home') || existingData.addresses?.[0];
         const work = existingData.addresses?.find((a: any) => a.type === 'Work');
+
+        // 👉 Safe Date Extraction for DOB
+        const rawDob = existingData.dob || existingData.dateOfBirth;
+        const formattedDob = rawDob && rawDob !== ""
+            ? new Date(rawDob).toISOString().split('T')[0]
+            : '';
 
         setForm(prev => ({
             ...prev,
@@ -45,24 +51,30 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
             phone: existingData.phone || '',
             gender: existingData.gender || 'MALE',
             providerType: existingData.providerType || 'BOTH',
-            dob: existingData.dob ? new Date(existingData.dob).toISOString().split('T')[0] : '',
+
+            // 👉 Assign mapped DOB and Language
+            dob: formattedDob,
             preferredLanguage: existingData.preferredLanguage || 'English',
+
             instagramUrl: existingData.instagramUrl || '',
             facebookUrl: existingData.facebookUrl || '',
             youtubeUrl: existingData.youtubeUrl || '',
             websiteUrl: existingData.websiteUrl || '',
+
             addressLine1: home?.line1 || '',
             addressLine2: home?.line2 || '',
             landmark: home?.landmark || '',
             city: home?.city || '',
             state: home?.state || '',
             pincode: home?.pincode || '',
+
             shopName: existingData.shopName || '',
             bizAddressLine1: work?.line1 || '',
             bizAddressLine2: work?.line2 || '',
             bizCity: work?.city || '',
             bizState: work?.state || '',
             bizPincode: work?.pincode || '',
+
             idProofType: kyc.idProofType || 'Aadhaar',
             idProofNumber: kyc.idProofNumber || '',
             idProofImg: kyc.idProofFrontImg || '',
@@ -146,7 +158,6 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         }
 
         try {
-            // ✅ Clean API call using the hook
             await submitVerificationData(userId, form, existingData?.providerType);
             showToast('Profile submitted for verification', 'success');
             onBack();

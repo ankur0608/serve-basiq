@@ -110,7 +110,6 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
                         {categoryName}
                     </span>
 
-                    {/* --- ADDED FAVORITE BUTTON HERE --- */}
                     {toggleFav && (
                         <button
                             onClick={toggleFav}
@@ -163,6 +162,10 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
                                 rentalName={name}
                                 rentalImage={image}
                                 ownerLocation={ownerAddress}
+
+                                // 👉 CRITICAL FIX: Pass the base price prop here
+                                price={price}
+
                                 dailyPrice={typeof effectiveDailyPrice === 'number' ? effectiveDailyPrice : undefined}
                                 monthlyPrice={typeof effectiveMonthlyPrice === 'number' ? effectiveMonthlyPrice : undefined}
                                 fixedPrice={typeof effectiveFixedPrice === 'number' ? effectiveFixedPrice : undefined}

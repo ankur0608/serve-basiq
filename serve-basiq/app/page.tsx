@@ -6,11 +6,14 @@ import Hero from '@/components/home/Hero';
 import ServiceCategories from '@/components/home/ServiceCategories';
 import ProductCategories from '@/components/home/ProductCategories'; // ✅ Import
 import HowItWorks from '@/components/home/HowItWorks';
+import BecomeProviderBanner from "@/components/profile/BecomeProviderBanner"; // 👉 IMPORT COMPONENT
 
 import {
   FaWrench, FaBoxesStacked, FaPenFancy, FaStore,
   FaShieldHalved, FaWallet, FaHeadset, FaArrowRight, FaToolbox // ✅ Added FaTools here
 } from 'react-icons/fa6';
+import HomeServiceCategories from '@/components/home/HomeServiceCategories';
+import HomeProductCategories from '@/components/home/HomeProductCategories';
 
 export default async function Home() {
 
@@ -92,28 +95,12 @@ export default async function Home() {
 
         </div>
 
-        {/* 3. CATEGORIES SECTION WRAPPER */}
         <div className="space-y-12">
 
-          {/* Dynamic Service Categories */}
-          <ServiceCategories categories={serviceCategories} />
-
-          {/* Sponsored Banner */}
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between shadow-lg relative overflow-hidden">
-            <div className="relative z-10 text-center md:text-left mb-4 md:mb-0">
-              <span className="bg-white/20 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest mb-2 inline-block">Featured Partner</span>
-              <h3 className="text-2xl font-extrabold mb-1">Urban Company Services</h3>
-              <p className="text-purple-100 text-sm">Get 20% off your first deep cleaning service.</p>
-            </div>
-            <Link href="/services" className="relative z-10 bg-white text-purple-700 px-6 py-3 rounded-xl font-bold text-sm hover:bg-purple-50 transition shadow-md active:scale-95">
-              Book Now
-            </Link>
-            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-            <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-          </div>
-
+          <HomeServiceCategories categories={serviceCategories} />
+          <BecomeProviderBanner />
           {/* ✅ Dynamic Product Categories */}
-          <ProductCategories categories={productCategories} />
+          <HomeProductCategories categories={productCategories} />
 
         </div>
 
