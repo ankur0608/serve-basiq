@@ -318,10 +318,18 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
 
                             {/* Centralized Price Display */}
                             <div className="mb-6 pb-6 border-b border-slate-100">
-                                <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Starting at</p>
+                                <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">
+                                    {service.priceType === 'QUOTE' ? 'Pricing' : 'Starting at'}
+                                </p>
                                 <div className="flex items-baseline gap-1 mt-1">
-                                    <span className="text-5xl font-black text-slate-900">₹{Number(service.price).toLocaleString()}</span>
-                                    <span className="text-slate-400 font-bold text-lg">{service.priceType === 'HOURLY' ? '/hour' : '/fixed'}</span>
+                                    {service.priceType === 'QUOTE' ? (
+                                        <span className="text-3xl font-black text-slate-900">Price on Request</span>
+                                    ) : (
+                                        <>
+                                            <span className="text-5xl font-black text-slate-900">₹{Number(service.price).toLocaleString()}</span>
+                                            <span className="text-slate-400 font-bold text-lg">{service.priceType === 'HOURLY' ? '/hour' : '/fixed'}</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
@@ -349,6 +357,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                 serviceId={service.id}
                                 serviceName={displayName!}
                                 price={service.price}
+                                priceType={service.priceType}
                                 currentUser={currentUser}
                                 userAddresses={currentUser?.addresses || []}
                             />

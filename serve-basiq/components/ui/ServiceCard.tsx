@@ -83,7 +83,6 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                 onClick={() => router.push(detailPath)}
                 className="bg-white h-full rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow"
             >
-                {/* FIXED: Added onClick={handleDetailsClick} specifically to the image container */}
                 <div
                     className="relative h-48 w-full bg-gray-100 overflow-hidden cursor-pointer"
                     onClick={handleDetailsClick}
@@ -108,7 +107,7 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                     {toggleFav && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation(); // Prevents click from bubbling to the image/card
+                                e.stopPropagation();
                                 toggleFav(e);
                             }}
                             className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full shadow hover:bg-white transition-colors z-10"
@@ -126,13 +125,24 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                             <FaStar size={10} /> {rating > 0 ? rating.toFixed(1) : 'New'}
                         </span>
                     </div>
+
+                    {/* ✅ DYNAMIC PRICE DISPLAY */}
                     <div className="text-sm font-semibold text-gray-900 mt-0.5">
-                        ₹{price} <span className="text-xs font-normal text-gray-500">/ {priceType.toLowerCase()}</span>
+                        {priceType === 'QUOTE' ? (
+                            <span className="text-gray-700">Custom Quote</span>
+                        ) : (
+                            <>₹{price} <span className="text-xs font-normal text-gray-500">/ {priceType?.toLowerCase() || 'fixed'}</span></>
+                        )}
                     </div>
 
                     <div className="flex gap-2 mt-auto pt-3">
-                        <button onClick={handleDetailsClick} className="flex-1 border border-gray-300 text-xs py-1.5 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition-colors">Details</button>
-                        <button onClick={handleBookClick} className="flex-1 bg-black text-white text-xs py-1.5 rounded-lg hover:bg-gray-800 font-medium shadow-sm transition-colors">Book</button>
+                        <button onClick={handleDetailsClick} className="flex-1 border border-gray-300 text-xs py-1.5 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition-colors">
+                            Details
+                        </button>
+                        <button onClick={handleBookClick} className="flex-1 bg-black text-white text-xs py-1.5 rounded-lg hover:bg-gray-800 font-medium shadow-sm transition-colors">
+                            {/* ✅ DYNAMIC BUTTON TEXT */}
+                            {priceType === 'QUOTE' ? 'Request Quote' : 'Book'}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -152,6 +162,7 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                             <BookingWrapper
                                 serviceId={id}
                                 serviceName={name}
+                                priceType={priceType} // ✅ Ensure priceType is passed down
                                 price={price}
                                 currentUser={effectiveUser}
                                 userAddresses={effectiveUser?.addresses || []}

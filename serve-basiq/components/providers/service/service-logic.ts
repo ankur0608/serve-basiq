@@ -61,9 +61,10 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         subCategoryIds: normalizeSubIds(serviceData),
         altPhone: serviceData?.altPhone || userData?.phone || '',
 
+        isRemote: serviceData?.isRemote || false,
+
         // Images
         mainimg: serviceData?.serviceimg || serviceData?.rentalImg || serviceData?.mainimg || '',
-        // ✅ Gracefully handles BOTH serviceImages and rentalImages depending on what was fetched
         serviceImages: serviceData?.serviceImages || serviceData?.rentalImages || [],
         coverImg: serviceData?.coverImg || '',
         gallery: serviceData?.gallery || [],
@@ -189,14 +190,16 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         try {
             const payload = {
                 ...form,
-                price: Number(form.price),
+                // ✅ Automatically send 0 to the backend if QUOTE is selected
+                price: form.priceType === 'QUOTE' ? 0 : Number(form.price),
                 experience: Number(form.experience),
                 stock: Number(form.stock),
                 radiusKm: Number(form.radiusKm),
                 latitude: Number(form.latitude),
                 longitude: Number(form.longitude),
                 subCategoryIds: form.subCategoryIds,
-                // ✅ Submit logic maps properly for both Rental and Service
+                isRemote: form.isRemote,
+
                 [listingType === 'RENTAL' ? 'rentalImg' : 'serviceimg']: form.mainimg,
                 [listingType === 'RENTAL' ? 'rentalImages' : 'serviceImages']: form.serviceImages,
                 itemCondition: form.itemCondition,

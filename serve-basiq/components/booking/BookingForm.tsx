@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast'; // ✅ Imported toast
+import toast from 'react-hot-toast';
 
 // Component imports
 import BookingPreferences from './BookingPreferences';
@@ -14,9 +14,9 @@ interface BookingFormProps {
   serviceId: string;
   serviceName: string;
   price: number;
+  priceType?: string; // ✅ Added priceType
   userId: string;
   userAddresses: any[];
-  is24x7?: boolean;
   userDetails?: {
     name?: string;
     email?: string;
@@ -38,9 +38,9 @@ export default function BookingForm({
   serviceId,
   serviceName,
   price,
+  priceType, // ✅ Destructured
   userId,
   userAddresses: initialAddresses,
-  is24x7 = false,
   userDetails,
   onRequestClose,
   onSuccess
@@ -53,9 +53,6 @@ export default function BookingForm({
 
   const [timeline, setTimeline] = useState('IMMEDIATE');
   const [instructions, setInstructions] = useState('');
-
-  const [bookingDate, setBookingDate] = useState('');
-  const [bookingTime, setBookingTime] = useState('');
 
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<any>(null);
@@ -101,7 +98,7 @@ export default function BookingForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addressId) {
-      toast.error('Please select an address.'); // ✅ Added quick validation toast
+      toast.error('Please select an address.');
       return;
     }
     setLoading(true);
@@ -109,15 +106,12 @@ export default function BookingForm({
     try {
       const selectedAddressObj = addresses.find((a: any) => a.id === addressId);
 
-      // ✅ FIXED: Changed 'const' to 'let' so we can attach 'newAddress' later
       let payload: any = {
         userId,
         serviceId,
         addressId,
         timeline,
         specialInstructions: instructions,
-        bookingDate: is24x7 ? "" : bookingDate,
-        bookingTime: is24x7 ? "" : bookingTime,
       };
 
       if (addressId.toString().startsWith('temp-') && selectedAddressObj) {
@@ -144,7 +138,7 @@ export default function BookingForm({
         if (onSuccess) {
           onSuccess();
         } else {
-          toast.success('Booking Request Sent Successfully!'); 
+          toast.success(priceType === 'QUOTE' ? 'Quote Request Sent!' : 'Booking Request Sent Successfully!');
           onRequestClose();
         }
         router.refresh();
@@ -153,7 +147,7 @@ export default function BookingForm({
       }
     } catch (error) {
       console.error(error);
-      toast.error('Something went wrong'); 
+      toast.error('Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -186,15 +180,24 @@ export default function BookingForm({
     <div className="bg-white w-full h-full flex flex-col overflow-hidden relative">
 
       {/* --- HEADER --- */}
-      {/* ✅ FIXED: Adjusted padding and layout so the text doesn't clash with any close buttons injected from the wrapper */}
       <div className="bg-slate-900 px-5 sm:px-6 py-4 sm:py-5 text-white flex justify-between items-center shrink-0 shadow-md z-10 rounded-t-3xl sm:rounded-t-none">
         <div className='flex flex-col justify-center max-w-[60%]'>
-          <h2 className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-0.5">Requesting Service</h2>
+          {/* ✅ Dynamic Header Title */}
+          <h2 className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-0.5">
+            {priceType === 'QUOTE' ? 'Requesting Quote' : 'Requesting Service'}
+          </h2>
           <p className="text-white font-bold text-base sm:text-lg leading-tight truncate">{serviceName}</p>
         </div>
         <div className="text-right flex flex-col items-end justify-center">
-          <span className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-0.5 mt-4 sm:mt-7">Total Amount</span>
-          <span className="text-lg sm:text-xl font-bold text-white tracking-tight">₹{price}</span>
+          {/* ✅ Dynamic Pricing Layout */}
+          {priceType === 'QUOTE' ? (
+            <span className="text-sm font-bold text-slate-300 mt-4 sm:mt-7">To be discussed</span>
+          ) : (
+            <>
+              <span className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-0.5 mt-4 sm:mt-7">Total Amount</span>
+              <span className="text-lg sm:text-xl font-bold text-white tracking-tight">₹{price}</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -206,11 +209,6 @@ export default function BookingForm({
           instructions={instructions}
           setInstructions={setInstructions}
           timelineOptions={TIMELINE_OPTIONS}
-          is24x7={is24x7}
-          bookingDate={bookingDate}
-          setBookingDate={setBookingDate}
-          bookingTime={bookingTime}
-          setBookingTime={setBookingTime}
         />
 
         <AddressSelection
@@ -223,7 +221,6 @@ export default function BookingForm({
       </div>
 
       {/* --- FOOTER --- */}
-      {/* ✅ FIXED: Added padding-bottom for safe areas on mobile devices (pb-safe or explicitly adding pb-6/pb-8) to prevent cutoff */}
       <div className="p-4 sm:px-6 pb-6 sm:pb-4 bg-white border-t border-slate-100 shrink-0 flex gap-3 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] z-10">
         <button
           type="button"
@@ -236,9 +233,10 @@ export default function BookingForm({
           type="button"
           onClick={handleSubmit}
           disabled={loading || !addressId}
-          className="flex-[2] zbg-slate-900 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-[2] bg-slate-900 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? <Loader2 className="animate-spin" /> : 'Confirm Booking'}
+          {/* ✅ Dynamic Button Text */}
+          {loading ? <Loader2 className="animate-spin" /> : (priceType === 'QUOTE' ? 'Request Quote' : 'Confirm Booking')}
         </button>
       </div>
 

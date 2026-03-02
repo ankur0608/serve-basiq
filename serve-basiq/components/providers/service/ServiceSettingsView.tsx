@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Hammer, Truck, CheckCircle2, AlertCircle } from 'lucide-react'; // ✅ Imported badge icons
-import { useServiceForm, ServiceSettingsProps } from './service-logic';
-
-import { StepOneDetails, StepTwoMedia } from './steps/StepOneBasic';
+import { X, Hammer, Truck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useServiceForm, ServiceSettingsProps } from './service-logic'; // Ensure this path is correct
+import { StepOneDetails, StepTwoMedia } from './steps/StepOneBasic'; // Ensure this path is correct
 
 const defaultToast = (msg: string, type: 'success' | 'error') => alert(`${type.toUpperCase()}: ${msg}`);
 
@@ -17,7 +16,6 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
 
   return (
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-
       {!serviceData && !initialType ? (
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full relative animate-in zoom-in-95 duration-200">
           <button onClick={onComplete} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
@@ -67,13 +65,12 @@ function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & {
     step, setStep, loading, form, categories, loadingCats, activeSubCategories,
     gettingLoc, activeUploadField, listingType, uploading,
     handleChange, toggleSubCategory, toggleDay, handleImageUpload,
-    uploadMultipleFiles, removeGalleryImg, removeServiceImage, // ✅ Destructured
+    uploadMultipleFiles, removeGalleryImg, removeServiceImage,
     handleGetLocation, handleSubmit
   } = useServiceForm({ ...props, preSelectedType: initialType });
 
   return (
     <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-2xl w-full mx-auto relative flex flex-col max-h-[90vh]">
-
       <button onClick={props.onComplete} className="absolute top-4 right-4 z-10 text-white/70 hover:text-white transition bg-black/20 hover:bg-black/40 rounded-full p-1">
         <X size={20} />
       </button>
@@ -89,7 +86,6 @@ function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & {
               }
             </h2>
 
-            {/* ✅ VERIFICATION BADGE ADDED HERE */}
             {props.serviceData && (
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${props.serviceData.isVerified
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
@@ -112,7 +108,6 @@ function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & {
 
       <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-50 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 transition-colors p-6">
         <form onSubmit={handleSubmit}>
-
           {step === 1 && (
             <StepOneDetails
               form={form}
@@ -134,17 +129,16 @@ function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & {
               form={form}
               setStep={setStep}
               handleImageUpload={handleImageUpload}
-              uploadMultipleFiles={uploadMultipleFiles} // ✅ Passed down
+              uploadMultipleFiles={uploadMultipleFiles}
               activeUploadField={activeUploadField}
               removeGalleryImg={removeGalleryImg}
-              removeServiceImage={removeServiceImage}   // ✅ Passed down
+              removeServiceImage={removeServiceImage}
               processingMsg={uploading ? "Uploading..." : undefined}
               loading={loading}
               serviceData={props.serviceData}
               onComplete={props.onComplete}
             />
           )}
-
         </form>
       </div>
     </div>
