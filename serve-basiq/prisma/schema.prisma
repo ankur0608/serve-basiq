@@ -11,6 +11,7 @@ datasource db {
 enum PriceType {
     HOURLY
     FIXED
+    QUOTE
 }
 
 enum BookingStatus {
@@ -525,8 +526,8 @@ model Service {
     workingDays String[]
     openTime    String?
     closeTime   String?
-
-    is24x7 Boolean @default(false)
+    isRemote    Boolean  @default(false)
+    is24x7      Boolean  @default(false)
 
     rating        Float    @default(5.0)
     isVerified    Boolean  @default(false)
@@ -592,7 +593,6 @@ model Product {
 
     subCategoryId String?
     subcategory   Category? @relation("ProductSubCategory", fields: [subCategoryId], references: [id])
-
     productImage  String?
     productImages String[]
     gallery       String[]

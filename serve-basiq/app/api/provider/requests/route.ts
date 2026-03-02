@@ -23,7 +23,8 @@ export async function GET(req: Request) {
                 },
                 include: {
                     user: { select: { name: true, image: true, profileImage: true, phone: true } },
-                    service: { select: { name: true, price: true } },
+                    // ✅ ADDED priceType: true
+                    service: { select: { name: true, price: true, priceType: true } },
                     address: true
                 },
                 orderBy: { createdAt: 'desc' }
@@ -31,18 +32,18 @@ export async function GET(req: Request) {
 
             const rentalBookings = await prisma.rentalBooking.findMany({
                 where: {
-                    rental: { userId: userId } 
+                    rental: { userId: userId }
                 },
                 include: {
                     user: { select: { name: true, image: true, profileImage: true, phone: true } },
-                    rental: { select: { name: true, price: true } }, 
+                    // ✅ ADDED priceType: true
+                    rental: { select: { name: true, price: true, priceType: true } },
                     address: true
                 },
                 orderBy: { createdAt: 'desc' }
             });
 
             bookings = [...serviceBookings, ...rentalBookings];
-
             bookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         }
 

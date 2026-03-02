@@ -10,7 +10,12 @@ export default async function FeaturedProviders() {
     services = await prisma.service.findMany({
       take: 4,
       orderBy: { createdAt: 'desc' },
-      // where: { isVerified: true }, // Uncomment this when you have real verified data
+      where: {
+        isVerified: true,
+        user: {
+          isVerified: true
+        }
+      },
       include: {
         category: { select: { name: true } },
         subcategory: { select: { name: true } },
@@ -18,7 +23,7 @@ export default async function FeaturedProviders() {
           select: {
             name: true,
             image: true,
-            isVerified: true,
+            isVerified: true, 
             shopName: true,
             profileImage: true
           }
@@ -54,7 +59,6 @@ export default async function FeaturedProviders() {
       {services && services.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {services.map((service) => {
-            // Priority logic for images
             const mainImage =
               service.coverImg ||
               service.serviceimg ||
@@ -64,11 +68,9 @@ export default async function FeaturedProviders() {
               service.user?.profileImage ||
               "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80";
 
-            // ✅ FIX: Map database fields to the exact ServiceProps interface
             const formattedService: ServiceProps = {
               id: service.id,
               name: service.name,
-              // FIX 1: Use 'categoryName' (as expected by ServiceCard), not 'category'
               categoryName: service.category?.name || "General Service",
               subcategoryName: service.subcategory?.name,
               price: Number(service.price) || 0,
@@ -78,7 +80,6 @@ export default async function FeaturedProviders() {
                 : (service.loc || "India"),
               image: mainImage,
               rating: Number(service.rating) || 5.0,
-              // FIX 2: Add the required 'type' property
               type: 'Service'
             };
 
@@ -92,7 +93,7 @@ export default async function FeaturedProviders() {
           </div>
           <h3 className="text-lg font-bold text-slate-800">No Experts Found</h3>
           <p className="text-slate-500 text-sm text-center max-w-xs mt-1">
-            Tip: Ensure your Services have <b>isVerified: true</b> in the database.
+            Tip: Ensure both the <b>User</b> and the <b>Service</b> have <b>isVerified: true</b> in the database.
           </p>
         </div>
       )}

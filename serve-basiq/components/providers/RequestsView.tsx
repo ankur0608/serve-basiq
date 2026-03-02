@@ -4,7 +4,7 @@ import {
     Loader2, Calendar, Clock, MapPin,
     CheckCircle2, XCircle, Filter, Package,
     Briefcase, ShoppingBag, User as UserIcon,
-    BoxSelect, KeyRound, AlertTriangle, Search, X
+    BoxSelect, KeyRound, AlertTriangle, Search, X, Phone, AlignLeft // ✅ Added Phone and AlignLeft
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '@/lib/store';
@@ -19,7 +19,7 @@ const formatCurrency = (amount: number) => {
 };
 
 // --- Sub-component: RequestCard ---
-// Keeping this in the same file to avoid excessive fragmentation, but it is modular.
+// --- Sub-component: RequestCard ---
 const RequestCard = ({ data, onAction, isProcessing }: any) => {
     const getStatusColor = (status: string) => {
         const map: Record<string, string> = {
@@ -39,6 +39,9 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
         };
         return map[status] || 'bg-slate-100 text-slate-600 border-slate-200';
     };
+
+    // ✅ Read priceType from our newly mapped data
+    const isQuote = data.priceType === 'QUOTE';
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full relative group">
@@ -75,7 +78,9 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
             </div>
 
             {/* Content body */}
-            <div className="p-5 flex-1">
+            <div className="p-5 flex-1 flex flex-col">
+
+                {/* 1. Customer Info */}
                 <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
@@ -83,37 +88,44 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
                         </div>
                         <div>
                             <h4 className="text-sm font-bold text-slate-900 leading-tight">{data.user?.name || "Guest User"}</h4>
-                            <div className="flex items-center gap-1 mt-0.5 text-xs text-slate-500">
-                                <MapPin size={10} />
-                                <span className="truncate max-w-30">
-                                    {data.address ? `${data.address.city}` : (data.deliveryType === 'PICKUP' ? 'Self Pickup' : 'No Location')}
-                                </span>
-                            </div>
+                            {data.user?.phone && (
+                                <a href={`tel:${data.user.phone}`} className="flex items-center gap-1 mt-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                                    <Phone size={10} /> {data.user.phone}
+                                </a>
+                            )}
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="text-sm font-bold text-slate-900">{formatCurrency(data.price)}</div>
-                        <div className="text-[10px] text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded inline-block mt-1">
-                            {data.paymentStatus === 'PAID' ? 'Paid' : 'COD / Pending'}
+                        {/* ✅ Apply isQuote logic here */}
+                        <div className="text-sm font-black text-slate-900">
+                            {isQuote ? (
+                                <span className="text-xs uppercase text-slate-500 tracking-wider">Quote Requested</span>
+                            ) : (
+                                formatCurrency(data.price)
+                            )}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-bold uppercase bg-slate-100 px-1.5 py-0.5 rounded inline-block mt-1">
+                            {isQuote ? 'To be discussed' : (data.paymentStatus === 'PAID' ? 'Paid' : 'COD / Pending')}
                         </div>
                     </div>
                 </div>
 
+                {/* 2. Service/Product Info */}
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-4">
                     <div className="flex gap-3">
-                        <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
-                            {data.type === 'BOOKING' ? <Briefcase size={20} className="text-blue-500" /> :
-                                data.type === 'RENTAL' ? <KeyRound size={20} className="text-orange-500" /> :
-                                    <Package size={20} className="text-purple-500" />}
+                        <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                            {data.type === 'BOOKING' ? <Briefcase size={16} className="text-blue-500" /> :
+                                data.type === 'RENTAL' ? <KeyRound size={16} className="text-orange-500" /> :
+                                    <Package size={16} className="text-purple-500" />}
                         </div>
                         <div className="flex-1">
                             <h5 className="text-sm font-bold text-slate-800 line-clamp-1">{data.title}</h5>
                             <div className="flex flex-wrap gap-2 mt-1">
-                                <p className="text-xs text-slate-500 flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                <p className="text-[10px] font-medium text-slate-500 flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200">
                                     <Calendar size={10} />
-                                    {new Date(data.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                                    {new Date(data.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </p>
-                                <p className="text-xs text-slate-500 flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                <p className="text-[10px] font-medium text-slate-500 flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200">
                                     {data.type === 'BOOKING' || data.type === 'RENTAL' ? (
                                         <><Clock size={10} /> {data.timeSlot}</>
                                     ) : (
@@ -124,10 +136,41 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
                         </div>
                     </div>
                 </div>
+
+                {/* 3. Address & Instructions */}
+                <div className="space-y-2 mt-auto">
+                    {data.address ? (
+                        <div className="text-xs text-slate-600 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100/50">
+                            <div className="flex items-center gap-1.5 mb-1 text-blue-900 font-bold">
+                                <MapPin size={12} className="text-red-500" />
+                                {data.type === 'ORDER' && data.deliveryType === 'PICKUP' ? 'Pickup Location' : 'Service Address'}
+                            </div>
+                            <div className="pl-4 font-medium">
+                                <p>{data.address.line1} {data.address.line2}</p>
+                                <p>{data.address.city}, {data.address.state} - {data.address.pincode}</p>
+                                {data.address.landmark && <p className="text-slate-400 mt-0.5">Landmark: {data.address.landmark}</p>}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex items-center gap-1.5 font-medium">
+                            <MapPin size={12} />
+                            {data.deliveryType === 'PICKUP' ? 'Self Pickup by Customer' : 'No Specific Location Provided'}
+                        </div>
+                    )}
+
+                    {data.specialInstructions && (
+                        <div className="text-xs text-slate-600 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100/50">
+                            <div className="flex items-center gap-1.5 mb-1 text-amber-900 font-bold">
+                                <AlignLeft size={12} /> Special Instructions
+                            </div>
+                            <p className="pl-4 italic text-slate-500">{data.specialInstructions}</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Actions footer */}
-            <div className="p-4 pt-0 mt-auto">
+            <div className="p-4 pt-3 mt-auto border-t border-slate-50">
                 {['REQUESTED', 'PENDING'].includes(data.displayStatus) && (
                     <div className="grid grid-cols-2 gap-3">
                         <button
@@ -201,7 +244,6 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
         </div>
     );
 };
-
 // --- Main Component ---
 export default function RequestsView({ showToast, providerType }: { showToast: any, providerType: string }) {
     const { currentUser } = useUIStore();

@@ -12,9 +12,11 @@ export default async function TrendingProducts() {
       take: 4,
       orderBy: { createdAt: 'desc' },
       where: {
-        // ✅ Relaxed filter: Only checks if the PRODUCT is verified
+        // ✅ Ensures BOTH the product and the seller are verified
         isVerified: true,
-        user: { isVerified: true } // 👈 Commented out for testing
+        user: {
+          isVerified: true
+        }
       },
       include: {
         user: {
@@ -61,7 +63,9 @@ export default async function TrendingProducts() {
       ) : (
         <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-gray-200">
           <p className="text-gray-500">No verified trending products found.</p>
-          <p className="text-xs text-slate-400 mt-2">Check terminal for details</p>
+          <p className="text-xs text-slate-400 mt-2">
+            Tip: Ensure both the <b>Product</b> and the <b>Seller</b> have <b>isVerified: true</b> in the database.
+          </p>
         </div>
       )}
     </section>

@@ -1,113 +1,150 @@
-// components/products/ProductDetailContent.tsx
-import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+"use client";
+
 import Link from 'next/link';
 import {
     FaArrowLeft, FaLocationDot, FaStar,
-    FaShieldHalved, FaBoxOpen, FaTruckFast,
-    FaCircleCheck, FaStore, FaCube, FaTags,
-    FaInstagram, FaFacebook, FaYoutube, FaGlobe, FaLock
+    FaShieldHalved, FaPhone,
+    FaInstagram, FaFacebook, FaYoutube, FaGlobe,
+    FaCircleCheck, FaLock, FaBoxOpen,
+    FaTruckFast, FaCube, FaStore
 } from 'react-icons/fa6';
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import ProductWrapper from '@/components/products/ProductWrapper';
+import BookingWrapper from '@/components/booking/BookingWrapper';
 import AppImage from '@/components/ui/AppImage';
-import SupplierProfileModal from '@/components/products/SupplierProfileModal';
 import RatingForm from '@/components/Rating/RatingForm';
-import ProductSlider from '@/components/products/ProductSlider';
-import InteractiveGallery from './InteractiveGallery';
+import { Session } from 'next-auth';
+import { useServicePageData } from '@/app/hook/useServicePageData';
 import AppVideo from '../ui/AppVideo';
+import ProductSlider from '@/components/products/ProductSlider';
+import InteractiveProductGallery from '@/components/products/InteractiveGallery';
+import SupplierProfileModal from '@/components/products/SupplierProfileModal';
 
 const isVideo = (url: string | null | undefined) => {
     if (!url) return false;
     return url.match(/\.(mp4|webm|mov|mkv)$/i);
 };
 
-interface Props { id: string; }
+interface ServiceDetailViewProps {
+    service: {
+        id: string;
+        name: string;
+        desc: string;
+        price: number;
+        priceType: string;
+        coverImg?: string | null;
+        serviceimg?: string | null;
+        rentalImg?: string | null;
+        mainimg?: string | null;
+        serviceImages?: string[];
+        rentalImages?: string[];
+        rating: number | string;
+        instagramUrl?: string | null;
+        facebookUrl?: string | null;
+        youtubeUrl?: string | null;
+        websiteUrl?: string | null;
+        addressLine1?: string | null;
+        addressLine2?: string | null;
+        city?: string | null;
+        state?: string | null;
+        pincode?: string | null;
+        landmark?: string | null;
+        loc?: string | null;
+        experience?: string | number | null;
+        radiusKm?: number | null;
+        isVerified?: boolean;
+        isRemote?: boolean; // ✅ Added isRemote
+        altPhone?: string | null;
+        workingDays: string[];
+        openTime?: string | null;
+        closeTime?: string | null;
+        is24x7?: boolean;
+        gallery: string[];
+        user: {
+            id: string;
+            name?: string | null;
+            image?: string | null;
+            profileImage?: string | null;
+            phone?: string | null;
+            shopName?: string | null;
+            isVerified?: boolean;
+            instagramUrl?: string | null;
+            facebookUrl?: string | null;
+            youtubeUrl?: string | null;
+            websiteUrl?: string | null;
+        };
+        category: { name: string } | null;
+        subcategory?: { name: string } | null;
+        reviews: any[];
+    };
+    loggedInUser: any;
+    session: Session | null;
+    relatedServices?: any[];
+}
 
-export default async function ProductDetailContent({ id }: Props) {
-    const session = await getServerSession(authOptions);
+export default function ServiceDetailView({ service, loggedInUser: initialUser, session, relatedServices = [] }: ServiceDetailViewProps) {
+    const displayName = service.user.shopName || service.name;
 
-    const product = await prisma.product.findUnique({
-        where: { id },
-        include: {
-            category: { select: { name: true } },
-            subcategory: { select: { name: true } },
-            _count: { select: { reviews: true } },
-            reviews: { include: { author: { select: { name: true, image: true } } }, orderBy: { createdAt: 'desc' }, take: 10 },
-            user: { select: { id: true, name: true, shopName: true, email: true, phone: true, isVerified: true, image: true, profileImage: true, createdAt: true, instagramUrl: true, facebookUrl: true, websiteUrl: true, youtubeUrl: true, addresses: { where: { type: "Work" }, take: 1, select: { city: true, state: true, country: true } } } }
-        }
+    const { currentUser, eligibility, isEligibilityLoading } = useServicePageData({
+        serviceId: service.id,
+        initialUser,
+        session
     });
 
-    if (!product) return notFound();
+    const providerImage = service.user.profileImage || service.user.image || "";
+    const ratingValue = Number(service.rating) || 5.0;
+    const isVerified = service.isVerified || service.user.isVerified;
 
-    const relatedProducts = await prisma.product.findMany({
-        where: { categoryId: product.categoryId, id: { not: id } },
-        take: 8,
-        select: {
-            id: true, name: true, price: true, unit: true,
-            productImage: true,
-            productImages: true,
-            gallery: true,
-            category: { select: { name: true } }
-        }
-    });
+    const addressParts = [
+        service.addressLine1,
+        service.addressLine2,
+        service.landmark ? `Near ${service.landmark}` : null,
+        service.city,
+        service.state ? `${service.state}` : null
+    ].filter(Boolean);
 
-    const formattedRelatedProducts = relatedProducts.map(p => ({
-        ...p,
-        productImage: p.productImage || (p.productImages?.length > 0 ? p.productImages[0] : (p.gallery?.[0] || ""))
+    let fullAddress = addressParts.join(', ');
+    if (service.pincode) fullAddress += ` - ${service.pincode}`;
+    if (!fullAddress && service.loc) fullAddress = service.loc;
+    if (!fullAddress) fullAddress = "Location not specified";
+
+    const socials = [
+        { name: 'Instagram', icon: <FaInstagram size={20} />, url: service.instagramUrl || service.user.instagramUrl, styleClass: "text-pink-600 bg-pink-50 border-pink-100 hover:bg-pink-600 hover:text-white" },
+        { name: 'Facebook', icon: <FaFacebook size={20} />, url: service.facebookUrl || service.user.facebookUrl, styleClass: "text-blue-600 bg-blue-50 border-blue-100 hover:bg-blue-600 hover:text-white" },
+        { name: 'YouTube', icon: <FaYoutube size={20} />, url: service.youtubeUrl || service.user.youtubeUrl, styleClass: "text-red-600 bg-red-50 border-red-100 hover:bg-red-600 hover:text-white" },
+        { name: 'Website', icon: <FaGlobe size={20} />, url: service.websiteUrl || service.user.websiteUrl, styleClass: "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-600 hover:text-white" },
+    ].filter(s => s.url && s.url.trim() !== "" && s.url !== "null");
+
+    const formattedRelatedServices = relatedServices.map((s) => ({
+        id: s.id,
+        name: s.name || s.user?.shopName || 'Service',
+        price: s.price || 0,
+        unit: s.priceType === 'HOURLY' ? 'hour' : 'fixed',
+        productImage: (s.serviceImages && s.serviceImages.length > 0) ? s.serviceImages[0] : (s.coverImg || s.serviceimg || s.mainimg || null),
+        gallery: Array.isArray(s.gallery) ? s.gallery : [],
+        category: s.category,
+        listingType: 'SERVICE' as const,
+        ownerLocation: s.city || s.loc || 'Location not specified'
     }));
 
-    let canReview = false;
-    if (session?.user?.id) {
-        const userId = session.user.id;
-        if (product.userId !== userId) {
-            const hasDeliveredOrder = await prisma.order.findFirst({ where: { userId: userId, productId: id, status: 'DELIVERED' } });
-            const existingReview = await prisma.review.findFirst({ where: { authorId: userId, productId: id } });
-            if (hasDeliveredOrder && !existingReview) canReview = true;
-        }
-    }
-
-    let loggedInUser = null;
-    if (session?.user?.id) {
-        loggedInUser = await prisma.user.findUnique({ where: { id: session.user.id }, include: { addresses: true } });
-    }
-
-    // ✅ Map Images perfectly. Set ensures no duplicates, and productImage is forced to index 0
     const allImages = Array.from(new Set([
-        product.productImage,
-        ...(product.productImages || []),
-        ...(product.gallery || [])
+        service.serviceimg || service.rentalImg || service.mainimg,
+        ...(service.serviceImages || service.rentalImages || []),
+        ...(service.gallery || [])
     ])).filter(Boolean) as string[];
 
     if (allImages.length === 0) {
-        allImages.push("https://images.unsplash.com/photo-1586769852044-692d6e3703f0");
+        allImages.push("https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2071&auto=format&fit=crop");
     }
 
-    const provider = product.user;
-    const displayName = provider?.shopName || provider?.name || "Verified Supplier";
-    const providerImage = provider?.profileImage || provider?.image;
-    const isVerified = provider?.isVerified || false;
-    const location = provider?.addresses[0]?.city || "India";
-    const isInStock = product.stockStatus === 'IN_STOCK';
-    const ratingValue = product.reviews.length > 0 ? product.reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / product.reviews.length : 0;
-    const reviewCount = product._count?.reviews || 0;
-
-    const socials = [
-        { icon: <FaInstagram size={20} />, url: provider?.instagramUrl, styleClass: "text-pink-600 bg-pink-50 border-pink-100 hover:bg-pink-600 hover:text-white" },
-        { icon: <FaFacebook size={20} />, url: provider?.facebookUrl, styleClass: "text-blue-600 bg-blue-50 border-blue-100 hover:bg-blue-600 hover:text-white" },
-        { icon: <FaYoutube size={20} />, url: provider?.youtubeUrl, styleClass: "text-red-600 bg-red-50 border-red-100 hover:bg-red-600 hover:text-white" },
-        { icon: <FaGlobe size={20} />, url: provider?.websiteUrl, styleClass: "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-600 hover:text-white" },
-    ].filter(s => s.url);
+    const mainImg = allImages[0];
 
     return (
-        <div className="pb-40 bg-slate-50 min-h-screen pt-4 md:pt-8 scroll-smooth">
+        <div className="pb-20 bg-slate-50 min-h-screen pt-4 md:pt-8 scroll-smooth">
             <div className="max-w-7xl mx-auto px-4">
 
                 {/* 1. BACK BUTTON */}
                 <div className="mb-6">
-                    <Link href="/products" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
-                        <FaArrowLeft /> Back to products
+                    <Link href="/services" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition px-4 py-2 rounded-xl">
+                        <FaArrowLeft /> Back to services
                     </Link>
                 </div>
 
@@ -117,69 +154,92 @@ export default async function ProductDetailContent({ id }: Props) {
                     {/* ================= LEFT COLUMN ================= */}
                     <div className="lg:col-span-2 space-y-8 order-1">
 
-                        {/* 👉 TITLE & REVIEWS ROW */}
+                        {/* 👉 TITLE & CATEGORY ROW */}
                         <div>
-                            {/* Top Badges (Stock & Condition) */}
+                            {/* Badges */}
                             <div className="flex items-center flex-wrap gap-2 mb-3">
-                                <span className={`flex items-center gap-1 text-[10px] md:text-xs font-bold px-3 py-1 rounded-full border ${isInStock ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
-                                    <span className={`w-2 h-2 rounded-full ${isInStock ? "bg-green-500 animate-pulse" : "bg-amber-500"}`}></span>
-                                    {isInStock ? `In Stock` : "Out of Stock"}
+                                <span className="text-blue-600 text-[10px] md:text-xs font-bold uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                    {service.category?.name || "Service"}
+                                    {service.subcategory?.name && ` • ${service.subcategory.name}`}
                                 </span>
-                                <span className="flex items-center gap-1 text-[10px] md:text-xs font-bold px-3 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200 uppercase tracking-widest">
-                                    <FaTags className="text-slate-400" /> {product.condition || 'NEW'}
-                                </span>
+
+                                {/* ✅ Remote Badge Added Here */}
+                                {service.isRemote && (
+                                    <span className="flex items-center gap-1 text-purple-600 text-[10px] md:text-xs font-bold uppercase bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
+                                        <FaGlobe /> Online / Remote
+                                    </span>
+                                )}
+
+                                {isVerified && (
+                                    <span className="flex items-center gap-1 text-emerald-600 text-[10px] md:text-xs font-bold bg-emerald-50 px-3 py-1 rounded-full">
+                                        <FaCircleCheck /> Verified
+                                    </span>
+                                )}
                             </div>
 
-                            {/* Title and Rating sitting right next to each other */}
+                            {/* Title and Rating */}
                             <div className="flex flex-wrap items-center justify-start gap-4">
                                 <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-tight">
-                                    {product.name}
+                                    {displayName}
                                 </h1>
 
-                                {/* Rating Box (Inline) */}
                                 <div className="flex items-center gap-2 bg-white px-3 py-2 md:px-4 md:py-2 rounded-2xl border border-slate-200 shadow-sm shrink-0 w-fit">
                                     <FaStar className="text-amber-500 text-lg md:text-xl" />
                                     <span className="font-black text-slate-900 text-lg md:text-xl leading-none">{ratingValue.toFixed(1)}</span>
                                     <span className="text-slate-300 mx-1">|</span>
                                     <a href="#reviews" className="text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
-                                        ({reviewCount} Reviews)
+                                        ({service.reviews?.length || 0} Reviews)
                                     </a>
                                 </div>
                             </div>
 
-                            {/* Location underneath the title */}
+                            {/* Location */}
                             <div className="flex items-start gap-2 mt-4 text-sm md:text-base font-medium text-slate-600">
                                 <FaLocationDot className="text-red-400 text-lg shrink-0 mt-0.5" />
-                                <span>{location}</span>
+                                <span>{fullAddress}</span>
                             </div>
                         </div>
 
                         {/* Interactive Gallery */}
-                        <InteractiveGallery
-                            mainProductImage={allImages[0]}
+                        <InteractiveProductGallery
+                            mainProductImage={mainImg}
                             productImages={allImages.slice(1)}
-                            productName={product.name}
+                            productName={displayName}
                         />
 
-                        {/* Product Details & Stats Card */}
+                        {/* Main Description Card */}
                         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
+                            <div className="border-b border-slate-100 pb-6">
+                                <h3 className="text-xl font-bold text-slate-900 mb-4">Service Description</h3>
+                                <p className="text-slate-600 leading-relaxed whitespace-pre-line text-sm md:text-base">{service.desc}</p>
+                            </div>
+
                             {/* Stats Grid */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Min Order</p>
-                                    <p className="font-bold text-slate-900 flex items-center gap-2"><FaBoxOpen className="text-slate-300" /> {product.moq} {product.unit}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Experience</p>
+                                    <p className="font-bold text-slate-900 flex items-center gap-2"><FaBoxOpen className="text-slate-300" /> {service.experience || 0}+ Yrs</p>
+                                </div>
+
+                                {/* ✅ Updated Area/Radius logic for Remote services */}
+                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">{service.isRemote ? 'Coverage' : 'Area'}</p>
+                                    <p className="font-bold text-slate-900 flex items-center gap-2 truncate">
+                                        {service.isRemote ? <FaGlobe className="text-slate-300 shrink-0" /> : <FaTruckFast className="text-slate-300 shrink-0" />}
+                                        {service.isRemote ? 'Global / Online' : `${service.radiusKm || 10} km`}
+                                    </p>
+                                </div>
+
+                                {/* ✅ Updated Billing for Quote */}
+                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Billing</p>
+                                    <p className="font-bold text-slate-900 flex items-center gap-2"><FaCube className="text-slate-300 shrink-0" /> {service.priceType === 'QUOTE' ? 'Custom Quote' : service.priceType}</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Delivery</p>
-                                    <p className="font-bold text-slate-900 flex items-center gap-2"><FaTruckFast className="text-slate-300" /> {product.deliveryType || "Standard"}</p>
-                                </div>
-                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Unit Type</p>
-                                    <p className="font-bold text-slate-900 flex items-center gap-2"><FaCube className="text-slate-300" /> {product.unit}</p>
-                                </div>
-                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Condition</p>
-                                    <p className="font-bold text-slate-900 flex items-center gap-2 uppercase"><FaTags className="text-slate-300" /> {product.condition || 'NEW'}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Status</p>
+                                    <p className="font-bold text-slate-900 truncate uppercase">
+                                        {service.is24x7 ? "24x7 Open" : "Standard"}
+                                    </p>
                                 </div>
                             </div>
 
@@ -226,21 +286,23 @@ export default async function ProductDetailContent({ id }: Props) {
                             <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-8">Customer Reviews</h3>
                             <div className="grid md:grid-cols-2 gap-10">
                                 <div className="space-y-6 max-h-150 overflow-y-auto pr-2 custom-scrollbar">
-                                    {product.reviews && product.reviews.length > 0 ? (
-                                        product.reviews.map((review) => (
-                                            <div key={review.id} className="border-b border-slate-100 pb-6 last:border-0 last:pb-0">
+                                    {service.reviews.length > 0 ? (
+                                        service.reviews.map((review) => (
+                                            <div key={review.id} className="border-b border-slate-100 pb-6 last:border-0">
                                                 <div className="flex items-center gap-3 mb-2">
-                                                    <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden relative border border-slate-100 shrink-0">
-                                                        <AppImage src={review.author?.image || ""} alt="User" type="avatar" className="w-full h-full object-cover" />
+                                                    <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden flex-shrink-0 relative">
+                                                        <AppImage src={review.author.image || ""} alt={review.author.name || "User"} type="avatar" className="w-full h-full object-cover" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-slate-900 text-sm">{review.author?.name || "Customer"}</p>
+                                                        <p className="font-bold text-slate-900 text-sm">{review.author.name || "Customer"}</p>
                                                         <div className="flex text-amber-500 text-[10px]">
-                                                            {[...Array(5)].map((_, i) => (<FaStar key={i} className={i < review.rating ? "fill-current" : "text-slate-200"} />))}
+                                                            {[...Array(5)].map((_, i) => (
+                                                                <FaStar key={i} className={i < review.rating ? "fill-current" : "text-slate-200"} />
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <p className="text-slate-600 text-sm italic">"{review.comment}"</p>
+                                                <p className="text-slate-600 text-sm italic mb-3">"{review.comment}"</p>
                                             </div>
                                         ))
                                     ) : (
@@ -251,19 +313,11 @@ export default async function ProductDetailContent({ id }: Props) {
                                     )}
                                 </div>
                                 <div>
-                                    {!session ? null : canReview ? (
-                                        <div className="mb-8 border border-blue-100 bg-blue-50/50 p-6 rounded-2xl animate-in fade-in slide-in-from-top-4">
-                                            <RatingForm productId={product.id} />
-                                        </div>
-                                    ) : (
+                                    {!session ? null : isEligibilityLoading ? <p>Loading...</p> : eligibility?.canReview ? <RatingForm serviceId={service.id} /> : (
                                         <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center top-24">
-                                            <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
-                                                <FaBoxOpen />
-                                            </div>
-                                            <p className="text-slate-800 text-sm font-bold">Verified Purchase Only</p>
-                                            <p className="text-slate-500 text-xs mt-2 leading-relaxed max-w-sm mx-auto">
-                                                You can only leave a review after you have purchased this Product and it is marked as <strong>Delivered</strong>.
-                                            </p>
+                                            <FaLock className="mx-auto text-slate-400 text-2xl mb-2" />
+                                            <p className="text-slate-800 text-sm font-bold">Verified Booking Only</p>
+                                            <p className="text-slate-500 text-xs mt-2">Book the service and mark as complete to leave a review.</p>
                                         </div>
                                     )}
                                 </div>
@@ -277,25 +331,33 @@ export default async function ProductDetailContent({ id }: Props) {
                         {/* Pricing & Booking Card */}
                         <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 mt-2">
 
-                            {/* 👉 Category Badge Moved Here! */}
-                            <div className="mb-4">
-                                <span className="inline-block text-blue-600 text-[10px] md:text-xs font-bold uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                                    {product.category?.name || "Product"}
-                                    {product.subcategory?.name && ` • ${product.subcategory.name}`}
-                                </span>
-                            </div>
-
-                            {/* Centralized Price Display */}
+                            {/* ✅ Updated Price Display for QUOTE */}
                             <div className="mb-6 pb-6 border-b border-slate-100">
-                                <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Starting at</p>
+                                <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">
+                                    {service.priceType === 'QUOTE' ? 'Pricing' : 'Starting at'}
+                                </p>
                                 <div className="flex items-baseline gap-1 mt-1">
-                                    <span className="text-5xl font-black text-slate-900">₹{Number(product.price).toLocaleString()}</span>
-                                    <span className="text-slate-400 font-bold text-lg">/ {product.unit}</span>
+                                    {service.priceType === 'QUOTE' ? (
+                                        <span className="text-4xl font-black text-slate-900">Custom Quote</span>
+                                    ) : (
+                                        <>
+                                            <span className="text-5xl font-black text-slate-900">₹{Number(service.price).toLocaleString()}</span>
+                                            <span className="text-slate-400 font-bold text-lg">{service.priceType === 'HOURLY' ? '/hour' : '/fixed'}</span>
+                                        </>
+                                    )}
                                 </div>
-                                <p className="text-xs text-slate-400 mt-1 font-medium">+ GST if applicable</p>
                             </div>
 
                             <div className="space-y-4 mb-6">
+                                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                        <FaPhone size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Direct Contact</p>
+                                        <p className="text-sm font-bold text-slate-900">Connect with Provider</p>
+                                    </div>
+                                </div>
                                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                                     <h4 className="text-emerald-900 font-bold text-sm mb-2 flex items-center gap-2"><FaShieldHalved /> Safe Booking</h4>
                                     <ul className="text-xs text-emerald-700 space-y-1">
@@ -306,16 +368,45 @@ export default async function ProductDetailContent({ id }: Props) {
                                 </div>
                             </div>
 
-                            {/* Product Wrapper contains your Request Quote Modal */}
-                            <ProductWrapper
-                                productId={product.id}
-                                productName={product.name}
-                                productPrice={Number(product.price)}
-                                productUnit={product.unit}
-                                moq={Number(product.moq)}
-                                currentUser={loggedInUser}
-                                userAddresses={loggedInUser?.addresses || []}
+                            <BookingWrapper
+                                serviceId={service.id}
+                                serviceName={displayName!}
+                                price={service.price}
+                                currentUser={currentUser}
+                                userAddresses={currentUser?.addresses || []}
                             />
+                        </div>
+
+                        {/* Availability Info */}
+                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                            <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase text-xs tracking-widest">
+                                Business Hours
+                            </h4>
+
+                            <div className="flex justify-between items-center text-sm mb-4">
+                                <span className="text-slate-500 font-medium uppercase text-[10px]">Status</span>
+                                <span className={`font-black ${service.is24x7 ? 'text-green-600' : 'text-slate-900'}`}>
+                                    {service.is24x7 ? 'OPEN 24/7' : `${service.openTime} - ${service.closeTime}`}
+                                </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                {service.is24x7 ? (
+                                    <span className="text-[10px] px-3 py-1.5 rounded-lg font-bold bg-green-50 text-green-700 border border-green-100 flex items-center gap-1">
+                                        <FaCircleCheck size={10} /> Every Day (Monday - Sunday)
+                                    </span>
+                                ) : (
+                                    service.workingDays && service.workingDays.length > 0 ? (
+                                        service.workingDays.map((day: string) => (
+                                            <span key={day} className="text-[10px] px-2 py-1 rounded-md font-bold bg-slate-900 text-white shadow-sm">
+                                                {day}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-[10px] text-slate-400 italic font-medium">Days not specified</span>
+                                    )
+                                )}
+                            </div>
                         </div>
 
                         {/* Supplier Card */}
@@ -325,14 +416,10 @@ export default async function ProductDetailContent({ id }: Props) {
                             </h4>
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden relative shrink-0">
-                                    {providerImage ? (
-                                        <AppImage src={providerImage} alt={displayName} type="avatar" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300"><FaStore /></div>
-                                    )}
+                                    <AppImage src={providerImage} alt={displayName} type="avatar" className="w-full h-full object-cover" />
                                 </div>
                                 <div className="overflow-hidden">
-                                    <h5 className="font-bold text-slate-900 leading-tight truncate">{displayName}</h5>
+                                    <h5 className="font-bold text-slate-900 leading-tight truncate">{service.user.name}</h5>
                                     {isVerified && (
                                         <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md mt-1 w-fit">
                                             <FaCircleCheck /> Verified
@@ -340,14 +427,14 @@ export default async function ProductDetailContent({ id }: Props) {
                                     )}
                                 </div>
                             </div>
-                            <SupplierProfileModal supplier={product.user} />
+                            <SupplierProfileModal supplier={service.user} />
                         </div>
                     </div>
                 </div>
 
-                {formattedRelatedProducts.length > 0 && (
+                {formattedRelatedServices.length > 0 && (
                     <div className="mt-16 pt-16 border-t border-slate-200">
-                        <ProductSlider title="Related Products" products={formattedRelatedProducts} />
+                        <ProductSlider title="Related Services" products={formattedRelatedServices} currentUser={currentUser} />
                     </div>
                 )}
             </div>

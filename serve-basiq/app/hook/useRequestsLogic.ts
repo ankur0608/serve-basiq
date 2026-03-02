@@ -25,13 +25,11 @@ export function useRequestsLogic(providerType: string, currentUserId: string | u
     const bookings = data?.bookings || [];
     const orders = data?.orders || [];
 
-    // Sync provider type changes
     useEffect(() => {
         if (providerType === 'PRODUCT') setViewMode('PRODUCTS');
         else if (providerType === 'SERVICE') setViewMode('SERVICES');
     }, [providerType]);
 
-    // Lock body scroll when modal is open
     useEffect(() => {
         if (isFilterModalOpen) {
             document.body.style.overflow = 'hidden';
@@ -41,7 +39,6 @@ export function useRequestsLogic(providerType: string, currentUserId: string | u
         return () => { document.body.style.overflow = 'unset'; };
     }, [isFilterModalOpen]);
 
-    // Format data into a unified structure
     const currentData = useMemo(() => {
         if (viewMode === 'SERVICES') {
             return bookings.map((b: any) => {
@@ -53,6 +50,8 @@ export function useRequestsLogic(providerType: string, currentUserId: string | u
                     displayStatus: b.status,
                     title: isRental ? b.rental?.name : (b.service?.name || "Unknown Service"),
                     price: isRental ? b.totalPrice : (b.service?.price || 0),
+                    // ✅ Pass priceType from service or rental
+                    priceType: isRental ? b.rental?.priceType : b.service?.priceType,
                     img: b.user?.profileImage || b.user?.image || "",
                     timeSlot: isRental
                         ? `${b.totalDays || 1} Day(s) • ${new Date(b.startDate).toLocaleDateString()} - ${new Date(b.endDate).toLocaleDateString()}`
@@ -75,7 +74,6 @@ export function useRequestsLogic(providerType: string, currentUserId: string | u
         }
     }, [viewMode, bookings, orders]);
 
-    // Apply filters and search
     const filteredRequests = useMemo(() => {
         const sorted = [...currentData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         return sorted.filter((i: any) => {

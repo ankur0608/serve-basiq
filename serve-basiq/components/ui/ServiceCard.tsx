@@ -152,6 +152,7 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                             <BookingWrapper
                                 serviceId={id}
                                 serviceName={name}
+                                priceType={priceType} // ✅ Pass priceType down
                                 price={price}
                                 currentUser={effectiveUser}
                                 userAddresses={effectiveUser?.addresses || []}

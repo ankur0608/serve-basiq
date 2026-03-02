@@ -11,12 +11,13 @@ import { useQuery } from '@tanstack/react-query';
 // Components
 import BookingForm from './BookingForm';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
-import SuccessModal from '@/components/ui/SuccessModal'; // ✅ Import the new modal
+import SuccessModal from '@/components/ui/SuccessModal';
 
 interface Props {
     serviceId: string;
     serviceName: string;
     price: number;
+    priceType?: string; // ✅ Added priceType
     currentUser: any;
     userAddresses: any[];
     defaultOpen?: boolean;
@@ -27,6 +28,7 @@ export default function BookingWrapper({
     serviceId,
     serviceName,
     price,
+    priceType, // ✅ Destructured priceType
     currentUser,
     userAddresses,
     defaultOpen = false,
@@ -37,7 +39,7 @@ export default function BookingWrapper({
     // States
     const [isBookingOpen, setIsBookingOpen] = useState(defaultOpen);
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
-    const [isSuccessOpen, setIsSuccessOpen] = useState(false); // ✅ Success State
+    const [isSuccessOpen, setIsSuccessOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     const router = useRouter();
@@ -120,7 +122,9 @@ export default function BookingWrapper({
                     onClick={handleProceedClick}
                     className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-slate-200"
                 >
-                    Proceed to Booking <FaArrowRight className="group-hover:translate-x-1 transition" />
+                    {/* ✅ Dynamically render button text based on priceType */}
+                    {priceType === 'QUOTE' ? 'Request a Quote' : 'Proceed to Booking'}
+                    <FaArrowRight className="group-hover:translate-x-1 transition" />
                 </button>
             )}
 
@@ -148,6 +152,7 @@ export default function BookingWrapper({
                             serviceId={serviceId}
                             serviceName={serviceName}
                             price={price}
+                            priceType={priceType} // ✅ Passed down
                             userId={activeUser?.id}
                             userAddresses={effectiveAddresses}
                             userDetails={activeUser}
@@ -166,10 +171,10 @@ export default function BookingWrapper({
                                     serviceId={serviceId}
                                     serviceName={serviceName}
                                     price={price}
+                                    priceType={priceType} // ✅ Passed down
                                     userId={activeUser?.id}
                                     userAddresses={effectiveAddresses}
                                     userDetails={activeUser}
-                                    // ✅ Pass success handler
                                     onSuccess={handleBookingSuccess}
                                     onRequestClose={handleClose}
                                 />
@@ -188,8 +193,13 @@ export default function BookingWrapper({
                         setIsSuccessOpen(false);
                         if (onRequestClose) onRequestClose(); // Close parent wrapper if needed
                     }}
-                    title="Booking Confirmed!"
-                    message={`Your request for ${serviceName} has been received. The provider will contact you shortly.`}
+                    // ✅ Dynamic title and message for quotes vs regular bookings
+                    title={priceType === 'QUOTE' ? "Quote Request Sent!" : "Booking Confirmed!"}
+                    message={
+                        priceType === 'QUOTE'
+                            ? `Your quote request for ${serviceName} has been received. The provider will contact you shortly to discuss pricing.`
+                            : `Your request for ${serviceName} has been received. The provider will contact you shortly.`
+                    }
                     buttonText="View My Bookings"
                     onButtonClick={() => router.push('/profile/bookings')} // Redirect to bookings page
                 />

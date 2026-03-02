@@ -3,9 +3,7 @@
 import {
     FaBoxOpen,
     FaTruckFast,
-    FaCalendarDays,
     FaUserTie,
-    FaClock,
     FaPhone,
 } from "react-icons/fa6";
 import clsx from "clsx";
@@ -67,7 +65,9 @@ export default function ActivityTabs({
 
                 const image = item.image ||
                     item.product?.productImage ||
+                    item.service?.serviceimg ||
                     item.service?.mainimg ||
+                    item.service?.coverImg ||
                     item.rental?.rentalImg ||
                     item.rental?.coverImg;
 
@@ -75,6 +75,9 @@ export default function ActivityTabs({
                     item.totalPrice ||
                     item.service?.price ||
                     0;
+
+                // ✅ Check if this item is a Quote request
+                const isQuote = item.service?.priceType === 'QUOTE' || item.rental?.priceType === 'QUOTE';
 
                 const providerName = item.bookingOwner?.name ||
                     item.bookingOwner?.shopName ||
@@ -162,9 +165,16 @@ export default function ActivityTabs({
 
                         {/* Right: Price & Status */}
                         <div className="w-full md:w-auto flex md:flex-col justify-between md:items-end gap-2 md:gap-1 mt-2 md:mt-0 pl-0 md:pl-4 md:border-l md:border-gray-50">
+
+                            {/* ✅ Dynamic Price Display */}
                             <div className="text-xl font-extrabold text-slate-900">
-                                ₹{price}
+                                {isQuote ? (
+                                    <span className="text-sm font-bold text-slate-500">Quote Requested</span>
+                                ) : (
+                                    `₹${price}`
+                                )}
                             </div>
+
                             <span
                                 className={clsx(
                                     "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1",

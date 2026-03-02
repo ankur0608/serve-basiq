@@ -133,7 +133,8 @@ export async function POST(req: Request) {
             workingDays,
             openTime,
             closeTime,
-            is24x7,           // ✅ ADDED is24x7 HERE
+            is24x7,
+            isRemote,         // ✅ 1. ADDED isRemote HERE
             altPhone,
             radiusKm,
             latitude,
@@ -169,7 +170,8 @@ export async function POST(req: Request) {
             workingDays: workingDays || [],
             openTime,
             closeTime,
-            is24x7: is24x7 === true, // ✅ ADDED is24x7 TO DB PAYLOAD
+            is24x7: is24x7 === true,
+            isRemote: isRemote === true, // ✅ 2. ADDED isRemote TO DB PAYLOAD
         };
 
         if (categoryId) {

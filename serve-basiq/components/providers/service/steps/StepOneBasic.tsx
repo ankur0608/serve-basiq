@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import {
     Briefcase, ChevronRight, Loader2, Hammer, Truck, Box, ShieldCheck,
     Hourglass, Save, UploadCloud, Navigation, Trash2, Clock, Camera,
-    Plus, Check, BadgeIndianRupee, PlayCircle, FileVideo
-} from 'lucide-react';
+    Plus, Check, BadgeIndianRupee, PlayCircle, FileVideo, Globe, Info
+} from 'lucide-react'; // ✅ Added 'Info' icon
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import AppImage from '@/components/ui/AppImage';
@@ -25,10 +25,10 @@ export const StepOneDetails = ({
 }: any) => {
     const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // ✅ Includes all Rental Pricing Types
+    // ✅ Added QUOTE to the Service pricing options
     const PRICING_OPTIONS = listingType === 'RENTAL'
         ? ['HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'FIXED']
-        : ['FIXED', 'HOURLY'];
+        : ['FIXED', 'HOURLY', 'QUOTE'];
 
     return (
         <div className="space-y-8 animate-in slide-in-from-right duration-300">
@@ -125,10 +125,30 @@ export const StepOneDetails = ({
                             onChange={(e: any) => handleChange('desc', e.target.value)}
                         />
                     </div>
+
+                    {listingType === 'SERVICE' && (
+                        <div className="mt-4 flex items-center justify-between bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                            <div className="flex items-center gap-3">
+                                <Globe size={20} className="text-blue-500" />
+                                <div>
+                                    <h4 className="text-xs font-bold text-blue-900 uppercase">Remote / Online Service</h4>
+                                    <p className="text-[10px] text-blue-600/80 mt-0.5">I provide this service globally or remotely.</p>
+                                </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={form.isRemote || false}
+                                    onChange={(e) => handleChange('isRemote', e.target.checked)}
+                                />
+                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* --- SECTION: RENTAL SPECIFICS (Only if Rental) --- */}
             {listingType === 'RENTAL' && (
                 <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 space-y-4">
                     <h3 className="text-sm font-extrabold text-orange-800 mb-2 uppercase tracking-wider">Rental Specifications</h3>
@@ -204,120 +224,127 @@ export const StepOneDetails = ({
                             ))}
                         </div>
                     </div>
-                    <div className="relative group">
-                        <div className="absolute left-3 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                            <BadgeIndianRupee size={20} />
-                        </div>
-                        <input
-                            type="number"
-                            className={`${inputClass} pl-10 text-lg font-bold text-slate-800`}
-                            placeholder="0.00"
-                            value={form.price}
-                            onChange={(e: any) => handleChange('price', e.target.value)}
-                        />
-                    </div>
-                </div>
-            </div>
 
-            {/* --- SECTION: SCHEDULE & LOCATION --- */}
-            <div>
-                <h3 className={sectionTitleClass}>Availability & Location</h3>
-                <div className="space-y-5">
-
-                    {/* Location Block */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Input
-                                label="SERVICE RADIUS (KM)"
+                    {/* ✅ Conditional Pricing Display */}
+                    {form.priceType !== 'QUOTE' ? (
+                        <div className="relative group">
+                            <div className="absolute left-3 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                                <BadgeIndianRupee size={20} />
+                            </div>
+                            <input
                                 type="number"
-                                placeholder="e.g. 10"
-                                value={form.radiusKm}
-                                onChange={(e: any) => handleChange('radiusKm', e.target.value)}
-                                className="bg-white"
+                                className={`${inputClass} pl-10 text-lg font-bold text-slate-800`}
+                                placeholder="0.00"
+                                value={form.price}
+                                onChange={(e: any) => handleChange('price', e.target.value)}
                             />
                         </div>
-                        <div className="flex items-end">
-                            <button
-                                type="button"
-                                onClick={handleGetLocation}
-                                className={`w-full py-3 h-[46px] rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition border shadow-sm ${form.latitude ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'}`}
-                            >
-                                {gettingLoc ? <Loader2 className="animate-spin" size={18} /> : (form.latitude ? <Check size={18} /> : <Navigation size={18} />)}
-                                {form.latitude ? "GPS Captured" : "Get Location"}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* ✅ Scheduling Block (Hidden for Rentals, Collapses if 24x7) */}
-                    {listingType === 'SERVICE' && (
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-
-                            {/* 24x7 Toggle */}
-                            <div className="flex items-center justify-between mb-2">
-                                <div>
-                                    <h4 className="text-xs font-bold text-slate-900 uppercase">24x7 Availability</h4>
-                                    <p className="text-[10px] text-slate-500 mt-0.5">I am available all day, every day.</p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                        checked={form.is24x7 || false}
-                                        onChange={(e) => handleChange('is24x7', e.target.checked)}
-                                    />
-                                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-
-                            {/* Conditionally render Working Days and Times */}
-                            {!form.is24x7 && (
-                                <div className="space-y-4 pt-4 border-t border-slate-200 mt-2">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">Working Days</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {DAYS.map((day: string) => {
-                                                const isSelected = form.workingDays?.includes(day);
-                                                return (
-                                                    <button
-                                                        key={day}
-                                                        type="button"
-                                                        onClick={() => toggleDay(day)}
-                                                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all border shadow-sm ${isSelected ? 'bg-slate-900 text-white border-slate-900 transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
-                                                    >
-                                                        {day}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className={labelClass}>Opens At</label>
-                                            <div className="relative">
-                                                <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
-                                                <input type="time" className={`${inputClass} pl-9`} value={form.openTime || ''} onChange={(e: any) => handleChange('openTime', e.target.value)} />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className={labelClass}>Closes At</label>
-                                            <div className="relative">
-                                                <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
-                                                <input type="time" className={`${inputClass} pl-9`} value={form.closeTime || ''} onChange={(e: any) => handleChange('closeTime', e.target.value)} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                    ) : (
+                        <div className="mt-4 p-4 bg-blue-50/80 border border-blue-100 rounded-xl flex items-start gap-3">
+                            <Info size={18} className="text-blue-500 mt-0.5 shrink-0" />
+                            <p className="text-xs font-medium text-blue-800 leading-relaxed">
+                                Customers will need to contact you directly to get a custom price quote based on their specific needs for this service.
+                            </p>
                         </div>
                     )}
                 </div>
             </div>
 
+            {!form.isRemote && (
+                <div>
+                    <h3 className={sectionTitleClass}>Availability & Location</h3>
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Input
+                                    label="SERVICE RADIUS (KM)"
+                                    type="number"
+                                    placeholder="e.g. 10"
+                                    value={form.radiusKm}
+                                    onChange={(e: any) => handleChange('radiusKm', e.target.value)}
+                                    className="bg-white"
+                                />
+                            </div>
+                            <div className="flex items-end">
+                                <button
+                                    type="button"
+                                    onClick={handleGetLocation}
+                                    className={`w-full py-3 h-[46px] rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition border shadow-sm ${form.latitude ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'}`}
+                                >
+                                    {gettingLoc ? <Loader2 className="animate-spin" size={18} /> : (form.latitude ? <Check size={18} /> : <Navigation size={18} />)}
+                                    {form.latitude ? "GPS Captured" : "Get Location"}
+                                </button>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+            )}
+            {listingType === 'SERVICE' && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="flex items-center justify-between mb-2">
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-900 uppercase">24x7 Availability</h4>
+                            <p className="text-[10px] text-slate-500 mt-0.5">I am available all day, every day.</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={form.is24x7 || false}
+                                onChange={(e) => handleChange('is24x7', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
+                    {!form.is24x7 && (
+                        <div className="space-y-4 pt-4 border-t border-slate-200 mt-2">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">Working Days</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {DAYS.map((day: string) => {
+                                        const isSelected = form.workingDays?.includes(day);
+                                        return (
+                                            <button
+                                                key={day}
+                                                type="button"
+                                                onClick={() => toggleDay(day)}
+                                                className={`px-3 py-2 text-xs font-bold rounded-lg transition-all border shadow-sm ${isSelected ? 'bg-slate-900 text-white border-slate-900 transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
+                                            >
+                                                {day}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass}>Opens At</label>
+                                    <div className="relative">
+                                        <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
+                                        <input type="time" className={`${inputClass} pl-9`} value={form.openTime || ''} onChange={(e: any) => handleChange('openTime', e.target.value)} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Closes At</label>
+                                    <div className="relative">
+                                        <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
+                                        <input type="time" className={`${inputClass} pl-9`} value={form.closeTime || ''} onChange={(e: any) => handleChange('closeTime', e.target.value)} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             <button
                 type="button"
                 onClick={() => setStep(2)}
-                disabled={!form.name || !form.categoryId || !form.price}
+                disabled={!form.name || !form.categoryId || (form.priceType !== 'QUOTE' && !form.price)}
                 className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
                 Continue to Media <ChevronRight size={18} />
@@ -331,7 +358,6 @@ export const StepTwoMedia = ({
     removeGalleryImg, removeServiceImage, processingMsg, loading, serviceData, onComplete
 }: any) => {
 
-    // ✅ Enforce Max 5 Service Images
     const handleServiceImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
@@ -348,10 +374,9 @@ export const StepTwoMedia = ({
         }
 
         if (validFiles.length > 0) uploadMultipleFiles(validFiles, 'serviceImages');
-        e.target.value = ''; // Reset
+        e.target.value = '';
     };
 
-    // ✅ Enforce Max 45 Images / 5 Videos
     const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
@@ -382,7 +407,7 @@ export const StepTwoMedia = ({
         }
 
         if (validFiles.length > 0) uploadMultipleFiles(validFiles, 'gallery');
-        e.target.value = ''; // Reset
+        e.target.value = '';
     };
 
     return (
@@ -413,7 +438,7 @@ export const StepTwoMedia = ({
                 </div>
             </div>
 
-            {/* ✅ 2. Service Angles (Max 5) */}
+            {/* 2. Service Angles */}
             <div>
                 <label className={labelClass}>Extra Angles (Max 5)</label>
                 <div className="grid grid-cols-5 gap-2">
@@ -441,17 +466,7 @@ export const StepTwoMedia = ({
                 </div>
             </div>
 
-            {/* 3. Cover Banner */}
-            {/* <div>
-                <label className={labelClass}>Banner Strip (Optional)</label>
-                <div className="relative h-24 rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
-                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'coverImg')} className="absolute inset-0 opacity-0 cursor-pointer z-10" disabled={!!processingMsg} />
-                    {activeUploadField === 'coverImg' && (<div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20"><Loader2 className="animate-spin text-blue-600" size={24} /></div>)}
-                    {form.coverImg ? (<AppImage src={form.coverImg} alt="Cover" type="card" className="w-full h-full object-cover" />) : (<div className="flex items-center gap-2 text-slate-400 group-hover:text-blue-500"><Camera size={20} /> <span className="text-xs font-bold">Upload Banner</span></div>)}
-                </div>
-            </div> */}
-
-            {/* ✅ 4. Gallery Section (Limits applied) */}
+            {/* 4. Gallery Section */}
             <div>
                 <label className={labelClass}>Gallery Media (Images: Max 45 | Videos: Max 5)</label>
                 <div className="grid grid-cols-4 gap-3">
