@@ -106,7 +106,19 @@ export async function PATCH(request: Request) {
     if (preferredLanguage) userUpdateData.preferredLanguage = preferredLanguage;
 
     if (Object.keys(userUpdateData).length > 0) {
-      await prisma.user.update({ where: { id: userId }, data: userUpdateData });
+      try {
+        await prisma.user.update({ where: { id: userId }, data: userUpdateData });
+      } catch (err: any) {
+        // ✅ CATCH UNIQUE CONSTRAINT ERRORS (P2002)
+        if (err.code === 'P2002') {
+          const field = err.meta?.target?.[0] || 'Field';
+          return NextResponse.json(
+            { error: `This ${field} is already associated with another account.` },
+            { status: 400 }
+          );
+        }
+        throw err; // Re-throw if it's a different error
+      }
     }
 
     // 2. Update Address Data
@@ -126,13 +138,11 @@ export async function PATCH(request: Request) {
       };
 
       if (id) {
-        // ✅ Specific update: Modal passed an existing Address ID
         await prisma.address.update({
           where: { id: id },
           data: addressData
         });
       } else {
-        // 🔄 Fallback: Update most recent address or create new (from ProfileEditModal)
         const existingAddress = await prisma.address.findFirst({
           where: { userId },
           orderBy: { createdAt: 'desc' }
@@ -160,7 +170,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
   }
 }
-
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);

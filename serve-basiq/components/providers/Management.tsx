@@ -63,10 +63,9 @@ const ServiceTableRow = memo(
                                     {s.listingType === 'RENTAL' ? 'Rental' : 'Service'}
                                 </span>
 
-                                {/* ✅ Added Verification Badge Here */}
                                 <span className={`flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${s.isVerified
-                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                        : 'bg-amber-50 text-amber-600 border-amber-100'
+                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                    : 'bg-amber-50 text-amber-600 border-amber-100'
                                     }`}>
                                     {s.isVerified ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
                                     {s.isVerified ? 'Verified' : 'Pending'}
@@ -77,9 +76,14 @@ const ServiceTableRow = memo(
                                 {shortDesc}
                             </p>
 
+                            {/* MOBILE PRICE DISPLAY */}
                             <div className="flex flex-wrap items-center gap-2 mt-2 sm:hidden">
                                 <span className="font-bold text-slate-700 text-xs">
-                                    ₹{Number(s.price).toLocaleString()} <span className="text-[9px] text-slate-400 font-medium uppercase">/{getPriceUnit(s.priceType)}</span>
+                                    {s.priceType === 'QUOTE' ? (
+                                        <span className="text-slate-500">Custom Quote</span>
+                                    ) : (
+                                        <>₹{Number(s.price).toLocaleString()} <span className="text-[9px] text-slate-400 font-medium uppercase">/{getPriceUnit(s.priceType)}</span></>
+                                    )}
                                 </span>
                                 <span className="text-[9px] font-bold uppercase bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">
                                     {s.category?.name || 'General'}
@@ -102,11 +106,18 @@ const ServiceTableRow = memo(
                     </span>
                 </td>
 
+                {/* DESKTOP PRICE DISPLAY */}
                 <td className="py-4 align-middle font-bold text-slate-700 text-sm hidden sm:table-cell">
-                    ₹{Number(s.price).toLocaleString()}
-                    <span className="text-[10px] text-slate-400 font-medium ml-1 uppercase">
-                        /{getPriceUnit(s.priceType)}
-                    </span>
+                    {s.priceType === 'QUOTE' ? (
+                        <span className="text-slate-500 italic font-medium text-xs">Custom Quote</span>
+                    ) : (
+                        <>
+                            ₹{Number(s.price).toLocaleString()}
+                            <span className="text-[10px] text-slate-400 font-medium ml-1 uppercase">
+                                /{getPriceUnit(s.priceType)}
+                            </span>
+                        </>
+                    )}
                 </td>
 
                 <td className="py-4 align-middle hidden md:table-cell">
@@ -136,7 +147,6 @@ const ServiceTableRow = memo(
         );
     });
 ServiceTableRow.displayName = "ServiceTableRow";
-
 
 export function ManagementView({
     currentUser,

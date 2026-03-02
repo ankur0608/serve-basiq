@@ -152,8 +152,10 @@ export function useUpdateProfile() {
                 body: JSON.stringify(payload),
             });
 
-            if (!updateRes.ok) throw new Error("Failed to update profile");
-
+            if (!updateRes.ok) {
+                const errorData = await updateRes.json().catch(() => ({}));
+                throw new Error(errorData.error || "Failed to update profile");
+            }
             return { payload, uploadedImageUrl };
         },
         onSuccess: async (data) => {

@@ -5,14 +5,23 @@ import { FaBriefcase } from 'react-icons/fa6';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import LoginModal from '@/components/auth/LoginModal';
+import { useUIStore } from '@/lib/store';
 
 export default function BecomeProviderBanner() {
     const { data: session, status } = useSession();
+    const { currentUser } = useUIStore();
     const router = useRouter();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Safely check if the logged-in user is a worker
-    const isWorker = (session?.user as any)?.isWorker === true;
+    // ✅ Check BOTH the store and the session for the isWorker flag
+    const isWorker = currentUser?.isWorker === true || (session?.user as any)?.isWorker === true;
+
+    // ✅ NEW: Are we logged in, but waiting for the database to send us the user profile?
+    // If the session doesn't know they are a worker, and the store is empty, we must wait.
+    const isProfileLoading =
+        status === 'authenticated' &&
+        currentUser === null &&
+        (session?.user as any)?.isWorker === undefined;
 
     const handleAction = () => {
         // Condition 1: User is NOT logged in -> Show Login Modal
@@ -21,18 +30,21 @@ export default function BecomeProviderBanner() {
             return;
         }
 
-        // Condition 2: User IS logged in & IS a worker -> Go to Dashboard
+        // Condition 2: Prevent clicks if data is still syncing
+        if (isProfileLoading) return;
+
+        // Condition 3: User IS logged in & IS a worker -> Go to Dashboard
         if (isWorker) {
             router.push('/provider/dashboard');
             return;
         }
 
-        // Condition 3: User IS logged in & is NOT a worker -> Go to Apply Page
+        // Condition 4: User IS logged in & is NOT a worker -> Go to Apply Page
         router.push('/become-pro');
     };
 
-    // Optional: Hide the banner for a split second while checking login status to prevent UI flickering
-    if (status === 'loading') {
+    // ✅ Show skeleton if NextAuth is loading OR if we are waiting for Zustand to get the profile
+    if (status === 'loading' || isProfileLoading) {
         return <div className="h-32 bg-slate-100 animate-pulse rounded-2xl w-full"></div>;
     }
 

@@ -21,7 +21,7 @@ import clsx from "clsx";
 import AppImage from "@/components/ui/AppImage";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-
+import toast from "react-hot-toast";
 // --- TYPES ---
 export interface ProfileData {
     name: string;
@@ -162,8 +162,10 @@ export default function ProfileEditModal({
         setLoading(true);
         try {
             await onSave(formData, file);
+            toast.success("Profile updated successfully!");
         } catch (error) {
             console.error(error);
+            toast.error("Something went wrong. Please try again.");
         } finally {
             setLoading(false);
         }

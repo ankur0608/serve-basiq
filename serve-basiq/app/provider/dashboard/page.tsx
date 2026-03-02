@@ -85,7 +85,7 @@ export default function ProviderDashboard() {
     const activeNavId = getActiveNavId(activeView);
 
     const displayName = userData?.name || currentUser?.name || "Provider";
-    const displayImg = userData?.profileImage || userData?.img || "https://i.pravatar.cc/150";
+    const displayImg = userData?.image || userData?.profileImage || "/placeholder-user.png";
     const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     if (loading) return (
