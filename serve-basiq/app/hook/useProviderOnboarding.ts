@@ -1,12 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import imageCompression from 'browser-image-compression';
 import { onboardSchema } from "@/lib/validators";
 import { useUIStore, User } from "@/lib/store";
-import toast from "react-hot-toast"; // ✅ Imported toast
+import toast from "react-hot-toast";
 
-// 🌟 Import your global upload function!
 import { uploadToBackend } from "@/lib/uploadToBackend";
 
 const MAX_FRONTEND_SIZE_MB = 10;
@@ -14,7 +13,7 @@ const COMPRESSION_OPTIONS = {
     maxSizeMB: 0.8,
     maxWidthOrHeight: 1200,
     useWebWorker: true,
-    fileType: "image/webp" as const // 🎯 Forces conversion to WebP 
+    fileType: "image/webp" as const
 };
 
 export function useProviderOnboarding() {
@@ -42,6 +41,39 @@ export function useProviderOnboarding() {
         longitude: 0,
         providerType: "BOTH",
     });
+
+    // 🚀 NEW: Auto-check if phone exists when user types 10 digits
+    useEffect(() => {
+        const checkDuplicatePhone = async () => {
+            // Only check if it's 10 digits and it's NOT their already saved number
+            if (form.altPhone.length === 10 && form.altPhone !== currentUser?.phone) {
+                try {
+                    const res = await fetch(`/api/user/check-phone?phone=${form.altPhone}`);
+                    const data = await res.json();
+
+                    if (data.exists && data.userId !== currentUser?.id) {
+                        toast.error("This mobile number is already registered to another account.");
+                        setErrors(prev => ({ ...prev, altPhone: "Number already in use." }));
+                    } else {
+                        // Clear the error if the number is available
+                        if (errors.altPhone === "Number already in use.") {
+                            setErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.altPhone;
+                                return newErrors;
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error("Failed to check phone uniqueness", error);
+                }
+            }
+        };
+
+        // Debounce the check by 500ms so we don't spam the API while they type
+        const timeoutId = setTimeout(checkDuplicatePhone, 500);
+        return () => clearTimeout(timeoutId);
+    }, [form.altPhone, currentUser?.phone, currentUser?.id, errors.altPhone]);
 
     const { isLoading: isFetchingProfile } = useQuery({
         queryKey: ["userProfile", currentUser?.id],
@@ -98,7 +130,7 @@ export function useProviderOnboarding() {
                 setCurrentUser(updatedUser);
             }
             queryClient.invalidateQueries({ queryKey: ["userProfile", currentUser?.id] });
-            toast.success("Welcome aboard! Your profile is ready."); // ✅ Added success toast
+            toast.success("Welcome aboard! Your profile is ready.");
             router.push("/provider/dashboard?new=true");
         },
         onError: (error: any) => {
@@ -110,12 +142,11 @@ export function useProviderOnboarding() {
                 setErrors(formattedErrors);
                 window.scrollTo({ top: 0, behavior: "smooth" });
             } else {
-                toast.error(error.message || "Registration failed. Please try again."); 
+                toast.error(error.message || "Registration failed. Please try again.");
             }
         },
     });
 
-    // --- HANDLERS ---
     const handleChange = useCallback((field: string, value: any) => {
         setForm((prev) => ({ ...prev, [field]: value }));
         if (errors[field]) {
@@ -150,7 +181,6 @@ export function useProviderOnboarding() {
         );
     }, []);
 
-    // 🚀 UPDATED: Uses imageCompression and global uploadToBackend
     const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -161,27 +191,19 @@ export function useProviderOnboarding() {
         }
 
         if (!file.type.startsWith("image/")) {
-            toast.error("Invalid file type. Please upload an image."); 
+            toast.error("Invalid file type. Please upload an image.");
             return;
         }
 
         try {
             setUploading(true);
-
-            // 1. Compress and convert to WebP
-            console.log(`📉 Compressing ${file.name}...`);
             const compressedBlob = await imageCompression(file, COMPRESSION_OPTIONS);
-
-            // 2. Ensure the filename has a .webp extension
             const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
             const uploadFile = new File([compressedBlob], newFileName, { type: 'image/webp' });
 
-            // 3. Upload directly to Cloudflare R2
             const url = await uploadToBackend(uploadFile);
-
             setImgPreview(url);
 
-            // Clear error if exists
             if (errors.profileImage) {
                 setErrors(prev => {
                     const n = { ...prev };
@@ -191,7 +213,7 @@ export function useProviderOnboarding() {
             }
         } catch (err: any) {
             console.error("Upload Error:", err);
-            toast.error(err.message || "Failed to process and upload image."); 
+            toast.error(err.message || "Failed to process and upload image.");
         } finally {
             setUploading(false);
         }
@@ -200,6 +222,12 @@ export function useProviderOnboarding() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) return router.push("/login");
+
+        // Prevent submission if the phone number is already taken
+        if (errors.altPhone) {
+            toast.error("Please provide a valid, unused mobile number.");
+            return;
+        }
 
         try {
             const payload = {
@@ -234,4 +262,4 @@ export function useProviderOnboarding() {
         handleImageUpload,
         handleSubmit,
     };
-}
+}   

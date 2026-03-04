@@ -18,7 +18,7 @@ import {
     Calendar,
     Languages
 } from 'lucide-react';
-import toast from 'react-hot-toast'; // ✅ Imported toast
+import toast from 'react-hot-toast';
 
 import StepOnePersonal from './StepOneProfile';
 import StepSocial from './StepSocial';
@@ -85,38 +85,90 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     const [activeModal, setActiveModal] = useState<'PERSONAL' | 'SOCIAL' | 'ADDRESS' | 'KYC' | null>(null);
     const [loading, setLoading] = useState(false);
 
+    // ✅ initialized with empty/defaults to prevent input crashing 
     const [form, setForm] = useState({
-        userId: user?.id,
-        fullName: user?.name || '',
-        email: user?.email || '',
-        phone: user?.phone || '',
-        gender: user?.gender || 'MALE',
-        dob: user?.dob ? new Date(user.dob).toISOString().split('T')[0] : '',
-        preferredLanguage: user?.preferredLanguage || 'English',
-        providerType: user?.providerType || 'BOTH',
-        shopName: user?.shopName || '',
-        instagramUrl: user?.instagramUrl || '',
-        facebookUrl: user?.facebookUrl || '',
-        youtubeUrl: user?.youtubeUrl || '',
-        websiteUrl: user?.websiteUrl || '',
-        addressLine1: user?.addresses?.find((a: any) => a.type === 'Home')?.line1 || '',
-        addressLine2: user?.addresses?.find((a: any) => a.type === 'Home')?.line2 || '',
-        landmark: user?.addresses?.find((a: any) => a.type === 'Home')?.landmark || '',
-        city: user?.addresses?.find((a: any) => a.type === 'Home')?.city || '',
-        state: user?.addresses?.find((a: any) => a.type === 'Home')?.state || '',
-        pincode: user?.addresses?.find((a: any) => a.type === 'Home')?.pincode || '',
-        bizAddressLine1: user?.addresses?.find((a: any) => a.type === 'Work')?.line1 || '',
-        bizAddressLine2: user?.addresses?.find((a: any) => a.type === 'Work')?.line2 || '',
-        bizCity: user?.addresses?.find((a: any) => a.type === 'Work')?.city || '',
-        bizState: user?.addresses?.find((a: any) => a.type === 'Work')?.state || '',
-        bizPincode: user?.addresses?.find((a: any) => a.type === 'Work')?.pincode || '',
+        userId: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        gender: 'MALE',
+        dob: '',
+        preferredLanguage: 'English',
+        providerType: 'BOTH',
+        shopName: '',
+        instagramUrl: '',
+        facebookUrl: '',
+        youtubeUrl: '',
+        websiteUrl: '',
+        addressLine1: '',
+        addressLine2: '',
+        landmark: '',
+        city: '',
+        state: '',
+        pincode: '',
+        bizAddressLine1: '',
+        bizAddressLine2: '',
+        bizCity: '',
+        bizState: '',
+        bizPincode: '',
         sameAsPersonal: false,
-        idProofType: user?.kycDetails?.idProofType || 'Aadhaar',
-        idProofNumber: user?.kycDetails?.idProofNumber || '',
-        idProofImg: user?.kycDetails?.idProofFrontImg || '',
-        gstRegistered: user?.kycDetails?.gstRegistered || false,
-        gstNumber: user?.kycDetails?.gstNumber || '',
+        idProofType: 'Aadhaar',
+        idProofNumber: '',
+        idProofImg: '',
+        gstRegistered: false,
+        gstNumber: '',
     });
+
+    // ✅ EFFECT TO SYNC DB DATA WITH FORM STATE (Fixes the blank date & language issue)
+    useEffect(() => {
+        if (user) {
+            // Safely parse the Date to strictly match YYYY-MM-DD for the HTML date input
+            let formattedDob = '';
+            if (user.dob) {
+                try {
+                    const d = new Date(user.dob);
+                    if (!isNaN(d.getTime())) {
+                        formattedDob = d.toISOString().split('T')[0];
+                    }
+                } catch (e) {
+                    console.error("Invalid date format", e);
+                }
+            }
+
+            setForm({
+                userId: user.id || '',
+                fullName: user.name || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                gender: user.gender || 'MALE',
+                dob: formattedDob,
+                preferredLanguage: user.preferredLanguage || 'English',
+                providerType: user.providerType || 'BOTH',
+                shopName: user.shopName || '',
+                instagramUrl: user.instagramUrl || '',
+                facebookUrl: user.facebookUrl || '',
+                youtubeUrl: user.youtubeUrl || '',
+                websiteUrl: user.websiteUrl || '',
+                addressLine1: user.addresses?.find((a: any) => a.type === 'Home')?.line1 || '',
+                addressLine2: user.addresses?.find((a: any) => a.type === 'Home')?.line2 || '',
+                landmark: user.addresses?.find((a: any) => a.type === 'Home')?.landmark || '',
+                city: user.addresses?.find((a: any) => a.type === 'Home')?.city || '',
+                state: user.addresses?.find((a: any) => a.type === 'Home')?.state || '',
+                pincode: user.addresses?.find((a: any) => a.type === 'Home')?.pincode || '',
+                bizAddressLine1: user.addresses?.find((a: any) => a.type === 'Work')?.line1 || '',
+                bizAddressLine2: user.addresses?.find((a: any) => a.type === 'Work')?.line2 || '',
+                bizCity: user.addresses?.find((a: any) => a.type === 'Work')?.city || '',
+                bizState: user.addresses?.find((a: any) => a.type === 'Work')?.state || '',
+                bizPincode: user.addresses?.find((a: any) => a.type === 'Work')?.pincode || '',
+                sameAsPersonal: false,
+                idProofType: user.kycDetails?.idProofType || 'Aadhaar',
+                idProofNumber: user.kycDetails?.idProofNumber || '',
+                idProofImg: user.kycDetails?.idProofFrontImg || '',
+                gstRegistered: user.kycDetails?.gstRegistered || false,
+                gstNumber: user.kycDetails?.gstNumber || '',
+            });
+        }
+    }, [user]);
 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -153,7 +205,7 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 router.refresh();
                 toast.success('Profile updated successfully');
             } else {
-                toast.error('Failed to update profile'); 
+                toast.error('Failed to update profile');
             }
         } catch (error) {
             console.error(error);
@@ -223,7 +275,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 onSave={handleSave}
                 loading={loading}
             >
-                {/* ✅ Updated showToast to use toast() */}
                 <StepThreeKYC form={form} updateField={updateField} showToast={(msg: string) => toast(msg)} errors={errors} getInputClass={getInputClass} />
             </EditModal>
 
@@ -251,7 +302,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 </p>
             </div>
 
-            {/* Grid & Cards remain unchanged below this line, I've kept the file complete for easy copy-pasting */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                 <div className="bg-white rounded-2xl shadow-sm border-l-4 border-blue-500 p-6 relative overflow-hidden group">
                     <button

@@ -24,7 +24,7 @@ export interface User {
   phone: string;
   img: string | null;
   image?: string | null;
-
+  profileImage?: string | null; // 👉 ADD THIS LINE
   role: string;
   providerType?: "SERVICE" | "PRODUCT" | "BOTH" | string;
 
@@ -127,11 +127,11 @@ export const useUIStore = create<UIState>()(
       onOpenOtp: (phone, verificationId, isNewUser) => {
         // If the ID passed is exactly 4 digits, it's our local dev OTP
         const isDevOtp = verificationId && verificationId.length === 4 && !isNaN(Number(verificationId));
-        
+
         set({
           mobileNumber: phone,
-          verificationId: isDevOtp ? null : verificationId, 
-          devOtp: isDevOtp ? verificationId : undefined, 
+          verificationId: isDevOtp ? null : verificationId,
+          devOtp: isDevOtp ? verificationId : undefined,
           isNewUser: isNewUser || false,
           isLoginOpen: false,
           isOtpOpen: true,

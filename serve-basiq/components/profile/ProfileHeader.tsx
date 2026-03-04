@@ -21,7 +21,7 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
 
     const displayName = currentUser?.name || session?.user?.name || "User";
 
-    const displayImage = userImage || currentUser?.img || session?.user?.image;
+    const displayImage = userImage || currentUser?.image || currentUser?.profileImage || currentUser?.img || session?.user?.image;
 
     const displayPhone = currentUser?.phone || session?.user?.phone;
 
@@ -48,7 +48,7 @@ export default function ProfileHeader({ onEditClick, userImage, onLogout }: Prof
                             // fill
                             className="object-cover"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            // priority
+                        // priority
                         />
                     ) : (
                         <span>{getInitials()}</span>

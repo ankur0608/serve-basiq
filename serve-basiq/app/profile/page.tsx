@@ -85,8 +85,7 @@ export default function ProfilePage() {
         name: userAny.name || "",
         email: userAny.email || "",
         phone: userAny.phone || "",
-        image: userAny.img || userAny.image || "",
-        dateOfBirth: userAny.dateOfBirth || userAny.dob || "",
+        image: userAny.image || userAny.profileImage || userAny.img || "", dateOfBirth: userAny.dateOfBirth || userAny.dob || "",
         preferredLanguage: userAny.preferredLanguage || "English",
         addressLine1: userAny.addressLine1 || primaryAddress.line1 || "",
         addressLine2: userAny.addressLine2 || primaryAddress.line2 || "",
@@ -100,8 +99,7 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen pb-32 bg-slate-50 animate-in fade-in">
             <ProfileHeader
-                userImage={userAny.img || userAny.image}
-                onLogout={fullLogout}
+                userImage={userAny.image || userAny.profileImage || userAny.img} onLogout={fullLogout}
                 onEditClick={onOpenEditProfile}
             />
 

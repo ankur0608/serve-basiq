@@ -1,15 +1,16 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo, memo, useEffect } from 'react';
-import Image from 'next/image';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useMemo, memo, useEffect } from "react";
+// Replace with the correct path to your AppImage component
+import AppImage from "@/components/ui/AppImage";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { FaHeart, FaRegHeart, FaPaperPlane, FaXmark } from "react-icons/fa6";
-import { BadgeCheck, Box, Tag } from 'lucide-react';
+import { BadgeCheck, Box, Tag } from "lucide-react";
 
-import ProductWrapper from '@/components/products/ProductWrapper';
-import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
-import LoginModal from '@/components/auth/LoginModal';
+import ProductWrapper from "@/components/products/ProductWrapper";
+import MobileVerificationModal from "@/components/auth/MobileVerificationModal";
+import LoginModal from "@/components/auth/LoginModal";
 
 interface ProductCardProps {
     product: any;
@@ -28,13 +29,13 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
 
     useEffect(() => {
         if (showRequestModal || showVerifyModal || showLoginModal) {
-            document.body.style.overflow = 'hidden';
+            document.body.style.overflow = "hidden";
         } else {
-            document.body.style.overflow = 'unset';
+            document.body.style.overflow = "unset";
         }
 
         return () => {
-            document.body.style.overflow = 'unset';
+            document.body.style.overflow = "unset";
         };
     }, [showRequestModal, showVerifyModal, showLoginModal]);
 
@@ -50,7 +51,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                 id: (session.user as any).id,
                 isPhoneVerified: (session.user as any).isPhoneVerified,
                 phone: (session.user as any).phone,
-                addresses: []
+                addresses: [],
             };
         }
         return null;
@@ -63,12 +64,12 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
         else if (product.image?.trim()) rawImageList = [product.image];
         else if (product.productImage?.trim()) rawImageList = [product.productImage];
 
-        const validImages = rawImageList.filter(url => !url.includes('via.placeholder.com'));
+        const validImages = rawImageList.filter((url) => !url.includes("via.placeholder.com"));
         return validImages[0] || "https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80";
     }, [product]);
 
     const sellerName = product.supplier || user?.businessName || user?.shopName || user?.name || "Verified Seller";
-    const categoryName = typeof category === 'string' ? category : (product.categoryName || category?.name || 'Product');
+    const categoryName = typeof category === "string" ? category : product.categoryName || category?.name || "Product";
     const moqValue = minOrder || product.moq || 1;
 
     const handleRequestClick = (e: React.MouseEvent) => {
@@ -110,13 +111,12 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                     className="relative w-full aspect-[4/3] bg-slate-50 overflow-hidden cursor-pointer"
                     onClick={handleDetailsClick}
                 >
-                    <Image
+                    <AppImage
                         src={displayImage}
                         alt={name}
-                        fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                        type="card"
+                        className="absolute inset-0 w-full h-full [&_img]:group-hover:scale-110 [&_img]:transition-transform [&_img]:duration-700"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        loading="lazy"
                     />
 
                     <div
@@ -131,7 +131,10 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
 
                     {toggleFav && (
                         <button
-                            onClick={(e) => { e.stopPropagation(); toggleFav(e); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFav(e);
+                            }}
                             className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-sm shadow-sm transition-all active:scale-90 z-10"
                         >
                             {isFav ? (
@@ -156,12 +159,11 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                         </div>
                     </div>
 
-                    {/* ✅ FIXED: Price & MOQ Row */}
+                    {/* Price & MOQ Row */}
                     <div className="flex flex-wrap items-end justify-between gap-x-1 gap-y-2 mt-auto border-t border-slate-50 pt-3">
                         {/* Price Column */}
                         <div className="flex-1 min-w-[50%]">
                             <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Price</p>
-                            {/* whitespace-nowrap prevents the unit from breaking to a new line */}
                             <div className="flex items-baseline whitespace-nowrap">
                                 <span className="text-sm sm:text-base font-bold text-slate-900">₹{price.toLocaleString()}</span>
                                 <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium ml-1">/ {unit}</span>
@@ -173,7 +175,6 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                             <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5 flex items-center justify-end gap-1">
                                 MOQ <Box size={10} />
                             </p>
-                            {/* whitespace-nowrap keeps the number and unit safely together */}
                             <span className="inline-block text-[10px] sm:text-[11px] font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded whitespace-nowrap">
                                 {moqValue} {unit}
                             </span>
@@ -199,10 +200,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
             </div>
 
             {/* --- MODALS --- */}
-            <LoginModal
-                isOpen={showLoginModal}
-                onClose={() => setShowLoginModal(false)}
-            />
+            <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
             <MobileVerificationModal
                 isOpen={showVerifyModal}

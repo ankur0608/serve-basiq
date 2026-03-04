@@ -17,6 +17,7 @@ export async function POST(req: Request) {
         name: true,
         email: true,
         image: true,
+        profileImage: true, // ✅ Fetches the second image field
         phone: true,
         gender: true,
         dob: true,

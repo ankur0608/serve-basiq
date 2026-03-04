@@ -483,11 +483,14 @@ model Requirement {
 }
 
 model Otp {
-    id        String   @id @default(cuid())
-    phone     String
-    code      String
-    expiresAt DateTime
-    createdAt DateTime @default(now())
+    id        String    @id @default(cuid())
+    phone     String    @unique
+    code      String? // <-- Add this back for Dev Mode
+    expiresAt DateTime?
+    attempts  Int       @default(0)
+    lockUntil DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @default(now()) @updatedAt // <-- Add @default(now()) here
 }
 
 model Service {
@@ -649,5 +652,5 @@ model FavoriteRental {
     rental    Rental   @relation(fields: [rentalId], references: [id], onDelete: Cascade)
     createdAt DateTime @default(now())
 
-    @@unique([userId, rentalId]) // Prevent duplicate likes
+    @@unique([userId, rentalId])
 }

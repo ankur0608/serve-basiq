@@ -49,6 +49,7 @@ export async function GET(request: Request) {
       phone: val(user.phone),
       img: val(user.image),
       image: val(user.image),
+      profileImage: val(user.profileImage), // 👉 ADDED: Sends profileImage to the frontend
       dob: formattedDob,
       dateOfBirth: formattedDob,
       preferredLanguage: val(user.preferredLanguage) || "English",
@@ -99,7 +100,9 @@ export async function PATCH(request: Request) {
     if (name) userUpdateData.name = name;
     if (email) userUpdateData.email = email;
     if (phone) userUpdateData.phone = phone;
-    if (profileImage || image) userUpdateData.image = profileImage || image;
+
+    // 👉 UPDATED: Save manual uploads to `profileImage` to prevent overwriting OAuth images
+    if (profileImage || image) userUpdateData.profileImage = profileImage || image;
 
     const dobValue = dateOfBirth || dob;
     if (dobValue) userUpdateData.dob = new Date(dobValue);
@@ -117,7 +120,7 @@ export async function PATCH(request: Request) {
             { status: 400 }
           );
         }
-        throw err; // Re-throw if it's a different error
+        throw err;
       }
     }
 
@@ -170,6 +173,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
   }
 }
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);

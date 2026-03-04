@@ -114,7 +114,8 @@ const PersonalDetails = memo(({ form, errors, onChange, session, onVerifyStart }
                             <button
                                 type="button"
                                 onClick={onVerifyStart}
-                                className="bg-slate-900 text-white text-xs py-3.5 px-4 font-bold rounded-xl hover:bg-black transition whitespace-nowrap shadow-sm"
+                                disabled={!!errors.altPhone || form.altPhone.length !== 10} // ✅ Prevents clicks if duplicate or incomplete
+                                className="bg-slate-900 text-white text-xs py-3.5 px-4 font-bold rounded-xl hover:bg-black transition whitespace-nowrap shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Verify Now
                             </button>
