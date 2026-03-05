@@ -24,6 +24,7 @@ const ProductSchema = z.object({
 
     categoryId: z.string().min(1, "Category is required"),
     subCategoryId: z.string().optional(),
+    customCategoryName: z.string().optional(), // ✅ ADDED THIS TO SCHEMA
 
     stockStatus: z.enum(['IN_STOCK', 'OUT_OF_STOCK', 'ON_DEMAND', 'MADE_TO_ORDER']).default('IN_STOCK'),
     unit: z.enum(['PIECE', 'KG', 'GRAM', 'LITER', 'ML', 'BOX', 'PACK', 'SET', 'METER', 'SQ_FT', 'TON']).default('PIECE'),
@@ -47,10 +48,9 @@ export async function POST(req: Request) {
 
         const data = ProductSchema.parse(formData);
 
-        const basePayload = {
+        const basePayload: any = {
             name: data.name,
             desc: data.desc || "",
-            // ✅ Map BOTH the single string and the array to Prisma
             productImage: data.productImages[0],
             productImages: data.productImages,
             gallery: data.gallery || [],
@@ -61,6 +61,9 @@ export async function POST(req: Request) {
             deliveryType: data.deliveryType,
             condition: data.condition,
             isVerified: false,
+
+            // 🌟 SAVE CUSTOM TEXT HERE
+            customCategory: data.categoryId === 'OTHER' ? data.customCategoryName : null,
         };
 
         let product;
@@ -71,11 +74,11 @@ export async function POST(req: Request) {
                 where: { id: productId },
                 data: {
                     ...basePayload,
-                    category: data.categoryId
+                    category: data.categoryId && data.categoryId !== 'OTHER'
                         ? { connect: { id: data.categoryId } }
                         : { disconnect: true },
 
-                    subcategory: data.subCategoryId
+                    subcategory: data.subCategoryId && data.categoryId !== 'OTHER'
                         ? { connect: { id: data.subCategoryId } }
                         : { disconnect: true },
                 },
@@ -86,11 +89,11 @@ export async function POST(req: Request) {
                 data: {
                     user: { connect: { id: userId } },
                     ...basePayload,
-                    category: data.categoryId
+                    category: data.categoryId && data.categoryId !== 'OTHER'
                         ? { connect: { id: data.categoryId } }
                         : undefined,
 
-                    subcategory: data.subCategoryId
+                    subcategory: data.subCategoryId && data.categoryId !== 'OTHER'
                         ? { connect: { id: data.subCategoryId } }
                         : undefined,
                 },
@@ -104,7 +107,6 @@ export async function POST(req: Request) {
         console.error("❌ Create Product Error:", error);
 
         if (error instanceof z.ZodError) {
-            // ✅ Replaced .errors with .issues which is fully typed in Zod
             console.error("Zod Validation Error Details:", JSON.stringify(error.issues, null, 2));
             return NextResponse.json({
                 success: false,

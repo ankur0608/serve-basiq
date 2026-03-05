@@ -199,17 +199,17 @@ model Rental {
     userId String
     user   User   @relation(fields: [userId], references: [id])
 
-    name         String
-    desc         String
-    rentalImg    String
-    coverImg     String?
-    gallery      String[]
-    rentalImages String[]
-    categoryId   String?
-    category     Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
-
-    subCategoryId String?
-    subcategory   Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
+    name           String
+    desc           String
+    rentalImg      String
+    coverImg       String?
+    gallery        String[]
+    rentalImages   String[]
+    categoryId     String?
+    category       Category? @relation("RentalMainCategory", fields: [categoryId], references: [id])
+    customCategory String?
+    subCategoryId  String?
+    subcategory    Category? @relation("RentalSubCategory", fields: [subCategoryId], references: [id])
 
     price Float @default(0)
 
@@ -510,11 +510,11 @@ model Service {
     categoryId String?
     category   Category? @relation("MainCategory", fields: [categoryId], references: [id])
 
-    subCategoryId String?
-    subcategory   Category? @relation("ServiceSubCategory", fields: [subCategoryId], references: [id])
-
-    priceType PriceType @default(FIXED)
-    price     Float     @default(0)
+    subCategoryId  String?
+    subcategory    Category? @relation("ServiceSubCategory", fields: [subCategoryId], references: [id])
+    customCategory String?
+    priceType      PriceType @default(FIXED)
+    price          Float     @default(0)
 
     addressLine1 String?
     addressLine2 String?
@@ -591,16 +591,16 @@ model Product {
     name String
     desc String
 
-    categoryId String?
-    category   Category? @relation("ProductMainCategory", fields: [categoryId], references: [id])
-
-    subCategoryId String?
-    subcategory   Category? @relation("ProductSubCategory", fields: [subCategoryId], references: [id])
-    productImage  String?
-    productImages String[]
-    gallery       String[]
-    price         Float
-    moq           Int
+    categoryId     String?
+    category       Category? @relation("ProductMainCategory", fields: [categoryId], references: [id])
+    customCategory String?
+    subCategoryId  String?
+    subcategory    Category? @relation("ProductSubCategory", fields: [subCategoryId], references: [id])
+    productImage   String?
+    productImages  String[]
+    gallery        String[]
+    price          Float
+    moq            Int
 
     condition Condition @default(NEW)
 

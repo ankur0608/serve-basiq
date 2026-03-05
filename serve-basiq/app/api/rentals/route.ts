@@ -10,7 +10,6 @@ export async function GET(req: Request) {
         const limit = parseInt(searchParams.get("limit") || "24");
         const cursor = searchParams.get("cursor");
 
-        // Filters
         const userId = searchParams.get("userId");
         const categoryId = searchParams.get("categoryId");
         const subcategoryId = searchParams.get("subcategoryId");
@@ -94,17 +93,11 @@ export async function GET(req: Request) {
             nextCursor = nextItem?.id;
         }
 
-        return NextResponse.json({
-            items: rentals,
-            nextCursor
-        });
+        return NextResponse.json({ items: rentals, nextCursor });
 
     } catch (error: any) {
         console.error("API ERROR [GET /api/rentals]:", error.message);
-        return NextResponse.json({
-            success: false,
-            message: "Failed to fetch rentals",
-        }, { status: 500 });
+        return NextResponse.json({ success: false, message: "Failed to fetch rentals" }, { status: 500 });
     }
 }
 
@@ -114,46 +107,61 @@ export async function POST(req: Request) {
 
         const {
             id, userId, name, desc, rentalImg,
-            rentalImages, // ✅ Extracted rentalImages
-            coverImg, gallery,
+            rentalImages, coverImg, gallery,
             categoryId, subCategoryId, subCategoryIds,
+            customCategoryName,
             price, priceType, stock, radiusKm,
             latitude, longitude, addressLine1, addressLine2, city, state, pincode,
             itemCondition, securityDeposit, minDuration, rentalMode
         } = body;
 
-        if (!userId || !name || !rentalImg || !price || !categoryId) {
+        if (!userId || !name || !rentalImg || price === undefined || !categoryId) {
             return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
         }
 
         const finalSubId = subCategoryId || (Array.isArray(subCategoryIds) && subCategoryIds.length > 0 ? subCategoryIds[0] : null);
         const numericPrice = parseFloat(price);
 
-        const selectedPriceType = priceType ? priceType.toUpperCase() : 'DAILY';
+        // ✅ SAFETY CHECK: Force priceType to only be one of the 4 allowed enums from your schema
+        let selectedPriceType = priceType ? priceType.toUpperCase() : 'DAILY';
+        if (!['HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY'].includes(selectedPriceType)) {
+            selectedPriceType = 'DAILY'; // Fallback so Prisma doesn't crash
+        }
+
         const formattedCondition = itemCondition ? itemCondition.toUpperCase() : 'GOOD';
         const formattedMode = rentalMode ? rentalMode.toUpperCase() : 'PICKUP';
 
-        const dataPayload = {
+        const dataPayload: any = {
             name, desc, rentalImg,
-            rentalImages: rentalImages || [], // ✅ Added to payload
-            coverImg, gallery,
+            rentalImages: rentalImages || [],
+            coverImg, gallery: gallery || [],
             price: numericPrice,
-            priceType: selectedPriceType,
+            priceType: selectedPriceType, // Guaranteed to match your schema now
+            hourlyPrice: selectedPriceType === 'HOURLY' ? numericPrice : undefined,
             dailyPrice: selectedPriceType === 'DAILY' ? numericPrice : undefined,
+            weeklyPrice: selectedPriceType === 'WEEKLY' ? numericPrice : undefined,
             monthlyPrice: selectedPriceType === 'MONTHLY' ? numericPrice : undefined,
-            fixedPrice: selectedPriceType === 'FIXED' ? numericPrice : undefined,
-            stock: parseInt(stock),
-            radiusKm: parseInt(radiusKm),
+            stock: parseInt(stock) || 1,
+            radiusKm: parseInt(radiusKm) || 10,
             latitude: latitude ? parseFloat(latitude) : null,
             longitude: longitude ? parseFloat(longitude) : null,
             addressLine1, addressLine2, city, state, pincode,
-            category: categoryId ? { connect: { id: categoryId } } : undefined,
-            subcategory: finalSubId ? { connect: { id: finalSubId } } : undefined,
             itemCondition: formattedCondition,
             securityDeposit: securityDeposit ? parseFloat(securityDeposit) : 0,
             minDuration,
-            rentalMode: formattedMode
+            rentalMode: formattedMode,
+
+            // Save custom category correctly
+            customCategory: categoryId === 'OTHER' ? customCategoryName : null
         };
+
+        if (categoryId && categoryId !== 'OTHER') {
+            dataPayload.category = { connect: { id: categoryId } };
+        }
+
+        if (finalSubId && categoryId !== 'OTHER') {
+            dataPayload.subcategory = { connect: { id: finalSubId } };
+        }
 
         let rental;
         if (id) {
@@ -162,9 +170,7 @@ export async function POST(req: Request) {
             rental = await prisma.rental.create({
                 data: {
                     user: { connect: { id: userId } },
-                    ...dataPayload,
-                    stock: parseInt(stock) || 1,
-                    radiusKm: parseInt(radiusKm) || 10
+                    ...dataPayload
                 }
             });
         }

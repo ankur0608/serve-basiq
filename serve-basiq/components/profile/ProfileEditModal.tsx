@@ -265,7 +265,7 @@ export default function ProfileEditModal({
                                     <Select
                                         label="Preferred Language"
                                         value={formData.preferredLanguage}
-                                        onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
+                                        onChange={(e) => setFormData({ ...formData, preferredLanguage: String(e.target.value) })}
                                         options={["English", "Hindi", "Gujarati", "Marathi"]}
                                         icon={<FaLanguage />}
                                     />

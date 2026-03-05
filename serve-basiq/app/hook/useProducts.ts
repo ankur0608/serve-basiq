@@ -6,11 +6,12 @@ export interface ProductProps {
     category: string;
     categoryObject?: any;
     subcategory?: { id: string; name: string } | null;
+    customCategory?: string; // ✅ ADDED
     price: number;
     moq: number;
     unit: string;
-    productImage: string; // ✅ Added back
-    productImages: string[]; // ✅ Kept array
+    productImage: string;
+    productImages: string[];
     supplier: string;
     isVerified: boolean;
     desc: string;
@@ -51,14 +52,14 @@ const fetchProductsFn = async (userId?: string): Promise<ProductProps[]> => {
 
         category: typeof item.category === 'object' ? item.category?.name : (item.category || "General"),
         categoryObject: item.category,
-
         subcategory: item.subcategory || null,
+
+        customCategory: item.customCategory || "", // ✅ MAPPED HERE
 
         price: Number(item.price) || 0,
         moq: Number(item.moq) || 1,
         unit: item.unit || 'PIECE',
 
-        // ✅ Extract correctly for both fields
         productImage: item.productImage || (item.productImages?.length > 0 ? item.productImages[0] : ""),
         productImages: item.productImages?.length > 0 ? item.productImages : (item.productImage ? [item.productImage] : []),
 

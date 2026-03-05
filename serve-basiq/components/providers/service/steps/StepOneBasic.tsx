@@ -5,7 +5,7 @@ import {
     Briefcase, ChevronRight, Loader2, Hammer, Truck, Box, ShieldCheck,
     Hourglass, Save, UploadCloud, Navigation, Trash2, Clock, Camera,
     Plus, Check, BadgeIndianRupee, PlayCircle, FileVideo, Globe, Info
-} from 'lucide-react'; // ✅ Added 'Info' icon
+} from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import AppImage from '@/components/ui/AppImage';
@@ -25,9 +25,8 @@ export const StepOneDetails = ({
 }: any) => {
     const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // ✅ Added QUOTE to the Service pricing options
     const PRICING_OPTIONS = listingType === 'RENTAL'
-        ? ['HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'FIXED']
+        ? ['HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY']
         : ['FIXED', 'HOURLY', 'QUOTE'];
 
     return (
@@ -90,29 +89,40 @@ export const StepOneDetails = ({
                             value={form.categoryId}
                             onChange={(e: any) => handleChange('categoryId', e.target.value)}
                             disabled={loadingCats}
+                            showSearch={true}
+                            placeholder={loadingCats ? "Loading..." : "Select a Category..."}
                             className="bg-slate-50/50 cursor-pointer"
                             options={[
-                                { label: loadingCats ? "Loading..." : "Select a Category...", value: "" },
-                                ...categories.map((c: any) => ({ label: c.name, value: c.id }))
+                                ...categories.map((c: any) => ({ label: c.name, value: c.id })),
+                                { label: "Other (Please Specify)", value: "OTHER" }
                             ]}
                         />
-                        <Select
-                            label={listingType === 'SERVICE' ? 'SUB-SERVICE' : 'SUB-ITEM TYPE'}
-                            value={form.subCategoryIds[0] || ""}
-                            disabled={!form.categoryId || activeSubCategories.length === 0}
-                            onChange={(e: any) => {
-                                const val = e.target.value;
-                                handleChange('subCategoryIds', val ? [val] : []);
-                            }}
-                            className={`cursor-pointer ${!form.categoryId ? 'opacity-50 bg-slate-100' : 'bg-slate-50/50'}`}
-                            options={[
-                                {
-                                    label: !form.categoryId ? "Select a category first..." : activeSubCategories.length === 0 ? "No options available" : "Select a specific type...",
-                                    value: ""
-                                },
-                                ...activeSubCategories.map((sub: any) => ({ label: sub.name, value: sub.id }))
-                            ]}
-                        />
+
+                        {form.categoryId === 'OTHER' ? (
+                            <div className="animate-in fade-in zoom-in-95 duration-200">
+                                <Input
+                                    label={listingType === 'SERVICE' ? 'CUSTOM SERVICE TYPE' : 'CUSTOM ITEM TYPE'}
+                                    placeholder="e.g. Specialized Cleaning"
+                                    value={form.customCategoryName || ""}
+                                    onChange={(e: any) => handleChange('customCategoryName', e.target.value)}
+                                    className="bg-slate-50/50 border-blue-300 focus:border-blue-500"
+                                />
+                            </div>
+                        ) : (
+                            <Select
+                                label={listingType === 'SERVICE' ? 'SUB-SERVICE' : 'SUB-ITEM TYPE'}
+                                value={form.subCategoryIds[0] || ""}
+                                disabled={!form.categoryId || activeSubCategories.length === 0}
+                                showSearch={true}
+                                placeholder={!form.categoryId ? "Select category first" : "Select specific type..."}
+                                onChange={(e: any) => {
+                                    const val = e.target.value;
+                                    handleChange('subCategoryIds', val ? [val] : []);
+                                }}
+                                className={`cursor-pointer ${!form.categoryId ? 'opacity-50 bg-slate-100' : 'bg-slate-50/50'}`}
+                                options={activeSubCategories.map((sub: any) => ({ label: sub.name, value: sub.id }))}
+                            />
+                        )}
                     </div>
 
                     <div>
@@ -225,7 +235,6 @@ export const StepOneDetails = ({
                         </div>
                     </div>
 
-                    {/* ✅ Conditional Pricing Display */}
                     {form.priceType !== 'QUOTE' ? (
                         <div className="relative group">
                             <div className="absolute left-3 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors">
@@ -276,8 +285,6 @@ export const StepOneDetails = ({
                                 </button>
                             </div>
                         </div>
-
-
                     </div>
                 </div>
             )}
@@ -344,7 +351,12 @@ export const StepOneDetails = ({
             <button
                 type="button"
                 onClick={() => setStep(2)}
-                disabled={!form.name || !form.categoryId || (form.priceType !== 'QUOTE' && !form.price)}
+                disabled={
+                    !form.name ||
+                    !form.categoryId ||
+                    (form.categoryId === 'OTHER' && !form.customCategoryName) ||
+                    (form.priceType !== 'QUOTE' && !form.price)
+                }
                 className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
                 Continue to Media <ChevronRight size={18} />
@@ -352,7 +364,6 @@ export const StepOneDetails = ({
         </div>
     );
 };
-
 export const StepTwoMedia = ({
     form, setStep, handleImageUpload, uploadMultipleFiles, activeUploadField,
     removeGalleryImg, removeServiceImage, processingMsg, loading, serviceData, onComplete

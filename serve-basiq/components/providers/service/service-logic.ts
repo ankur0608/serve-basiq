@@ -58,12 +58,12 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         experience: serviceData?.experience || '',
         stock: serviceData?.stock || 1,
         categoryId: serviceData?.categoryId || '',
+        customCategoryName: serviceData?.customCategory || '', // ✅ Added state for the custom text
         subCategoryIds: normalizeSubIds(serviceData),
         altPhone: serviceData?.altPhone || userData?.phone || '',
 
         isRemote: serviceData?.isRemote || false,
 
-        // Images
         mainimg: serviceData?.serviceimg || serviceData?.rentalImg || serviceData?.mainimg || '',
         serviceImages: serviceData?.serviceImages || serviceData?.rentalImages || [],
         coverImg: serviceData?.coverImg || '',
@@ -72,13 +72,11 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         priceType: serviceData?.priceType || (listingType === 'RENTAL' ? 'DAILY' : 'FIXED'),
         price: serviceData?.price || '',
 
-        // Rental Fields
         itemCondition: serviceData?.itemCondition || 'New',
         securityDeposit: serviceData?.securityDeposit || '',
         minDuration: serviceData?.minDuration || '1 Hour',
         rentalMode: serviceData?.rentalMode || 'PICKUP',
 
-        // Location
         addressLine1: serviceData?.addressLine1 || userAddress?.line1 || '',
         city: serviceData?.city || userAddress?.city || '',
         state: serviceData?.state || userAddress?.state || '',
@@ -87,7 +85,6 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         longitude: Number(serviceData?.longitude) || 0,
         radiusKm: serviceData?.radiusKm || 10,
 
-        // Schedule
         workingDays: serviceData?.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
         openTime: serviceData?.openTime || '09:00',
         closeTime: serviceData?.closeTime || '18:00',
@@ -190,14 +187,18 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         try {
             const payload = {
                 ...form,
-                // ✅ Automatically send 0 to the backend if QUOTE is selected
                 price: form.priceType === 'QUOTE' ? 0 : Number(form.price),
                 experience: Number(form.experience),
                 stock: Number(form.stock),
                 radiusKm: Number(form.radiusKm),
                 latitude: Number(form.latitude),
                 longitude: Number(form.longitude),
-                subCategoryIds: form.subCategoryIds,
+
+                // ✅ Send empty subCategory array if "OTHER" is picked
+                subCategoryIds: form.categoryId === 'OTHER' ? [] : form.subCategoryIds,
+                // ✅ Extract Custom Category Name into payload
+                customCategoryName: form.categoryId === 'OTHER' ? form.customCategoryName : undefined,
+
                 isRemote: form.isRemote,
 
                 [listingType === 'RENTAL' ? 'rentalImg' : 'serviceimg']: form.mainimg,

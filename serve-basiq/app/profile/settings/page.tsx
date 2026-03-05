@@ -18,10 +18,13 @@ import { useUpdateProfile } from '@/app/hook/useProfileQueries';
 import ProfileEditModal from '@/components/profile/ProfileEditModal';
 import AddressEditModal from '@/components/profile/AddressEditModal';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
+import ConfirmLogoutModal from '@/components/auth/ConfirmLogoutModal';
 
 export default function SettingsPage() {
     const { data: session } = useSession();
-    const { currentUser, setCurrentUser } = useUIStore();
+
+    // 👉 1. Pull `logout` from useUIStore to clear local state instantly
+    const { currentUser, setCurrentUser, logout } = useUIStore();
 
     // 👉 INITIALIZE THE HOOK
     const { mutateAsync: updateProfile } = useUpdateProfile();
@@ -32,7 +35,7 @@ export default function SettingsPage() {
     // ADDRESS MODAL STATES
     const [showAddressModal, setShowAddressModal] = useState(false);
     const [editingAddress, setEditingAddress] = useState<any>(null);
-
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
     const isGoogleLogin = !!session?.user?.email;
 
     // --- Helpers ---
@@ -61,7 +64,6 @@ export default function SettingsPage() {
         image: currentUser?.image || currentUser?.img || '', // Ensure existing image is passed
     };
 
-    // 👉 UPDATED TO ACCEPT BOTH DATA AND FILE, AND USE THE HOOK
     const handleSaveProfileData = async (formData: any, file: File | null) => {
         if (!currentUser?.id) return;
 
@@ -131,6 +133,10 @@ export default function SettingsPage() {
         setShowAddressModal(true);
     };
 
+    const handleSecureLogout = async () => {
+        logout(); // Wipes Zustand store
+        await fullLogout(); // Kills NextAuth session & redirects
+    };
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
             <div className="bg-white px-4 py-4 sticky top-0 z-10 shadow-sm flex items-center gap-3">
@@ -224,7 +230,13 @@ export default function SettingsPage() {
                 {/* --- 3. Account Actions --- */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h3 className="font-bold text-lg text-slate-900 mb-4">Account Actions</h3>
-                    <button onClick={() => fullLogout()} className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition">
+
+                    <button
+                        onClick={() => {
+                            console.log("logout clicked");
+                            setShowLogoutModal(true);
+                        }} className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition"
+                    >
                         <FaRightFromBracket /> Logout
                     </button>
                 </div>
@@ -236,7 +248,7 @@ export default function SettingsPage() {
                 isOpen={showEditModal}
                 onClose={() => setShowEditModal(false)}
                 initialData={profileModalInitialData}
-                onSave={handleSaveProfileData} // 👉 Now passes both formData and file correctly
+                onSave={handleSaveProfileData}
                 isEmailLocked={isGoogleLogin}
                 isPhoneLocked={true}
                 onAddPhoneClick={() => { setShowEditModal(false); setTimeout(() => setShowVerifyModal(true), 200); }}
@@ -257,6 +269,11 @@ export default function SettingsPage() {
                     setCurrentUser(updated);
                 }}
                 userId={currentUser?.id || ''}
+            />
+            <ConfirmLogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={handleSecureLogout}
             />
         </div>
     );

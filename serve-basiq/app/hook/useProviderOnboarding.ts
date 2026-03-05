@@ -5,7 +5,6 @@ import imageCompression from 'browser-image-compression';
 import { onboardSchema } from "@/lib/validators";
 import { useUIStore, User } from "@/lib/store";
 import toast from "react-hot-toast";
-
 import { uploadToBackend } from "@/lib/uploadToBackend";
 
 const MAX_FRONTEND_SIZE_MB = 10;
@@ -39,13 +38,12 @@ export function useProviderOnboarding() {
         pincode: "",
         latitude: 0,
         longitude: 0,
+        shopName: "", // ✅ ADD THIS
         providerType: "BOTH",
     });
 
-    // 🚀 NEW: Auto-check if phone exists when user types 10 digits
     useEffect(() => {
         const checkDuplicatePhone = async () => {
-            // Only check if it's 10 digits and it's NOT their already saved number
             if (form.altPhone.length === 10 && form.altPhone !== currentUser?.phone) {
                 try {
                     const res = await fetch(`/api/user/check-phone?phone=${form.altPhone}`);
@@ -55,7 +53,6 @@ export function useProviderOnboarding() {
                         toast.error("This mobile number is already registered to another account.");
                         setErrors(prev => ({ ...prev, altPhone: "Number already in use." }));
                     } else {
-                        // Clear the error if the number is available
                         if (errors.altPhone === "Number already in use.") {
                             setErrors(prev => {
                                 const newErrors = { ...prev };
@@ -70,43 +67,51 @@ export function useProviderOnboarding() {
             }
         };
 
-        // Debounce the check by 500ms so we don't spam the API while they type
         const timeoutId = setTimeout(checkDuplicatePhone, 500);
         return () => clearTimeout(timeoutId);
     }, [form.altPhone, currentUser?.phone, currentUser?.id, errors.altPhone]);
 
-    const { isLoading: isFetchingProfile } = useQuery({
+    // ✅ FIXED: Removed setForm from queryFn and disabled window focus refetching
+    const { data: profileData, isLoading: isFetchingProfile } = useQuery({
         queryKey: ["userProfile", currentUser?.id],
         queryFn: async () => {
             if (!currentUser?.id) return null;
             const res = await fetch(`/api/user/profile?identifier=${currentUser.id}`);
             if (!res.ok) throw new Error("Failed to fetch profile");
-            const data = await res.json();
+            return await res.json();
+        },
+        enabled: !!currentUser?.id,
+        refetchOnWindowFocus: false, // Stops your typing from being erased when you click away!
+        staleTime: Infinity,
+    });
 
-            const addr = data.addresses?.find((a: any) => a.type === 'Home') || data.addresses?.[0];
+    // ✅ FIXED: Populate form only when the profile data is first loaded
+    useEffect(() => {
+        if (profileData) {
+            const addr = profileData.addresses?.find((a: any) => a.type === 'Home') || profileData.addresses?.[0];
 
-            setForm((prev) => ({
+            setForm(prev => ({
                 ...prev,
-                fullName: data.name || prev.fullName,
-                email: data.email || prev.email,
-                altPhone: data.phone || prev.altPhone,
-                providerType: data.providerType || prev.providerType,
+                // Only fill if current form is empty, this prevents overwriting your active typing
+                fullName: prev.fullName || profileData.name || "",
+                email: prev.email || profileData.email || "",
+                altPhone: prev.altPhone || profileData.phone || "",
+                shopName: prev.shopName || profileData.shopName || "", // ✅ ADD THIS
+                providerType: profileData.providerType || prev.providerType,
                 addressLine1: addr?.line1 || prev.addressLine1,
                 addressLine2: addr?.line2 || prev.addressLine2,
                 landmark: addr?.landmark || prev.landmark,
                 city: addr?.city || prev.city,
+                district: addr?.district || prev.district, // Make sure district maps over
                 state: addr?.state || prev.state,
                 pincode: addr?.pincode || prev.pincode,
             }));
 
-            if (data.profileImage || data.img) {
-                setImgPreview(data.profileImage || data.img);
+            if (profileData.profileImage || profileData.img) {
+                setImgPreview(profileData.profileImage || profileData.img);
             }
-            return data;
-        },
-        enabled: !!currentUser?.id,
-        staleTime: 300000, // 5 mins
-    });
+        }
+    }, [profileData]);
 
     const onboardingMutation = useMutation({
         mutationFn: async (payload: any) => {
@@ -125,7 +130,7 @@ export function useProviderOnboarding() {
                     ...currentUser,
                     isWorker: true,
                     isWebsite: false,
-                    providerType: form.providerType,
+                    providerType: form.providerType as any,
                 };
                 setCurrentUser(updatedUser);
             }
@@ -223,7 +228,6 @@ export function useProviderOnboarding() {
         e.preventDefault();
         if (!currentUser) return router.push("/login");
 
-        // Prevent submission if the phone number is already taken
         if (errors.altPhone) {
             toast.error("Please provide a valid, unused mobile number.");
             return;
@@ -262,4 +266,4 @@ export function useProviderOnboarding() {
         handleImageUpload,
         handleSubmit,
     };
-}   
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
     FaArrowLeft, FaLocationDot, FaStar,
     FaShieldHalved, FaPhone,
@@ -8,15 +9,17 @@ import {
     FaCircleCheck, FaLock, FaBoxOpen,
     FaTruckFast, FaCube, FaStore
 } from 'react-icons/fa6';
-import BookingWrapper from '@/components/booking/BookingWrapper';
 import AppImage from '@/components/ui/AppImage';
-import RatingForm from '@/components/Rating/RatingForm';
 import { Session } from 'next-auth';
 import { useServicePageData } from '@/app/hook/useServicePageData';
-import AppVideo from '../ui/AppVideo';
-import ProductSlider from '@/components/products/ProductSlider';
-import InteractiveProductGallery from '@/components/products/InteractiveGallery';
-import SupplierProfileModal from '@/components/products/SupplierProfileModal';
+
+// 🚀 Lazy load heavy components to prevent blocking the initial render
+const BookingWrapper = dynamic(() => import('@/components/booking/BookingWrapper'), { ssr: false });
+const ProductSlider = dynamic(() => import('@/components/products/ProductSlider'), { ssr: false });
+const InteractiveProductGallery = dynamic(() => import('@/components/products/InteractiveGallery'));
+const SupplierProfileModal = dynamic(() => import('@/components/products/SupplierProfileModal'), { ssr: false });
+const RatingForm = dynamic(() => import('@/components/Rating/RatingForm'), { ssr: false });
+const AppVideo = dynamic(() => import('../ui/AppVideo'), { ssr: false });
 
 const isVideo = (url: string | null | undefined) => {
     if (!url) return false;
@@ -51,7 +54,7 @@ interface ServiceDetailViewProps {
         experience?: string | number | null;
         radiusKm?: number | null;
         isVerified?: boolean;
-        isRemote?: boolean; // ✅ Added isRemote
+        isRemote?: boolean;
         altPhone?: string | null;
         workingDays: string[];
         openTime?: string | null;
@@ -143,8 +146,8 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
 
                 {/* 1. BACK BUTTON */}
                 <div className="mb-6">
-                    <Link href="/services" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition px-4 py-2 rounded-xl">
-                        <FaArrowLeft /> Back to services
+                    <Link href="/products" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition px-4 py-2 rounded-xl">
+                        <FaArrowLeft /> Back to Products
                     </Link>
                 </div>
 
@@ -163,7 +166,6 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                     {service.subcategory?.name && ` • ${service.subcategory.name}`}
                                 </span>
 
-                                {/* ✅ Remote Badge Added Here */}
                                 {service.isRemote && (
                                     <span className="flex items-center gap-1 text-purple-600 text-[10px] md:text-xs font-bold uppercase bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
                                         <FaGlobe /> Online / Remote
@@ -221,7 +223,6 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                     <p className="font-bold text-slate-900 flex items-center gap-2"><FaBoxOpen className="text-slate-300" /> {service.experience || 0}+ Yrs</p>
                                 </div>
 
-                                {/* ✅ Updated Area/Radius logic for Remote services */}
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                                     <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">{service.isRemote ? 'Coverage' : 'Area'}</p>
                                     <p className="font-bold text-slate-900 flex items-center gap-2 truncate">
@@ -230,7 +231,6 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                     </p>
                                 </div>
 
-                                {/* ✅ Updated Billing for Quote */}
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                                     <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Billing</p>
                                     <p className="font-bold text-slate-900 flex items-center gap-2"><FaCube className="text-slate-300 shrink-0" /> {service.priceType === 'QUOTE' ? 'Custom Quote' : service.priceType}</p>
@@ -331,7 +331,6 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                         {/* Pricing & Booking Card */}
                         <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 mt-2">
 
-                            {/* ✅ Updated Price Display for QUOTE */}
                             <div className="mb-6 pb-6 border-b border-slate-100">
                                 <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">
                                     {service.priceType === 'QUOTE' ? 'Pricing' : 'Starting at'}

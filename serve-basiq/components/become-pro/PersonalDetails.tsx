@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { User, Mail, Briefcase, ShieldCheck, Smartphone, Pencil, AlertTriangle } from 'lucide-react';
+import { User, Mail, Briefcase, ShieldCheck, Smartphone, Pencil, AlertTriangle, Store } from 'lucide-react';
 import Input from "@/components/ui/Input"; // Adjust path if needed
 import Select from "@/components/ui/Select"; // Adjust path if needed
 
@@ -50,7 +50,17 @@ const PersonalDetails = memo(({ form, errors, onChange, session, onVerifyStart }
                     />
                     <ErrorMsg field="fullName" />
                 </div>
-
+                <div>
+                    <Input
+                        label="SHOP / BUSINESS NAME (OPTIONAL)"
+                        value={form.shopName || ''}
+                        onChange={e => onChange('shopName', e.target.value)}
+                        placeholder="e.g. John's Plumbing Services"
+                        icon={<Store size={16} className="text-slate-400" />}
+                        className={errors.shopName ? "border-red-500 focus:border-red-500" : ""}
+                    />
+                    <ErrorMsg field="shopName" />
+                </div>
                 <div>
                     <Select
                         label="WHAT DO YOU WANT TO OFFER?"

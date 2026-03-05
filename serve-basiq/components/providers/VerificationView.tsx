@@ -38,7 +38,6 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         const home = existingData.addresses?.find((a: any) => a.type === 'Home') || existingData.addresses?.[0];
         const work = existingData.addresses?.find((a: any) => a.type === 'Work');
 
-        // 👉 Safe Date Extraction for DOB
         const rawDob = existingData.dob || existingData.dateOfBirth;
         const formattedDob = rawDob && rawDob !== ""
             ? new Date(rawDob).toISOString().split('T')[0]
@@ -51,30 +50,24 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
             phone: existingData.phone || '',
             gender: existingData.gender || 'MALE',
             providerType: existingData.providerType || 'BOTH',
-
-            // 👉 Assign mapped DOB and Language
             dob: formattedDob,
             preferredLanguage: existingData.preferredLanguage || 'English',
-
             instagramUrl: existingData.instagramUrl || '',
             facebookUrl: existingData.facebookUrl || '',
             youtubeUrl: existingData.youtubeUrl || '',
             websiteUrl: existingData.websiteUrl || '',
-
             addressLine1: home?.line1 || '',
             addressLine2: home?.line2 || '',
             landmark: home?.landmark || '',
             city: home?.city || '',
             state: home?.state || '',
             pincode: home?.pincode || '',
-
             shopName: existingData.shopName || '',
             bizAddressLine1: work?.line1 || '',
             bizAddressLine2: work?.line2 || '',
             bizCity: work?.city || '',
             bizState: work?.state || '',
             bizPincode: work?.pincode || '',
-
             idProofType: kyc.idProofType || 'Aadhaar',
             idProofNumber: kyc.idProofNumber || '',
             idProofImg: kyc.idProofFrontImg || '',
@@ -103,22 +96,31 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         });
     }, []);
 
+    // 👉 LOGIC CHANGE: Removed mandatory requirements for Step 3 and Step 4
     const validateStep = () => {
         const e: Record<string, string> = {};
+
+        // Step 1 remains mandatory
         if (step === 1) {
             if (!form.fullName) e.fullName = 'Required';
             if (!form.phone || form.phone.length < 10) e.phone = '10 digits required';
         }
+
+        // Step 3 (Address) is now optional
         if (step === 3) {
-            if (!form.addressLine1) e.addressLine1 = 'Required';
-            if (!form.shopName) e.shopName = 'Required';
-            if (!form.bizAddressLine1) e.bizAddressLine1 = 'Required';
+            // Validation removed: users can click "Next" without filling these
         }
+
+        // Step 4 (KYC) is now optional
         if (step === 4) {
-            if (!form.idProofNumber) e.idProofNumber = 'Required';
-            if (!form.idProofImg) e.idProofImg = 'Document required';
-            if (form.gstRegistered && !form.gstNumber) e.gstNumber = 'Required';
+            // Validation removed: users can click "Submit" without filling these
+
+            // However, IF they checked GST, we still require the number
+            if (form.gstRegistered && !form.gstNumber) {
+                e.gstNumber = 'Required if registered';
+            }
         }
+
         setErrors(e);
         return Object.keys(e).length === 0;
     };
@@ -126,7 +128,7 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
     const handleNext = (e?: React.MouseEvent) => {
         e?.preventDefault();
         if (!validateStep()) {
-            showToast('Please complete required fields', 'error');
+            showToast('Please check the required fields', 'error');
             return;
         }
         if (step < 4) {
@@ -153,13 +155,12 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         }
 
         if (!validateStep()) {
-            showToast('Please complete KYC details', 'error');
             return;
         }
 
         try {
             await submitVerificationData(userId, form, existingData?.providerType);
-            showToast('Profile submitted for verification', 'success');
+            showToast('Profile submitted successfully', 'success');
             onBack();
         } catch (error: any) {
             showToast(error.message, 'error');
@@ -168,9 +169,9 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
 
     const getHeaderInfo = () => {
         if (step === 1) return { title: 'Profile Details', sub: 'Basic contact information' };
-        if (step === 2) return { title: 'Social Profiles', sub: 'Connect your online presence' };
-        if (step === 3) return { title: 'Business Address', sub: 'Location and shop details' };
-        return { title: 'KYC Documents', sub: 'Upload identity proof' };
+        if (step === 2) return { title: 'Social Profiles', sub: 'Connect your online presence (Optional)' };
+        if (step === 3) return { title: 'Business Address', sub: 'Location details (Optional)' };
+        return { title: 'KYC Documents', sub: 'Upload identity proof (Optional)' };
     };
 
     const progressPercent = step === 1 ? '0%' : step === 2 ? '33%' : step === 3 ? '66%' : '100%';

@@ -11,24 +11,41 @@ import {
 import clsx from 'clsx';
 
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
-import { RestrictionModal } from '@/components/providers/RestrictionModal';
+// import { RestrictionModal } from '@/components/providers/RestrictionModal'; // Commented out
 import { ProviderDashboardContent } from '@/components/providers/ProviderDashboardContent';
 
 export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
     const router = useRouter();
 
+    // Fetching dashboard data using the current user's ID
     const { data: dashboardData, isLoading: loading, refetch: refetchDashboard, isError } = useProviderDashboard(currentUser?.id);
 
     const [activeView, setActiveView] = useState('dashboard');
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
-    const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
+    // =========================================================================
+    // 👉 DATA MAPPING (MATCHING YOUR JSON)
+    // =========================================================================
+
+    // Extract the user object from the dashboard response
     const userData = dashboardData?.user;
-    const providerType = dashboardData?.user?.providerType || 'BOTH';
-    const isVerified = dashboardData?.isSetupComplete || false;
 
+    // 1. Dynamic Display Name
+    const displayName = userData?.name || currentUser?.name || "Provider";
+
+    // 2. Safe Image Logic: Check profileImage -> image -> img in order (matching your JSON)
+    const displayImg = useMemo(() => {
+        return userData?.profileImage || userData?.image || userData?.img || "/placeholder-user.png";
+    }, [userData]);
+
+    // 3. Status Flags
+    const providerType = userData?.providerType || 'BOTH';
+    // Use isFullProfile from your JSON or setupComplete from API
+    const isVerified = dashboardData?.isSetupComplete || userData?.isFullProfile || false;
+
+    // 4. Stats Handling
     const safeStats = useMemo(() => {
         return dashboardData?.stats || {
             revenue: 0, jobsCompleted: 0, pendingRequests: 0, rating: 0,
@@ -36,20 +53,15 @@ export default function ProviderDashboard() {
         };
     }, [dashboardData]);
 
-    // 👉 1. EXTRACT RECENT DATA FROM API
     const recentBookings = dashboardData?.bookings || [];
     const recentOrders = dashboardData?.orders || [];
+
+    // =========================================================================
 
     const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3000);
     };
-
-    useEffect(() => {
-        if (dashboardData && !dashboardData.isSetupComplete) {
-            setShowRestrictionModal(true);
-        }
-    }, [dashboardData]);
 
     const handleBackToHome = async () => {
         if (!currentUser) return;
@@ -67,11 +79,6 @@ export default function ProviderDashboard() {
     };
 
     const handleViewChange = (view: string) => {
-        const publicViews = ['dashboard', 'profile', 'edit-profile'];
-        if (!publicViews.includes(view) && !isVerified) {
-            setShowRestrictionModal(true);
-            return;
-        }
         setActiveView(view);
     };
 
@@ -83,9 +90,6 @@ export default function ProviderDashboard() {
     };
 
     const activeNavId = getActiveNavId(activeView);
-
-    const displayName = userData?.name || currentUser?.name || "Provider";
-    const displayImg = userData?.image || userData?.profileImage || "/placeholder-user.png";
     const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     if (loading) return (
@@ -106,11 +110,7 @@ export default function ProviderDashboard() {
     return (
         <div className="flex h-screen overflow-hidden bg-[#F8F9FC] font-sans text-slate-800 relative">
 
-            <RestrictionModal
-                isOpen={showRestrictionModal}
-                onClose={() => setShowRestrictionModal(false)}
-                onSetup={() => { setShowRestrictionModal(false); handleViewChange('edit-profile'); }}
-            />
+            {/* Modal is completely removed/commented as per your request */}
 
             {toast && (
                 <div className={clsx("fixed top-5 right-5 z-[110] animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-75 bg-white",
@@ -122,14 +122,8 @@ export default function ProviderDashboard() {
             {/* --- DESKTOP SIDEBAR --- */}
             <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-sm">
                 <div className="flex items-center gap-2 h-20 px-6 border-b border-slate-100">
-                    <img
-                        src="/navbar.png"
-                        alt="ServeBasiq Logo"
-                        className="h-24 object-contain"
-                    />
-                    <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-widest mt-1">
-                        Provider
-                    </span>
+                    <img src="/navbar.png" alt="ServeBasiq Logo" className="h-24 object-contain" />
+                    <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-widest mt-1">Provider</span>
                 </div>
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
                     <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeNavId} set={handleViewChange} />
@@ -151,21 +145,13 @@ export default function ProviderDashboard() {
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 h-20 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20">
                     <div className="flex items-center gap-4">
-
                         <div className="md:hidden flex items-center h-full">
-                            <img
-                                src="/navbar.png"
-                                alt="ServeBasiq Logo"
-                                className="h-24 object-contain"
-                            />
+                            <img src="/navbar.png" alt="ServeBasiq Logo" className="h-24 object-contain" />
                         </div>
-
                         <div className="hidden md:block">
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-xl font-bold text-slate-900 capitalize">
-                                    {activeView === 'settings' ? 'Service Management' : activeView.replace('-', ' ')}
-                                </h2>
-                            </div>
+                            <h2 className="text-xl font-bold text-slate-900 capitalize">
+                                {activeView === 'settings' ? 'Service Management' : activeView.replace('-', ' ')}
+                            </h2>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{currentDate}</p>
                         </div>
                     </div>
@@ -199,13 +185,13 @@ export default function ProviderDashboard() {
                         refetchDashboard={refetchDashboard}
                         setSelectedProduct={setSelectedProduct}
                         selectedProduct={selectedProduct}
-                        // 👉 2. PASS PROPS
                         recentBookings={recentBookings}
                         recentOrders={recentOrders}
                     />
                 </main>
             </div>
 
+            {/* --- MOBILE NAV --- */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 z-50 pb-safe shadow-lg">
                 <div className="flex justify-around items-center h-16">
                     <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeNavId} set={handleViewChange} />

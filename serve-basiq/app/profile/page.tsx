@@ -9,7 +9,6 @@ import {
     FaGear,
     FaChevronRight,
     FaSpinner,
-    FaHeart,
 } from "react-icons/fa6";
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
@@ -32,7 +31,7 @@ export default function ProfilePage() {
         onCloseEditProfile,
     } = useUIStore();
 
-    // 1. Fetch fresh profile data from the API
+    // 1. Fetch fresh profile data from the API silently in the background
     const { data: profileDataFromApi, isLoading, error, refetch } = useUserProfile();
     const { mutateAsync: updateProfile } = useUpdateProfile();
 
@@ -43,7 +42,7 @@ export default function ProfilePage() {
         setIsHydrated(true);
     }, []);
 
-    // Sync API data to global store
+    // Sync API data to global store silently when it arrives
     useEffect(() => {
         if (profileDataFromApi) {
             setCurrentUser(profileDataFromApi);
@@ -56,15 +55,22 @@ export default function ProfilePage() {
         }
     }, [error, logout]);
 
-    // 👉 2. PREPARE STABLE USER DATA
-    // We prioritize API data (profileDataFromApi) > Store (currentUser) > Session
+    // 👉 2. INSTANT UI RENDER LOGIC
+    // We merge session -> store -> API data. 
+    // This guarantees the UI loads instantly if they come from the Dashboard, 
+    // and updates silently when the API finishes.
     const userAny = useMemo(() => {
-        return profileDataFromApi || currentUser || (session?.user as any) || {};
+        return {
+            ...(session?.user as any),
+            ...currentUser,
+            ...profileDataFromApi
+        };
     }, [profileDataFromApi, currentUser, session]);
 
     if (!isHydrated) return null;
 
-    if ((status === "loading" || isLoading) && !userAny?.id) {
+    // Only show spinner if we have NO data in session, store, or API
+    if (status === "loading" && !userAny?.id) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <FaSpinner className="animate-spin text-4xl text-slate-300" />
@@ -85,7 +91,8 @@ export default function ProfilePage() {
         name: userAny.name || "",
         email: userAny.email || "",
         phone: userAny.phone || "",
-        image: userAny.image || userAny.profileImage || userAny.img || "", dateOfBirth: userAny.dateOfBirth || userAny.dob || "",
+        image: userAny.image || userAny.profileImage || userAny.img || "",
+        dateOfBirth: userAny.dateOfBirth || userAny.dob || "",
         preferredLanguage: userAny.preferredLanguage || "English",
         addressLine1: userAny.addressLine1 || primaryAddress.line1 || "",
         addressLine2: userAny.addressLine2 || primaryAddress.line2 || "",
@@ -99,15 +106,15 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen pb-32 bg-slate-50 animate-in fade-in">
             <ProfileHeader
-                userImage={userAny.image || userAny.profileImage || userAny.img} onLogout={fullLogout}
+                userImage={userAny.image || userAny.profileImage || userAny.img}
+                onLogout={fullLogout}
                 onEditClick={onOpenEditProfile}
             />
 
             <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20 space-y-6">
                 <ProfileStats />
 
-                {/* 👉 FIXED LOGIC: Only show banner if isWorker is explicitly false */}
-                {/* If isWorker is true, the banner disappears */}
+                {/* Only show banner if isWorker is explicitly false */}
                 {!userAny.isWorker && (
                     <BecomeProviderBanner />
                 )}

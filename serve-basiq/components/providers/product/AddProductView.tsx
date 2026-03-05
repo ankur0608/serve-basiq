@@ -15,7 +15,8 @@ export interface ProductForm {
     desc: string;
     categoryId: string;
     subCategoryId: string;
-    productImage: string;    // ✅ ADDED BACK
+    customCategoryName: string;
+    productImage: string;
     productImages: string[];
     gallery: string[];
     price: string;
@@ -37,23 +38,35 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const { saveProduct, isSaving } = useProducts(userId);
     const [step, setStep] = useState(1);
     const [uploading, setUploading] = useState(false);
-    const [activeUploadField, setActiveUploadField] = useState<'main' | 'productImages' | 'gallery' | null>(null); // ✅ Added 'main'
+    const [activeUploadField, setActiveUploadField] = useState<'main' | 'productImages' | 'gallery' | null>(null);
     const [categories, setCategories] = useState<Category[]>([]);
 
-    const [form, setForm] = useState<ProductForm>({
-        name: editingProduct?.name || '',
-        desc: editingProduct?.desc || '',
-        categoryId: editingProduct?.categoryId || '',
-        subCategoryId: editingProduct?.subCategoryId || editingProduct?.subcategory?.id || '',
-        productImage: editingProduct?.productImage || '', // ✅ Pre-fill main image
-        productImages: editingProduct?.productImages || [],
-        gallery: editingProduct?.gallery || [],
-        price: editingProduct?.price ? String(editingProduct.price) : '',
-        moq: editingProduct?.moq ? String(editingProduct.moq) : '1',
-        stockStatus: editingProduct?.stockStatus || 'IN_STOCK',
-        unit: editingProduct?.unit || 'PIECE',
-        deliveryType: editingProduct?.deliveryType || 'DELIVERY',
-        condition: editingProduct?.condition || 'NEW'
+    const [form, setForm] = useState<ProductForm>(() => {
+        // ✅ THE FIX: If there is a customCategory string, force categoryId to "OTHER"
+        const isCustom = !!editingProduct?.customCategory;
+
+        return {
+            name: editingProduct?.name || '',
+            desc: editingProduct?.desc || '',
+
+            // ✅ Set to "OTHER" if it was a custom category, otherwise use the real ID
+            categoryId: isCustom ? 'OTHER' : (editingProduct?.categoryId || ''),
+
+            subCategoryId: editingProduct?.subCategoryId || editingProduct?.subcategory?.id || '',
+
+            // ✅ Pre-fill the custom text!
+            customCategoryName: editingProduct?.customCategory || '',
+
+            productImage: editingProduct?.productImage || '',
+            productImages: editingProduct?.productImages || [],
+            gallery: editingProduct?.gallery || [],
+            price: editingProduct?.price ? String(editingProduct.price) : '',
+            moq: editingProduct?.moq ? String(editingProduct.moq) : '1',
+            stockStatus: editingProduct?.stockStatus || 'IN_STOCK',
+            unit: editingProduct?.unit || 'PIECE',
+            deliveryType: editingProduct?.deliveryType || 'DELIVERY',
+            condition: editingProduct?.condition || 'NEW'
+        };
     });
 
     useEffect(() => {
@@ -84,7 +97,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
-    // ✅ ADDED HANDLER FOR MAIN IMAGE
     const handleMainImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -103,7 +115,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
             setActiveUploadField(null);
         }
     }, [showToast]);
-
 
     const handleProductImagesUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
@@ -166,7 +177,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // ✅ Require Main Image
         if (!form.productImage) {
             showToast("Main Product Image is required", "error");
             return;
@@ -175,6 +185,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         const payload = {
             id: editingProduct?.id,
             ...form,
+            subCategoryId: form.categoryId === 'OTHER' ? '' : form.subCategoryId,
+            customCategoryName: form.categoryId === 'OTHER' ? form.customCategoryName : undefined,
             price: parseFloat(form.price),
             moq: parseInt(form.moq),
         };
@@ -225,7 +237,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
                             form={form}
                             uploading={uploading}
                             activeUploadField={activeUploadField}
-                            handleMainImageUpload={handleMainImageUpload} // ✅ PASSING MAIN IMAGE HANDLER
+                            handleMainImageUpload={handleMainImageUpload}
                             handleProductImagesUpload={handleProductImagesUpload}
                             removeProductImage={removeProductImage}
                             handleGalleryUpload={handleGalleryUpload}

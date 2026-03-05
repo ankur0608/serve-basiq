@@ -106,7 +106,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                 onClick={handleDetailsClick}
                 className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full"
             >
-                {/* --- IMAGE SECTION --- */}
+                {/* Image Section */}
                 <div
                     className="relative w-full aspect-[4/3] bg-slate-50 overflow-hidden cursor-pointer"
                     onClick={handleDetailsClick}
@@ -146,9 +146,8 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                     )}
                 </div>
 
-                {/* --- CONTENT SECTION --- */}
+                {/* Content Section */}
                 <div className="p-3 sm:p-4 flex flex-col flex-1 gap-3">
-                    {/* Title & Seller */}
                     <div>
                         <h3 className="text-sm sm:text-base font-bold text-slate-800 line-clamp-1 mb-1 group-hover:text-blue-600 transition-colors">
                             {name}
@@ -159,9 +158,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                         </div>
                     </div>
 
-                    {/* Price & MOQ Row */}
                     <div className="flex flex-wrap items-end justify-between gap-x-1 gap-y-2 mt-auto border-t border-slate-50 pt-3">
-                        {/* Price Column */}
                         <div className="flex-1 min-w-[50%]">
                             <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Price</p>
                             <div className="flex items-baseline whitespace-nowrap">
@@ -170,7 +167,6 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                             </div>
                         </div>
 
-                        {/* MOQ Column */}
                         <div className="text-right shrink-0">
                             <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5 flex items-center justify-end gap-1">
                                 MOQ <Box size={10} />
@@ -181,7 +177,6 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="grid grid-cols-2 gap-2 mt-1">
                         <button
                             onClick={handleDetailsClick}
@@ -199,7 +194,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                 </div>
             </div>
 
-            {/* --- MODALS --- */}
+            {/* Modals */}
             <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
             <MobileVerificationModal
@@ -210,7 +205,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
             />
 
             {showRequestModal && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
                     <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                         <button
                             onClick={() => setShowRequestModal(false)}

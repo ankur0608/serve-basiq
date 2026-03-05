@@ -23,7 +23,8 @@ const Footer = () => {
             {/* Social Icons - Aligned Left */}
             <div className="flex gap-4 mt-6 justify-start">
               <a
-                href="#"
+                href="https://www.facebook.com/share/1CRARanWzj/"
+                target="_blank"
                 aria-label="Facebook"
                 className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all duration-300"
               >
@@ -31,20 +32,21 @@ const Footer = () => {
               </a>
 
               <a
-                href="#"
+                href="https://www.instagram.com/servebasiq?igsh=MWg0cG9zcHA5YWk4MA=="
+                target="_blank"
                 aria-label="Instagram"
                 className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all duration-300"
               >
                 <Instagram size={18} />
               </a>
 
-              <a
+              {/* <a
                 href="#"
                 aria-label="LinkedIn"
                 className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all duration-300"
               >
                 <Linkedin size={18} />
-              </a>
+              </a> */}
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -48,10 +48,6 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
         addressLine1, addressLine2, city, state, pincode
     } = rental;
 
-    // =========================================================================
-    // SMART PRICE LOGIC
-    // =========================================================================
-
     const effectiveDailyPrice = dailyPrice ?? (priceType === 'DAILY' ? price : undefined);
     const effectiveMonthlyPrice = monthlyPrice ?? (priceType === 'MONTHLY' ? price : undefined);
     const effectiveFixedPrice = fixedPrice ?? (priceType === 'FIXED' ? price : undefined);
@@ -62,8 +58,6 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
     else if (priceType === 'FIXED') displayPrice = effectiveFixedPrice || 0;
 
     if (displayPrice === 0 && price > 0) displayPrice = price;
-
-    // =========================================================================
 
     const ownerAddress = useMemo(() => {
         return [addressLine1, addressLine2, city, state, pincode]
@@ -99,7 +93,7 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
             <div onClick={handleDetailsClick} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow h-full relative">
 
                 {/* Image Section */}
-                <div className="relative h-44 w-full bg-gray-100 overflow-hidden">
+                <div className="relative h-44 w-full bg-gray-100 overflow-hidden cursor-pointer" onClick={handleDetailsClick}>
                     <img
                         src={image}
                         alt={name}
@@ -112,7 +106,10 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
 
                     {toggleFav && (
                         <button
-                            onClick={toggleFav}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFav(e);
+                            }}
                             className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full shadow hover:bg-white transition-colors z-10"
                         >
                             {isFav ? (
@@ -148,9 +145,9 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
                 </div>
             </div>
 
-            {/* --- BOOKING MODAL --- */}
+            {/* Booking Modal */}
             {showBooking && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowBooking(false)}>
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={(e) => { e.stopPropagation(); setShowBooking(false); }}>
                     <div className="relative w-full max-w-sm md:max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => setShowBooking(false)} className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all border border-white/20 shadow-sm">
                             <FaXmark size={18} />
@@ -162,10 +159,7 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
                                 rentalName={name}
                                 rentalImage={image}
                                 ownerLocation={ownerAddress}
-
-                                // 👉 CRITICAL FIX: Pass the base price prop here
                                 price={price}
-
                                 dailyPrice={typeof effectiveDailyPrice === 'number' ? effectiveDailyPrice : undefined}
                                 monthlyPrice={typeof effectiveMonthlyPrice === 'number' ? effectiveMonthlyPrice : undefined}
                                 fixedPrice={typeof effectiveFixedPrice === 'number' ? effectiveFixedPrice : undefined}

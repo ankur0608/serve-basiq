@@ -24,10 +24,6 @@ export async function POST(req: Request) {
         shopName: true,
         providerType: true,
         preferredLanguage: true,
-        instagramUrl: true,
-        facebookUrl: true,
-        youtubeUrl: true,
-        websiteUrl: true,
         addresses: true, // Needed for address mapping in VerificationView
         kycDetails: {
           select: {
