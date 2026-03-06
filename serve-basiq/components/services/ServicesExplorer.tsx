@@ -17,7 +17,6 @@ export default function ServicesExplorer() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // --- FILTERS STATE ---
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -26,7 +25,6 @@ export default function ServicesExplorer() {
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
     const [sortOption, setSortOption] = useState('');
 
-    // --- INFINITE SCROLL REF ---
     const observerTarget = useRef<HTMLDivElement>(null);
 
     const {
@@ -48,7 +46,6 @@ export default function ServicesExplorer() {
         sort: sortOption
     });
 
-    // --- DERIVED DATA ---
     const availableSubcategories = useMemo(() => {
         if (!selectedCategory) return [];
         const cat = categories.find((c: any) => String(c.id) === String(selectedCategory));
@@ -73,7 +70,6 @@ export default function ServicesExplorer() {
         toggleFavorite({ id, type: 'SERVICE' });
     }, [toggleFavorite]);
 
-    // --- SEAMLESS INFINITE SCROLL LOGIC ---
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -93,18 +89,14 @@ export default function ServicesExplorer() {
         };
     }, [hasNextPage, fetchNextPage, isFetchingNextPage, isFetching]);
 
-    // --- INITIAL LOADING ---
     if (isLoading) return <ProductsSkeleton />;
 
-    // Detect if we are actively filtering (but not just loading the next page of infinite scroll)
     const isFiltering = isFetching && !isFetchingNextPage;
 
     return (
         <section className="min-h-screen bg-slate-50 text-slate-800 pb-10">
-            {/* --- HEADER --- */}
             <div className="pt-4 md:pt-6 bg-slate-50">
                 <div className="container mx-auto max-w-7xl px-4 mb-2">
-                    {/* ✅ CATEGORY SKELETON: Matches the boxy UI */}
                     {isFiltering ? (
                         <div className="flex gap-4 overflow-hidden animate-pulse mb-6 pb-2">
                             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -135,7 +127,6 @@ export default function ServicesExplorer() {
             </div>
 
             <div className="container mx-auto max-w-7xl px-4 mt-2 flex gap-6 lg:gap-8">
-                {/* --- SIDEBAR (Desktop) --- */}
                 <aside className="hidden md:block w-[260px] shrink-0">
                     <div className="sticky top-24 h-fit">
                         <ServiceFiltersDesktop
@@ -149,9 +140,7 @@ export default function ServicesExplorer() {
                     </div>
                 </aside>
 
-                {/* --- MAIN CONTENT --- */}
                 <main className="relative flex-1 min-w-0">
-                    {/* Search Bar */}
                     <div className="hidden md:block mb-6">
                         <div className="relative w-full">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -174,10 +163,8 @@ export default function ServicesExplorer() {
                         </div>
                     </div>
 
-                    {/* ✅ DYNAMIC GRID / SKELETON */}
                     <div className="transition-opacity duration-300">
                         {isFiltering ? (
-                            // INLINE GRID SKELETON (Shows immediately when typing or filtering)
                             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                                 {[1, 2, 3, 4, 5, 6].map((i) => (
                                     <div key={i} className="bg-slate-200 animate-pulse rounded-2xl h-[280px] w-full border border-slate-100 flex flex-col p-4 justify-end">
@@ -188,17 +175,14 @@ export default function ServicesExplorer() {
                                 ))}
                             </div>
                         ) : services.length === 0 ? (
-                            // EMPTY STATE
                             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
                                 <div className="p-4 bg-slate-50 rounded-full mb-4">
                                     <SearchX className="text-slate-400" size={40} />
                                 </div>
                                 <h4 className="text-xl font-bold text-slate-800">No results found</h4>
-                                {/* <button type="button" onClick={resetFilters} className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">Clear Filters</button> */}
                             </div>
                         ) : (
                             <>
-                                {/* GRID LAYOUT */}
                                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                                     {services.map((item) => (
                                         <ServiceCard
@@ -211,7 +195,6 @@ export default function ServicesExplorer() {
                                     ))}
                                 </div>
 
-                                {/* INVISIBLE TRIGGER & LOADING FOOTER */}
                                 <div ref={observerTarget} className="w-full py-8 mt-4 flex flex-col items-center justify-center min-h-[50px]">
                                     {isFetchingNextPage ? (
                                         <div className="flex items-center gap-2 text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100">

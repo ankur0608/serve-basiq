@@ -11,8 +11,6 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-// 🚀 PRODUCTION FEATURE: Global Time-Based Caching (ISR)
-// This caches the database query globally for 60 seconds across all users.
 const getCachedProduct = unstable_cache(
   async (id: string) => {
     return await prisma.product.findUnique({
@@ -28,30 +26,29 @@ const getCachedProduct = unstable_cache(
         reviews: {
           include: { author: true },
           orderBy: { createdAt: "desc" },
-          take: 10 // Prevent memory leaks by limiting reviews on initial load
+          take: 10
         }
       }
     });
   },
-  ['product-detail-cache'], // Base namespace for this cache
+  ['product-detail-cache'],
   {
-    revalidate: 60, // Cache lifespan in seconds (1 minute)
-    tags: ['product'], // Tag for on-demand revalidation later
+    revalidate: 60,
+    tags: ['product'],
   }
 );
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
 
-  // This hits the 60-second cache!
   const product = await getCachedProduct(id);
 
-  if (!product) return { title: "Product Not Found | ServeMate" };
+  if (!product) return { title: "Product Not Found | Servebasiq " };
 
-  const sellerName = product.user?.shopName || product.user?.name || "ServeMate Provider";
+  const sellerName = product.user?.shopName || product.user?.name || "Servebasiq Provider";
 
   return {
-    title: `${product.name} by ${sellerName} | ServeMate`,
+    title: `${product.name} by ${sellerName} | Servebasiq `,
     description: product.desc.substring(0, 160),
     openGraph: {
       title: product.name,
@@ -64,7 +61,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductDetailPage({ params }: Props) {
   const { id } = await params;
 
-  // Session remains dynamic, but the product data is fetched instantly from the cache
   const [session, product] = await Promise.all([
     getServerSession(authOptions),
     getCachedProduct(id)

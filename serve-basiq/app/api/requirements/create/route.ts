@@ -13,7 +13,7 @@ const RequirementSchema = z.object({
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        console.log("📥 [API] Received Body:", body);
+        // console.log("📥 [API] Received Body:", body);
 
         const validation = RequirementSchema.safeParse(body);
 
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
             }
         });
 
-        console.log("✅ [API] Created:", requirement.id);
+        // console.log("✅ [API] Created:", requirement.id);
         return NextResponse.json({ success: true, requirement });
 
     } catch (error: any) {

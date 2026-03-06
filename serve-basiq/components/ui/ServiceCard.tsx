@@ -3,7 +3,6 @@
 import React, { useState, useMemo, memo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-// Replace with the correct path to your AppImage component
 import AppImage from "@/components/ui/AppImage";
 import { FaHeart, FaRegHeart, FaStar, FaXmark } from "react-icons/fa6";
 import BookingWrapper from "@/components/booking/BookingWrapper";
@@ -81,7 +80,6 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                 onClick={handleDetailsClick}
                 className="bg-white h-full rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow"
             >
-                {/* Image Section */}
                 <div className="relative h-48 w-full bg-gray-100 overflow-hidden cursor-pointer" onClick={handleDetailsClick}>
                     <AppImage
                         src={image}
@@ -112,7 +110,6 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                     )}
                 </div>
 
-                {/* Content Section */}
                 <div className="p-3 flex flex-col gap-1 flex-1">
                     <h3 className="text-sm font-semibold text-gray-900 truncate">{name}</h3>
                     <div className="flex items-center justify-between text-xs text-gray-500">

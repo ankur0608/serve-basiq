@@ -1,13 +1,12 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { ArrowLeft, Check, Loader2, AlertTriangle, Smartphone } from 'lucide-react';
 import { useProviderOnboarding } from "@/app/hook/useProviderOnboarding";
 import MobileVerificationModal from "@/components/auth/MobileVerificationModal";
 
-// Adjust these imports based on where you place this new file
 import ProfileSection from "./ProfileSection";
 import PersonalDetails from "./PersonalDetails";
 import AddressDetails from "./AddressDetails";
@@ -16,6 +15,7 @@ export default function BecomeProForm() {
     const router = useRouter();
     const { data: session, status } = useSession();
     const [isPhoneModalOpen, setPhoneModalOpen] = useState(false);
+    const isInitialized = useRef(false);
 
     const {
         form, loading, uploading, gettingLoc, imgPreview, errors,
@@ -23,18 +23,27 @@ export default function BecomeProForm() {
     } = useProviderOnboarding();
 
     useEffect(() => {
-        if (!session?.user) return;
+        if (!session?.user || isInitialized.current) return;
+
+        let updated = false;
 
         if (session.user.email && !form.email) {
             handleChange('email', session.user.email);
+            updated = true;
         }
         if (session.user.name && !form.fullName) {
             handleChange('fullName', session.user.name);
+            updated = true;
         }
         if (session.user.phone && !form.altPhone) {
             handleChange('altPhone', session.user.phone);
+            updated = true;
         }
-    }, [session, form.email, form.fullName, form.altPhone, handleChange]);
+
+        if (updated || session.user) {
+            isInitialized.current = true;
+        }
+    }, [session, handleChange]);
 
     const handleFinalSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -93,13 +102,6 @@ export default function BecomeProForm() {
                         onGetLocation={handleGetLocation}
                         gettingLoc={gettingLoc}
                     />
-{/* 
-                    {Object.keys(errors).length > 0 && (
-                        <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 text-sm font-bold border border-red-100 animate-in fade-in slide-in-from-bottom-2">
-                            <AlertTriangle size={20} className="shrink-0" />
-                            <span>Please fix the highlighted errors before submitting.</span>
-                        </div>
-                    )} */}
 
                     <button
                         type="submit"

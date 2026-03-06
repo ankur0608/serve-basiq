@@ -51,7 +51,7 @@ export async function PATCH(
 
 
     const body = await req.json();
-    console.log("📝 Received Update Payload:", body);
+    // console.log("📝 Received Update Payload:", body);
 
     const {
       name,
@@ -81,7 +81,7 @@ export async function PATCH(
     if (unit !== undefined) updateData.unit = unit;
     if (deliveryType !== undefined) updateData.deliveryType = deliveryType;
 
-    console.log("✅ Sanitized Update Data:", updateData);
+    // console.log("✅ Sanitized Update Data:", updateData);
 
     const updated = await prisma.product.update({
       where: { id },
@@ -120,8 +120,8 @@ export async function DELETE(
       await tx.product.delete({ where: { id } });
     },
       {
-        maxWait: 5000,  // Wait up to 5 seconds to connect to the database
-        timeout: 30000, // Give the transaction 30 seconds to finish (instead of 5)
+        maxWait: 5000,
+        timeout: 30000,
       });
 
     return NextResponse.json({ success: true });

@@ -27,9 +27,9 @@ export default function StepOnePersonal({ form, updateField, errors, getInputCla
                         onChange={e => updateField('providerType', e.target.value)}
                         className={getInputClass('providerType')}
                     >
-                        <option value="BOTH">Hybrid (Services & Products)</option>
-                        <option value="SERVICE">Service Provider Only</option>
-                        <option value="PRODUCT">Product Seller Only</option>
+                        <option value="BOTH">Services & Products</option>
+                        <option value="SERVICE">Service Only</option>
+                        <option value="PRODUCT">Product Only</option>
                     </select>
                 </div>
             </section>

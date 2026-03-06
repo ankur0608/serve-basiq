@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 // ❌ Removed generateR2UploadUrl because the frontend handles uploads now!
 
 export async function submitRentalReview(formData: FormData) {
-    console.log("🚀 [Action] submitRentalReview started");
+    // console.log("🚀 [Action] submitRentalReview started");
 
     try {
         const session = await getServerSession(authOptions);
@@ -47,7 +47,7 @@ export async function submitRentalReview(formData: FormData) {
         }
 
         if (uploadedImageUrls.length > 0) {
-            console.log(`📸 [Action] Saving ${uploadedImageUrls.length} image URLs to database...`);
+            // console.log(`📸 [Action] Saving ${uploadedImageUrls.length} image URLs to database...`);
         }
 
         // 🚀 2. Instantly save the URLs to the database
@@ -65,7 +65,7 @@ export async function submitRentalReview(formData: FormData) {
         // 3. Revalidate the cache to show the new review instantly
         revalidatePath(`/rentals/${rentalId}`);
 
-        console.log("✅ [Action] Rental Review submitted successfully!");
+        // console.log("✅ [Action] Rental Review submitted successfully!");
         return { success: true };
 
     } catch (error) {

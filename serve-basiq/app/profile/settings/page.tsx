@@ -233,7 +233,7 @@ export default function SettingsPage() {
 
                     <button
                         onClick={() => {
-                            console.log("logout clicked");
+                            // console.log("logout clicked");
                             setShowLogoutModal(true);
                         }} className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition"
                     >

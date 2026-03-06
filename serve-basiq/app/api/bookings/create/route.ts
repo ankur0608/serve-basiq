@@ -25,7 +25,7 @@ const BookingSchema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log("📝 [API] Booking Request:", body);
+    // console.log("📝 [API] Booking Request:", body);
 
     const validation = BookingSchema.safeParse(body);
 
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     let finalAddressId = data.addressId;
 
     if (data.addressId.startsWith("temp-")) {
-      console.log("🆕 Detected New Address. Creating...");
+      // console.log("🆕 Detected New Address. Creating...");
 
       if (!data.newAddress) {
         return NextResponse.json({
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
         },
       });
 
-      console.log("✅ Address Created with ID:", createdAddress.id);
+      // console.log("✅ Address Created with ID:", createdAddress.id);
       finalAddressId = createdAddress.id;
     }
 
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log("🎉 Booking Created ID:", booking.id);
+    // console.log("🎉 Booking Created ID:", booking.id);
     return NextResponse.json({ success: true, booking });
 
   } catch (error) {

@@ -38,7 +38,7 @@ export function useProviderOnboarding() {
         pincode: "",
         latitude: 0,
         longitude: 0,
-        shopName: "", // ✅ ADD THIS
+        shopName: "", // ✅ Initialized perfectly
         providerType: "BOTH",
     });
 
@@ -71,7 +71,6 @@ export function useProviderOnboarding() {
         return () => clearTimeout(timeoutId);
     }, [form.altPhone, currentUser?.phone, currentUser?.id, errors.altPhone]);
 
-    // ✅ FIXED: Removed setForm from queryFn and disabled window focus refetching
     const { data: profileData, isLoading: isFetchingProfile } = useQuery({
         queryKey: ["userProfile", currentUser?.id],
         queryFn: async () => {
@@ -81,28 +80,26 @@ export function useProviderOnboarding() {
             return await res.json();
         },
         enabled: !!currentUser?.id,
-        refetchOnWindowFocus: false, // Stops your typing from being erased when you click away!
+        refetchOnWindowFocus: false,
         staleTime: Infinity,
     });
 
-    // ✅ FIXED: Populate form only when the profile data is first loaded
     useEffect(() => {
         if (profileData) {
             const addr = profileData.addresses?.find((a: any) => a.type === 'Home') || profileData.addresses?.[0];
 
             setForm(prev => ({
                 ...prev,
-                // Only fill if current form is empty, this prevents overwriting your active typing
-                fullName: prev.fullName || profileData.name || "",
-                email: prev.email || profileData.email || "",
-                altPhone: prev.altPhone || profileData.phone || "",
-                shopName: prev.shopName || profileData.shopName || "", // ✅ ADD THIS
+                fullName: profileData.name || prev.fullName || "",
+                email: profileData.email || prev.email || "",
+                altPhone: profileData.phone || prev.altPhone || "",
+                shopName: profileData.shopName || prev.shopName || "", // ✅ Pulled from DB if exists
                 providerType: profileData.providerType || prev.providerType,
                 addressLine1: addr?.line1 || prev.addressLine1,
                 addressLine2: addr?.line2 || prev.addressLine2,
                 landmark: addr?.landmark || prev.landmark,
                 city: addr?.city || prev.city,
-                district: addr?.district || prev.district, // Make sure district maps over
+                district: addr?.district || prev.district,
                 state: addr?.state || prev.state,
                 pincode: addr?.pincode || prev.pincode,
             }));
@@ -118,7 +115,7 @@ export function useProviderOnboarding() {
             const res = await fetch("/api/provider/onboard", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: currentUser?.id, ...payload }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
             if (!res.ok) throw data;
@@ -226,6 +223,7 @@ export function useProviderOnboarding() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
         if (!currentUser) return router.push("/login");
 
         if (errors.altPhone) {
@@ -240,8 +238,10 @@ export function useProviderOnboarding() {
                 phone: form.altPhone,
             };
 
+            // ✅ Zod strictly validates payload here
             onboardSchema.parse(payload);
             onboardingMutation.mutate(payload);
+
         } catch (error: any) {
             if (error.issues) {
                 const formattedErrors: Record<string, string> = {};

@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, forwardRef } from "react";
 import clsx from "clsx";
 import { Search, ChevronDown } from "lucide-react";
 
-// 1. Updated interface to extend HTMLButtonElement instead of HTMLDivElement
 interface SelectProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onChange' | 'value'> {
     label?: string;
     icon?: React.ReactNode;
@@ -14,7 +13,6 @@ interface SelectProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>
     placeholder?: string;
 }
 
-// 2. Updated forwardRef to target HTMLButtonElement
 const Select = forwardRef<HTMLButtonElement, SelectProps>(
     ({ label, icon, options, className, containerClassName, value, onChange, disabled, showSearch, placeholder = "Select...", onClick, ...props }, ref) => {
         const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +54,7 @@ const Select = forwardRef<HTMLButtonElement, SelectProps>(
                 )}
                 <div className="relative">
                     <button
-                        ref={ref} // 3. Properly forwarded the ref to the interactive element
+                        ref={ref} 
                         type="button"
                         disabled={disabled}
                         className={clsx(
@@ -66,11 +64,10 @@ const Select = forwardRef<HTMLButtonElement, SelectProps>(
                             className
                         )}
                         onClick={(e) => {
-                            // Safely handle opening the dropdown while preserving any custom onClick props
                             if (!disabled) setIsOpen(!isOpen);
                             if (onClick) onClick(e);
                         }}
-                        {...props} // Now correctly expects button props!
+                        {...props} 
                     >
                         <span className={clsx("truncate", !selectedOption && "text-gray-500")}>
                             {selectedOption ? selectedOption.label : placeholder}

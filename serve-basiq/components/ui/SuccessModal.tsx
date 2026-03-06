@@ -33,10 +33,8 @@ export default function SuccessModal({
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center relative overflow-hidden animate-in zoom-in-95 duration-200">
 
-                {/* Background Decoration */}
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-400 to-emerald-600"></div>
 
-                {/* Close Icon */}
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-300 hover:text-gray-500 transition"
@@ -44,14 +42,12 @@ export default function SuccessModal({
                     <FaXmark size={20} />
                 </button>
 
-                {/* Success Icon */}
                 <div className="mx-auto w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center animate-in zoom-in duration-300 delay-100">
                         <FaCheck className="text-green-600 text-3xl" />
                     </div>
                 </div>
 
-                {/* Content */}
                 <h2 className="text-2xl font-black text-slate-900 mb-2">
                     {title}
                 </h2>
@@ -59,7 +55,6 @@ export default function SuccessModal({
                     {message}
                 </p>
 
-                {/* Action Button */}
                 <button
                     onClick={() => {
                         if (onButtonClick) onButtonClick();

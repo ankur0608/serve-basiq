@@ -79,7 +79,7 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
       const data = await res.json();
 
       if (res.ok) {
-        console.log("🔔 DEV OTP:", data.otp);
+        // console.log("🔔 DEV OTP:", data.otp);
         if (data.otp) {
           setOtp(data.otp.toString().split(""));
         }

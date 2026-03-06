@@ -1,4 +1,4 @@
-'use client'; // <--- This marks it as a Client Component
+'use client'; 
 
 import { ImageOff } from "lucide-react";
 import React, { useState } from "react";
@@ -11,7 +11,6 @@ interface CategoryImageProps {
 export default function CategoryImage({ src, alt }: CategoryImageProps) {
   const [error, setError] = useState(false);
 
-  // If no source is provided or if an error occurred previously
   if (!src || error) {
     return (
       <div className="w-full h-full flex items-center justify-center text-blue-400 opacity-50">
@@ -25,7 +24,7 @@ export default function CategoryImage({ src, alt }: CategoryImageProps) {
       src={src}
       alt={alt}
       className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
-      onError={() => setError(true)} // ✅ This works now because we are in a Client Component
+      onError={() => setError(true)} 
     />
   );
 }

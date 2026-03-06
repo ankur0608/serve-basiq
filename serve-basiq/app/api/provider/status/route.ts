@@ -9,22 +9,21 @@ export async function POST(req: Request) {
 
     if (!userId) return NextResponse.json({ success: false, message: "User ID missing" }, { status: 400 });
 
-    // 1. Fetch User with all details needed for the Verification View
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
         name: true,
+        shopName: true,
         email: true,
         image: true,
-        profileImage: true, // ✅ Fetches the second image field
+        profileImage: true,
         phone: true,
         gender: true,
         dob: true,
-        shopName: true,
         providerType: true,
         preferredLanguage: true,
-        addresses: true, // Needed for address mapping in VerificationView
+        addresses: true,
         kycDetails: {
           select: {
             status: true,
@@ -35,7 +34,7 @@ export async function POST(req: Request) {
             gstNumber: true
           }
         },
-        services: { select: { rating: true } }, // Used to calculate avgRating
+        services: { select: { rating: true } },
       },
     });
 
@@ -47,32 +46,42 @@ export async function POST(req: Request) {
       ? serviceRatings.reduce((a, b) => a + b, 0) / serviceRatings.length
       : 5.0;
 
-    // 3. Define setup status for the Restriction Modal
+    // 3. Define setup status
     const setupFinished = !!(user.kycDetails && user.kycDetails.status !== "NOT_STARTED");
 
-    // 4. Fetch Recent Bookings with Service Image and PriceType
-    const recentBookings = await prisma.booking.findMany({
-      where: { service: { userId: userId } },
-      include: {
-        user: { select: { name: true } },
-        service: { select: { name: true, price: true, priceType: true, serviceimg: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
+    // 4. Fetch Recent Data (Services, Products, and Rentals) in parallel for better performance
+    const [recentBookings, recentOrders, recentRentals] = await Promise.all([
+      prisma.booking.findMany({
+        where: { service: { userId: userId } },
+        include: {
+          user: { select: { name: true } },
+          service: { select: { name: true, price: true, priceType: true, serviceimg: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      prisma.order.findMany({
+        where: { product: { userId: userId } },
+        include: {
+          user: { select: { name: true } },
+          product: { select: { name: true, price: true, unit: true, productImage: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      prisma.rentalBooking.findMany({
+        where: { rental: { userId: userId } },
+        include: {
+          user: { select: { name: true } },
+          // ✅ Corrected to `rentalImg` based on your schema
+          rental: { select: { name: true, price: true, rentalImg: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      })
+    ]);
 
-    // 5. Fetch Recent Orders with Product Image and Unit
-    const recentOrders = await prisma.order.findMany({
-      where: { product: { userId: userId } },
-      include: {
-        user: { select: { name: true } },
-        product: { select: { name: true, price: true, unit: true, productImage: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
-
-    // 6. Calculate Dynamic Dashboard Stats via Aggregation
+    // 5. Calculate Dynamic Dashboard Stats via Aggregation
     const [counts, paidOrders, paidRentals] = await Promise.all([
       prisma.booking.count({ where: { service: { userId }, status: "REQUESTED" } }),
       prisma.order.aggregate({
@@ -89,10 +98,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      isSetupComplete: setupFinished, // Top-level boolean to control the modal
+      isSetupComplete: setupFinished,
       user: { ...user, isSetupComplete: setupFinished, services: undefined },
       bookings: recentBookings,
       orders: recentOrders,
+      rentals: recentRentals, // ✅ Return rentals to the frontend
       stats: {
         revenue: totalRevenue,
         jobsCompleted: await prisma.booking.count({ where: { service: { userId }, status: "COMPLETED" } }),

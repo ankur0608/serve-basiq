@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { onboardSchema } from "@/lib/validators";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
+        const session = await getServerSession(authOptions);
 
-        // 1. Validate payload
-        const validData = onboardSchema.parse(body);
-        const { userId, providerType } = body;
-
-        if (!userId) {
-            return NextResponse.json({ success: false, message: "User ID required" }, { status: 400 });
+        if (!session || !session.user) {
+            return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
         }
 
-        // 2. Check for existing email safely
+        const userId = session.user.id;
+        const body = await req.json();
+
+        const validData = onboardSchema.parse(body);
+        const { providerType } = body;
+
         if (validData.email) {
             const existingUser = await prisma.user.findFirst({
                 where: { email: validData.email },
@@ -28,9 +31,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // 3. Database Transaction
         await prisma.$transaction(async (tx) => {
-            // Update User Profile
             await tx.user.update({
                 where: { id: userId },
                 data: {
@@ -38,32 +39,27 @@ export async function POST(req: Request) {
                     email: validData.email,
                     phone: validData.phone,
                     profileImage: validData.profileImage,
-                    shopName: validData.shopName, // ✅ ADD THIS LINE HERE
-                    gender: validData.gender,
-                    dob: validData.dob ? new Date(validData.dob) : null,
-                    preferredLanguage: validData.preferredLanguage,
-                    providerType: providerType || "BOTH",
+                    shopName: validData.shopName, // ✅ Stored securely
+                    providerType: providerType || "BOTH", // ✅ Accepts RENTAL
                     isWorker: true,
                     isWebsite: false,
                 },
             });
 
-            // Handle Address
             const existingAddress = await tx.address.findFirst({
-                where: { userId, type: "Home" }
+                where: { userId, type: "Work" }
             });
 
-            // ✅ FIXED: Added district to perfectly match your Prisma schema
             const addressData = {
                 line1: validData.addressLine1,
                 line2: validData.addressLine2 || "",
                 landmark: validData.landmark || "",
                 city: validData.city,
-                district: validData.district || "", // Now this will save!
+                district: validData.district || "",
                 state: validData.state,
                 pincode: validData.pincode,
                 country: "India",
-                type: "Home"
+                type: "Work"
             };
 
             if (existingAddress) {

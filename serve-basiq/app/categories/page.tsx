@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation'; // ✅ Added router and searchParams
 import { useQuery } from '@tanstack/react-query';
 import {
     FaArrowLeft,
@@ -51,19 +52,21 @@ const TypeBadge = ({ type }: { type: string }) => {
     );
 };
 
-export default function AllCategoriesPage() {
+// ✅ Main Logic Component
+function CategoriesContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const initialCategoryId = searchParams.get('categoryId'); // Check URL for categoryId
+
     // --- State ---
     const [activeTab, setActiveTab] = useState<'ALL' | 'SERVICE' | 'PRODUCT' | 'RENTAL'>('ALL');
-
-    // UI State
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
-    // --- 1. Efficient Data Fetching with TanStack Query ---
+    // --- Data Fetching ---
     const { data: allCategories = [], isLoading } = useQuery({
-        queryKey: ['categories', 'all'], // Unique key for caching
+        queryKey: ['categories', 'all'],
         queryFn: async () => {
-            // We fetch ALL data once. Filtering happens on the client side to save API calls.
             const res = await fetch('/api/categories');
             if (!res.ok) throw new Error('Network response was not ok');
             return res.json() as Promise<Category[]>;
@@ -72,6 +75,16 @@ export default function AllCategoriesPage() {
         gcTime: 1000 * 60 * 30,
         refetchOnWindowFocus: false,
     });
+
+    // ✅ NEW: Auto-select category if they clicked it from the home page
+    useEffect(() => {
+        if (allCategories.length > 0 && initialCategoryId && !selectedCategory) {
+            const foundCat = allCategories.find(c => c.id === initialCategoryId);
+            if (foundCat) {
+                setSelectedCategory(foundCat);
+            }
+        }
+    }, [allCategories, initialCategoryId, selectedCategory]);
 
     const processedData = useMemo(() => {
         let data = allCategories;
@@ -91,7 +104,6 @@ export default function AllCategoriesPage() {
                 );
             }
         }
-
         return data;
     }, [allCategories, activeTab, searchQuery, selectedCategory]);
 
@@ -114,6 +126,7 @@ export default function AllCategoriesPage() {
     const handleBackToMain = () => {
         setSelectedCategory(null);
         setSearchQuery('');
+        router.push('/categories'); // ✅ Clears the URL parameter when going back
     };
 
     const getIcon = (type: string, size = 24) => {
@@ -127,12 +140,10 @@ export default function AllCategoriesPage() {
 
     return (
         <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 selection:bg-indigo-100 selection:text-indigo-900">
-
             {/* --- STICKY HEADER --- */}
             <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-zinc-200/60 shadow-sm transition-all">
                 <div className="max-w-7xl mx-auto px-4 py-3">
                     <div className="flex flex-col md:flex-row md:items-center gap-4">
-
                         {/* Back Button & Title */}
                         <div className="flex items-center gap-3 min-w-fit">
                             {selectedCategory ? (
@@ -212,9 +223,7 @@ export default function AllCategoriesPage() {
 
             {/* --- MAIN CONTENT --- */}
             <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 pb-32">
-
                 {isLoading ? (
-                    // LOADING STATE
                     <div className="flex flex-col items-center justify-center py-32 space-y-4">
                         <div className="relative">
                             <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full"></div>
@@ -223,7 +232,6 @@ export default function AllCategoriesPage() {
                         <p className="text-zinc-400 font-medium text-sm animate-pulse">Loading categories...</p>
                     </div>
                 ) : allCategories.length === 0 ? (
-                    // DATABASE EMPTY STATE (NO CATEGORIES AT ALL)
                     <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-3xl border border-dashed border-zinc-200 mx-auto max-w-lg mt-8">
                         <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6">
                             <FolderOpen className="text-indigo-400" size={40} />
@@ -237,7 +245,6 @@ export default function AllCategoriesPage() {
                         </Link>
                     </div>
                 ) : displayItems.length === 0 ? (
-                    // SEARCH NO MATCHES STATE
                     <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-zinc-200 mx-auto max-w-lg">
                         <div className="w-16 h-16 bg-zinc-50 rounded-2xl flex items-center justify-center mb-4 rotate-3">
                             <Sparkles className="text-zinc-400" size={32} />
@@ -253,7 +260,6 @@ export default function AllCategoriesPage() {
                         )}
                     </div>
                 ) : (
-                    // CONTENT GRID
                     <>
                         {selectedCategory ? (
                             // SUBCATEGORY VIEW
@@ -273,7 +279,6 @@ export default function AllCategoriesPage() {
                                         >
                                             <div className="w-full aspect-square mb-4 rounded-xl bg-zinc-50 flex items-center justify-center overflow-hidden border border-zinc-100 group-hover:border-indigo-500/10 transition-colors relative">
                                                 {sub.image ? (
-                                                    // ✅ AppImage Used Here
                                                     <AppImage
                                                         src={sub.image}
                                                         alt={sub.name}
@@ -305,8 +310,6 @@ export default function AllCategoriesPage() {
                                         className="group relative bg-white rounded-3xl p-1 shadow-sm border border-zinc-200 cursor-pointer hover:shadow-2xl hover:shadow-indigo-900/5 hover:border-indigo-200 transition-all duration-300"
                                     >
                                         <div className="relative h-full bg-white rounded-[20px] p-5 md:p-6 flex flex-col justify-between overflow-hidden">
-
-                                            {/* Header Section */}
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="w-16 h-16 rounded-2xl bg-zinc-50 flex items-center justify-center overflow-hidden border border-zinc-100 shadow-sm group-hover:scale-105 transition-transform duration-300 relative">
                                                     {cat.image ? (
@@ -324,8 +327,6 @@ export default function AllCategoriesPage() {
                                                     <TypeBadge type={cat.type} />
                                                 </div>
                                             </div>
-
-                                            {/* Content Section */}
                                             <div className="relative z-10">
                                                 <h3 className="text-lg md:text-xl font-bold text-zinc-800 group-hover:text-indigo-600 transition-colors">
                                                     {cat.name}
@@ -348,5 +349,17 @@ export default function AllCategoriesPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function AllCategoriesPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="animate-spin text-indigo-600" size={48} />
+            </div>
+        }>
+            <CategoriesContent />
+        </Suspense>
     );
 }

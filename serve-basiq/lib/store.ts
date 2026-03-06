@@ -3,7 +3,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-// ✅ 1. Define Address Interface
 export interface Address {
   id: string;
   line1: string;
@@ -16,7 +15,6 @@ export interface Address {
   district?: string;
 }
 
-// ✅ 2. Define User Interface
 export interface User {
   id: string;
   name: string | null;
@@ -24,7 +22,7 @@ export interface User {
   phone: string;
   img: string | null;
   image?: string | null;
-  profileImage?: string | null; // 👉 ADD THIS LINE
+  profileImage?: string | null;
   role: string;
   providerType?: "SERVICE" | "PRODUCT" | "BOTH" | string;
 
@@ -35,7 +33,6 @@ export interface User {
 
   addresses?: Address[];
 
-  // Flattened Address Fields
   addressLine1?: string;
   addressLine2?: string;
   landmark?: string;
@@ -58,8 +55,7 @@ interface UIState {
 
   setCurrentUser: (user: User | null) => void;
   logout: () => void;
-  devOtp?: string; // ✅ Temporary OTP storage for simulation, will be removed in production
-  // Login/Modal State
+  devOtp?: string; 
   loginIntent: "user" | "provider";
   setLoginIntent: (intent: "user" | "provider") => void;
 
@@ -67,7 +63,7 @@ interface UIState {
   setTempName: (name: string) => void;
 
   mobileNumber: string;
-  verificationId: string | null; // ✅ Changed from devOtp to verificationId
+  verificationId: string | null;
   isNewUser: boolean;
 
   isLoginOpen: boolean;
@@ -75,7 +71,6 @@ interface UIState {
   isNameOpen: boolean;
   isEditProfileOpen: boolean;
 
-  // ✅ Updated signature to accept verificationId
   onOpenOtp: (phone: string, verificationId: string, isNewUser?: boolean) => void;
   onCloseOtp: () => void;
 
@@ -105,7 +100,7 @@ export const useUIStore = create<UIState>()(
 
       mobileNumber: "",
       devOtp: undefined,
-      verificationId: null, // Default null
+      verificationId: null,
       isNewUser: false,
 
       isLoginOpen: false,
@@ -125,7 +120,6 @@ export const useUIStore = create<UIState>()(
       //     isNameOpen: false,
       //   }),
       onOpenOtp: (phone, verificationId, isNewUser) => {
-        // If the ID passed is exactly 4 digits, it's our local dev OTP
         const isDevOtp = verificationId && verificationId.length === 4 && !isNaN(Number(verificationId));
 
         set({

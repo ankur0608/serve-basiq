@@ -10,7 +10,7 @@ const OrderSchema = z.object({
 
     timeline: z.enum(['URGENT', 'IMMEDIATE', 'LATER', 'FLEXIBLE']),
 
-    specialInstructions: z.string().optional(), 
+    specialInstructions: z.string().optional(),
 
     newAddress: z.object({
         line1: z.string(),
@@ -26,7 +26,7 @@ const OrderSchema = z.object({
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        console.log("📦 [Order API] Received Payload:", body);
+        // console.log("📦 [Order API] Received Payload:", body);
 
         // 2. Validate with Zod
         const validation = OrderSchema.safeParse(body);
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         let finalAddressId = data.addressId;
 
         if (data.addressId.startsWith("temp-")) {
-            console.log("🆕 Detected New Address. Creating...");
+            // console.log("🆕 Detected New Address. Creating...");
 
             if (!data.newAddress) {
                 return NextResponse.json({ success: false, message: "New address details missing." }, { status: 400 });
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
             },
         });
 
-        console.log("🎉 [Order API] Order Created:", newOrder.id);
+        // console.log("🎉 [Order API] Order Created:", newOrder.id);
 
         return NextResponse.json({
             success: true,

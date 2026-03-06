@@ -6,14 +6,13 @@ import clsx from 'clsx';
 interface ViewDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    data: any; // Accepts Product, Service, or Rental
+    data: any; 
     type: 'PRODUCT' | 'SERVICE' | 'RENTAL';
 }
 
 export function ViewDetailsModal({ isOpen, onClose, data, type }: ViewDetailsModalProps) {
     if (!isOpen || !data) return null;
 
-    // Normalize data fields between Products, Services, and Rentals
     const mainImage = data.productImage || data.img || data.mainimg || data.serviceimg || data.rentalImg || "";
     const categoryName = typeof data.category === 'object' ? data.category?.name : (data.category || 'General');
     const subCategoryName = data.subcategory?.name || 'None';
@@ -33,7 +32,6 @@ export function ViewDetailsModal({ isOpen, onClose, data, type }: ViewDetailsMod
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
 
-                {/* Header */}
                 <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <div className="flex items-center gap-3">
                         <div className={clsx(
@@ -52,10 +50,8 @@ export function ViewDetailsModal({ isOpen, onClose, data, type }: ViewDetailsMod
                     </button>
                 </div>
 
-                {/* Body (Scrollable) */}
                 <div className="overflow-y-auto p-6 space-y-8">
 
-                    {/* Top Section: Image & Basic Info */}
                     <div className="flex flex-col sm:flex-row gap-6">
                         <div className="w-full sm:w-1/3 aspect-square rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
                             {mainImage ? (

@@ -1,7 +1,6 @@
 generator client {
     provider   = "prisma-client-js"
     engineType = "library"
-    // previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -264,20 +263,16 @@ model Category {
     type  CategoryType?
     image String?
 
-    // 1. Hierarchy (Parent/Child)
     parentId String?
     parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
     children Category[] @relation("CategoryHierarchy")
 
-    // 2. Services Relations
     services      Service[] @relation("MainCategory")
     servicesInSub Service[] @relation("ServiceSubCategory")
 
-    // 3. Products Relations
     products      Product[] @relation("ProductMainCategory")
     productsInSub Product[] @relation("ProductSubCategory")
 
-    // 4. Rentals Relations
     rentals      Rental[] @relation("RentalMainCategory")
     rentalsInSub Rental[] @relation("RentalSubCategory")
 
@@ -368,7 +363,7 @@ model User {
     isWorker        Boolean  @default(false)
     isWebsite       Boolean  @default(true)
     rejectionReason String?
-    rentals         Rental[] // ✅ Add this
+    rentals         Rental[] 
 
     instagramUrl String?
     facebookUrl  String?
@@ -485,12 +480,12 @@ model Requirement {
 model Otp {
     id        String    @id @default(cuid())
     phone     String    @unique
-    code      String? // <-- Add this back for Dev Mode
+    code      String? 
     expiresAt DateTime?
     attempts  Int       @default(0)
     lockUntil DateTime?
     createdAt DateTime  @default(now())
-    updatedAt DateTime  @default(now()) @updatedAt // <-- Add @default(now()) here
+    updatedAt DateTime  @default(now()) @updatedAt
 }
 
 model Service {
@@ -560,22 +555,17 @@ model Review {
     comment String?
     images  String[]
 
-    // The User ID of the OWNER (Service Provider OR Product Supplier OR Rental Owner)
     userId String
 
-    // Service Relation
     serviceId String?
     service   Service? @relation(fields: [serviceId], references: [id])
 
-    // Product Relation 
     productId String?
     product   Product? @relation(fields: [productId], references: [id])
 
-    // Rental Relation (NEW)
     rentalId String?
     rental   Rental? @relation(fields: [rentalId], references: [id])
 
-    // The Customer who wrote the review
     authorId String
     author   User   @relation(fields: [authorId], references: [id])
 
@@ -630,7 +620,7 @@ model FavoriteService {
     service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
     createdAt DateTime @default(now())
 
-    @@unique([userId, serviceId]) // Prevent duplicate likes
+    @@unique([userId, serviceId])
 }
 
 model FavoriteProduct {
@@ -641,7 +631,7 @@ model FavoriteProduct {
     product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
     createdAt DateTime @default(now())
 
-    @@unique([userId, productId]) // Prevent duplicate likes
+    @@unique([userId, productId])
 }
 
 model FavoriteRental {

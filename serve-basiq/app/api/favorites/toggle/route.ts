@@ -4,23 +4,23 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 export async function POST(req: Request) {
-  console.log("🔵 [API] POST /api/favorites/toggle called");
+  // console.log("🔵 [API] POST /api/favorites/toggle called");
 
   try {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user || !session.user.id) {
-      console.log("🔴 [API] Unauthorized attempt");
+      // console.log("🔴 [API] Unauthorized attempt");
       return new NextResponse("Unauthorized: Please log in", { status: 401 });
     }
 
     const body = await req.json();
-    console.log("🔵 [API] Request Body:", body);
+    // console.log("🔵 [API] Request Body:", body);
 
     const { itemId, type } = body;
 
     if (!itemId || !type) {
-      console.log("🔴 [API] Missing itemId or type");
+      // console.log("🔴 [API] Missing itemId or type");
       return new NextResponse("Missing fields", { status: 400 });
     }
 
@@ -32,11 +32,11 @@ export async function POST(req: Request) {
       });
 
       if (existing) {
-        console.log(`🔵 [API] Removing Service ${itemId} from favorites`);
+        // console.log(`🔵 [API] Removing Service ${itemId} from favorites`);
         await prisma.favoriteService.delete({ where: { id: existing.id } });
         return NextResponse.json({ status: 'removed' });
       } else {
-        console.log(`🔵 [API] Adding Service ${itemId} to favorites`);
+        // console.log(`🔵 [API] Adding Service ${itemId} to favorites`);
         await prisma.favoriteService.create({ data: { userId, serviceId: itemId } });
         return NextResponse.json({ status: 'added' });
       }

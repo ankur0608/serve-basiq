@@ -6,18 +6,18 @@ import { authOptions } from "@/lib/auth";
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    console.log("🔵 [API] GET /api/user/favorites called");
+    // console.log("🔵 [API] GET /api/user/favorites called");
 
     try {
         const session = await getServerSession(authOptions);
-        console.log("🔵 [API] Session found:", session ? "YES" : "NO");
+        // console.log("🔵 [API] Session found:", session ? "YES" : "NO");
 
         if (!session?.user?.id) {
-            console.log("🔴 [API] 401: No User ID in session");
+            // console.log("🔴 [API] 401: No User ID in session");
             return NextResponse.json({ services: [], products: [] });
         }
 
-        console.log(`🔵 [API] Fetching favorites for User ID: ${session.user.id}`);
+        // console.log(`🔵 [API] Fetching favorites for User ID: ${session.user.id}`);
 
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
@@ -28,14 +28,14 @@ export async function GET() {
         });
 
         if (!user) {
-            console.log("🔴 [API] User not found in DB");
+            // console.log("🔴 [API] User not found in DB");
             return NextResponse.json({ services: [], products: [] });
         }
 
         const serviceIds = user.favoriteServices.map(f => f.serviceId);
         const productIds = user.favoriteProducts.map(f => f.productId);
 
-        console.log(`🟢 [API] Success. Found ${serviceIds.length} services and ${productIds.length} products.`);
+        // console.log(`🟢 [API] Success. Found ${serviceIds.length} services and ${productIds.length} products.`);
 
         return NextResponse.json({ services: serviceIds, products: productIds });
 

@@ -114,7 +114,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        console.log("📥 [Service API] Received Body:", body);
+        // console.log("📥 [Service API] Received Body:", body);
 
         const {
             id, userId, name, desc, serviceimg, serviceImages, coverImg, gallery,

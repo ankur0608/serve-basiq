@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
-    console.log("\n================= 🔐 VERIFICATION SUBMIT START (3-STEP) =================");
 
     try {
         const body = await req.json();
 
         // 🔍 LOG: See exactly what the frontend is sending
-        console.log("📥 RECEIVED BODY:", JSON.stringify(body, null, 2));
+        // console.log("📥 RECEIVED BODY:", JSON.stringify(body, null, 2));
 
         const {
             userId,
@@ -28,14 +27,14 @@ export async function POST(req: Request) {
 
         await prisma.$transaction(async (tx) => {
 
-            console.log("📝 UPDATING USER:", {
-                userId,
-                name: fullName,
-                dob: validDob,
-                language: preferredLanguage
-            });
+            // console.log("📝 UPDATING USER:", {
+            //     userId,
+            //     name: fullName,
+            //     dob: validDob,
+            //     language: preferredLanguage
+            // });
 
-            console.log("⛓️ 1. Updating Core User Profile...");
+            // console.log("⛓️ 1. Updating Core User Profile...");
             await tx.user.update({
                 where: { id: userId },
                 data: {
@@ -55,7 +54,7 @@ export async function POST(req: Request) {
                 },
             });
 
-            console.log("⛓️ 2. Upserting KYC Details...");
+            // console.log("⛓️ 2. Upserting KYC Details...");
             await tx.kycDetails.upsert({
                 where: { userId },
                 create: {
@@ -81,7 +80,7 @@ export async function POST(req: Request) {
                 },
             });
 
-            console.log("⛓️ 3. Standardizing Address Logic...");
+            // console.log("⛓️ 3. Standardizing Address Logic...");
 
             const homeData = {
                 line1: addressLine1,
@@ -117,7 +116,7 @@ export async function POST(req: Request) {
                 await tx.address.create({ data: { ...workData, userId, type: "Work" } });
             }
 
-            console.log("🧾 Transaction completed successfully");
+            // console.log("🧾 Transaction completed successfully");
         }, {
             maxWait: 15000,
             timeout: 30000

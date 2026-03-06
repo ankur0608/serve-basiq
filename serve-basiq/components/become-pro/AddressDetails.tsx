@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from "react";
 import { MapPin, Navigation, Loader2 } from 'lucide-react';
-import Input from "@/components/ui/Input"; // Adjust path if needed
+import Input from "@/components/ui/Input"; 
 
 interface AddressDetailsProps {
     form: any;
@@ -44,7 +44,7 @@ const AddressDetails = memo(({ form, errors, onChange, onGetLocation, gettingLoc
     return (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100 mb-2">
-                <MapPin className="text-blue-600" size={20} /> <span className="font-bold text-slate-900">Permanent Address</span>
+                <MapPin className="text-blue-600" size={20} /> <span className="font-bold text-slate-900">Business Address</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

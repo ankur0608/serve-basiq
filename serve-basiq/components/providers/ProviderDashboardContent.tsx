@@ -22,9 +22,9 @@ interface ContentProps {
     refetchDashboard: () => void;
     setSelectedProduct: (p: any) => void;
     selectedProduct: any;
-    // 👉 1. ADD TO INTERFACE
     recentBookings: any[];
     recentOrders: any[];
+    recentRentals: any[]; // ✅ ADDED THIS LINE
 }
 
 export function ProviderDashboardContent(props: ContentProps) {
@@ -32,7 +32,7 @@ export function ProviderDashboardContent(props: ContentProps) {
         activeView, handleViewChange, handleBackToHome, safeStats,
         isVerified, showToast, providerType, userData, currentUser,
         refetchDashboard, setSelectedProduct, selectedProduct,
-        recentBookings, recentOrders // 👉 2. DESTRUCTURE
+        recentBookings, recentOrders, recentRentals // ✅ DESTRUCTURED HERE
     } = props;
 
     return (
@@ -45,9 +45,9 @@ export function ProviderDashboardContent(props: ContentProps) {
                     onBackToHome={handleBackToHome}
                     isVerified={isVerified}
                     providerType={providerType}
-                    // 👉 3. PASS TO HOME VIEW
                     recentBookings={recentBookings}
                     recentOrders={recentOrders}
+                    recentRentals={recentRentals} // ✅ PASSED TO HOME VIEW
                 />
             )}
 

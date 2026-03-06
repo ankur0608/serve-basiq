@@ -34,7 +34,6 @@ export const SingleImageUploader = ({
             </label>
             <div className={`relative ${heightClass} rounded-xl bg-slate-50 border-2 border-dashed ${uploadError ? 'border-red-400 bg-red-50' : 'border-slate-300'} overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer`}>
 
-                {/* File Input */}
                 <input
                     type="file"
                     accept="image/*"
@@ -43,7 +42,6 @@ export const SingleImageUploader = ({
                     className="absolute inset-0 opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                 />
 
-                {/* Loading State */}
                 {isUploading && (
                     <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
                         <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
@@ -51,7 +49,6 @@ export const SingleImageUploader = ({
                     </div>
                 )}
 
-                {/* Preview or Placeholder */}
                 {image ? (
                     <>
                         <img src={image} className="w-full h-full object-cover" alt="Uploaded content" />

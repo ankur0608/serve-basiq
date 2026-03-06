@@ -53,7 +53,7 @@ export default function ServiceCategories({ categories }: CategoryProps) {
         {displayCategories.length > 0 ? (
           displayCategories.map((cat, index) => (
             <Link
-              href={`/services/category/${cat.id}`}
+              href={`/categories?categoryId=${cat.id}`}
               key={cat.id}
               className={`
                 bg-white border border-gray-100 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex-col items-center justify-center

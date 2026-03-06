@@ -15,7 +15,6 @@ interface ServiceDetailsModalProps {
 export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsModalProps) {
     if (!isOpen || !data) return null;
 
-    // Normalize images
     const mainImg = data.rentalImg || data.serviceimg || data.mainimg || "";
     const coverImg = data.coverImg || mainImg;
     const gallery = data.gallery || [];
@@ -46,10 +45,8 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
                     </button>
                 </div>
 
-                {/* Scrollable Content */}
                 <div className="overflow-y-auto w-full custom-scrollbar">
 
-                    {/* Cover Image Banner */}
                     <div className="w-full h-48 sm:h-64 bg-slate-100 relative">
                         {coverImg ? (
                             <img src={coverImg} alt="Cover" className="w-full h-full object-cover" />
@@ -60,7 +57,6 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-                        {/* Title Overlap */}
                         <div className="absolute bottom-0 left-0 w-full p-6 text-white flex items-end justify-between">
                             <div>
                                 <div className="flex items-center gap-2 mb-2">
@@ -75,7 +71,6 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
                                 </div>
                                 <h1 className="text-2xl sm:text-3xl font-bold">{data.name}</h1>
                             </div>
-                            {/* Main Image Avatar */}
                             <div className="w-20 h-20 rounded-xl border-4 border-white bg-white shadow-lg overflow-hidden shrink-0 hidden sm:block">
                                 <img src={mainImg} alt="Main" className="w-full h-full object-cover" />
                             </div>
@@ -84,10 +79,8 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
 
                     <div className="p-6 space-y-8">
 
-                        {/* Grid: Pricing & Provider */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                            {/* PRICING CARD */}
                             <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Pricing Details</h4>
                                 <div className="text-3xl font-extrabold text-slate-900 mb-4">
@@ -97,7 +90,6 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
                                     </span>
                                 </div>
 
-                                {/* Additional Pricing (Daily/Monthly/Deposit) */}
                                 <div className="grid grid-cols-2 gap-3 text-sm">
                                     {data.dailyPrice && (
                                         <div className="bg-white p-2.5 rounded-xl border border-slate-100">
@@ -122,7 +114,6 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
                                 </div>
                             </div>
 
-                            {/* PROVIDER INFO CARD */}
                             <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-center">
                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Provided By</h4>
                                 <div className="flex items-center gap-4">
@@ -145,7 +136,6 @@ export function ServiceDetailsModal({ isOpen, onClose, data }: ServiceDetailsMod
 
                         </div>
 
-                        {/* Rules & Logistics Grid - ✅ DYNAMIC FOR SERVICES VS RENTALS */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {isRental ? (
                                 <>

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo, memo, useEffect } from "react";
-// Replace with the correct path to your AppImage component
 import AppImage from "@/components/ui/AppImage";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -106,7 +105,6 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                 onClick={handleDetailsClick}
                 className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full"
             >
-                {/* Image Section */}
                 <div
                     className="relative w-full aspect-[4/3] bg-slate-50 overflow-hidden cursor-pointer"
                     onClick={handleDetailsClick}
@@ -146,7 +144,6 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                     )}
                 </div>
 
-                {/* Content Section */}
                 <div className="p-3 sm:p-4 flex flex-col flex-1 gap-3">
                     <div>
                         <h3 className="text-sm sm:text-base font-bold text-slate-800 line-clamp-1 mb-1 group-hover:text-blue-600 transition-colors">
@@ -194,7 +191,6 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                 </div>
             </div>
 
-            {/* Modals */}
             <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
             <MobileVerificationModal

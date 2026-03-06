@@ -1,51 +1,46 @@
+// app/provider/dashboard/page.tsx
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useUIStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import { useProviderDashboard } from '@/app/hook/useProviderDashboard';
 import {
     LayoutGrid, ClipboardList, Package, UserCircle,
-    BellRing, ArrowLeft, Loader2, AlertTriangle
+    BellRing, ArrowLeft, Loader2, AlertTriangle, LogOut
 } from 'lucide-react';
 import clsx from 'clsx';
 
+// ✅ Imported Logout Utilities
+import { fullLogout } from '@/lib/logout';
+import ConfirmLogoutModal from '@/components/auth/ConfirmLogoutModal';
+
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
-// import { RestrictionModal } from '@/components/providers/RestrictionModal'; // Commented out
 import { ProviderDashboardContent } from '@/components/providers/ProviderDashboardContent';
 
 export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
     const router = useRouter();
 
-    // Fetching dashboard data using the current user's ID
     const { data: dashboardData, isLoading: loading, refetch: refetchDashboard, isError } = useProviderDashboard(currentUser?.id);
 
     const [activeView, setActiveView] = useState('dashboard');
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
 
-    // =========================================================================
-    // 👉 DATA MAPPING (MATCHING YOUR JSON)
-    // =========================================================================
+    // ✅ Added state for the Logout Modal
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-    // Extract the user object from the dashboard response
     const userData = dashboardData?.user;
-
-    // 1. Dynamic Display Name
     const displayName = userData?.name || currentUser?.name || "Provider";
 
-    // 2. Safe Image Logic: Check profileImage -> image -> img in order (matching your JSON)
     const displayImg = useMemo(() => {
         return userData?.profileImage || userData?.image || userData?.img || "/placeholder-user.png";
     }, [userData]);
 
-    // 3. Status Flags
     const providerType = userData?.providerType || 'BOTH';
-    // Use isFullProfile from your JSON or setupComplete from API
     const isVerified = dashboardData?.isSetupComplete || userData?.isFullProfile || false;
 
-    // 4. Stats Handling
     const safeStats = useMemo(() => {
         return dashboardData?.stats || {
             revenue: 0, jobsCompleted: 0, pendingRequests: 0, rating: 0,
@@ -55,8 +50,7 @@ export default function ProviderDashboard() {
 
     const recentBookings = dashboardData?.bookings || [];
     const recentOrders = dashboardData?.orders || [];
-
-    // =========================================================================
+    const recentRentals = dashboardData?.rentals || [];
 
     const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
         setToast({ msg, type });
@@ -78,9 +72,7 @@ export default function ProviderDashboard() {
         }
     };
 
-    const handleViewChange = (view: string) => {
-        setActiveView(view);
-    };
+    const handleViewChange = (view: string) => setActiveView(view);
 
     const getActiveNavId = (view: string) => {
         if (['settings', 'products', 'add-product'].includes(view)) return 'settings';
@@ -109,9 +101,6 @@ export default function ProviderDashboard() {
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#F8F9FC] font-sans text-slate-800 relative">
-
-            {/* Modal is completely removed/commented as per your request */}
-
             {toast && (
                 <div className={clsx("fixed top-5 right-5 z-[110] animate-in slide-in-from-right duration-300 flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-4 min-w-75 bg-white",
                     toast.type === 'success' ? "border-emerald-500 text-emerald-700" : "border-red-500 text-red-700")}>
@@ -119,7 +108,6 @@ export default function ProviderDashboard() {
                 </div>
             )}
 
-            {/* --- DESKTOP SIDEBAR --- */}
             <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-sm">
                 <div className="flex items-center gap-2 h-20 px-6 border-b border-slate-100">
                     <img src="/navbar.png" alt="ServeBasiq Logo" className="h-24 object-contain" />
@@ -131,14 +119,23 @@ export default function ProviderDashboard() {
                     <NavButton id="settings" icon={Package} label="Management" active={activeNavId} set={handleViewChange} />
                     <NavButton id="profile" icon={UserCircle} label="Account" active={activeNavId} set={handleViewChange} />
                 </nav>
-                <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleViewChange('profile')}>
-                        <img src={displayImg} className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm" alt="User" />
+
+                {/* ✅ Added Logout Icon to the Desktop Sidebar bottom section */}
+                <div className="p-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors flex-1 min-w-0" onClick={() => handleViewChange('profile')}>
+                        <img src={displayImg} className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm shrink-0" alt="User" />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-slate-900 truncate">{displayName}</p>
                             <p className="text-[10px] text-slate-500 font-bold uppercase">{providerType}</p>
                         </div>
                     </div>
+                    <button
+                        onClick={() => setShowLogoutModal(true)}
+                        className="p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors shrink-0"
+                        title="Log Out"
+                    >
+                        <LogOut size={18} />
+                    </button>
                 </div>
             </aside>
 
@@ -161,11 +158,21 @@ export default function ProviderDashboard() {
                             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                             <span className="hidden sm:inline">Exit to Website</span>
                         </button>
-                        <button className="relative p-2.5 rounded-xl text-slate-400 hover:bg-slate-100 transition-colors">
+                        <button className="relative p-2.5 rounded-xl text-slate-400 hover:bg-slate-100 transition-colors hidden sm:block">
                             <BellRing size={20} />
                             <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-white"></span>
                         </button>
-                        <div className="h-9 w-9 rounded-full overflow-hidden border border-slate-200 cursor-pointer shadow-sm" onClick={() => handleViewChange('profile')}>
+
+                        {/* ✅ Added Logout Icon visible only on Mobile Header */}
+                        <button
+                            onClick={() => setShowLogoutModal(true)}
+                            className="lg:hidden relative p-2.5 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            title="Log Out"
+                        >
+                            <LogOut size={20} />
+                        </button>
+
+                        <div className="h-9 w-9 rounded-full overflow-hidden border border-slate-200 cursor-pointer shadow-sm shrink-0" onClick={() => handleViewChange('profile')}>
                             <img src={displayImg} className="h-full w-full object-cover" alt="Profile" />
                         </div>
                     </div>
@@ -187,11 +194,11 @@ export default function ProviderDashboard() {
                         selectedProduct={selectedProduct}
                         recentBookings={recentBookings}
                         recentOrders={recentOrders}
+                        recentRentals={recentRentals}
                     />
                 </main>
             </div>
 
-            {/* --- MOBILE NAV --- */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 z-50 pb-safe shadow-lg">
                 <div className="flex justify-around items-center h-16">
                     <MobileNavBtn id="dashboard" icon={LayoutGrid} label="Home" active={activeNavId} set={handleViewChange} />
@@ -200,6 +207,12 @@ export default function ProviderDashboard() {
                     <MobileNavBtn id="profile" icon={UserCircle} label="Me" active={activeNavId} set={handleViewChange} />
                 </div>
             </nav>
+
+            <ConfirmLogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={fullLogout}
+            />
         </div>
     );
 }

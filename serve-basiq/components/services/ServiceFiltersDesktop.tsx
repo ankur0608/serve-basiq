@@ -1,7 +1,7 @@
 'use client';
 
 import { Filter, MapPin, ArrowDownAZ } from 'lucide-react';
-import type { CategoryData } from './ServiceFiltersMobile'; // Adjust import path if needed
+import type { CategoryData } from './ServiceFiltersMobile'; 
 
 interface DesktopFiltersProps {
     selectedCategory: string;
@@ -41,7 +41,6 @@ export default function ServiceFiltersDesktop({
             </div>
 
             <div className="space-y-6">
-                {/* Category */}
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Category</label>
                     <div className="relative">
@@ -62,7 +61,6 @@ export default function ServiceFiltersDesktop({
                     </div>
                 </div>
 
-                {/* Subcategory */}
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Subcategory</label>
                     <div className="relative">
@@ -81,7 +79,6 @@ export default function ServiceFiltersDesktop({
                     </div>
                 </div>
 
-                {/* Location */}
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Location</label>
                     <div className="relative">
@@ -99,7 +96,6 @@ export default function ServiceFiltersDesktop({
                     </div>
                 </div>
 
-                {/* Sort By */}
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Sort By</label>
                     <div className="relative">

@@ -42,14 +42,12 @@ export default function ServiceFiltersMobile({
 
     const handleApply = () => setIsOpen(false);
 
-    // 👇 Updated: Now it only resets filters and leaves the modal open
     const handleReset = () => {
         resetFilters();
     };
 
     return (
         <div className="md:hidden">
-            {/* Search Bar & Button */}
             <div className="flex gap-2 bg-white rounded-xl border border-slate-200 shadow-sm p-1">
                 <div className="relative flex-1">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -72,12 +70,10 @@ export default function ServiceFiltersMobile({
                 </button>
             </div>
 
-            {/* Modal */}
             {isOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsOpen(false)} />
                     <div className="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-900">Filters</h3>
                             <button
@@ -87,9 +83,7 @@ export default function ServiceFiltersMobile({
                             </button>
                         </div>
 
-                        {/* Form */}
                         <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                            {/* Category */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category</label>
                                 <div className="relative">
@@ -110,7 +104,6 @@ export default function ServiceFiltersMobile({
                                 </div>
                             </div>
 
-                            {/* Subcategory */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subcategory</label>
                                 <div className="relative">
@@ -129,7 +122,6 @@ export default function ServiceFiltersMobile({
                                 </div>
                             </div>
 
-                            {/* Location */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location</label>
                                 <div className="relative">
@@ -147,7 +139,6 @@ export default function ServiceFiltersMobile({
                                 </div>
                             </div>
 
-                            {/* Sort */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sort By</label>
                                 <div className="relative">
@@ -167,7 +158,6 @@ export default function ServiceFiltersMobile({
                             </div>
                         </div>
 
-                        {/* Footer */}
                         <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3">
                             <button
                                 type="button"

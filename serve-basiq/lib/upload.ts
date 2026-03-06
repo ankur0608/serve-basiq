@@ -4,11 +4,10 @@ export async function uploadImage(file: File): Promise<string> {
     try {
         let fileToUpload = file;
 
-        // --- STEP 1: COMPRESSION ---
         if (file.type.startsWith('image/')) {
             const options = {
-                maxSizeMB: 1,           // Max size 1MB
-                maxWidthOrHeight: 1920, // Max dimension 1920px
+                maxSizeMB: 1,           
+                maxWidthOrHeight: 1920, 
                 useWebWorker: true,
                 initialQuality: 0.8
             };
@@ -22,13 +21,9 @@ export async function uploadImage(file: File): Promise<string> {
             }
         }
 
-        // --- STEP 2: PREPARE FORM DATA ---
-        // ✅ We use FormData exactly like the Service component
         const formData = new FormData();
         formData.append('file', fileToUpload);
 
-        // --- STEP 3: UPLOAD ---
-        // ✅ No custom headers needed; fetch sets 'multipart/form-data' automatically
         const res = await fetch('/api/upload', {
             method: 'POST',
             body: formData

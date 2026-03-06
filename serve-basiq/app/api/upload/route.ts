@@ -11,8 +11,7 @@ const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("---------------------------------------------------");
-    console.log("🚀 [API] Presigned URL request received");
+    // console.log("🚀 [API] Presigned URL request received");
 
     // 🔒 TODO: Add Authentication check here so random people can't upload!
 
@@ -20,11 +19,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { filename, fileType, fileSize } = body;
 
-    console.log("📦 [API] Payload received:", {
-      filename,
-      fileType,
-      fileSize: `${(fileSize / 1024 / 1024).toFixed(2)} MB`
-    });
+    // console.log("📦 [API] Payload received:", {
+    //   filename,
+    //   fileType,
+    //   fileSize: `${(fileSize / 1024 / 1024).toFixed(2)} MB`
+    // });
 
     if (!filename || !fileType || !fileSize) {
       console.warn("⚠️ [API] Missing file metadata in request.");
@@ -60,22 +59,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("✅ [API] Validation passed.");
+    // console.log("✅ [API] Validation passed.");
 
     // 4. Generate the safe, unique key
     const safeName = filename.replace(/[^a-zA-Z0-9.-]/g, "");
     const uniqueId = randomUUID();
     const key = `services/${uniqueId}-${safeName}`;
 
-    console.log(`⬆️ [API] Generating Presigned URL for key: ${key}`);
+    // console.log(`⬆️ [API] Generating Presigned URL for key: ${key}`);
 
     // 5. Get the temporary URL from your updated lib/r2.ts
     const uploadUrl = await generateR2UploadUrl(key, fileType);
     const publicUrl = `${process.env.R2_PUBLIC_BASE_URL}/${key}`;
 
-    console.log("🔗 [API] URL successfully generated!");
-    console.log("🌐 [API] Future Public URL:", publicUrl);
-    console.log("---------------------------------------------------");
+    // console.log("🔗 [API] URL successfully generated!");
+    // console.log("🌐 [API] Future Public URL:", publicUrl);
 
     // 6. Return the URL to the client
     return NextResponse.json({

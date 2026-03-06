@@ -1,8 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
     TrendingUp, Briefcase, Bell, Star, PieChart,
-    Clock, CheckCircle, XCircle, Calendar, Package, ChevronRight
+    Clock, CheckCircle, XCircle, Calendar, Package, ChevronRight, Key
 } from 'lucide-react';
 import { StatCard } from './DashboardComponents';
 import { Line, Doughnut } from 'react-chartjs-2';
@@ -10,9 +11,11 @@ import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement,
     LineElement, Title, Tooltip, Legend, Filler, ArcElement
 } from 'chart.js';
+import clsx from 'clsx';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
 
+// (Keep revenueData, revenueOptions, and trafficData as they were in your original code)
 const revenueData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
     datasets: [{
@@ -62,10 +65,9 @@ const trafficData = {
 };
 
 export function DashboardHomeView({
-    stats, setActiveView, recentBookings = [], recentOrders = [], providerType
+    stats, setActiveView, recentBookings = [], recentOrders = [], recentRentals = [], providerType
 }: any) {
 
-    // Helper for Status Badges
     const getStatusBadge = (status: string) => {
         const s = status?.toUpperCase();
         if (['COMPLETED', 'DELIVERED'].includes(s)) {
@@ -79,10 +81,41 @@ export function DashboardHomeView({
 
     const dashboardStats = stats?.stats || { revenue: 0, jobsCompleted: 0, pendingRequests: 0, rating: 5.0 };
 
+    // ✅ Combine Services and Rentals into one chronologically sorted timeline
+    const combinedActivity = useMemo(() => {
+        const services = recentBookings.map((b: any) => ({
+            id: `srv_${b.id}`,
+            type: 'SERVICE',
+            title: b.service?.name,
+            customerName: b.user?.name,
+            image: b.service?.serviceimg || '/placeholder-service.png',
+            priceLabel: b.service?.priceType === 'QUOTE' || b.service?.price === 0 ? 'Quote' : `₹${b.service?.price}`,
+            badgeLabel: b.service?.priceType || 'FIXED',
+            status: b.status,
+            createdAt: b.createdAt
+        }));
+
+        const rentals = recentRentals.map((r: any) => ({
+            id: `rnt_${r.id}`,
+            type: 'RENTAL',
+            title: r.rental?.name,
+            customerName: r.user?.name,
+            image: r.rental?.rentalImg || '/placeholder-rental.png', // ✅ Updated to rentalImg
+            priceLabel: `₹${r.rental?.price || r.totalPrice || 0}`,
+            badgeLabel: 'RENTAL',
+            status: r.status,
+            createdAt: r.createdAt
+        }));
+
+        // Merge and sort by newest first, then keep top 5
+        return [...services, ...rentals]
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 5);
+
+    }, [recentBookings, recentRentals]);
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-            {/* 1. Dynamic Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
                 <StatCard icon={TrendingUp} label="Total Income" value={`₹${dashboardStats.revenue.toLocaleString('en-IN')}`} trend="12%" color="emerald" />
                 <StatCard icon={Briefcase} label="Total Orders" value={dashboardStats.jobsCompleted} trend="5%" color="blue" />
@@ -90,7 +123,6 @@ export function DashboardHomeView({
                 <StatCard icon={Star} label="Avg. Rating" value={dashboardStats.rating.toFixed(1)} trend="2%" color="purple" />
             </div>
 
-            {/* 2. Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 lg:col-span-2">
                     <div className="flex items-center justify-between mb-6">
@@ -113,16 +145,16 @@ export function DashboardHomeView({
                 </div>
             </div>
 
-            {/* 3. Activity Section */}
-            {/* 3. Activity Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                {/* RECENT BOOKINGS (Services) */}
-                {(providerType === 'SERVICE' || providerType === 'BOTH') && (
+                {/* ✅ RECENT BOOKINGS & RENTALS */}
+                {['SERVICE', 'RENTAL', 'BOTH'].includes(providerType) && (
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
                         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <div className="flex items-center gap-2">
-                                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Calendar size={18} /></div>
+                                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                                    <Calendar size={18} />
+                                </div>
                                 <h3 className="font-bold text-slate-900">Recent Bookings</h3>
                             </div>
                             <button onClick={() => setActiveView('requests')} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center transition-colors">
@@ -130,38 +162,44 @@ export function DashboardHomeView({
                             </button>
                         </div>
                         <div className="flex-1">
-                            {recentBookings.length === 0 ? (
-                                <div className="p-10 text-center text-slate-400 text-sm font-medium">No recent bookings.</div>
+                            {combinedActivity.length === 0 ? (
+                                <div className="p-10 text-center text-slate-400 text-sm font-medium">No recent activity.</div>
                             ) : (
                                 <div className="divide-y divide-slate-100">
-                                    {recentBookings.map((booking: any) => (
-                                        <div key={booking.id} className="p-4 hover:bg-slate-50 transition flex items-center justify-between">
+                                    {combinedActivity.map((item: any) => (
+                                        <div key={item.id} className="p-4 hover:bg-slate-50 transition flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                {/* 👉 Show Service Image */}
-                                                <img
-                                                    src={booking.service?.serviceimg || '/placeholder-service.png'}
-                                                    className="h-10 w-10 rounded-lg object-cover border border-slate-100"
-                                                    alt="service"
-                                                />
+                                                <div className="relative">
+                                                    <img
+                                                        src={item.image}
+                                                        className="h-10 w-10 rounded-lg object-cover border border-slate-100"
+                                                        alt={item.title}
+                                                    />
+                                                    {/* Little indicator icon for Rentals vs Services */}
+                                                    <div className={clsx(
+                                                        "absolute -bottom-1 -right-1 p-0.5 rounded-full border-2 border-white",
+                                                        item.type === 'RENTAL' ? "bg-purple-500 text-white" : "bg-blue-500 text-white"
+                                                    )}>
+                                                        {item.type === 'RENTAL' ? <Key size={8} /> : <Briefcase size={8} />}
+                                                    </div>
+                                                </div>
                                                 <div className="min-w-0">
                                                     <p className="font-bold text-sm text-slate-900 truncate max-w-[150px]">
-                                                        {booking.service?.name}
+                                                        {item.title}
                                                     </p>
-                                                    <p className="text-[10px] text-slate-500 font-medium truncate">{booking.user?.name}</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium truncate">{item.customerName}</p>
                                                 </div>
                                             </div>
                                             <div className="text-right shrink-0">
-                                                {/* 👉 Handle "QUOTE" or 0 Price logic */}
-                                                <p className="font-bold text-sm text-slate-900">
-                                                    {booking.service?.priceType === 'QUOTE' || booking.service?.price === 0
-                                                        ? "Quote"
-                                                        : `₹${booking.service?.price}`}
-                                                </p>
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">
-                                                        {booking.service?.priceType}
+                                                <p className="font-bold text-sm text-slate-900">{item.priceLabel}</p>
+                                                <div className="flex flex-col items-end gap-1 mt-0.5">
+                                                    <span className={clsx(
+                                                        "text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded",
+                                                        item.type === 'RENTAL' ? "bg-purple-100 text-purple-700" : "text-slate-400"
+                                                    )}>
+                                                        {item.badgeLabel}
                                                     </span>
-                                                    {getStatusBadge(booking.status)}
+                                                    {getStatusBadge(item.status)}
                                                 </div>
                                             </div>
                                         </div>
@@ -173,7 +211,7 @@ export function DashboardHomeView({
                 )}
 
                 {/* RECENT ORDERS (Products) */}
-                {(providerType === 'PRODUCT' || providerType === 'BOTH') && (
+                {['PRODUCT', 'BOTH'].includes(providerType) && (
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
                         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <div className="flex items-center gap-2">
@@ -192,7 +230,6 @@ export function DashboardHomeView({
                                     {recentOrders.map((order: any) => (
                                         <div key={order.id} className="p-4 hover:bg-slate-50 transition flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                {/* 👉 Show Product Image */}
                                                 <img
                                                     src={order.product?.productImage || '/placeholder-product.png'}
                                                     className="h-10 w-10 rounded-lg object-cover border border-slate-100"

@@ -15,7 +15,7 @@ const globalForPrisma = global as unknown as {
 export const prisma =
     globalForPrisma.prisma ??
     new PrismaClient({  
-        adapter, // ✅ REQUIRED in Prisma v7
+        adapter, 
         log: ["error"],
     });
 

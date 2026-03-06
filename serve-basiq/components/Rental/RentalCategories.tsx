@@ -56,7 +56,7 @@ export default function RentalCategories({ categories }: RentalCategoriesProps) 
                 {displayCategories.length > 0 ? (
                     displayCategories.map((cat, index) => (
                         <Link
-                            href={`/rentals?category=${cat.id}`}
+                            href={`/categories?categoryId=${cat.id}`}
                             key={cat.id}
                             // LOGIC:
                             // 1. "hidden md:flex": Hides the 5th & 6th item on mobile (index > 3)

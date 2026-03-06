@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function submitServiceReview(formData: FormData) {
-    console.log("🚀 [Action] submitServiceReview started");
+    // console.log("🚀 [Action] submitServiceReview started");
 
     const session = await getServerSession(authOptions);
 
@@ -52,7 +52,7 @@ export async function submitServiceReview(formData: FormData) {
         }
 
         if (uploadedImageUrls.length > 0) {
-            console.log(`📸 [Action] Saving ${uploadedImageUrls.length} image URLs to database...`);
+            // console.log(`📸 [Action] Saving ${uploadedImageUrls.length} image URLs to database...`);
         }
 
         // 3. Database Transaction: Create review and update service rating instantly
@@ -84,7 +84,7 @@ export async function submitServiceReview(formData: FormData) {
 
         // 4. Update the UI
         revalidatePath(`/services/${serviceId}`);
-        console.log("✅ [Action] Review submitted successfully!");
+        // console.log("✅ [Action] Review submitted successfully!");
         return { success: true };
 
     } catch (error: any) {

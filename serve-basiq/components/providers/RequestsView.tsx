@@ -4,7 +4,7 @@ import {
     Loader2, Calendar, Clock, MapPin,
     CheckCircle2, XCircle, Filter, Package,
     Briefcase, ShoppingBag, User as UserIcon,
-    BoxSelect, KeyRound, AlertTriangle, Search, X, Phone, AlignLeft // ✅ Added Phone and AlignLeft
+    BoxSelect, KeyRound, AlertTriangle, Search, X, Phone, AlignLeft
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '@/lib/store';
@@ -18,7 +18,6 @@ const formatCurrency = (amount: number) => {
     }).format(amount);
 };
 
-// --- Sub-component: RequestCard ---
 // --- Sub-component: RequestCard ---
 const RequestCard = ({ data, onAction, isProcessing }: any) => {
     const getStatusColor = (status: string) => {
@@ -40,7 +39,6 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
         return map[status] || 'bg-slate-100 text-slate-600 border-slate-200';
     };
 
-    // ✅ Read priceType from our newly mapped data
     const isQuote = data.priceType === 'QUOTE';
 
     return (
@@ -53,8 +51,8 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
             )}
 
             {/* Header info */}
-            <div className="px-5 py-3 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                <div className="flex items-center gap-2">
+            <div className="px-5 py-3 border-b border-slate-50 flex justify-between items-start bg-slate-50/50">
+                <div className="flex items-center gap-2 mt-1">
                     {data.type === 'RENTAL' ? (
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200 flex items-center gap-1">
                             <KeyRound size={10} /> RENTAL
@@ -72,8 +70,23 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
                         {data.displayStatus.replace('_', ' ')}
                     </span>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
-                    #{data.id.slice(-6).toUpperCase()}
+
+                {/* ✅ Added Request Date & Time Here */}
+                <div className="flex flex-col items-end gap-1 text-[10px] font-medium text-slate-400">
+                    <span>#{data.id.slice(-6).toUpperCase()}</span>
+                    {data.createdAt && (
+                        <span className="flex items-center gap-1 text-slate-500" title="Request generated on">
+                            <Clock size={10} />
+                            {new Date(data.createdAt).toLocaleString('en-IN', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                            })}
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -96,7 +109,6 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
                         </div>
                     </div>
                     <div className="text-right">
-                        {/* ✅ Apply isQuote logic here */}
                         <div className="text-sm font-black text-slate-900">
                             {isQuote ? (
                                 <span className="text-xs uppercase text-slate-500 tracking-wider">Quote Requested</span>
@@ -244,11 +256,11 @@ const RequestCard = ({ data, onAction, isProcessing }: any) => {
         </div>
     );
 };
+
 // --- Main Component ---
 export default function RequestsView({ showToast, providerType }: { showToast: any, providerType: string }) {
     const { currentUser } = useUIStore();
 
-    // Extracted logic entirely to Custom Hook
     const {
         viewMode, setViewMode,
         activeTab, setActiveTab,

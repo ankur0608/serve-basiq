@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import {
     Briefcase, ChevronRight, Loader2, Hammer, Truck, Box, ShieldCheck,
-    Hourglass, Save, UploadCloud, Navigation, Trash2, Clock, Camera,
-    Plus, Check, BadgeIndianRupee, PlayCircle, FileVideo, Globe, Info
+    Hourglass, Navigation, Clock, Camera, Check, BadgeIndianRupee, Globe, Info, Trash2
 } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import AppImage from '@/components/ui/AppImage';
+import AppImage from '@/components/ui/AppImage'; // Ensure this path matches your file structure
+import toast from 'react-hot-toast';
 
 const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 const sectionTitleClass = "text-sm font-extrabold text-slate-900 border-b border-slate-200 pb-2 mb-4 uppercase tracking-wider";
 const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
 
+// Helper function
 const isVideo = (url: string) => {
     if (!url) return false;
     return url.match(/\.(mp4|webm|mov|mkv)$/i);
@@ -28,6 +29,26 @@ export const StepOneDetails = ({
     const PRICING_OPTIONS = listingType === 'RENTAL'
         ? ['HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY']
         : ['FIXED', 'HOURLY', 'QUOTE'];
+
+    const handleNextStep = () => {
+        if (!form.name) {
+            toast.error(listingType === 'SERVICE' ? "Please enter a service title." : "Please enter an item name.");
+            return;
+        }
+        if (!form.categoryId) {
+            toast.error("Please select a category.");
+            return;
+        }
+        if (form.categoryId === 'OTHER' && !form.customCategoryName) {
+            toast.error("Please specify your custom category.");
+            return;
+        }
+        if (form.priceType !== 'QUOTE' && (!form.price || form.price <= 0)) {
+            toast.error("Please enter a valid price.");
+            return;
+        }
+        setStep(2);
+    };
 
     return (
         <div className="space-y-8 animate-in slide-in-from-right duration-300">
@@ -111,8 +132,8 @@ export const StepOneDetails = ({
                         ) : (
                             <Select
                                 label={listingType === 'SERVICE' ? 'SUB-SERVICE' : 'SUB-ITEM TYPE'}
-                                value={form.subCategoryIds[0] || ""}
-                                disabled={!form.categoryId || activeSubCategories.length === 0}
+                                value={form.subCategoryIds?.[0] || ""}
+                                disabled={!form.categoryId || activeSubCategories?.length === 0}
                                 showSearch={true}
                                 placeholder={!form.categoryId ? "Select category first" : "Select specific type..."}
                                 onChange={(e: any) => {
@@ -120,7 +141,7 @@ export const StepOneDetails = ({
                                     handleChange('subCategoryIds', val ? [val] : []);
                                 }}
                                 className={`cursor-pointer ${!form.categoryId ? 'opacity-50 bg-slate-100' : 'bg-slate-50/50'}`}
-                                options={activeSubCategories.map((sub: any) => ({ label: sub.name, value: sub.id }))}
+                                options={activeSubCategories?.map((sub: any) => ({ label: sub.name, value: sub.id })) || []}
                             />
                         )}
                     </div>
@@ -135,27 +156,6 @@ export const StepOneDetails = ({
                             onChange={(e: any) => handleChange('desc', e.target.value)}
                         />
                     </div>
-
-                    {listingType === 'SERVICE' && (
-                        <div className="mt-4 flex items-center justify-between bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                            <div className="flex items-center gap-3">
-                                <Globe size={20} className="text-blue-500" />
-                                <div>
-                                    <h4 className="text-xs font-bold text-blue-900 uppercase">Remote / Online Service</h4>
-                                    <p className="text-[10px] text-blue-600/80 mt-0.5">I provide this service globally or remotely.</p>
-                                </div>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={form.isRemote || false}
-                                    onChange={(e) => handleChange('isRemote', e.target.checked)}
-                                />
-                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -193,7 +193,11 @@ export const StepOneDetails = ({
                             value={form.minDuration}
                             onChange={(e: any) => handleChange('minDuration', e.target.value)}
                             className="bg-white/50 cursor-pointer"
-                            options={['1 Hour', '1 Day', '1 Week']}
+                            options={[
+                                { label: '1 Hour', value: '1 Hour' },
+                                { label: '1 Day', value: '1 Day' },
+                                { label: '1 Week', value: '1 Week' }
+                            ]}
                         />
                     </div>
                     <div>
@@ -215,7 +219,6 @@ export const StepOneDetails = ({
                 </div>
             )}
 
-            {/* --- SECTION: PRICING --- */}
             <div>
                 <h3 className={sectionTitleClass}>Pricing</h3>
                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
@@ -262,7 +265,28 @@ export const StepOneDetails = ({
             {!form.isRemote && (
                 <div>
                     <h3 className={sectionTitleClass}>Availability & Location</h3>
+
                     <div className="space-y-5">
+                        {listingType === 'SERVICE' && (
+                            <div className="mt-4 flex items-center justify-between bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                <div className="flex items-center gap-3">
+                                    <Globe size={20} className="text-blue-500" />
+                                    <div>
+                                        <h4 className="text-xs font-bold text-blue-900 uppercase">Remote / Online Service</h4>
+                                        <p className="text-[10px] text-blue-600/80 mt-0.5">I provide this service globally or remotely.</p>
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={form.isRemote || false}
+                                        onChange={(e) => handleChange('isRemote', e.target.checked)}
+                                    />
+                                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        )}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Input
@@ -288,6 +312,7 @@ export const StepOneDetails = ({
                     </div>
                 </div>
             )}
+
             {listingType === 'SERVICE' && (
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <div className="flex items-center justify-between mb-2">
@@ -329,14 +354,14 @@ export const StepOneDetails = ({
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={labelClass}>Opens At</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1 ml-1 uppercase">Opens At</label>
                                     <div className="relative">
                                         <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
                                         <input type="time" className={`${inputClass} pl-9`} value={form.openTime || ''} onChange={(e: any) => handleChange('openTime', e.target.value)} />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className={labelClass}>Closes At</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1 ml-1 uppercase">Closes At</label>
                                     <div className="relative">
                                         <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
                                         <input type="time" className={`${inputClass} pl-9`} value={form.closeTime || ''} onChange={(e: any) => handleChange('closeTime', e.target.value)} />
@@ -350,35 +375,39 @@ export const StepOneDetails = ({
 
             <button
                 type="button"
-                onClick={() => setStep(2)}
-                disabled={
-                    !form.name ||
-                    !form.categoryId ||
-                    (form.categoryId === 'OTHER' && !form.customCategoryName) ||
-                    (form.priceType !== 'QUOTE' && !form.price)
-                }
-                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                onClick={handleNextStep}
+                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition mt-6 shadow-lg"
             >
                 Continue to Media <ChevronRight size={18} />
             </button>
         </div>
     );
 };
+
 export const StepTwoMedia = ({
     form, setStep, handleImageUpload, uploadMultipleFiles, activeUploadField,
     removeGalleryImg, removeServiceImage, processingMsg, loading, serviceData, onComplete
 }: any) => {
 
+    const [errors, setErrors] = useState<{ main?: string; angles?: string; gallery?: string }>({});
+
+    const handleMainChangeWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setErrors(prev => ({ ...prev, main: undefined }));
+        handleImageUpload(e, 'mainimg');
+    };
+
     const handleServiceImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
+        setErrors(prev => ({ ...prev, angles: undefined }));
+
         const validFiles: File[] = [];
-        const currentCount = form.serviceImages.length;
+        const currentCount = form.serviceImages?.length || 0;
 
         for (const file of Array.from(files)) {
             if (currentCount + validFiles.length >= 5) {
-                alert("Maximum 5 service angles allowed.");
+                toast.error("Maximum 5 service angles allowed.");
                 break;
             }
             if (file.type.startsWith('image/')) validFiles.push(file);
@@ -392,8 +421,10 @@ export const StepTwoMedia = ({
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
-        const currentVideos = form.gallery.filter(isVideo).length;
-        const currentImages = form.gallery.length - currentVideos;
+        setErrors(prev => ({ ...prev, gallery: undefined }));
+
+        const currentVideos = (form.gallery || []).filter(isVideo).length;
+        const currentImages = (form.gallery || []).length - currentVideos;
 
         let addedImages = 0;
         let addedVideos = 0;
@@ -402,14 +433,14 @@ export const StepTwoMedia = ({
         for (const file of Array.from(files)) {
             if (file.type.startsWith('image/')) {
                 if (currentImages + addedImages >= 45) {
-                    alert("Maximum 45 gallery images allowed.");
+                    toast.error("Maximum 45 gallery images allowed.");
                     continue;
                 }
                 validFiles.push(file);
                 addedImages++;
             } else if (file.type.startsWith('video/')) {
                 if (currentVideos + addedVideos >= 5) {
-                    alert("Maximum 5 gallery videos allowed.");
+                    toast.error("Maximum 5 gallery videos allowed.");
                     continue;
                 }
                 validFiles.push(file);
@@ -421,101 +452,132 @@ export const StepTwoMedia = ({
         e.target.value = '';
     };
 
+    const handleSaveValidation = (e: React.MouseEvent<HTMLButtonElement>) => {
+        const newErrors: { main?: string; angles?: string; gallery?: string } = {};
+        let hasError = false;
+
+        if (!form.mainimg) {
+            newErrors.main = "Main image is required.";
+            hasError = true;
+        }
+        if (!form.serviceImages || form.serviceImages.length === 0) {
+            newErrors.angles = "Please add at least one extra angle.";
+            hasError = true;
+        }
+        if (!form.gallery || form.gallery.length === 0) {
+            newErrors.gallery = "Please add at least one item to the gallery.";
+            hasError = true;
+        }
+
+        if (hasError) {
+            e.preventDefault();
+            setErrors(newErrors);
+            toast.error("Please complete the required media uploads.");
+        } else {
+            setErrors({});
+        }
+    };
+
+    const isSubmitDisabled = !!processingMsg || loading;
+
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
             {/* 1. Main Image */}
             <div>
                 <label className={labelClass}>Main Image <span className="text-red-500">*</span></label>
-                <div className="relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 overflow-hidden flex flex-col items-center justify-center group hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer">
-                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'mainimg')} className="absolute inset-0 opacity-0 cursor-pointer z-10" disabled={!!processingMsg} />
+                <div className={`relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed overflow-hidden flex flex-col items-center justify-center group transition-all cursor-pointer ${errors.main ? 'border-red-400' : 'border-slate-300 hover:border-blue-500 hover:bg-blue-50/30'}`}>
+                    <input type="file" accept="image/*" onChange={handleMainChangeWrapper} className="absolute inset-0 opacity-0 cursor-pointer z-10" disabled={!!processingMsg} />
                     {form.mainimg ? (
                         <>
-                            <AppImage src={form.mainimg} alt="Main Service" type="card" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-0">
-                                <p className="text-white text-xs font-bold flex items-center gap-2"><Camera size={16} /> Change Photo</p>
+                            {/* ✅ Usage of the AppImage Component */}
+                            <AppImage src={form.mainimg} alt="Main Service" type="card" className="w-full h-full absolute inset-0" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                                <p className="text-white text-xs font-bold flex items-center gap-2">Change Photo</p>
                             </div>
                         </>
                     ) : (
                         <div className="text-center text-slate-400 group-hover:text-blue-500 transition-colors">
-                            <UploadCloud className="mx-auto mb-2" size={32} />
                             <span className="text-xs font-bold uppercase tracking-wide">Click to Upload Cover</span>
                         </div>
                     )}
-                    {activeUploadField === 'mainimg' && (
-                        <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-20">
-                            <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
-                        </div>
-                    )}
                 </div>
+                {errors.main && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.main}</p>}
             </div>
 
             {/* 2. Service Angles */}
             <div>
-                <label className={labelClass}>Extra Angles (Max 5)</label>
+                <label className={labelClass}>Extra Angles (Max 5) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-5 gap-2">
-                    {form.serviceImages.map((url: string, i: number) => (
+                    {(form.serviceImages || []).map((url: string, i: number) => (
                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200">
-                            <AppImage src={url} alt={`Angle ${i + 1}`} type="thumbnail" className="w-full h-full object-cover" />
-                            <button type="button" onClick={() => removeServiceImage(i)} className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl-lg opacity-0 group-hover:opacity-100 transition z-10">
-                                <Trash2 size={12} />
+                            {/* ✅ Usage of the AppImage Component */}
+                            <AppImage src={url} alt={`Angle ${i + 1}`} type="thumbnail" className="w-full h-full absolute inset-0" />
+                            <button type="button" onClick={() => removeServiceImage(i)} className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl-lg opacity-0 group-hover:opacity-100 transition z-20">
+                                <Trash2 size={14} />
                             </button>
                         </div>
                     ))}
-                    {form.serviceImages.length < 5 && (
-                        <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center hover:border-blue-500 transition-colors cursor-pointer">
+                    {(form.serviceImages || []).length < 5 && (
+                        <div className={`relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed flex items-center justify-center transition-colors cursor-pointer ${errors.angles ? 'border-red-400' : 'border-slate-300 hover:border-blue-500'}`}>
                             <input type="file" accept="image/*" multiple onChange={handleServiceImagesChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" disabled={!!processingMsg} />
                             {activeUploadField === 'serviceImages' ? (
-                                <Loader2 className="animate-spin text-blue-400" size={20} />
+                                <span className="text-xs text-blue-400">Loading...</span>
                             ) : (
                                 <div className="flex flex-col items-center">
-                                    <UploadCloud className="text-slate-400 mb-1" size={20} />
                                     <span className="text-[10px] text-slate-400 font-medium text-center leading-tight">Add<br />Image</span>
                                 </div>
                             )}
                         </div>
                     )}
                 </div>
+                {errors.angles && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.angles}</p>}
             </div>
 
-            {/* 4. Gallery Section */}
+            {/* 3. Gallery Section */}
             <div>
-                <label className={labelClass}>Gallery Media (Images: Max 45 | Videos: Max 5)</label>
+                <label className={labelClass}>Gallery Media (Images: Max 45 | Videos: Max 5) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-4 gap-3">
-                    {form.gallery.map((url: string, i: number) => (
+                    {(form.gallery || []).map((url: string, i: number) => (
                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 shadow-sm bg-black">
                             {isVideo(url) ? (
                                 <>
                                     <video src={url} className="w-full h-full object-cover opacity-80" muted playsInline />
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><PlayCircle size={24} className="text-white/90" fill="rgba(0,0,0,0.5)" /></div>
-                                    <div className="absolute bottom-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-white font-bold flex items-center gap-1"><FileVideo size={10} /> VIDEO</div>
+                                    <div className="absolute bottom-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-white font-bold flex items-center gap-1 z-10">VIDEO</div>
                                 </>
                             ) : (
-                                <AppImage src={url} alt={`Gallery ${i}`} type="thumbnail" className="w-full h-full object-cover bg-white" />
+                                /* ✅ Usage of the AppImage Component */
+                                <AppImage src={url} alt={`Gallery ${i}`} type="thumbnail" className="w-full h-full absolute inset-0 bg-white" />
                             )}
-                            <button type="button" onClick={() => removeGalleryImg(i)} className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shadow-sm z-10">
-                                <Trash2 size={12} />
+                            <button type="button" onClick={() => removeGalleryImg(i)} className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shadow-sm z-20">
+                                <Trash2 size={14} />
                             </button>
                         </div>
                     ))}
 
-                    {form.gallery.length < 50 && (
-                        <div className="relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center hover:border-blue-500 transition-colors cursor-pointer">
+                    {(form.gallery || []).length < 50 && (
+                        <div className={`relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed flex items-center justify-center transition-colors cursor-pointer ${errors.gallery ? 'border-red-400' : 'border-slate-300 hover:border-blue-500'}`}>
                             <input type="file" accept="image/*, video/mp4, video/webm" multiple onChange={handleGalleryChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" disabled={!!processingMsg} />
                             {activeUploadField === 'gallery' ? (
-                                <div className="flex flex-col items-center justify-center px-1 text-center"><Loader2 className="animate-spin text-blue-500 mb-1" size={20} /><span className="text-[8px] font-bold text-blue-500 leading-tight">{processingMsg || "Uploading..."}</span></div>
+                                <div className="flex flex-col items-center justify-center px-1 text-center"><span className="text-[8px] font-bold text-blue-500 leading-tight">{processingMsg || "Uploading..."}</span></div>
                             ) : (
-                                <div className="flex flex-col items-center"><Plus className="text-slate-400" size={24} /><span className="text-[10px] text-slate-400 font-bold mt-1">Add Media</span></div>
+                                <div className="flex flex-col items-center"><span className="text-[10px] text-slate-400 font-bold mt-1">Add Media</span></div>
                             )}
                         </div>
                     )}
                 </div>
+                {errors.gallery && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.gallery}</p>}
             </div>
 
             {/* Buttons */}
             <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">
                 <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">Back</button>
-                <button type="submit" disabled={!form.mainimg || !!processingMsg || loading} className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed">
-                    {loading ? <Loader2 className="animate-spin" /> : <Save size={18} />}
+                <button
+                    type="submit"
+                    onClick={handleSaveValidation}
+                    disabled={isSubmitDisabled}
+                    className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : null}
                     {serviceData ? "Update Listing" : "Publish Listing"}
                 </button>
             </div>

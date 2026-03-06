@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    console.log("📝 [Rental API] Request:", body);
+    // console.log("📝 [Rental API] Request:", body);
 
     const validation = RentalBookingSchema.safeParse(body);
     if (!validation.success) {
@@ -135,7 +135,7 @@ export async function POST(req: Request) {
       data: {
         userId: session.user.id,
         rentalId: data.rentalId,
-        addressId: finalAddressId, 
+        addressId: finalAddressId,
         startDate: start,
         endDate: end,
         totalDays: diffDays,
@@ -156,7 +156,7 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log("🎉 Rental Booking Created:", newBooking.id);
+    // console.log("🎉 Rental Booking Created:", newBooking.id);
 
     return NextResponse.json({
       success: true,

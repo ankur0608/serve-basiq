@@ -13,8 +13,8 @@ interface PersonalDetailsProps {
 
 const PROVIDER_OPTIONS = [
     { label: "Both Services & Products", value: "BOTH" },
-    { label: "Services Only (e.g. Plumber, Cleaner)", value: "SERVICE" },
-    { label: "Products Only (e.g. Selling Goods)", value: "PRODUCT" }
+    { label: "Services Only", value: "SERVICE" },
+    { label: "Products Only", value: "PRODUCT" }
 ];
 
 const PersonalDetails = memo(({ form, errors, onChange, session, onVerifyStart }: PersonalDetailsProps) => {
@@ -43,7 +43,7 @@ const PersonalDetails = memo(({ form, errors, onChange, session, onVerifyStart }
                 <div>
                     <Input
                         label="FULL NAME"
-                        value={form.fullName}
+                        value={form.fullName || ''}
                         onChange={e => onChange('fullName', e.target.value)}
                         placeholder="John Doe"
                         className={errors.fullName ? "border-red-500 focus:border-red-500" : ""}
@@ -52,7 +52,7 @@ const PersonalDetails = memo(({ form, errors, onChange, session, onVerifyStart }
                 </div>
                 <div>
                     <Input
-                        label="SHOP / BUSINESS NAME (OPTIONAL)"
+                        label="SHOP / BUSINESS NAME"
                         value={form.shopName || ''}
                         onChange={e => onChange('shopName', e.target.value)}
                         placeholder="e.g. John's Plumbing Services"
