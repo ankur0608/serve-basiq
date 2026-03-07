@@ -5,12 +5,12 @@ import { FaStar, FaCamera, FaXmark } from "react-icons/fa6";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
 import imageCompression from "browser-image-compression";
-import toast from "react-hot-toast"; // ✅ Imported toast
+import toast from "react-hot-toast";
 
 // 🌟 Import your shiny new reusable upload function!
 import { uploadToBackend } from "@/lib/uploadToBackend";
 
-// Import actions (Make sure these paths match your project structure!)
+// Import actions
 import { submitServiceReview } from "@/app/actions/reviews";
 import { submitProductReview } from "@/app/actions/productReviews";
 import { submitRentalReview } from "@/app/actions/rentalReviews";
@@ -21,9 +21,10 @@ interface RatingFormProps {
     serviceId?: string;
     productId?: string;
     rentalId?: string;
+    type?: 'SERVICE' | 'PRODUCT' | 'RENTAL';
 }
 
-export default function RatingForm({ serviceId, productId, rentalId }: RatingFormProps) {
+export default function RatingForm({ serviceId, productId, rentalId, type }: RatingFormProps) { // ✅ Destructured type here
     const [rating, setRating] = useState(0);
     const [hover, setHover] = useState(0);
     const [comment, setComment] = useState("");
@@ -43,7 +44,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
 
         // Limit to 5 images total
         if (images.length + selectedFiles.length > 5) {
-            toast.error("You can only upload a maximum of 5 images."); 
+            toast.error("You can only upload a maximum of 5 images.");
             return;
         }
 
@@ -52,18 +53,14 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
         try {
             const compressedFiles = await Promise.all(
                 selectedFiles.map(async (file) => {
-                    // Compress and convert to WebP
                     const compressedBlob = await imageCompression(file, {
                         maxSizeMB: 0.8, // 800KB max per image
                         maxWidthOrHeight: 1920,
                         useWebWorker: true,
-                        fileType: "image/webp", // Force WebP format
+                        fileType: "image/webp",
                     });
 
-                    // Rename the file to ensure it has a .webp extension
                     const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
-
-                    // Convert Blob back to a standard File object
                     return new File([compressedBlob], newFileName, {
                         type: "image/webp",
                     });
@@ -88,7 +85,6 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // ✅ Replaced alerts and fixed return statements
         if (rating === 0) {
             toast.error("Please select a star rating!");
             return;
@@ -105,34 +101,31 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
             const uploadedUrls: string[] = [];
 
             if (images.length > 0) {
-                // Uploading one by one to ensure reliability
                 for (const image of images) {
                     const url = await uploadToBackend(image);
                     uploadedUrls.push(url);
                 }
             }
 
-            // 2️⃣ Prepare FormData with lightweight text/URLs, NOT files
+            // 2️⃣ Prepare FormData
             const formData = new FormData();
             formData.append("rating", rating.toString());
             formData.append("comment", comment);
-
-            // Pass the array of R2 URLs as a JSON string!
-            // E.g. '["https://pub-xxx.r2.dev/img1.webp", "https://pub-xxx.r2.dev/img2.webp"]'
             formData.append("images", JSON.stringify(uploadedUrls));
 
             let res;
 
-            // 3️⃣ Call the correct Server Action based on the active ID
-            if (serviceId) {
-                formData.append("serviceId", activeId);
-                res = await submitServiceReview(formData);
-            } else if (productId) {
+            // 3️⃣ ✅ PERFECTED LOGIC: Call the correct Server Action based on the `type` or specific ID
+            if (type === 'PRODUCT' || productId) {
                 formData.append("productId", activeId);
                 res = await submitProductReview(formData);
-            } else if (rentalId) {
+            } else if (type === 'RENTAL' || rentalId) {
                 formData.append("rentalId", activeId);
                 res = await submitRentalReview(formData);
+            } else {
+                // Defaults to Service if type is SERVICE or serviceId is provided
+                formData.append("serviceId", activeId);
+                res = await submitServiceReview(formData);
             }
 
             // 4️⃣ Handle Success
@@ -144,7 +137,7 @@ export default function RatingForm({ serviceId, productId, rentalId }: RatingFor
                 setImages([]);
                 if (fileInputRef.current) fileInputRef.current.value = "";
             } else {
-                toast.error(res?.error || "Something went wrong."); 
+                toast.error(res?.error || "Something went wrong.");
             }
         } catch (error) {
             console.error("Submission error:", error);

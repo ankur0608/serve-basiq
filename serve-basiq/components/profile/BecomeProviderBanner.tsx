@@ -35,7 +35,24 @@ export default function BecomeProviderBanner() {
 
         // Condition 3: User IS logged in & IS a worker -> Go to Dashboard
         if (isWorker) {
-            router.push('/provider/dashboard');
+            const handleSwitch = async () => {
+                if (!currentUser) return;
+                try {
+                    await fetch('/api/user/switch-mode', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: currentUser.id, isWebsite: false })
+                    });
+                    if ((useUIStore.getState() as any).setCurrentUser) {
+                        (useUIStore.getState() as any).setCurrentUser({ ...currentUser, isWebsite: false });
+                    }
+                    router.push('/provider/dashboard');
+                } catch (error) {
+                    console.error("Failed to switch mode", error);
+                    router.push('/provider/dashboard');
+                }
+            };
+            handleSwitch();
             return;
         }
 

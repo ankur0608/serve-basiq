@@ -81,7 +81,7 @@ export default function CareersContent() {
 
                         <div className="bg-indigo-50 rounded-xl p-4 inline-block border border-indigo-100">
                             <p className="text-sm font-semibold text-indigo-700">
-                                info@servebasiq.com
+                                servebasiq@gmail.com
                             </p>
                         </div>
                     </div>

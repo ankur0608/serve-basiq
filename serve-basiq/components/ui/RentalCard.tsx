@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { FaHeart, FaRegHeart, FaStar, FaXmark, FaLocationDot } from "react-icons/fa6";
+import AppImage from "@/components/ui/AppImage";
 import RentalBookingWrapper from '@/components/Rental/RentalBookingWrapper';
 
 export interface RentalProps {
@@ -13,13 +14,11 @@ export interface RentalProps {
     image: string;
     location: string;
     rating: number;
-
     price: number;
     priceType: string;
     dailyPrice?: number | null;
     monthlyPrice?: number | null;
     fixedPrice?: number | null;
-
     addressLine1?: string;
     addressLine2?: string;
     city?: string;
@@ -77,24 +76,29 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
     }, [currentUser, session]);
 
     const handleBookClick = (e: React.MouseEvent) => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation(); // Prevents redirecting to details page
         setShowBooking(true);
     };
 
     const handleDetailsClick = (e: React.MouseEvent) => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         router.push(`/rentals/${id}`);
     };
 
     return (
         <>
+            {/* The Outer Div makes the ENTIRE card clickable */}
             <div onClick={handleDetailsClick} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow h-full relative">
 
-                <div className="relative h-44 w-full bg-gray-100 overflow-hidden cursor-pointer" onClick={handleDetailsClick}>
-                    <img
+                <div className="relative h-44 w-full bg-gray-100 overflow-hidden cursor-pointer">
+                    <AppImage
                         src={image}
                         alt={name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        type="card"
+                        className="absolute inset-0 w-full h-full [&_img]:group-hover:scale-105 [&_img]:transition-transform [&_img]:duration-500"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
 
                     <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm text-white uppercase tracking-wide bg-orange-600 z-10">
@@ -104,7 +108,7 @@ export default function RentalCard({ rental, isFav = false, toggleFav, currentUs
                     {toggleFav && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation();
+                                e.stopPropagation(); // Prevents redirecting to details page
                                 toggleFav(e);
                             }}
                             className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full shadow hover:bg-white transition-colors z-10"

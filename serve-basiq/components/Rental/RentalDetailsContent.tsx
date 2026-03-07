@@ -1,7 +1,7 @@
-// components/Rental/RentalDetailsContent.tsx
-import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+"use client";
+
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
     FaArrowLeft, FaLocationDot, FaStar,
     FaShieldHalved, FaPhone,
@@ -9,15 +9,17 @@ import {
     FaCircleCheck, FaBoxOpen, FaClock, FaLock,
     FaStore
 } from 'react-icons/fa6';
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { Session } from "next-auth";
 import AppImage from '@/components/ui/AppImage';
-import RatingForm from '@/components/Rating/RatingForm';
-import RentalBookingWrapper from '@/components/Rental/RentalBookingWrapper';
-import AppVideo from '../ui/AppVideo';
-import ProductSlider from '@/components/products/ProductSlider';
-import InteractiveGallery from '../products/InteractiveGallery'; // ✅ Use the same interactive gallery for consistency
-import SupplierProfileModal from '../products/SupplierProfileModal';
+import { useListingPageData } from '@/app/hook/useListingPageData';
+
+// 🚀 Lazy load heavy components
+const RentalBookingWrapper = dynamic(() => import('@/components/Rental/RentalBookingWrapper'), { ssr: false });
+const ProductSlider = dynamic(() => import('@/components/products/ProductSlider'), { ssr: false });
+const InteractiveGallery = dynamic(() => import('../products/InteractiveGallery'), { ssr: false });
+const SupplierProfileModal = dynamic(() => import('../products/SupplierProfileModal'), { ssr: false });
+const RatingForm = dynamic(() => import('@/components/Rating/RatingForm'), { ssr: false });
+const AppVideo = dynamic(() => import('../ui/AppVideo'), { ssr: false });
 
 // ✅ HELPER: Detect Video Files
 const isVideo = (url: string | null | undefined) => {
@@ -32,54 +34,21 @@ const formatEnum = (str?: string) => {
 };
 
 interface Props {
-    id: string;
+    rental: any;
+    relatedRentals: any[];
+    session: Session | null;
+    loggedInUser: any;
 }
 
-export default async function RentalDetailsContent({ id }: Props) {
-    const session = await getServerSession(authOptions);
+export default function RentalDetailsContent({ rental, relatedRentals, session, loggedInUser: initialUser }: Props) {
 
-    const rental = await prisma.rental.findUnique({
-        where: { id },
-        include: {
-            category: { select: { name: true } },
-            subcategory: { select: { name: true } },
-            reviews: {
-                include: { author: { select: { name: true, image: true } } },
-                orderBy: { createdAt: 'desc' },
-                take: 10
-            },
-            user: {
-                select: {
-                    id: true, name: true, shopName: true, email: true, phone: true,
-                    isVerified: true, image: true, profileImage: true,
-                    instagramUrl: true, facebookUrl: true, websiteUrl: true, youtubeUrl: true,
-                }
-            }
-        }
+    // 🚀 Uses our unified hook for eligibility and live user data
+    const { currentUser, eligibility, isEligibilityLoading } = useListingPageData({
+        itemId: rental.id,
+        listingType: 'RENTAL',
+        initialUser,
+        session
     });
-
-    if (!rental) return notFound();
-
-    const relatedRentalsRaw = await prisma.rental.findMany({
-        where: { categoryId: rental.categoryId, id: { not: id } },
-        take: 8,
-        select: {
-            id: true, name: true, price: true, priceType: true,
-            coverImg: true, rentalImg: true, gallery: true,
-            category: { select: { name: true } }
-        }
-    });
-
-    const relatedRentals = relatedRentalsRaw.map((r) => ({
-        id: r.id,
-        name: r.name,
-        price: r.price || 0,
-        unit: r.priceType?.toLowerCase() || 'day',
-        productImage: r.coverImg || r.rentalImg,
-        gallery: Array.isArray(r.gallery) ? (r.gallery as string[]) : [],
-        category: r.category,
-        listingType: 'RENTAL' as const
-    }));
 
     const provider = rental.user;
     const displayName = rental.name;
@@ -92,14 +61,18 @@ export default async function RentalDetailsContent({ id }: Props) {
     if (!fullAddress) fullAddress = "Location available upon booking";
 
     // Ratings
-    const calculatedRating = rental.reviews.length > 0
-        ? rental.reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / rental.reviews.length
+    const calculatedRating = rental.reviews?.length > 0
+        ? rental.reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / rental.reviews.length
         : 5.0;
 
     const allImages = Array.from(new Set([
         rental.coverImg || rental.rentalImg,
         ...(rental.gallery || [])
     ])).filter(Boolean) as string[];
+
+    if (allImages.length === 0) {
+        allImages.push("https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2071&auto=format&fit=crop");
+    }
 
     const socials = [
         { icon: <FaInstagram size={20} />, url: provider?.instagramUrl, styleClass: "text-pink-600 bg-pink-50 border-pink-100 hover:bg-pink-600 hover:text-white" },
@@ -112,33 +85,27 @@ export default async function RentalDetailsContent({ id }: Props) {
         <div className="pb-40 bg-slate-50 min-h-screen pt-4 md:pt-8 scroll-smooth">
             <div className="max-w-7xl mx-auto px-4">
 
-                {/* 1. BACK BUTTON */}
                 <div className="mb-6">
-                    <Link href="/rentals" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition bg-white px-4 py-2 rounded-xl">
+                    <Link href="/rentals" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
                         <FaArrowLeft /> Back to rentals
                     </Link>
                 </div>
 
-                {/* 2. MAIN GRID LAYOUT */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
                     {/* ================= LEFT COLUMN ================= */}
                     <div className="lg:col-span-2 space-y-8 order-1">
-
-                        {/* 👉 TITLE, RATING & LOCATION */}
                         <div>
                             <div className="flex flex-wrap items-center justify-start gap-4">
                                 <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-tight">
                                     {displayName}
                                 </h1>
 
-                                {/* Rating Pill */}
                                 <div className="flex items-center gap-2 bg-white px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border border-slate-200 shadow-sm shrink-0 w-fit">
                                     <FaStar className="text-amber-500 text-lg md:text-xl" />
                                     <span className="font-black text-slate-900 text-lg md:text-xl leading-none">{calculatedRating.toFixed(1)}</span>
                                     <span className="text-slate-300 mx-1">|</span>
                                     <a href="#reviews" className="text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
-                                        ({rental.reviews.length} Reviews)
+                                        ({rental.reviews?.length || 0} Reviews)
                                     </a>
                                 </div>
                             </div>
@@ -149,28 +116,25 @@ export default async function RentalDetailsContent({ id }: Props) {
                             </div>
                         </div>
 
-                        {/* Gallery */}
                         <InteractiveGallery
                             mainProductImage={allImages[0]}
                             productImages={allImages.slice(1)}
                             productName={displayName}
                         />
 
-                        {/* Description & Specs */}
                         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
                             <div className="border-b border-slate-100 pb-6">
                                 <h3 className="text-xl font-bold text-slate-900 mb-4">Item Description</h3>
                                 <p className="text-slate-600 leading-relaxed whitespace-pre-line text-sm md:text-base">{rental.desc}</p>
                             </div>
 
-                            {/* Stats Grid */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                                     <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Condition</p>
                                     <p className="font-bold text-slate-900 flex items-center gap-2"><FaBoxOpen className="text-slate-300" /> {formatEnum(rental.itemCondition)}</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Min. Rental</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Min. Duration</p>
                                     <p className="font-bold text-slate-900 flex items-center gap-2"><FaClock className="text-slate-300" /> {rental.minDuration || 1} {formatEnum(rental.priceType)}</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
@@ -183,7 +147,6 @@ export default async function RentalDetailsContent({ id }: Props) {
                                 </div>
                             </div>
 
-                            {/* Socials */}
                             {socials.length > 0 && (
                                 <div className="mt-8 pt-6 border-t border-slate-100">
                                     <h4 className="font-bold text-slate-900 text-sm mb-3 uppercase tracking-wider">Connect with Owner</h4>
@@ -198,13 +161,35 @@ export default async function RentalDetailsContent({ id }: Props) {
                             )}
                         </div>
 
-                        {/* Review Section */}
+                        {/* 🚀 Added Full Media Gallery with AppVideo support */}
+                        {allImages.length > 0 && (
+                            <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200" id="Gallery">
+                                <h3 className="text-xl font-bold text-slate-900 mb-6">Gallery Media</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    {allImages.map((mediaUrl, i) => (
+                                        <div key={i} className="aspect-square w-full relative group rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 cursor-pointer">
+                                            {isVideo(mediaUrl) ? (
+                                                <AppVideo src={mediaUrl} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <AppImage
+                                                    src={mediaUrl}
+                                                    alt={`Gallery ${i}`}
+                                                    type="gallery"
+                                                    className="w-full h-full object-contain mix-blend-multiply p-2 group-hover:scale-110 transition duration-500"
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div id="reviews" className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 scroll-mt-24">
                             <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-8">User Reviews</h3>
                             <div className="grid md:grid-cols-2 gap-10">
                                 <div className="space-y-6 max-h-150 overflow-y-auto pr-2 custom-scrollbar">
-                                    {rental.reviews.length > 0 ? (
-                                        rental.reviews.map((review) => (
+                                    {rental.reviews?.length > 0 ? (
+                                        rental.reviews.map((review: any) => (
                                             <div key={review.id} className="border-b border-slate-100 pb-6 last:border-0 last:pb-0">
                                                 <div className="flex items-center gap-3 mb-2">
                                                     <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden relative"><AppImage src={review.author.image || ""} alt="User" type="avatar" className="w-full h-full object-cover" /></div>
@@ -223,13 +208,14 @@ export default async function RentalDetailsContent({ id }: Props) {
                                     )}
                                 </div>
                                 <div>
-                                    {session?.user ? (
-                                        <RatingForm rentalId={rental.id} />
+                                    {/* 🚀 Uses proper Eligibility checking from the hook */}
+                                    {!session ? null : isEligibilityLoading ? <p>Loading...</p> : eligibility?.canReview ? (
+                                        <RatingForm rentalId={rental.id} type="RENTAL" />
                                     ) : (
                                         <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center top-24">
                                             <FaLock className="mx-auto text-slate-400 text-2xl mb-2" />
-                                            <p className="text-slate-800 text-sm font-bold">Verified Booking Only</p>
-                                            <p className="text-slate-500 text-xs mt-2">Sign in to leave a review.</p>
+                                            <p className="text-slate-800 text-sm font-bold">Verified Rental Only</p>
+                                            <p className="text-slate-500 text-xs mt-2">Complete a rental period to leave a review.</p>
                                         </div>
                                     )}
                                 </div>
@@ -240,8 +226,6 @@ export default async function RentalDetailsContent({ id }: Props) {
                     {/* ================= RIGHT COLUMN (Pricing & Booking) ================= */}
                     <div className="space-y-6 order-2 h-fit lg:top-24 z-20">
                         <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
-
-                            {/* 👉 Badges at top of card */}
                             <div className="flex items-center flex-wrap gap-2 mb-6">
                                 <span className="text-blue-600 text-[10px] md:text-xs font-bold uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
                                     {rental.category?.name || "Rental"}
@@ -254,7 +238,6 @@ export default async function RentalDetailsContent({ id }: Props) {
                                 )}
                             </div>
 
-                            {/* Base Price Display */}
                             <div className="mb-6 pb-6 border-b border-slate-100">
                                 <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Rental Starts At</p>
                                 <div className="flex items-baseline gap-1 mt-1">
@@ -278,19 +261,18 @@ export default async function RentalDetailsContent({ id }: Props) {
                                 rentalId={rental.id}
                                 rentalName={displayName}
                                 rentalImage={allImages[0]}
-                                price={rental.price}
                                 ownerLocation={fullAddress}
-                                hourlyPrice={rental.hourlyPrice ?? undefined}
-                                dailyPrice={rental.dailyPrice ?? undefined}
-                                weeklyPrice={rental.weeklyPrice ?? undefined}
-                                monthlyPrice={rental.monthlyPrice ?? undefined}
-                                fixedPrice={rental.fixedPrice ?? undefined}
-                                currentUser={session?.user || null}
-                                userAddresses={[]}
+                                price={rental.price}
+                                hourlyPrice={rental.hourlyPrice}
+                                dailyPrice={rental.dailyPrice}
+                                weeklyPrice={rental.weeklyPrice}
+                                monthlyPrice={rental.monthlyPrice}
+                                fixedPrice={rental.fixedPrice}
+                                currentUser={currentUser}
+                                userAddresses={currentUser?.addresses || []}
                             />
                         </div>
 
-                        {/* Supplier/Owner Card */}
                         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
                             <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase text-xs tracking-widest">
                                 <FaStore className="text-slate-400" /> Owner Details
@@ -315,7 +297,7 @@ export default async function RentalDetailsContent({ id }: Props) {
 
                 {relatedRentals.length > 0 && (
                     <div className="mt-16 pt-16 border-t border-slate-200">
-                        <ProductSlider title="More Rentals You Might Like" products={relatedRentals} />
+                        <ProductSlider title="More Rentals You Might Like" products={relatedRentals} currentUser={currentUser} />
                     </div>
                 )}
             </div>

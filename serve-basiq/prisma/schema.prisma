@@ -282,6 +282,9 @@ model Category {
     serviceId String?
     product   Product? @relation(fields: [productId], references: [id])
     productId String?
+
+    @@index([parentId])
+    @@index([type])
 }
 
 model Admin {
@@ -363,7 +366,7 @@ model User {
     isWorker        Boolean  @default(false)
     isWebsite       Boolean  @default(true)
     rejectionReason String?
-    rentals         Rental[] 
+    rentals         Rental[]
 
     instagramUrl String?
     facebookUrl  String?
@@ -480,12 +483,20 @@ model Requirement {
 model Otp {
     id        String    @id @default(cuid())
     phone     String    @unique
-    code      String? 
+    code      String?
     expiresAt DateTime?
     attempts  Int       @default(0)
     lockUntil DateTime?
     createdAt DateTime  @default(now())
     updatedAt DateTime  @default(now()) @updatedAt
+}
+
+model OtpLog {
+    id        String   @id @default(cuid())
+    phone     String
+    createdAt DateTime @default(now())
+
+    @@index([phone])
 }
 
 model Service {

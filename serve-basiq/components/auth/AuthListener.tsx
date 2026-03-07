@@ -25,8 +25,20 @@ export default function AuthListener() {
 
                 // Check if they are an Existing Provider (SERVICE / PRODUCT / BOTH)
                 if (user.providerType) {
-                    // Existing Provider -> Dashboard
-                    router.push("/provider/dashboard");
+                    // Existing Provider -> Switch Mode Then Dashboard
+                    const handleLoginSwitch = async () => {
+                        try {
+                            await fetch('/api/user/switch-mode', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: user.id, isWebsite: false })
+                            });
+                            router.push("/provider/dashboard");
+                        } catch (error) {
+                            router.push("/provider/dashboard");
+                        }
+                    };
+                    handleLoginSwitch();
                 } else {
                     // New User -> Become Pro Page
                     router.push("/become-pro");

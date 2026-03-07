@@ -40,7 +40,7 @@ export default function ContactContent() {
                                 <div className="bg-slate-50 rounded-2xl p-5">
                                     <p className="text-sm text-slate-500 mb-1">Contact email</p>
                                     <p className="text-base font-semibold text-slate-800">
-                                        info@servebasiq.com
+                                        servebasiq@gmail.com
                                     </p>
                                     <p className="text-xs text-slate-500 mt-2">
                                         We usually respond within 24 hours

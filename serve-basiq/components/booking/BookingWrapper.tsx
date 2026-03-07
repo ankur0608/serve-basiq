@@ -17,6 +17,7 @@ interface Props {
     serviceId: string;
     serviceName: string;
     price: number;
+    type?: 'SERVICE' | 'PRODUCT' | 'RENTAL'; // ✅ Add this line
     priceType?: string; // ✅ Added priceType
     currentUser: any;
     userAddresses: any[];
@@ -28,6 +29,7 @@ export default function BookingWrapper({
     serviceId,
     serviceName,
     price,
+    type,
     priceType, // ✅ Destructured priceType
     currentUser,
     userAddresses,

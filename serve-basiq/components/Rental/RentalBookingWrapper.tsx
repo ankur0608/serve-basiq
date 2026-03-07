@@ -8,7 +8,6 @@ import { useUIStore } from "@/lib/store";
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 
-// Components
 import RentalBookingForm from './RentalBookingForm';
 import MobileVerificationModal from '@/components/auth/MobileVerificationModal';
 import SuccessModal from '@/components/ui/SuccessModal';
@@ -19,13 +18,12 @@ interface Props {
     rentalImage?: string;
     ownerLocation?: string;
     price: number,
-    // ✅ UPDATED: Accept all pricing models from schema
     hourlyPrice?: number;
     dailyPrice?: number;
     weeklyPrice?: number;
     monthlyPrice?: number;
     fixedPrice?: number;
-
+    type?: 'RENTAL'; // Added type
     currentUser: any;
     userAddresses: any[];
     defaultOpen?: boolean;
@@ -37,33 +35,27 @@ export default function RentalBookingWrapper({
     rentalName,
     rentalImage,
     ownerLocation,
-
     price,
     hourlyPrice,
     dailyPrice,
     weeklyPrice,
     monthlyPrice,
     fixedPrice,
-
+    type = 'RENTAL', // Destructured type
     currentUser,
     userAddresses,
     defaultOpen = false,
     onRequestClose
 }: Props) {
     const { data: session, status } = useSession();
-
-    // States
     const [isBookingOpen, setIsBookingOpen] = useState(defaultOpen);
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
     const [isSuccessOpen, setIsSuccessOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
-
     const router = useRouter();
     const onOpenLogin = useUIStore((state) => state.onOpenLogin);
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    useEffect(() => { setMounted(true); }, []);
 
     const shouldFetchProfile = status === "authenticated" && (!currentUser || !currentUser.addresses || currentUser.addresses.length === 0);
 
@@ -110,9 +102,7 @@ export default function RentalBookingWrapper({
     };
 
     useEffect(() => {
-        if (defaultOpen && mounted) {
-            checkAndProceed();
-        }
+        if (defaultOpen && mounted) checkAndProceed();
     }, [defaultOpen, mounted, status, isFetchingUser]);
 
     const handleProceedClick = (e: React.MouseEvent) => {
@@ -131,7 +121,6 @@ export default function RentalBookingWrapper({
 
     return (
         <>
-            {/* 1. BUTTON */}
             {!defaultOpen && (
                 <button
                     onClick={handleProceedClick}
@@ -141,7 +130,6 @@ export default function RentalBookingWrapper({
                 </button>
             )}
 
-            {/* 2. MOBILE VERIFICATION */}
             {mounted && isMobileModalOpen && (
                 <MobileVerificationModal
                     userId={activeUser?.id}
@@ -156,26 +144,14 @@ export default function RentalBookingWrapper({
                 />
             )}
 
-            {/* 3. RENTAL BOOKING FORM */}
             {mounted && isBookingOpen && activeUser && (
                 defaultOpen ? (
                     <div className="w-full h-full">
                         <RentalBookingForm
-                            rentalId={rentalId}
-                            rentalName={rentalName}
-                            rentalImage={rentalImage}
-                            ownerLocation={ownerLocation}
-                            // 👉 Ensure this line is exactly like this
-                            price={price} hourlyPrice={hourlyPrice}
-                            dailyPrice={dailyPrice}
-                            weeklyPrice={weeklyPrice}
-                            monthlyPrice={monthlyPrice}
-                            fixedPrice={fixedPrice}
-                            userId={activeUser?.id}
-                            userAddresses={effectiveAddresses}
-                            userDetails={activeUser}
-                            onSuccess={handleBookingSuccess}
-                            onRequestClose={handleClose}
+                            rentalId={rentalId} rentalName={rentalName} rentalImage={rentalImage} ownerLocation={ownerLocation}
+                            price={price} hourlyPrice={hourlyPrice} dailyPrice={dailyPrice} weeklyPrice={weeklyPrice} monthlyPrice={monthlyPrice} fixedPrice={fixedPrice}
+                            userId={activeUser?.id} userAddresses={effectiveAddresses} userDetails={activeUser}
+                            onSuccess={handleBookingSuccess} onRequestClose={handleClose}
                         />
                     </div>
                 ) : (
@@ -186,21 +162,10 @@ export default function RentalBookingWrapper({
                                     <FaXmark size={14} />
                                 </button>
                                 <RentalBookingForm
-                                    rentalId={rentalId}
-                                    rentalName={rentalName}
-                                    rentalImage={rentalImage}
-                                    ownerLocation={ownerLocation}
-                                    // 👉 Ensure this line is exactly like this
-                                    price={price} hourlyPrice={hourlyPrice}
-                                    dailyPrice={dailyPrice}
-                                    weeklyPrice={weeklyPrice}
-                                    monthlyPrice={monthlyPrice}
-                                    fixedPrice={fixedPrice}
-                                    userId={activeUser?.id}
-                                    userAddresses={effectiveAddresses}
-                                    userDetails={activeUser}
-                                    onSuccess={handleBookingSuccess}
-                                    onRequestClose={handleClose}
+                                    rentalId={rentalId} rentalName={rentalName} rentalImage={rentalImage} ownerLocation={ownerLocation}
+                                    price={price} hourlyPrice={hourlyPrice} dailyPrice={dailyPrice} weeklyPrice={weeklyPrice} monthlyPrice={monthlyPrice} fixedPrice={fixedPrice}
+                                    userId={activeUser?.id} userAddresses={effectiveAddresses} userDetails={activeUser}
+                                    onSuccess={handleBookingSuccess} onRequestClose={handleClose}
                                 />
                             </div>
                         </div>,
@@ -209,7 +174,6 @@ export default function RentalBookingWrapper({
                 )
             )}
 
-            {/* 4. SUCCESS MODAL */}
             {mounted && isSuccessOpen && (
                 <SuccessModal
                     isOpen={isSuccessOpen}

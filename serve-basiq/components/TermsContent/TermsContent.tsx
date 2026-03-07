@@ -124,7 +124,7 @@ export default function TermsContent() {
                         </p>
                         <div className="inline-block bg-white px-8 py-3 rounded-2xl shadow-sm border border-slate-200">
                             <p className="font-bold text-indigo-600">
-                                info@servebasiq.com
+                                servebasiq@gmail.com
                             </p>
                         </div>
                     </section>

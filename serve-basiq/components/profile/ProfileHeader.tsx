@@ -51,8 +51,27 @@ export default function ProfileHeader({
     const getInitials = () =>
         displayName.substring(0, 2).toUpperCase();
 
-    const handleProviderClick = () => {
-        if (isWorker) {
+    const handleProviderClick = async () => {
+        if (!isWorker || !currentUser) return;
+
+        try {
+            // First switch mode in DB to isWebsite: false (Provider Mode)
+            await fetch('/api/user/switch-mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.id, isWebsite: false })
+            });
+
+            // Update local state if store provides setter
+            if ((useUIStore.getState() as any).setCurrentUser) {
+                (useUIStore.getState() as any).setCurrentUser({ ...currentUser, isWebsite: false });
+            }
+
+            // Then navigate
+            router.push('/provider/dashboard');
+        } catch (error) {
+            console.error("Failed to switch mode:", error);
+            // Fallback navigate anyway if it's just a UI flag
             router.push('/provider/dashboard');
         }
     };

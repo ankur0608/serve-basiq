@@ -64,7 +64,7 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
 
     const handleBookClick = (e: React.MouseEvent) => {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopPropagation(); // Prevents redirecting to details page
         setShowBooking(true);
     };
 
@@ -76,11 +76,12 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
 
     return (
         <>
+            {/* The Outer Div makes the ENTIRE card clickable */}
             <div
                 onClick={handleDetailsClick}
                 className="bg-white h-full rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow"
             >
-                <div className="relative h-48 w-full bg-gray-100 overflow-hidden cursor-pointer" onClick={handleDetailsClick}>
+                <div className="relative h-48 w-full bg-gray-100 overflow-hidden cursor-pointer">
                     <AppImage
                         src={image}
                         alt={name}
@@ -100,7 +101,7 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                     {toggleFav && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation();
+                                e.stopPropagation(); // Prevents redirecting to details page
                                 toggleFav(e);
                             }}
                             className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full shadow hover:bg-white transition-colors z-10"

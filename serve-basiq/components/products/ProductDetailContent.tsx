@@ -11,9 +11,9 @@ import {
 } from 'react-icons/fa6';
 import AppImage from '@/components/ui/AppImage';
 import { Session } from 'next-auth';
-import { useServicePageData } from '@/app/hook/useServicePageData';
+import { useListingPageData } from '@/app/hook/useListingPageData'; // ✅ Imported the new dynamic hook
 
-// 🚀 Lazy load heavy components to prevent blocking the initial render
+// 🚀 Lazy load heavy components
 const BookingWrapper = dynamic(() => import('@/components/booking/BookingWrapper'), { ssr: false });
 const ProductSlider = dynamic(() => import('@/components/products/ProductSlider'), { ssr: false });
 const InteractiveProductGallery = dynamic(() => import('@/components/products/InteractiveGallery'));
@@ -26,68 +26,27 @@ const isVideo = (url: string | null | undefined) => {
     return url.match(/\.(mp4|webm|mov|mkv)$/i);
 };
 
-interface ServiceDetailViewProps {
-    service: {
-        id: string;
-        name: string;
-        desc: string;
-        price: number;
-        priceType: string;
-        coverImg?: string | null;
-        serviceimg?: string | null;
-        rentalImg?: string | null;
-        mainimg?: string | null;
-        serviceImages?: string[];
-        rentalImages?: string[];
-        rating: number | string;
-        instagramUrl?: string | null;
-        facebookUrl?: string | null;
-        youtubeUrl?: string | null;
-        websiteUrl?: string | null;
-        addressLine1?: string | null;
-        addressLine2?: string | null;
-        city?: string | null;
-        state?: string | null;
-        pincode?: string | null;
-        landmark?: string | null;
-        loc?: string | null;
-        experience?: string | number | null;
-        radiusKm?: number | null;
-        isVerified?: boolean;
-        isRemote?: boolean;
-        altPhone?: string | null;
-        workingDays: string[];
-        openTime?: string | null;
-        closeTime?: string | null;
-        is24x7?: boolean;
-        gallery: string[];
-        user: {
-            id: string;
-            name?: string | null;
-            image?: string | null;
-            profileImage?: string | null;
-            phone?: string | null;
-            shopName?: string | null;
-            isVerified?: boolean;
-            instagramUrl?: string | null;
-            facebookUrl?: string | null;
-            youtubeUrl?: string | null;
-            websiteUrl?: string | null;
-        };
-        category: { name: string } | null;
-        subcategory?: { name: string } | null;
-        reviews: any[];
-    };
+interface ProductDetailContentProps {
+    service: any; // Mapped data from the server
     loggedInUser: any;
     session: Session | null;
     relatedServices?: any[];
+    listingType: 'SERVICE' | 'PRODUCT' | 'RENTAL'; // ✅ Added listingType
 }
 
-export default function ServiceDetailView({ service, loggedInUser: initialUser, session, relatedServices = [] }: ServiceDetailViewProps) {
+export default function ProductDetailContent({
+    service,
+    loggedInUser: initialUser,
+    session,
+    relatedServices = [],
+    listingType
+}: ProductDetailContentProps) {
     const displayName = service.user.shopName || service.name;
 
-    const { currentUser, eligibility, isEligibilityLoading } = useServicePageData({
-        serviceId: service.id,
+    // ✅ Using the new hook and passing the correct IDs and Type
+    const { currentUser, eligibility, isEligibilityLoading } = useListingPageData({
+        itemId: service.id,
+        listingType: listingType,
         initialUser,
         session
     });
@@ -118,18 +77,18 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
 
     const formattedRelatedServices = relatedServices.map((s) => ({
         id: s.id,
-        name: s.name || s.user?.shopName || 'Service',
+        name: s.name || s.user?.shopName || 'Item',
         price: s.price || 0,
         unit: s.priceType === 'HOURLY' ? 'hour' : 'fixed',
         productImage: (s.serviceImages && s.serviceImages.length > 0) ? s.serviceImages[0] : (s.coverImg || s.serviceimg || s.mainimg || null),
         gallery: Array.isArray(s.gallery) ? s.gallery : [],
         category: s.category,
-        listingType: 'SERVICE' as const,
+        listingType: listingType,
         ownerLocation: s.city || s.loc || 'Location not specified'
     }));
 
     const allImages = Array.from(new Set([
-        service.serviceimg || service.rentalImg || service.mainimg,
+        service.serviceimg || service.rentalImg || service.mainimg || service.coverImg,
         ...(service.serviceImages || service.rentalImages || []),
         ...(service.gallery || [])
     ])).filter(Boolean) as string[];
@@ -146,8 +105,8 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
 
                 {/* 1. BACK BUTTON */}
                 <div className="mb-6">
-                    <Link href="/products" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition px-4 py-2 rounded-xl">
-                        <FaArrowLeft /> Back to Products
+                    <Link href={`/${listingType.toLowerCase()}s`} className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition px-4 py-2 rounded-xl">
+                        <FaArrowLeft /> Back to {listingType === 'PRODUCT' ? 'Products' : 'Services'}
                     </Link>
                 </div>
 
@@ -162,7 +121,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                             {/* Badges */}
                             <div className="flex items-center flex-wrap gap-2 mb-3">
                                 <span className="text-blue-600 text-[10px] md:text-xs font-bold uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                                    {service.category?.name || "Service"}
+                                    {service.category?.name || (listingType === 'PRODUCT' ? "Product" : "Service")}
                                     {service.subcategory?.name && ` • ${service.subcategory.name}`}
                                 </span>
 
@@ -212,19 +171,19 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                         {/* Main Description Card */}
                         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
                             <div className="border-b border-slate-100 pb-6">
-                                <h3 className="text-xl font-bold text-slate-900 mb-4">Service Description</h3>
+                                <h3 className="text-xl font-bold text-slate-900 mb-4">Description</h3>
                                 <p className="text-slate-600 leading-relaxed whitespace-pre-line text-sm md:text-base">{service.desc}</p>
                             </div>
 
                             {/* Stats Grid */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Experience</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Experience / Age</p>
                                     <p className="font-bold text-slate-900 flex items-center gap-2"><FaBoxOpen className="text-slate-300" /> {service.experience || 0}+ Yrs</p>
                                 </div>
 
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">{service.isRemote ? 'Coverage' : 'Area'}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">{service.isRemote ? 'Coverage' : 'Delivery Area'}</p>
                                     <p className="font-bold text-slate-900 flex items-center gap-2 truncate">
                                         {service.isRemote ? <FaGlobe className="text-slate-300 shrink-0" /> : <FaTruckFast className="text-slate-300 shrink-0" />}
                                         {service.isRemote ? 'Global / Online' : `${service.radiusKm || 10} km`}
@@ -287,7 +246,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                             <div className="grid md:grid-cols-2 gap-10">
                                 <div className="space-y-6 max-h-150 overflow-y-auto pr-2 custom-scrollbar">
                                     {service.reviews.length > 0 ? (
-                                        service.reviews.map((review) => (
+                                        service.reviews.map((review: any) => (
                                             <div key={review.id} className="border-b border-slate-100 pb-6 last:border-0">
                                                 <div className="flex items-center gap-3 mb-2">
                                                     <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden flex-shrink-0 relative">
@@ -313,11 +272,13 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                     )}
                                 </div>
                                 <div>
-                                    {!session ? null : isEligibilityLoading ? <p>Loading...</p> : eligibility?.canReview ? <RatingForm serviceId={service.id} /> : (
+                                    {!session ? null : isEligibilityLoading ? <p>Loading...</p> : eligibility?.canReview ? (
+                                        <RatingForm serviceId={service.id} type={listingType} /> // ✅ Note: Pass type here if your RatingForm needs to know!
+                                    ) : (
                                         <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center top-24">
                                             <FaLock className="mx-auto text-slate-400 text-2xl mb-2" />
-                                            <p className="text-slate-800 text-sm font-bold">Verified Booking Only</p>
-                                            <p className="text-slate-500 text-xs mt-2">Book the service and mark as complete to leave a review.</p>
+                                            <p className="text-slate-800 text-sm font-bold">Verified Order Only</p>
+                                            <p className="text-slate-500 text-xs mt-2">Purchase this {listingType.toLowerCase()} and mark as complete to leave a review.</p>
                                         </div>
                                     )}
                                 </div>
@@ -358,7 +319,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                     </div>
                                 </div>
                                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                    <h4 className="text-emerald-900 font-bold text-sm mb-2 flex items-center gap-2"><FaShieldHalved /> Safe Booking</h4>
+                                    <h4 className="text-emerald-900 font-bold text-sm mb-2 flex items-center gap-2"><FaShieldHalved /> Safe Order</h4>
                                     <ul className="text-xs text-emerald-700 space-y-1">
                                         <li>• Verified Professional</li>
                                         <li>• No hidden charges</li>
@@ -373,6 +334,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
                                 price={service.price}
                                 currentUser={currentUser}
                                 userAddresses={currentUser?.addresses || []}
+                                type={listingType} // ✅ Pass type to booking wrapper if necessary
                             />
                         </div>
 
@@ -433,7 +395,7 @@ export default function ServiceDetailView({ service, loggedInUser: initialUser, 
 
                 {formattedRelatedServices.length > 0 && (
                     <div className="mt-16 pt-16 border-t border-slate-200">
-                        <ProductSlider title="Related Services" products={formattedRelatedServices} currentUser={currentUser} />
+                        <ProductSlider title={`Related ${listingType === 'PRODUCT' ? 'Products' : 'Services'}`} products={formattedRelatedServices} currentUser={currentUser} />
                     </div>
                 )}
             </div>

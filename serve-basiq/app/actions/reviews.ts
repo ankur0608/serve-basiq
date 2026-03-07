@@ -6,8 +6,6 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function submitServiceReview(formData: FormData) {
-    // console.log("🚀 [Action] submitServiceReview started");
-
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
@@ -51,10 +49,6 @@ export async function submitServiceReview(formData: FormData) {
             uploadedImageUrls = [];
         }
 
-        if (uploadedImageUrls.length > 0) {
-            // console.log(`📸 [Action] Saving ${uploadedImageUrls.length} image URLs to database...`);
-        }
-
         // 3. Database Transaction: Create review and update service rating instantly
         await prisma.$transaction(async (tx) => {
             await tx.review.create({
@@ -84,7 +78,6 @@ export async function submitServiceReview(formData: FormData) {
 
         // 4. Update the UI
         revalidatePath(`/services/${serviceId}`);
-        // console.log("✅ [Action] Review submitted successfully!");
         return { success: true };
 
     } catch (error: any) {

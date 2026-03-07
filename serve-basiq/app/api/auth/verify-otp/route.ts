@@ -134,13 +134,11 @@ export async function POST(req: Request) {
   try {
     const { phone, otp, userId, name, verificationId } = await req.json();
 
-    // console.log("🚀 [API] Verify Started.", { phone, userId: userId || "NULL" });
-
     if (!phone || !otp || !verificationId) {
       return NextResponse.json({ error: "Missing phone, OTP, or Verification ID" }, { status: 400 });
     }
 
-    // --- RATE LIMIT CHECK: START ---
+    // --- RATE LIMIT CHECK ---
     const rateLimitRecord = await prisma.otp.findUnique({ where: { phone } });
 
     if (rateLimitRecord?.lockUntil && rateLimitRecord.lockUntil > new Date()) {
@@ -150,14 +148,11 @@ export async function POST(req: Request) {
         lockedUntil: rateLimitRecord.lockUntil
       }, { status: 429 });
     }
-    // --- RATE LIMIT CHECK: END ---
 
     // 1. Verify OTP with MessageCentral
     const isValid = await messageCentral.validateOtp(phone, otp, verificationId);
 
     if (!isValid) {
-      // console.log("❌ [API] Invalid OTP (MessageCentral Rejected)");
-
       // Handle Rate Limit Failures
       const currentAttempts = rateLimitRecord?.attempts || 0;
       const newAttempts = currentAttempts + 1;
@@ -180,11 +175,9 @@ export async function POST(req: Request) {
         error: isLocked ? "Account temporarily locked." : "Invalid OTP",
         attemptsLeft: Math.max(0, MAX_FAILED_ATTEMPTS - newAttempts),
         isLocked,
-        lockedUntil: lockUntil // ✅ FIX: Map the key to the 'lockUntil' variable here
+        lockedUntil: lockUntil
       }, { status: 400 });
     }
-
-    // console.log("✅ [API] OTP Verified successfully.");
 
     // Reset Rate Limit on successful login
     if (rateLimitRecord) {
@@ -221,7 +214,7 @@ export async function POST(req: Request) {
         user = await prisma.user.create({
           data: {
             phone: phone,
-           name: name || null,
+            name: name || null,
             isPhoneVerified: true,
             role: "USER",
           },

@@ -262,31 +262,34 @@ export const StepOneDetails = ({
                 </div>
             </div>
 
-            {!form.isRemote && (
-                <div>
-                    <h3 className={sectionTitleClass}>Availability & Location</h3>
+            <div>
+                <h3 className={sectionTitleClass}>Availability & Location</h3>
 
-                    <div className="space-y-5">
-                        {listingType === 'SERVICE' && (
-                            <div className="mt-4 flex items-center justify-between bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                                <div className="flex items-center gap-3">
-                                    <Globe size={20} className="text-blue-500" />
-                                    <div>
-                                        <h4 className="text-xs font-bold text-blue-900 uppercase">Remote / Online Service</h4>
-                                        <p className="text-[10px] text-blue-600/80 mt-0.5">I provide this service globally or remotely.</p>
-                                    </div>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                        checked={form.isRemote || false}
-                                        onChange={(e) => handleChange('isRemote', e.target.checked)}
-                                    />
-                                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
+                {/* Always visible for SERVICES so users can toggle it back off */}
+                {listingType === 'SERVICE' && (
+                    <div className="mt-4 flex items-center justify-between bg-blue-50/50 p-4 mb-4 rounded-xl border border-blue-100">
+                        <div className="flex items-center gap-3">
+                            <Globe size={20} className="text-blue-500" />
+                            <div>
+                                <h4 className="text-xs font-bold text-blue-900 uppercase">Remote / Online Service</h4>
+                                <p className="text-[10px] text-blue-600/80 mt-0.5">I provide this service globally or remotely.</p>
                             </div>
-                        )}
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={form.isRemote || false}
+                                onChange={(e) => handleChange('isRemote', e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                )}
+
+                {/* Only hide the location inputs when Remote is ON */}
+                {!form.isRemote && (
+                    <div className="space-y-5">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Input
@@ -310,8 +313,8 @@ export const StepOneDetails = ({
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
             {listingType === 'SERVICE' && (
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">

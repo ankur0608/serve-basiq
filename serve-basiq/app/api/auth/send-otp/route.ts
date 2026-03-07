@@ -11,9 +11,9 @@
 //   const now = Date.now();
 //   const timestamps = otpRequestMap.get(key) || [];
 //   const recentRequests = timestamps.filter((time) => now - time < windowMs);
-  
+
 //   if (recentRequests.length >= limit) return false; 
-  
+
 //   recentRequests.push(now);
 //   otpRequestMap.set(key, recentRequests);
 //   return true; 
@@ -64,44 +64,58 @@
 //   });
 // }
 
-
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { messageCentral } from "@/lib/messageCentral"; // Import helper
+import { messageCentral } from "@/lib/messageCentral";
 
 export async function POST(req: Request) {
   try {
     const { phone } = await req.json();
 
     if (!phone || phone.length !== 10) {
-      return NextResponse.json(
-        { message: "Invalid phone number" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Invalid phone number" }, { status: 400 });
     }
 
-    // 1. Check if user exists (Logic remains same)
+    // ==========================================
+    // 🛡️ RATE LIMITING LOGIC START
+    // ==========================================
+
+    // 1. Check if an OTP request was made for this phone recently
+    // We now use the OtpLog table to ensure rate limiting works across all server instances.
+    const lastRequest = await prisma.otpLog.findFirst({
+      where: { phone },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (lastRequest) {
+      const now = new Date();
+      const timeSinceLastRequest = (now.getTime() - lastRequest.createdAt.getTime()) / 1000; // in seconds
+
+      if (timeSinceLastRequest < 60) {
+        return NextResponse.json(
+          { error: `Please wait ${Math.ceil(60 - timeSinceLastRequest)} seconds before requesting another OTP.` },
+          { status: 429 } 
+        );
+      }
+    }
+
+    await prisma.otpLog.create({
+      data: { phone }
+    });
+
     const existingUser = await prisma.user.findUnique({
       where: { phone },
     });
 
     const isNewUser = !existingUser;
 
-    // 2. Send OTP via MessageCentral
-    // This replaces your manual Math.random logic
-    // console.log("🚀 [API] Sending OTP via MessageCentral...");
     const verificationId = await messageCentral.sendOtp(phone);
-    // console.log("✅ [API] OTP Sent. Verification ID:", verificationId);
-
-    // 3. We NO LONGER save OTP to Prisma. MessageCentral handles the state.
-    // We just need to cleanup old manual OTPs if you want to keep DB clean
-    await prisma.otp.deleteMany({ where: { phone } });
 
     return NextResponse.json({
       success: true,
-      verificationId, // ✅ Send this to frontend, it's required for verification
+      verificationId,
       isNewUser,
     });
   } catch (error: any) {

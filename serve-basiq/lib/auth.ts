@@ -48,6 +48,7 @@ export const authOptions: NextAuthOptions = {
                 token.isPhoneVerified = user.isPhoneVerified;
                 token.role = user.role;
                 token.isWorker = user.isWorker;
+                token.isWebsite = user.isWebsite;
                 token.providerType = user.providerType;
             }
             if (trigger === "update" && session) {
@@ -64,6 +65,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.isPhoneVerified = token.isPhoneVerified as boolean;
                 session.user.role = token.role as string;
                 session.user.isWorker = token.isWorker as boolean;
+                session.user.isWebsite = token.isWebsite as boolean;
                 session.user.providerType = token.providerType as string | null;
             }
             return session;

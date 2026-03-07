@@ -73,7 +73,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
 
     const handleRequestClick = (e: React.MouseEvent) => {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopPropagation(); // Prevents redirecting to details page
 
         if (!session) {
             setShowLoginModal(true);
@@ -101,14 +101,12 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
 
     return (
         <>
+            {/* The Outer Div makes the ENTIRE card clickable */}
             <div
                 onClick={handleDetailsClick}
                 className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full"
             >
-                <div
-                    className="relative w-full aspect-[4/3] bg-slate-50 overflow-hidden cursor-pointer"
-                    onClick={handleDetailsClick}
-                >
+                <div className="relative w-full aspect-[4/3] bg-slate-50 overflow-hidden cursor-pointer">
                     <AppImage
                         src={displayImage}
                         alt={name}
@@ -130,7 +128,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                     {toggleFav && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation();
+                                e.stopPropagation(); // Prevents redirecting to details page
                                 toggleFav(e);
                             }}
                             className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-sm shadow-sm transition-all active:scale-90 z-10"

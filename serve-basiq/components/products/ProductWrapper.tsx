@@ -18,6 +18,7 @@ interface Props {
     productPrice: number;
     productUnit: string;
     moq: number;
+    type?: 'SERVICE' | 'PRODUCT' | 'RENTAL'; // ✅ Add this line
     currentUser: any;
     userAddresses: any[];
     defaultOpen?: boolean;
@@ -28,6 +29,7 @@ export default function ProductWrapper({
     productId,
     productName,
     productPrice,
+    type,
     productUnit,
     moq,
     currentUser,

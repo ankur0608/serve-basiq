@@ -6,8 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function submitProductReview(formData: FormData) {
-    // console.log("🔥 [SERVER ACTION] submitProductReview started");
-
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
@@ -35,8 +33,6 @@ export async function submitProductReview(formData: FormData) {
         const imagesJson = formData.get("images") as string;
         const uploadedImageUrls: string[] = imagesJson ? JSON.parse(imagesJson) : [];
 
-        // console.log(`📸 [Product] Saving ${uploadedImageUrls.length} image URLs to database...`);
-
         await prisma.review.create({
             data: {
                 rating,
@@ -50,7 +46,6 @@ export async function submitProductReview(formData: FormData) {
 
         revalidatePath(`/products/${productId}`);
 
-        // console.log("✅ [SERVER ACTION] Review saved successfully!");
         return { success: true };
 
     } catch (error) {
