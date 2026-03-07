@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 interface CategoryItem {
   id: string | number;
   label: string;
-  icon: React.ReactNode;
+  icon: React.ReactNode; 
 }
 
 interface CategorySectionProps {
@@ -28,7 +28,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
           {/* Optional: You can add a decorative icon next to title if needed */}
           <h2 className="text-xl font-bold text-gray-800">{title}</h2>
         </div>
-        <button
+        <button 
           onClick={onViewAll}
           className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors"
         >
@@ -39,7 +39,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
       {/* Grid Section */}
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
         {items.map((item) => (
-          <div
+          <div 
             key={item.id}
             onClick={() => onItemClick && onItemClick(item)}
             className="flex flex-col items-center justify-center bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-gray-100 h-28"

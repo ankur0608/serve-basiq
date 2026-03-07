@@ -4,7 +4,7 @@ export function useVerification() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const uploadDocument = useCallback(async (file: File | Blob) => {
-
+  
 
         const filename = 'name' in file ? file.name : 'compressed-document.jpg';
         const fileType = file.type || 'image/jpeg';

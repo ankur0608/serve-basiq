@@ -35,7 +35,7 @@ const ProductSchema = z.object({
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        console.log("📝 [API] Product Create/Update Body:", JSON.stringify(body, null, 2));
+        // console.log("📝 [API] Product Create/Update Body:", JSON.stringify(body, null, 2));
 
         const { userId, productId, ...formData } = body;
 
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
         let product;
 
         if (productId) {
-            console.log(`🔄 Updating Product: ${productId}`);
+            // console.log(`🔄 Updating Product: ${productId}`);
             product = await prisma.product.update({
                 where: { id: productId },
                 data: {
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
                 },
             });
         } else {
-            console.log(`✨ Creating Product for User: ${userId}`);
+            // console.log(`✨ Creating Product for User: ${userId}`);
             product = await prisma.product.create({
                 data: {
                     user: { connect: { id: userId } },
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
             });
         }
 
-        console.log("✅ Success! Product ID:", product.id);
+        // console.log("✅ Success! Product ID:", product.id);
         return NextResponse.json({ success: true, product });
 
     } catch (error: any) {

@@ -1,4 +1,3 @@
-// app/products/[id]/page.tsx
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
@@ -127,6 +126,7 @@ export default async function ProductDetailPage({ params }: Props) {
       service={mappedProduct as any}
       loggedInUser={loggedInUser}
       session={session}
+      listingType="PRODUCT" // ✅ Let the client component know it's a product
     />
   );
 }

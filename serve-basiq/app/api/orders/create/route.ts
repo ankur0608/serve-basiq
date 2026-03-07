@@ -10,7 +10,7 @@ const OrderSchema = z.object({
 
     timeline: z.enum(['URGENT', 'IMMEDIATE', 'LATER', 'FLEXIBLE']),
 
-    specialInstructions: z.string().optional(),
+    specialInstructions: z.string().optional(), 
 
     newAddress: z.object({
         line1: z.string(),

@@ -120,7 +120,7 @@ export async function DELETE(
       await tx.product.delete({ where: { id } });
     },
       {
-        maxWait: 5000,
+        maxWait: 5000, 
         timeout: 30000,
       });
 

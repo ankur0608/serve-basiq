@@ -135,7 +135,7 @@ export async function POST(req: Request) {
       data: {
         userId: session.user.id,
         rentalId: data.rentalId,
-        addressId: finalAddressId,
+        addressId: finalAddressId, 
         startDate: start,
         endDate: end,
         totalDays: diffDays,

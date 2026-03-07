@@ -6,7 +6,7 @@ interface PromoBannerProps {
   subtitle: string;
   buttonText?: string;
   onButtonClick?: () => void;
-  className?: string;
+  className?: string; 
 }
 
 const PromoBanner: React.FC<PromoBannerProps> = ({
@@ -19,7 +19,7 @@ const PromoBanner: React.FC<PromoBannerProps> = ({
 }) => {
   return (
     <div className={`w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-500 p-6 md:p-8 text-white shadow-lg my-6 ${className}`}>
-
+      
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex flex-col gap-2">
           {badgeText && (
@@ -33,7 +33,7 @@ const PromoBanner: React.FC<PromoBannerProps> = ({
           </p>
         </div>
 
-        <button
+        <button 
           onClick={onButtonClick}
           className="bg-white text-purple-700 hover:bg-gray-50 font-bold py-2.5 px-6 rounded-lg transition-colors shadow-sm whitespace-nowrap"
         >

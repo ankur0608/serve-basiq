@@ -361,7 +361,7 @@ import clsx from "clsx";
 import { useUIStore } from "@/lib/store";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
+import toast from "react-hot-toast"; 
 
 interface OtpModalProps {
     isOpen: boolean;
@@ -398,13 +398,13 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
     });
 
     const [lockCountdown, setLockCountdown] = useState(0);
-    const [resendCountdown, setResendCountdown] = useState(60);
+    const [resendCountdown, setResendCountdown] = useState(60); 
 
     useEffect(() => {
         if (isOpen) {
             setShowModal(true);
             setActiveVerificationId(initialVerificationId);
-            setResendCountdown(60);
+            setResendCountdown(60); 
             document.body.style.overflow = "hidden";
             setTimeout(() => inputRefs.current[0]?.focus(), 100);
         } else {
@@ -490,7 +490,7 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
             }
 
             setActiveVerificationId(data.verificationId);
-            setResendCountdown(60);
+            setResendCountdown(60); 
             toast.success("OTP sent successfully!");
             setOtp(["", "", "", ""]);
             inputRefs.current[0]?.focus();
