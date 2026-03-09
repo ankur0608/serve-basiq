@@ -11,20 +11,16 @@ export default function MyOrdersPage() {
     const { currentUser } = useUIStore();
     const { data: orders = [], isLoading } = useUserOrders();
 
-    // --- Filter & Search State ---
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
 
-    // --- Derived Data: Filtered Orders ---
     const filteredOrders = useMemo(() => {
         if (!orders) return [];
         return orders.filter((order: any) => {
-            // Match Search Term (Product Name or Order ID)
             const matchesSearch =
                 order.product?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 order.id.toLowerCase().includes(searchTerm.toLowerCase());
 
-            // Match Status
             const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
 
             return matchesSearch && matchesStatus;
