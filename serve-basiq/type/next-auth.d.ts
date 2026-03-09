@@ -9,6 +9,7 @@ declare module "next-auth" {
             isPhoneVerified: boolean;
             role: string;
             isWorker: boolean;
+            isWebsite: boolean;
             providerType: string | null;
         } & DefaultSession["user"];
     }
@@ -18,6 +19,7 @@ declare module "next-auth" {
         isPhoneVerified: boolean;
         role: string;
         isWorker: boolean;
+        isWebsite: boolean;
         providerType: string | null;
     }
 }
@@ -29,6 +31,7 @@ declare module "next-auth/jwt" {
         isPhoneVerified: boolean;
         role: string;
         isWorker: boolean;
+        isWebsite: boolean;
         providerType: string | null;
     }
 }
