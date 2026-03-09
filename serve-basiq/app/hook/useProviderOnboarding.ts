@@ -6,7 +6,7 @@ import { onboardSchema } from "@/lib/validators";
 import { useUIStore, User } from "@/lib/store";
 import toast from "react-hot-toast";
 import { uploadToBackend } from "@/lib/uploadToBackend";
-
+import { useSession } from "next-auth/react"; // ✅ 1. Import useSession
 const MAX_FRONTEND_SIZE_MB = 10;
 const COMPRESSION_OPTIONS = {
     maxSizeMB: 0.8,
@@ -24,7 +24,7 @@ export function useProviderOnboarding() {
     const [gettingLoc, setGettingLoc] = useState(false);
     const [imgPreview, setImgPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
-
+    const { update } = useSession(); // ✅ 2. Destructure update function
     const [form, setForm] = useState({
         fullName: "",
         email: "",
@@ -121,7 +121,7 @@ export function useProviderOnboarding() {
             if (!res.ok) throw data;
             return data;
         },
-        onSuccess: () => {
+        onSuccess: async () => {
             if (currentUser) {
                 const updatedUser: User = {
                     ...currentUser,
@@ -131,9 +131,16 @@ export function useProviderOnboarding() {
                 };
                 setCurrentUser(updatedUser);
             }
-            queryClient.invalidateQueries({ queryKey: ["userProfile", currentUser?.id] });
+
+            await update();
+
+            await queryClient.invalidateQueries({ queryKey: ["userProfile", currentUser?.id] });
+
             toast.success("Welcome aboard! Your profile is ready.");
+
             router.push("/provider/dashboard?new=true");
+
+            setTimeout(() => router.refresh(), 100);
         },
         onError: (error: any) => {
             if (error.details) {
@@ -203,7 +210,8 @@ export function useProviderOnboarding() {
             const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
             const uploadFile = new File([compressedBlob], newFileName, { type: 'image/webp' });
 
-            const url = await uploadToBackend(uploadFile);
+            // ✅ NEW: Tell the helper to upload this to the "users" folder!
+            const url = await uploadToBackend(uploadFile, "users");
             setImgPreview(url);
 
             if (errors.profileImage) {
@@ -220,7 +228,6 @@ export function useProviderOnboarding() {
             setUploading(false);
         }
     }, [errors]);
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 

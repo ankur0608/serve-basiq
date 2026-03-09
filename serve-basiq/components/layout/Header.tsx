@@ -22,7 +22,8 @@ const Navbar = () => {
 
     const getUserImage = () => {
         if (!currentUser) return null;
-        return currentUser.img || (currentUser as any).profileImage || null;
+        // 🛠️ FIX: Check profileImage before img
+        return (currentUser as any).profileImage || currentUser.img || currentUser.image || null;
     };
 
     const getInitials = () => {

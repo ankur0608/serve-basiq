@@ -102,11 +102,11 @@ export default function RatingForm({ serviceId, productId, rentalId, type }: Rat
 
             if (images.length > 0) {
                 for (const image of images) {
-                    const url = await uploadToBackend(image);
+                    // ✅ NEW: Tell the helper function to put this in the "reviews" folder
+                    const url = await uploadToBackend(image, "reviews");
                     uploadedUrls.push(url);
                 }
             }
-
             // 2️⃣ Prepare FormData
             const formData = new FormData();
             formData.append("rating", rating.toString());

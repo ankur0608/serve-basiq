@@ -11,16 +11,20 @@ export default function MyOrdersPage() {
     const { currentUser } = useUIStore();
     const { data: orders = [], isLoading } = useUserOrders();
 
+    // --- Filter & Search State ---
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
 
+    // --- Derived Data: Filtered Orders ---
     const filteredOrders = useMemo(() => {
         if (!orders) return [];
         return orders.filter((order: any) => {
+            // Match Search Term (Product Name or Order ID)
             const matchesSearch =
                 order.product?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 order.id.toLowerCase().includes(searchTerm.toLowerCase());
 
+            // Match Status
             const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
 
             return matchesSearch && matchesStatus;
@@ -69,7 +73,10 @@ export default function MyOrdersPage() {
                             </div>
                         </div>
 
+                        {/* --- SEARCH & FILTER BAR --- */}
+                        {/* --- SEARCH & FILTER BAR --- */}
                         <div className="flex items-center gap-2 w-full">
+                            {/* Search Input */}
                             <div className="relative flex-1">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <FaMagnifyingGlass className="text-slate-400 text-sm" />

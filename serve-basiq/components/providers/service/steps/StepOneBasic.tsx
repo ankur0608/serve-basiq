@@ -410,7 +410,6 @@ export const StepTwoMedia = ({
 
         for (const file of Array.from(files)) {
             if (currentCount + validFiles.length >= 5) {
-                toast.error("Maximum 5 service angles allowed.");
                 break;
             }
             if (file.type.startsWith('image/')) validFiles.push(file);
@@ -436,14 +435,12 @@ export const StepTwoMedia = ({
         for (const file of Array.from(files)) {
             if (file.type.startsWith('image/')) {
                 if (currentImages + addedImages >= 45) {
-                    toast.error("Maximum 45 gallery images allowed.");
                     continue;
                 }
                 validFiles.push(file);
                 addedImages++;
             } else if (file.type.startsWith('video/')) {
                 if (currentVideos + addedVideos >= 5) {
-                    toast.error("Maximum 5 gallery videos allowed.");
                     continue;
                 }
                 validFiles.push(file);
@@ -475,7 +472,6 @@ export const StepTwoMedia = ({
         if (hasError) {
             e.preventDefault();
             setErrors(newErrors);
-            toast.error("Please complete the required media uploads.");
         } else {
             setErrors({});
         }
@@ -485,14 +481,12 @@ export const StepTwoMedia = ({
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
-            {/* 1. Main Image */}
             <div>
                 <label className={labelClass}>Main Image <span className="text-red-500">*</span></label>
                 <div className={`relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed overflow-hidden flex flex-col items-center justify-center group transition-all cursor-pointer ${errors.main ? 'border-red-400' : 'border-slate-300 hover:border-blue-500 hover:bg-blue-50/30'}`}>
                     <input type="file" accept="image/*" onChange={handleMainChangeWrapper} className="absolute inset-0 opacity-0 cursor-pointer z-10" disabled={!!processingMsg} />
                     {form.mainimg ? (
                         <>
-                            {/* ✅ Usage of the AppImage Component */}
                             <AppImage src={form.mainimg} alt="Main Service" type="card" className="w-full h-full absolute inset-0" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
                                 <p className="text-white text-xs font-bold flex items-center gap-2">Change Photo</p>
@@ -507,13 +501,11 @@ export const StepTwoMedia = ({
                 {errors.main && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.main}</p>}
             </div>
 
-            {/* 2. Service Angles */}
             <div>
-                <label className={labelClass}>Extra Angles (Max 5) <span className="text-red-500">*</span></label>
+                <label className={labelClass}>business details images (Max 5) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-5 gap-2">
                     {(form.serviceImages || []).map((url: string, i: number) => (
                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200">
-                            {/* ✅ Usage of the AppImage Component */}
                             <AppImage src={url} alt={`Angle ${i + 1}`} type="thumbnail" className="w-full h-full absolute inset-0" />
                             <button type="button" onClick={() => removeServiceImage(i)} className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl-lg opacity-0 group-hover:opacity-100 transition z-20">
                                 <Trash2 size={14} />

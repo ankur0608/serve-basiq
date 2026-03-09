@@ -153,7 +153,7 @@ export default function ProfileEditModal({
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+ const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!hasChanges) {
             onClose();
@@ -163,6 +163,10 @@ export default function ProfileEditModal({
         try {
             await onSave(formData, file);
             toast.success("Profile updated successfully!");
+            
+            // 🛠️ FIX: Close the modal after successful save
+            onClose(); 
+            
         } catch (error) {
             console.error(error);
             toast.error("Something went wrong. Please try again.");
@@ -170,7 +174,6 @@ export default function ProfileEditModal({
             setLoading(false);
         }
     };
-
     // 👉 MUST CHECK IF MOUNTED FOR PORTALS
     if (!isOpen || !mounted) return null;
 

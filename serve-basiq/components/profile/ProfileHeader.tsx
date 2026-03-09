@@ -40,11 +40,10 @@ export default function ProfileHeader({
 
     const displayImage =
         userImage ||
+        currentUser?.profileImage || // 🛠️ FIX: Move this above image and img
         currentUser?.image ||
-        currentUser?.profileImage ||
         currentUser?.img ||
         session?.user?.image;
-
     const displayPhone =
         currentUser?.phone || session?.user?.phone;
 

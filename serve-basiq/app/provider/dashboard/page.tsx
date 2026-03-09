@@ -10,8 +10,8 @@ import {
     BellRing, ArrowLeft, Loader2, AlertTriangle, LogOut
 } from 'lucide-react';
 import clsx from 'clsx';
-
-// ✅ Imported Logout Utilities
+import { useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { fullLogout } from '@/lib/logout';
 import ConfirmLogoutModal from '@/components/auth/ConfirmLogoutModal';
 
@@ -21,9 +21,15 @@ import { ProviderDashboardContent } from '@/components/providers/ProviderDashboa
 export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
     const router = useRouter();
-
+    const { data: session, status, update } = useSession();
     const { data: dashboardData, isLoading: loading, refetch: refetchDashboard, isError } = useProviderDashboard(currentUser?.id);
-
+    useEffect(() => {
+        if (status === 'authenticated' && session?.user && !session.user.isWorker) {
+            // If the client knows they should be a worker (via Zustand) but session says NO:
+            console.log("Session mismatch detected. Attempting silent refresh...");
+            update(); // Silent background refresh
+        }
+    }, [session, status, update]);
     const [activeView, setActiveView] = useState('dashboard');
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);

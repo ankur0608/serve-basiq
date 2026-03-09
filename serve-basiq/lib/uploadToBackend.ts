@@ -1,8 +1,7 @@
-// lib/uploadToBackend.ts
-
-export async function uploadToBackend(file: File): Promise<string> {
+// ✅ 1. Add 'folder' parameter with a default fallback of "misc"
+export async function uploadToBackend(file: File, folder: string = "misc"): Promise<string> {
     try {
-        // console.log(`🚀 [uploadToBackend] Starting upload for: ${file.name}`);
+        // console.log(`🚀 [uploadToBackend] Starting upload for: ${file.name} to folder: ${folder}`);
         // console.log(`📦 [uploadToBackend] File info: ${(file.size / 1024 / 1024).toFixed(2)} MB | Type: ${file.type}`);
 
         // console.log(`⏳ [uploadToBackend] Step 1: Requesting presigned URL from /api/upload...`);
@@ -13,6 +12,7 @@ export async function uploadToBackend(file: File): Promise<string> {
                 filename: file.name,
                 fileType: file.type,
                 fileSize: file.size,
+                folder: folder, // ✅ 2. Pass the folder name to your API!
             }),
         });
 

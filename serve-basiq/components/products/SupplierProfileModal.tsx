@@ -70,19 +70,24 @@ export default function SupplierProfileModal({ supplier }: SupplierProps) {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <div
                 ref={modalRef}
-                className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden relative animate-in zoom-in-95 duration-200"
+                className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden relative animate-in zoom-in-95 duration-200"
             >
+                {/* Close Button */}
                 <button
                     onClick={() => setIsOpen(false)}
-                    className="absolute top-4 right-4 text-white hover:text-slate-200 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full p-2 transition z-10"
+                    className="absolute top-4 right-4 text-white/80 hover:text-white bg-black/10 hover:bg-black/30 backdrop-blur-md rounded-full p-2 transition-all z-20"
                 >
-                    <FaXmark size={18} />
+                    <FaXmark size={20} />
                 </button>
 
-                <div className="h-32 bg-gradient-to-br from-blue-600 to-violet-700" />
+                {/* Sleek Gradient Header */}
+                <div className="h-36 bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 relative">
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
+                </div>
 
                 <div className="px-6 pb-8 -mt-16 relative">
-                    <div className="w-28 h-28 mx-auto rounded-full border-[6px] border-white shadow-lg overflow-hidden bg-white mb-4 relative z-10">
+                    {/* Avatar (Border Removed, added soft shadow) */}
+                    <div className="w-[110px] h-[110px] mx-auto rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden bg-white mb-4 relative z-10 flex items-center justify-center">
                         {displayImage ? (
                             <AppImage
                                 src={displayImage}
@@ -91,86 +96,92 @@ export default function SupplierProfileModal({ supplier }: SupplierProps) {
                                 className="w-full h-full object-cover"
                             />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300">
-                                <FaStore size={40} />
-                            </div>
+                            <FaStore size={40} className="text-slate-300" />
                         )}
                     </div>
 
-                    <div className="text-center mb-6">
-                        <h3 className="text-xl font-black text-slate-900 flex items-center justify-center gap-2 mb-1">
+                    {/* Name & Location */}
+                    <div className="text-center mb-8">
+                        <h3 className="text-2xl font-black text-slate-900 flex items-center justify-center gap-2 mb-1.5">
                             {displayName}
                             {supplier.isVerified && (
-                                <FaCircleCheck className="text-blue-500 text-base" />
+                                <FaCircleCheck className="text-blue-500 text-lg" />
                             )}
                         </h3>
-                        <p className="text-slate-500 text-sm font-medium flex items-center justify-center gap-1">
-                            <FaLocationDot size={12} />
+                        <p className="text-slate-500 text-sm font-medium flex items-center justify-center gap-1.5">
+                            <FaLocationDot className="text-slate-400" size={14} />
                             {loc}
                         </p>
                     </div>
 
+                    {/* Stats Cards (Borders Removed) */}
                     <div className="grid grid-cols-2 gap-3 mb-6">
-                        <div className="bg-slate-50 p-3 rounded-2xl border text-center">
-                            <FaUser className="mx-auto mb-1 text-slate-400" size={16} />
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">
+                        <div className="bg-slate-50 hover:bg-slate-100 transition-colors p-4 rounded-2xl text-center shadow-sm">
+                            <FaUser className="mx-auto mb-2 text-slate-400" size={18} />
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">
                                 Owner
                             </p>
-                            <p className="text-xs font-bold text-slate-900 truncate">
+                            <p className="text-sm font-bold text-slate-800 truncate">
                                 {supplier.name || "Hidden"}
                             </p>
                         </div>
 
-                        <div className="bg-slate-50 p-3 rounded-2xl border text-center">
-                            <FaCalendarDays className="mx-auto mb-1 text-slate-400" size={16} />
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">
+                        <div className="bg-slate-50 hover:bg-slate-100 transition-colors p-4 rounded-2xl text-center shadow-sm">
+                            <FaCalendarDays className="mx-auto mb-2 text-slate-400" size={18} />
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">
                                 Joined
                             </p>
-                            <p className="text-xs font-bold text-slate-900">
+                            <p className="text-sm font-bold text-slate-800">
                                 {memberSince}
                             </p>
                         </div>
                     </div>
 
-                    <div className="space-y-2 mb-6">
+                    {/* Contact Info (Borders Removed) */}
+                    <div className="space-y-2.5 mb-8">
                         {supplier.email && (
-                            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-blue-50 border text-blue-900">
-                                <FaEnvelope size={12} />
-                                <span className="text-xs truncate">
+                            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-colors text-blue-700">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                    <FaEnvelope size={14} />
+                                </div>
+                                <span className="text-sm font-semibold truncate">
                                     {supplier.email}
                                 </span>
                             </div>
                         )}
 
                         {supplier.phone && (
-                            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-emerald-50 border text-emerald-900">
-                                <FaPhone size={12} />
-                                <span className="text-xs">
+                            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-50/50 hover:bg-emerald-50 transition-colors text-emerald-700">
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                                    <FaPhone size={14} />
+                                </div>
+                                <span className="text-sm font-semibold">
                                     {supplier.phone}
                                 </span>
                             </div>
                         )}
                     </div>
 
-                    <div className="flex justify-center gap-3">
+                    {/* Social Media Links (Styled as buttons) */}
+                    <div className="flex justify-center gap-4">
                         {supplier.websiteUrl && (
-                            <a href={supplier.websiteUrl} target="_blank">
-                                <FaGlobe />
+                            <a href={supplier.websiteUrl} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 hover:bg-slate-900 hover:text-white transition-all shadow-sm hover:shadow-md hover:-translate-y-1">
+                                <FaGlobe size={18} />
                             </a>
                         )}
                         {supplier.instagramUrl && (
-                            <a href={supplier.instagramUrl} target="_blank">
-                                <FaInstagram />
+                            <a href={supplier.instagramUrl} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-pink-600 hover:bg-gradient-to-tr hover:from-yellow-400 hover:via-pink-500 hover:to-purple-500 hover:text-white transition-all shadow-sm hover:shadow-md hover:-translate-y-1">
+                                <FaInstagram size={20} />
                             </a>
                         )}
                         {supplier.facebookUrl && (
-                            <a href={supplier.facebookUrl} target="_blank">
-                                <FaFacebook />
+                            <a href={supplier.facebookUrl} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm hover:shadow-md hover:-translate-y-1">
+                                <FaFacebook size={18} />
                             </a>
                         )}
                         {supplier.youtubeUrl && (
-                            <a href={supplier.youtubeUrl} target="_blank">
-                                <FaYoutube />
+                            <a href={supplier.youtubeUrl} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm hover:shadow-md hover:-translate-y-1">
+                                <FaYoutube size={18} />
                             </a>
                         )}
                     </div>
@@ -183,7 +194,7 @@ export default function SupplierProfileModal({ supplier }: SupplierProps) {
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="ml-auto text-xs font-bold text-blue-600 hover:underline"
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-full hover:bg-blue-100 transition-colors ml-auto"
             >
                 View Profile
             </button>

@@ -20,8 +20,7 @@ import MobileVerificationModal from "@/components/auth/MobileVerificationModal";
 import BecomeProviderBanner from "@/components/profile/BecomeProviderBanner";
 
 export default function ProfilePage() {
-    const { data: session, status } = useSession();
-
+    const { data: session, status, update: updateSession } = useSession();
     const {
         currentUser,
         setCurrentUser,
@@ -91,7 +90,7 @@ export default function ProfilePage() {
         name: userAny.name || "",
         email: userAny.email || "",
         phone: userAny.phone || "",
-        image: userAny.image || userAny.profileImage || userAny.img || "",
+        image: userAny.profileImage || userAny.image || userAny.img || "",
         dateOfBirth: userAny.dateOfBirth || userAny.dob || "",
         preferredLanguage: userAny.preferredLanguage || "English",
         addressLine1: userAny.addressLine1 || primaryAddress.line1 || "",
@@ -106,7 +105,8 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen pb-32 bg-slate-50 animate-in fade-in">
             <ProfileHeader
-                userImage={userAny.image || userAny.profileImage || userAny.img}
+                // 🛠️ FIX: Prioritize profileImage
+                userImage={userAny.profileImage || userAny.image || userAny.img}
                 onLogout={fullLogout}
                 onEditClick={onOpenEditProfile}
             />
@@ -152,6 +152,9 @@ export default function ProfilePage() {
                     }}
                     onSave={async (formData, file) => {
                         await updateProfile({ formData, file, currentUser: userAny });
+
+                        await refetch();
+                        await updateSession();
                     }}
                 />
 

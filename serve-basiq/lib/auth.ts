@@ -40,8 +40,9 @@ export const authOptions: NextAuthOptions = {
             }
         },
     },
-    callbacks: {
-        async jwt({ token, user, trigger, session }) {
+callbacks: {
+        async jwt({ token, user, trigger }) {
+            // 1. Initial Sign In
             if (user) {
                 token.id = user.id;
                 token.phone = user.phone;
@@ -51,20 +52,32 @@ export const authOptions: NextAuthOptions = {
                 token.isWebsite = user.isWebsite;
                 token.providerType = user.providerType;
             }
-            if (trigger === "update" && session) {
-                return { ...token, ...session };
+            
+            // 2. 🚀 The Fix: Securely fetch fresh data from DB on update
+            if (trigger === "update") {
+                const freshUser = await prisma.user.findUnique({
+                    where: { id: token.id as string }
+                });
+                
+                if (freshUser) {
+                    token.isWorker = freshUser.isWorker;
+                    token.providerType = freshUser.providerType;
+                    token.role = freshUser.role;
+                    // Update any other fields that might change
+                }
             }
+            
             return token;
         },
         async session({ session, token }) {
             if (session.user && token) {
-                // ✅ FIX: Fallback to token.sub if token.id is missing
                 session.user.id = (token.id as string) || (token.sub as string);
-
                 session.user.phone = token.phone as string | null;
                 session.user.isPhoneVerified = token.isPhoneVerified as boolean;
                 session.user.role = token.role as string;
-                session.user.isWorker = token.isWorker as boolean;
+                
+                // This now gets the strictly verified DB status from the token
+                session.user.isWorker = token.isWorker as boolean; 
                 session.user.isWebsite = token.isWebsite as boolean;
                 session.user.providerType = token.providerType as string | null;
             }

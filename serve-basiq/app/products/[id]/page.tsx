@@ -118,7 +118,13 @@ export default async function ProductDetailPage({ params }: Props) {
     },
     category: product.category ? { name: product.category.name } : null,
     subcategory: product.subcategory ? { name: product.subcategory.name } : null,
-    reviews: product.reviews || [],
+
+    // 🛠️ FIX: Map the reviews and safely parse the dates
+    reviews: product.reviews?.map((review: any) => ({
+      ...review,
+      createdAt: new Date(review.createdAt).toISOString(),
+      updatedAt: review.updatedAt ? new Date(review.updatedAt).toISOString() : null,
+    })) || [],
   };
 
   return (

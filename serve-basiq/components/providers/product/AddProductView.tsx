@@ -97,6 +97,25 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
+    // const handleMainImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    //     const file = e.target.files?.[0];
+    //     if (!file) return;
+
+    //     setUploading(true);
+    //     setActiveUploadField('main');
+
+    //     try {
+    //         const url = await uploadToBackend(file);
+    //         setForm(prev => ({ ...prev, productImage: url }));
+    //         showToast("Main image uploaded!", "success");
+    //     } catch (e) {
+    //         showToast("Upload failed", "error");
+    //     } finally {
+    //         setUploading(false);
+    //         setActiveUploadField(null);
+    //     }
+    // }, [showToast]);
+
     const handleMainImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -105,7 +124,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField('main');
 
         try {
-            const url = await uploadToBackend(file);
+            // ✅ NEW: Added "products" folder
+            const url = await uploadToBackend(file, "products");
             setForm(prev => ({ ...prev, productImage: url }));
             showToast("Main image uploaded!", "success");
         } catch (e) {
@@ -115,6 +135,29 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
             setActiveUploadField(null);
         }
     }, [showToast]);
+
+    // const handleProductImagesUpload = useCallback(async (files: File[]) => {
+    //     if (!files || files.length === 0) return;
+    //     if (form.productImages.length + files.length > 5) {
+    //         showToast("You can only add up to 5 product images", "error");
+    //         return;
+    //     }
+
+    //     setUploading(true);
+    //     setActiveUploadField('productImages');
+
+    //     try {
+    //         const uploadPromises = files.map(file => uploadToBackend(file));
+    //         const uploadedUrls = await Promise.all(uploadPromises);
+    //         setForm(prev => ({ ...prev, productImages: [...prev.productImages, ...uploadedUrls].slice(0, 5) }));
+    //         showToast(`${uploadedUrls.length} product images uploaded!`, "success");
+    //     } catch (e) {
+    //         showToast("Upload failed", "error");
+    //     } finally {
+    //         setUploading(false);
+    //         setActiveUploadField(null);
+    //     }
+    // }, [form.productImages.length, showToast]);
 
     const handleProductImagesUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
@@ -127,7 +170,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField('productImages');
 
         try {
-            const uploadPromises = files.map(file => uploadToBackend(file));
+            // ✅ NEW: Added "products" folder to the map function
+            const uploadPromises = files.map(file => uploadToBackend(file, "products"));
             const uploadedUrls = await Promise.all(uploadPromises);
             setForm(prev => ({ ...prev, productImages: [...prev.productImages, ...uploadedUrls].slice(0, 5) }));
             showToast(`${uploadedUrls.length} product images uploaded!`, "success");
@@ -147,6 +191,25 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
+    // const handleGalleryUpload = useCallback(async (files: File[]) => {
+    //     if (!files || files.length === 0) return;
+
+    //     setUploading(true);
+    //     setActiveUploadField('gallery');
+
+    //     try {
+    //         const uploadPromises = files.map(file => uploadToBackend(file));
+    //         const uploadedUrls = await Promise.all(uploadPromises);
+    //         setForm(prev => ({ ...prev, gallery: [...prev.gallery, ...uploadedUrls] }));
+    //         showToast(`${uploadedUrls.length} items added to gallery`, "success");
+    //     } catch (e) {
+    //         showToast("One or more items failed to upload", "error");
+    //     } finally {
+    //         setUploading(false);
+    //         setActiveUploadField(null);
+    //     }
+    // }, [showToast]);
+
     const handleGalleryUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
 
@@ -154,7 +217,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField('gallery');
 
         try {
-            const uploadPromises = files.map(file => uploadToBackend(file));
+            // ✅ NEW: Added "products" folder to the map function
+            const uploadPromises = files.map(file => uploadToBackend(file, "products"));
             const uploadedUrls = await Promise.all(uploadPromises);
             setForm(prev => ({ ...prev, gallery: [...prev.gallery, ...uploadedUrls] }));
             showToast(`${uploadedUrls.length} items added to gallery`, "success");

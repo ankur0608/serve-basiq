@@ -97,8 +97,6 @@ export default async function RentalDetailsPage({ params }: Props) {
         category: r.category,
         listingType: 'RENTAL' as const
     }));
-
-    // Data Mapping for main rental
     const rental = {
         ...rawRental,
         price: Number(rawRental.price),
@@ -108,11 +106,15 @@ export default async function RentalDetailsPage({ params }: Props) {
         monthlyPrice: rawRental.monthlyPrice ? Number(rawRental.monthlyPrice) : null,
         fixedPrice: rawRental.fixedPrice ? Number(rawRental.fixedPrice) : null,
         securityDeposit: rawRental.securityDeposit ? Number(rawRental.securityDeposit) : 0,
-        createdAt: rawRental.createdAt.toISOString(),
-        updatedAt: rawRental.updatedAt.toISOString(),
-        reviews: rawRental.reviews.map(review => ({
+
+        // 🛠️ FIX: Wrap in new Date() to safely handle both Strings and Date objects
+        createdAt: new Date(rawRental.createdAt).toISOString(),
+        updatedAt: new Date(rawRental.updatedAt).toISOString(),
+
+        reviews: rawRental.reviews.map((review: any) => ({
             ...review,
-            createdAt: review.createdAt.toISOString(),
+            // 🛠️ FIX: Do the same for your nested reviews array
+            createdAt: new Date(review.createdAt).toISOString(),
         }))
     };
 

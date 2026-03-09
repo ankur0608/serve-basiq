@@ -4,20 +4,23 @@ export function useVerification() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const uploadDocument = useCallback(async (file: File | Blob) => {
-  
-
         const filename = 'name' in file ? file.name : 'compressed-document.jpg';
         const fileType = file.type || 'image/jpeg';
         const fileSize = file.size;
 
-        const payload = { filename, fileType, fileSize };
+        // ✅ NEW: Add the folder property to the payload!
+        const payload = {
+            filename,
+            fileType,
+            fileSize,
+            folder: "users"
+        };
 
         const res = await fetch('/api/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
-
 
         if (!res.ok) {
             const errText = await res.text();

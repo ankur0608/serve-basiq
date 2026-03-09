@@ -1,21 +1,29 @@
+// app/provider/dashboard/layout.tsx
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth"; // ✅ Fixed import path!
+import { authOptions } from "@/lib/auth";
+
+// 🚀 FORCE DYNAMIC: This ensures getServerSession always reads the fresh cookie
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function ProviderDashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    // 1. Fetch the secure session from the server
     const session = await getServerSession(authOptions);
 
-    // 2. The Check: If no session, OR user is NOT a worker
+    // If the database is updated but you are redirected, 
+    // it's because this console.log (in your terminal) says 'false'
+    console.log("SERVER AUTH CHECK:", {
+        email: session?.user?.email,
+        isWorker: session?.user?.isWorker
+    });
+
     if (!session || session.user?.isWorker !== true) {
-        // Instantly kick them back to the home page
         redirect("/");
     }
 
-    // 3. If they are a worker, load the dashboard page normally
     return <>{children}</>;
 }
