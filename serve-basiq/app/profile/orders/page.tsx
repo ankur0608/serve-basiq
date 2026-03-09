@@ -69,10 +69,7 @@ export default function MyOrdersPage() {
                             </div>
                         </div>
 
-                        {/* --- SEARCH & FILTER BAR --- */}
-                        {/* --- SEARCH & FILTER BAR --- */}
                         <div className="flex items-center gap-2 w-full">
-                            {/* Search Input */}
                             <div className="relative flex-1">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <FaMagnifyingGlass className="text-slate-400 text-sm" />
