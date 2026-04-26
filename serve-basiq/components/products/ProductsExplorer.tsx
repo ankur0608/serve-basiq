@@ -28,7 +28,7 @@ export default function ProductsExplorer() {
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
     const [selectedLocation, setSelectedLocation] = useState('');
     const [sortOption, setSortOption] = useState('');
-
+    const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
     // Infinite Scroll Ref
     const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -61,9 +61,14 @@ export default function ProductsExplorer() {
         return cat ? cat.children : [];
     }, [selectedCategory, availableCategories]);
 
-    const uniqueLocations = useMemo(() => {
-        const locs = new Set(rawProducts.map(i => i.location).filter(Boolean));
-        return Array.from(locs).sort();
+    useEffect(() => {
+        if (rawProducts?.length) {
+            setUniqueLocations((prevLocations) => {
+                const currentLocations = rawProducts.map(i => i.location).filter(Boolean) as string[];
+                const combined = new Set([...prevLocations, ...currentLocations]);
+                return Array.from(combined).sort();
+            });
+        }
     }, [rawProducts]);
 
     const resetFilters = () => {

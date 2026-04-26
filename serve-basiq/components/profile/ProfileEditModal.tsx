@@ -1,27 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { createPortal } from "react-dom"; // 👉 IMPORT REACT PORTAL
+import { createPortal } from "react-dom";
 import {
-    FaUser,
-    FaMapLocation,
-    FaPhone,
-    FaEnvelope,
-    FaXmark,
-    FaCheck,
-    FaCity,
-    FaLocationDot,
-    FaSpinner,
-    FaCalendarDays,
-    FaLanguage,
-    FaBuilding,
-    FaCircleCheck
+    FaUser, FaMapLocation, FaPhone, FaEnvelope, FaXmark,
+    FaCheck, FaCity, FaLocationDot, FaSpinner,
+    FaCalendarDays, FaLanguage, FaBuilding, FaCircleCheck
 } from "react-icons/fa6";
 import clsx from "clsx";
 import AppImage from "@/components/ui/AppImage";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import toast from "react-hot-toast";
+import imageCompression from "browser-image-compression";
+import { uploadToBackend } from "@/lib/uploadToBackend"; // ✅ Import utility
+
 // --- TYPES ---
 export interface ProfileData {
     name: string;
@@ -43,7 +36,7 @@ interface ProfileEditModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialData: ProfileData;
-    onSave: (data: ProfileData, file: File | null) => Promise<void>;
+    onSave: (data: ProfileData) => Promise<void>; // ✅ Removed 'file' parameter
     isEmailLocked?: boolean;
     isPhoneLocked?: boolean;
     onAddPhoneClick?: () => void;
@@ -54,6 +47,7 @@ const normalize = (data: ProfileData) => {
         name: data.name || "",
         email: data.email || "",
         phone: data.phone || "",
+        image: data.image || "", // ✅ Include image in normalization for change detection
         dateOfBirth: data.dateOfBirth || "",
         preferredLanguage: data.preferredLanguage || "English",
         addressLine1: data.addressLine1 || "",
@@ -77,19 +71,17 @@ export default function ProfileEditModal({
 }: ProfileEditModalProps) {
     const [formData, setFormData] = useState<ProfileData>(initialData);
     const [preview, setPreview] = useState<string | null>(null);
-    const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+    const [isUploadingImage, setIsUploadingImage] = useState(false); // ✅ Track background upload
     const [fetchingPincode, setFetchingPincode] = useState(false);
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    // 👉 STATE TO PREVENT HYDRATION ERRORS
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    // 👉 Lock body scroll when modal is open
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = "hidden";
@@ -105,22 +97,52 @@ export default function ProfileEditModal({
         if (isOpen && initialData) {
             setFormData(initialData);
             setPreview(initialData.image || null);
-            setFile(null);
         }
     }, [isOpen, initialData]);
 
     const hasChanges = useMemo(() => {
-        if (file) return true;
         const current = normalize(formData);
         const initial = normalize(initialData);
         return JSON.stringify(current) !== JSON.stringify(initial);
-    }, [formData, initialData, file]);
+    }, [formData, initialData]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files?.[0]) {
-            const f = e.target.files[0];
-            setFile(f);
-            setPreview(URL.createObjectURL(f));
+    // ✅ Instant Upload Logic
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.[0]) return;
+        
+        const f = e.target.files[0];
+        
+        // 1. Show local preview instantly
+        setPreview(URL.createObjectURL(f));
+        setIsUploadingImage(true);
+
+        try {
+            // 2. Compress to WebP (Avatar optimized)
+            const compressedBlob = await imageCompression(f, {
+                maxSizeMB: 0.2, 
+                maxWidthOrHeight: 800,
+                useWebWorker: true,
+                fileType: "image/webp",
+            });
+            
+            const newFileName = f.name.replace(/\.[^/.]+$/, "") + ".webp";
+            const webpFile = new File([compressedBlob], newFileName, { type: 'image/webp' });
+
+            // 3. Upload instantly to R2
+            const uploadedUrl = await uploadToBackend(webpFile, "users");
+            
+            // 4. Update the final form state
+            setFormData(prev => ({ ...prev, image: uploadedUrl }));
+            toast.success("Image uploaded!");
+            
+        } catch (error: any) {
+            console.error("Instant upload failed:", error);
+            toast.error(error.message || "Failed to upload image.");
+            // Revert preview on failure
+            setPreview(formData.image || null); 
+        } finally {
+            setIsUploadingImage(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
 
@@ -153,20 +175,15 @@ export default function ProfileEditModal({
         }
     };
 
- const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!hasChanges) {
-            onClose();
-            return;
-        }
+        if (!hasChanges || isUploadingImage) return;
+
         setLoading(true);
         try {
-            await onSave(formData, file);
+            await onSave(formData); // ✅ Extremely fast payload now
             toast.success("Profile updated successfully!");
-            
-            // 🛠️ FIX: Close the modal after successful save
             onClose(); 
-            
         } catch (error) {
             console.error(error);
             toast.error("Something went wrong. Please try again.");
@@ -174,41 +191,31 @@ export default function ProfileEditModal({
             setLoading(false);
         }
     };
-    // 👉 MUST CHECK IF MOUNTED FOR PORTALS
+
     if (!isOpen || !mounted) return null;
 
-    // 👉 RENDER USING CREATEPORTAL TO BREAK OUT OF THE DOM HIERARCHY
     return createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6" style={{ isolation: 'isolate' }}>
-            {/* Backdrop */}
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"></div>
 
-            {/* Modal Box */}
             <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative z-10 flex flex-col max-h-[85dvh] sm:max-h-[90vh] animate-in zoom-in-95 duration-200">
-                {/* Header */}
                 <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div>
-                        <h2 className="text-xl font-extrabold text-slate-900 mt-2">
-                            Edit Profile
-                        </h2>
+                        <h2 className="text-xl font-extrabold text-slate-900 mt-2">Edit Profile</h2>
                         <p className="text-sm text-gray-500">Update personal details</p>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition"
-                    >
+                    <button onClick={onClose} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition">
                         <FaXmark className="text-lg" />
                     </button>
                 </div>
 
-                {/* Form Body */}
                 <div className="p-5 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                     <form id="profile-form" onSubmit={handleSubmit} className="space-y-6">
 
-                        {/* Image Upload */}
+                        {/* Image Upload Area */}
                         <div className="flex flex-col items-center justify-center gap-3">
                             <div
-                                className="relative group cursor-pointer"
+                                className={clsx("relative group cursor-pointer", isUploadingImage && "pointer-events-none")}
                                 onClick={() => fileInputRef.current?.click()}
                             >
                                 <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-100 shadow-sm relative bg-slate-100 flex items-center justify-center transition group-hover:border-blue-100">
@@ -217,11 +224,18 @@ export default function ProfileEditModal({
                                             src={preview}
                                             alt="Preview"
                                             type="avatar"
-                                            className="w-full h-full object-cover"
+                                            className={clsx("w-full h-full object-cover transition", isUploadingImage && "opacity-50 blur-sm grayscale")}
                                         />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-slate-400 text-2xl font-bold">
                                             {formData.name?.substring(0, 2).toUpperCase()}
+                                        </div>
+                                    )}
+                                    
+                                    {/* ✅ Spinner Overlay while uploading */}
+                                    {isUploadingImage && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-white/30 backdrop-blur-sm">
+                                            <FaSpinner className="animate-spin text-blue-600 text-2xl" />
                                         </div>
                                     )}
                                 </div>
@@ -231,13 +245,14 @@ export default function ProfileEditModal({
                                     accept="image/*"
                                     className="hidden"
                                     onChange={handleFileChange}
+                                    disabled={isUploadingImage}
                                 />
                             </div>
                             <p
-                                className="text-xs text-blue-600 font-bold cursor-pointer hover:underline"
-                                onClick={() => fileInputRef.current?.click()}
+                                className={clsx("text-xs font-bold transition-colors", isUploadingImage ? "text-slate-400" : "text-blue-600 cursor-pointer hover:underline")}
+                                onClick={() => !isUploadingImage && fileInputRef.current?.click()}
                             >
-                                Change Photo
+                                {isUploadingImage ? "Uploading..." : "Change Photo"}
                             </p>
                         </div>
 
@@ -389,12 +404,11 @@ export default function ProfileEditModal({
                     </form>
                 </div>
 
-                {/* Footer Buttons */}
                 <div className="p-5 border-t border-gray-100 bg-gray-50 rounded-b-3xl flex gap-3 shrink-0">
                     <button
                         type="button"
                         onClick={onClose}
-                        disabled={loading}
+                        disabled={loading || isUploadingImage}
                         className="flex-1 py-3 rounded-xl border border-gray-300 font-bold hover:bg-white transition text-sm sm:text-base"
                     >
                         Cancel
@@ -402,10 +416,10 @@ export default function ProfileEditModal({
                     <button
                         type="submit"
                         form="profile-form"
-                        disabled={loading || !hasChanges}
+                        disabled={loading || !hasChanges || isUploadingImage}
                         className={clsx(
                             "flex-2 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm sm:text-base",
-                            loading || !hasChanges
+                            loading || !hasChanges || isUploadingImage
                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                 : "bg-slate-900 text-white hover:bg-black"
                         )}
@@ -421,6 +435,6 @@ export default function ProfileEditModal({
                 </div>
             </div>
         </div>,
-        document.body // 👉 MOUNTS DIRECTLY TO THE HTML BODY
+        document.body
     );
 }

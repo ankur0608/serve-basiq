@@ -1,9 +1,74 @@
 // components/ContactContent.tsx
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast'; // ✅ Imported toast
 
 export default function ContactContent() {
+    const { data: session } = useSession();
+
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        category: 'General inquiry',
+        message: ''
+    });
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Auto-fill name and email if the user is logged in
+    useEffect(() => {
+        if (session?.user) {
+            setFormData(prev => ({
+                ...prev,
+                name: session.user.name || prev.name,
+                email: session.user.email || prev.email,
+            }));
+        }
+    }, [session]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        setFormData(prev => ({
+            ...prev,
+            [e.target.name]: e.target.value
+        }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+
+        // ✅ Using a toast promise for a great loading UX
+        const submitPromise = fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...formData,
+                userId: (session?.user as any)?.id || null
+            })
+        }).then(async (res) => {
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'Failed to send message.');
+            return data;
+        });
+
+        toast.promise(submitPromise, {
+            loading: 'Sending your message...',
+            success: () => {
+                // Reset form text on success
+                setFormData(prev => ({ ...prev, message: '', category: 'General inquiry' }));
+                return 'Message sent successfully! We will be in touch.';
+            },
+            error: (err) => err.message || 'An error occurred. Please try again.',
+        });
+
+        submitPromise.finally(() => {
+            setIsSubmitting(false);
+        });
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
             <main>
@@ -40,7 +105,7 @@ export default function ContactContent() {
                                 <div className="bg-slate-50 rounded-2xl p-5">
                                     <p className="text-sm text-slate-500 mb-1">Contact email</p>
                                     <p className="text-base font-semibold text-slate-800">
-                                        servebasiq@gmail.com
+                                       info@servebasiq.com
                                     </p>
                                     <p className="text-xs text-slate-500 mt-2">
                                         We usually respond within 24 hours
@@ -62,18 +127,34 @@ export default function ContactContent() {
                                     This will only take a moment.
                                 </p>
 
-                                <form className="space-y-5">
+                                <form onSubmit={handleSubmit} className="space-y-5">
                                     <input
                                         type="text"
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        required
                                         placeholder="Your name"
-                                        className="w-full px-5 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        className="w-full px-5 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400"
+                                        disabled={isSubmitting}
                                     />
                                     <input
                                         type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        required
                                         placeholder="Your email"
-                                        className="w-full px-5 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        className="w-full px-5 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400"
+                                        disabled={isSubmitting}
                                     />
-                                    <select className="w-full px-5 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white">
+                                    <select
+                                        name="category"
+                                        value={formData.category}
+                                        onChange={handleChange}
+                                        className="w-full px-5 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white disabled:bg-slate-50 disabled:text-slate-400"
+                                        disabled={isSubmitting}
+                                    >
                                         <option>General inquiry</option>
                                         <option>Service provider listing</option>
                                         <option>Product seller listing</option>
@@ -81,15 +162,29 @@ export default function ContactContent() {
                                         <option>Feedback</option>
                                     </select>
                                     <textarea
+                                        name="message"
+                                        value={formData.message}
+                                        onChange={handleChange}
+                                        required
                                         rows={3}
                                         placeholder="Your message"
-                                        className="w-full px-5 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        className="w-full px-5 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400"
+                                        disabled={isSubmitting}
                                     ></textarea>
+
                                     <button
                                         type="submit"
-                                        className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition"
+                                        disabled={isSubmitting}
+                                        className="w-full flex justify-center items-center gap-2 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-70 disabled:cursor-not-allowed"
                                     >
-                                        Send Message
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 size={18} className="animate-spin" />
+                                                Sending...
+                                            </>
+                                        ) : (
+                                            "Send Message"
+                                        )}
                                     </button>
                                     <p className="text-xs text-slate-500 text-center">
                                         Your information is only used to reply to you.

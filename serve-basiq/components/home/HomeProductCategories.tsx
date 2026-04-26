@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FaBoxOpen } from 'react-icons/fa6';
+import AppImage from '@/components/ui/AppImage';
 
 interface Category {
     id: string;
@@ -14,12 +15,10 @@ interface ProductCategoriesProps {
 }
 
 export default function HomeProductCategories({ categories }: ProductCategoriesProps) {
-    // Take only the first 6 categories
     const displayCategories = categories.slice(0, 6);
 
     return (
         <div>
-            {/* Header Section */}
             <div className="flex justify-between items-center mb-4 md:mb-6 px-1">
                 <div className="flex items-center gap-3">
                     <h2 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -28,7 +27,7 @@ export default function HomeProductCategories({ categories }: ProductCategoriesP
                 </div>
 
                 <Link
-                    href="/categories"
+                    href="/categories?tab=PRODUCT"
                     className="text-xs font-bold text-slate-500 hover:text-blue-600 uppercase tracking-wide"
                 >
                     View All
@@ -39,7 +38,6 @@ export default function HomeProductCategories({ categories }: ProductCategoriesP
                 {displayCategories.length > 0 ? (
                     displayCategories.map((cat, index) => (
                         <Link
-                            // Updated to link by ID for correct filtering
                             href={`/products?category=${cat.id}`}
                             key={cat.id}
                             className={`
@@ -49,13 +47,15 @@ export default function HomeProductCategories({ categories }: ProductCategoriesP
                                 ${index > 3 ? 'hidden md:flex' : 'flex'}
                             `}
                         >
-                            {/* Image Container */}
                             <div className="w-full h-8 md:h-12 mb-2 relative group-hover:scale-110 transition flex items-center justify-center">
                                 {cat.image ? (
-                                    <img
+                                    <AppImage
                                         src={cat.image}
                                         alt={cat.name}
-                                        className="object-contain max-h-full max-w-full"
+                                        type="icon"
+                                        imageClassName="object-contain"
+                                        className="w-full h-full"
+                                        sizes="(max-width: 768px) 25vw, (max-width: 1200px) 16vw, 10vw"
                                     />
                                 ) : (
                                     <div className="w-full h-full bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg md:text-xl">
@@ -64,7 +64,6 @@ export default function HomeProductCategories({ categories }: ProductCategoriesP
                                 )}
                             </div>
 
-                            {/* Category Name */}
                             <div className="text-[10px] md:text-xs font-bold text-slate-700 uppercase tracking-wide line-clamp-2 leading-tight">
                                 {cat.name}
                             </div>

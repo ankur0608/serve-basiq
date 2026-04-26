@@ -64,14 +64,13 @@ export default function SettingsPage() {
         image: currentUser?.image || currentUser?.img || '', // Ensure existing image is passed
     };
 
-    const handleSaveProfileData = async (formData: any, file: File | null) => {
+  const handleSaveProfileData = async (formData: any) => {
         if (!currentUser?.id) return;
 
         try {
-            // This hook handles the image compression, S3/R2 upload, AND the PATCH request!
+            // ✅ FIX: Removed the 'file' parameter from the payload
             await updateProfile({
                 formData,
-                file,
                 currentUser
             });
 

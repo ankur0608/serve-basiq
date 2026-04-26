@@ -65,7 +65,7 @@ export default function RentalFiltersDesktop({
                 </div>
 
                 {/* Subcategory */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Subcategory</label>
                     <div className="relative">
                         <select
@@ -81,7 +81,7 @@ export default function RentalFiltersDesktop({
                         </select>
                         <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                     </div>
-                </div>
+                </div> */}
 
                 {/* Location */}
                 <div className="space-y-2">

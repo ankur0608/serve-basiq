@@ -6,6 +6,8 @@ import { useSession } from "next-auth/react";
 import AppImage from "@/components/ui/AppImage";
 import { FaHeart, FaRegHeart, FaStar, FaXmark } from "react-icons/fa6";
 import BookingWrapper from "@/components/booking/BookingWrapper";
+import LoginModal from "@/components/auth/LoginModal";
+import MobileVerificationModal from "@/components/auth/MobileVerificationModal";
 
 export interface ServiceProps {
     id: string;
@@ -30,8 +32,12 @@ interface ServiceCardProps {
 
 function ServiceCard({ service, isFav = false, toggleFav, currentUser }: ServiceCardProps) {
     const router = useRouter();
-    const { data: session } = useSession();
+    const { data: session, update } = useSession();
+
+    // Modal states
     const [showBooking, setShowBooking] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [showVerifyModal, setShowVerifyModal] = useState(false);
 
     const { id, name, categoryName, image, location, rating = 0, price, priceType, type = "Service" } = service;
 
@@ -44,14 +50,16 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                 ...session.user,
                 id: (session.user as any).id,
                 isPhoneVerified: (session.user as any).isPhoneVerified,
+                phone: (session.user as any).phone,
                 addresses: [],
             };
         }
         return null;
     }, [currentUser, session]);
 
+    // Handle scroll locking for all modals
     useEffect(() => {
-        if (showBooking) {
+        if (showBooking || showLoginModal || showVerifyModal) {
             document.body.style.overflow = "hidden";
         } else {
             document.body.style.overflow = "unset";
@@ -60,11 +68,22 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
         return () => {
             document.body.style.overflow = "unset";
         };
-    }, [showBooking]);
+    }, [showBooking, showLoginModal, showVerifyModal]);
 
     const handleBookClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation(); // Prevents redirecting to details page
+
+        if (!session) {
+            setShowLoginModal(true);
+            return;
+        }
+
+        if (!effectiveUser?.isPhoneVerified) {
+            setShowVerifyModal(true);
+            return;
+        }
+
         setShowBooking(true);
     };
 
@@ -72,6 +91,12 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
         e.preventDefault();
         e.stopPropagation();
         router.push(detailPath);
+    };
+
+    const handleVerificationSuccess = async () => {
+        await update(); // Refresh session data
+        setShowVerifyModal(false);
+        setShowBooking(true);
     };
 
     return (
@@ -147,7 +172,21 @@ function ServiceCard({ service, isFav = false, toggleFav, currentUser }: Service
                 </div>
             </div>
 
-            {/* Modal Section */}
+            {/* Modals */}
+            <LoginModal
+                isOpen={showLoginModal}
+                onClose={() => setShowLoginModal(false)}
+                initialStep="INPUT_DETAILS"
+                initialRole="user"
+            />
+
+            <MobileVerificationModal
+                isOpen={showVerifyModal}
+                onClose={() => setShowVerifyModal(false)}
+                onSuccess={handleVerificationSuccess}
+                userId={effectiveUser?.id || ""}
+            />
+
             {showBooking && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
                     <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">

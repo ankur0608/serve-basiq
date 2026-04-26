@@ -1,6 +1,7 @@
 'use client';
 
 import { Filter, MapPin, ArrowDownAZ } from 'lucide-react';
+import { useRouter } from 'next/navigation'; // ✅ FIXED: Imported useRouter
 import type { CategoryData } from './ServiceFiltersMobile'; 
 
 interface DesktopFiltersProps {
@@ -26,6 +27,7 @@ export default function ServiceFiltersDesktop({
     availableCategories, availableSubcategories, uniqueLocations,
     resetFilters
 }: DesktopFiltersProps) {
+    const router = useRouter(); // ✅ FIXED: Initialized router
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 h-fit sticky top-24 shadow-sm">
@@ -48,8 +50,16 @@ export default function ServiceFiltersDesktop({
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-slate-900 appearance-none cursor-pointer hover:bg-slate-100 transition"
                             value={selectedCategory}
                             onChange={(e) => {
-                                setSelectedCategory(e.target.value);
+                                const val = e.target.value;
+                                setSelectedCategory(val);
                                 setSelectedSubcategory('');
+                                
+                                // ✅ FIXED: Keep the URL bar in sync when selecting from the dropdown
+                                if (val) {
+                                    router.push(`/services?categoryId=${val}`, { scroll: false });
+                                } else {
+                                    router.push('/services', { scroll: false });
+                                }
                             }}
                         >
                             <option value="">All Categories</option>
@@ -61,7 +71,7 @@ export default function ServiceFiltersDesktop({
                     </div>
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Subcategory</label>
                     <div className="relative">
                         <select
@@ -77,7 +87,7 @@ export default function ServiceFiltersDesktop({
                         </select>
                         <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
                     </div>
-                </div>
+                </div> */}
 
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Location</label>

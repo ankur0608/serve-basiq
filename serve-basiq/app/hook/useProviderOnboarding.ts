@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import imageCompression from 'browser-image-compression';
@@ -6,7 +6,8 @@ import { onboardSchema } from "@/lib/validators";
 import { useUIStore, User } from "@/lib/store";
 import toast from "react-hot-toast";
 import { uploadToBackend } from "@/lib/uploadToBackend";
-import { useSession } from "next-auth/react"; // ✅ 1. Import useSession
+import { useSession } from "next-auth/react";
+
 const MAX_FRONTEND_SIZE_MB = 10;
 const COMPRESSION_OPTIONS = {
     maxSizeMB: 0.8,
@@ -24,7 +25,11 @@ export function useProviderOnboarding() {
     const [gettingLoc, setGettingLoc] = useState(false);
     const [imgPreview, setImgPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const { update } = useSession(); // ✅ 2. Destructure update function
+    const { update } = useSession(); 
+    
+    // ✅ ADDED: Ref to silently hold the real R2 URL for the database
+    const finalImageUrl = useRef<string | null>(null);
+
     const [form, setForm] = useState({
         fullName: "",
         email: "",
@@ -38,7 +43,7 @@ export function useProviderOnboarding() {
         pincode: "",
         latitude: 0,
         longitude: 0,
-        shopName: "", // ✅ Initialized perfectly
+        shopName: "", 
         providerType: "BOTH",
     });
 
@@ -93,7 +98,7 @@ export function useProviderOnboarding() {
                 fullName: profileData.name || prev.fullName || "",
                 email: profileData.email || prev.email || "",
                 altPhone: profileData.phone || prev.altPhone || "",
-                shopName: profileData.shopName || prev.shopName || "", // ✅ Pulled from DB if exists
+                shopName: profileData.shopName || prev.shopName || "", 
                 providerType: profileData.providerType || prev.providerType,
                 addressLine1: addr?.line1 || prev.addressLine1,
                 addressLine2: addr?.line2 || prev.addressLine2,
@@ -210,9 +215,13 @@ export function useProviderOnboarding() {
             const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
             const uploadFile = new File([compressedBlob], newFileName, { type: 'image/webp' });
 
-            // ✅ NEW: Tell the helper to upload this to the "users" folder!
-            const url = await uploadToBackend(uploadFile, "users");
-            setImgPreview(url);
+            // ✅ FIX 1: Instant Local Preview
+            const localPreviewUrl = URL.createObjectURL(uploadFile);
+            setImgPreview(localPreviewUrl); 
+
+            // ✅ FIX 2: Background Upload & Ref Storage
+            const remoteUrl = await uploadToBackend(uploadFile, "users");
+            finalImageUrl.current = remoteUrl;
 
             if (errors.profileImage) {
                 setErrors(prev => {
@@ -228,6 +237,7 @@ export function useProviderOnboarding() {
             setUploading(false);
         }
     }, [errors]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -241,11 +251,11 @@ export function useProviderOnboarding() {
         try {
             const payload = {
                 ...form,
-                profileImage: imgPreview || "",
+                // ✅ FIX 3: Prioritize the uploaded R2 URL, fallback to existing preview
+                profileImage: finalImageUrl.current || imgPreview || "",
                 phone: form.altPhone,
             };
 
-            // ✅ Zod strictly validates payload here
             onboardSchema.parse(payload);
             onboardingMutation.mutate(payload);
 

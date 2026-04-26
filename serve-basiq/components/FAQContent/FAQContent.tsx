@@ -1,31 +1,9 @@
-// components/FAQContent.tsx
 'use client';
 
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-
-const faqs = [
-    {
-        question: "What is ServeBasiq?",
-        answer: "ServeBasiq is a platform that connects you with local service providers and product sellers in your area. We make it easy to discover, book, and buy from businesses nearby."
-    },
-    {
-        question: "How do I book a service?",
-        answer: "Simply search for the service you need, review the provider's profile and pricing, and click the 'Book' or 'Request' button. You can manage all your requests from your dashboard."
-    },
-    {
-        question: "Is ServeBasiq free to use?",
-        answer: "Yes, creating an account and browsing services/products on ServeBasiq is completely free for customers. You only pay for the specific services or products you purchase."
-    },
-    {
-        question: "How do I become a seller or service provider?",
-        answer: "You can sign up as a provider by navigating to your account settings and selecting 'Become a Provider'. You'll need to fill out some details about your business to get listed."
-    },
-    {
-        question: "What happens if I need to cancel a booking?",
-        answer: "You can cancel a booking from your Requests dashboard. Please note that cancellation policies may vary depending on the individual service provider."
-    }
-];
+import Link from 'next/link';
+import { faqs } from './faqData';
 
 export default function FAQContent() {
     const [openIndex, setOpenIndex] = useState<number | null>(0);
@@ -40,14 +18,14 @@ export default function FAQContent() {
                 {/* HERO */}
                 <section className="bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 text-white">
                     <div className="max-w-6xl mx-auto px-4 py-24 text-center">
-                        <span className="inline-block mb-4 px-4 py-1 rounded-full bg-white/20 text-sm font-medium">
+                        <span className="inline-block mb-4 px-4 py-1.5 rounded-full bg-white/20 text-sm font-semibold tracking-wide">
                             Support
                         </span>
-                        <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-6">
+                        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight mb-6">
                             Frequently Asked Questions
                         </h1>
-                        <p className="text-lg sm:text-xl text-indigo-100 max-w-3xl mx-auto">
-                            Find answers to common questions about using ServeBasiq.
+                        <p className="text-lg sm:text-xl text-indigo-100 max-w-3xl mx-auto leading-relaxed">
+                            Everything you need to know about discovering nearby services, products, and rentals on ServeBasiq.
                         </p>
                     </div>
                 </section>
@@ -55,34 +33,43 @@ export default function FAQContent() {
                 {/* CONTENT */}
                 <div className="max-w-3xl mx-auto px-4 py-20">
                     <div className="space-y-4">
-                        {faqs.map((faq, index) => (
-                            <div
-                                key={index}
-                                className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-all"
-                            >
-                                <button
-                                    onClick={() => toggleFAQ(index)}
-                                    className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none"
-                                >
-                                    <span className="font-semibold text-slate-900 text-lg">
-                                        {faq.question}
-                                    </span>
-                                    <ChevronDown
-                                        className={`text-slate-400 transition-transform duration-300 flex-shrink-0 ${openIndex === index ? 'rotate-180' : ''}`}
-                                        size={20}
-                                    />
-                                </button>
-
+                        {faqs.map((faq, index) => {
+                            const isOpen = openIndex === index;
+                            return (
                                 <div
-                                    className={`px-6 overflow-hidden transition-all duration-300 ease-in-out ${openIndex === index ? 'max-h-40 pb-5 opacity-100' : 'max-h-0 opacity-0'
-                                        }`}
+                                    key={index}
+                                    className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all"
                                 >
-                                    <p className="text-slate-600 leading-relaxed">
-                                        {faq.answer}
-                                    </p>
+                                    <h3>
+                                        <button
+                                            onClick={() => toggleFAQ(index)}
+                                            aria-expanded={isOpen}
+                                            aria-controls={`faq-answer-${index}`}
+                                            className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset"
+                                        >
+                                            <span className="font-semibold text-slate-900 text-base sm:text-lg pr-4">
+                                                {faq.question}
+                                            </span>
+                                            <ChevronDown
+                                                className={`text-slate-400 transition-transform duration-300 flex-shrink-0 ${isOpen ? 'rotate-180 text-indigo-600' : ''}`}
+                                                size={20}
+                                            />
+                                        </button>
+                                    </h3>
+
+                                    <div
+                                        id={`faq-answer-${index}`}
+                                        className={`grid overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+                                    >
+                                        <div className="min-h-0">
+                                            <p className="px-6 pb-5 text-slate-600 leading-relaxed">
+                                                {faq.answer}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* CONTACT BOX */}
@@ -93,12 +80,25 @@ export default function FAQContent() {
                         <p className="text-slate-600 mb-6 max-w-lg mx-auto leading-relaxed">
                             Can't find the answer you're looking for? Reach out to our friendly support team.
                         </p>
-                        <a
+                        <Link
                             href="/contact"
                             className="inline-block bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-sm hover:bg-indigo-700 transition"
                         >
                             Contact Support
-                        </a>
+                        </Link>
+                    </section>
+
+                    {/* CROSS-LINKS FOOTER */}
+                    <section className="text-center pt-12 mt-12 border-t border-slate-200">
+                        <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-medium text-slate-500">
+                            <Link href="/about" className="hover:text-indigo-600 transition-colors">About Us</Link>
+                            <span className="hidden sm:inline text-slate-300">|</span>
+                            <Link href="/privacy" className="hover:text-indigo-600 transition-colors">Privacy Policy</Link>
+                            <span className="hidden sm:inline text-slate-300">|</span>
+                            <Link href="/terms" className="hover:text-indigo-600 transition-colors">Terms of Service</Link>
+                            <span className="hidden sm:inline text-slate-300">|</span>
+                            <Link href="/careers" className="hover:text-indigo-600 transition-colors">Careers</Link>
+                        </nav>
                     </section>
                 </div>
             </main>

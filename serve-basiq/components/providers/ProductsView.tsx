@@ -2,7 +2,7 @@
 
 import { useState, useCallback, memo } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
-import { Plus, Package, Loader2, Pencil, Trash2, Eye, CheckCircle2, AlertCircle } from 'lucide-react'; // ✅ Added CheckCircle2 & AlertCircle
+import { Plus, Package, Loader2, Pencil, Trash2, Eye, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ViewDetailsModal } from '@/components/ui/ViewDetailsModal';
 
@@ -22,7 +22,6 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
         ? (p.desc.length > 50 ? p.desc.substring(0, 50) + '...' : p.desc)
         : 'No description provided';
 
-    // ✅ Get the first image from the new array, fallback to old productImage string if needed
     const mainImage = p.productImages && p.productImages.length > 0
         ? p.productImages[0]
         : p.productImage;
@@ -36,7 +35,6 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
             <td className="py-4 pl-4 md:pl-0 align-middle w-full sm:w-auto">
                 <div className="flex items-start sm:items-center gap-3 md:gap-4">
                     <div className="h-12 w-12 sm:h-10 sm:w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
-                        {/* ✅ Updated to use mainImage */}
                         {mainImage ? (
                             <img src={mainImage} alt={p.name} className="h-full w-full object-cover" />
                         ) : (
@@ -46,13 +44,11 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
                     <div className="flex-1 min-w-0 pr-2">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                             <p className="font-bold text-slate-900 text-sm truncate max-w-[160px] sm:max-w-[200px] lg:max-w-[300px]">{p.name}</p>
-                            
-                            {/* ✅ Added Verification Badge Here */}
-                            <span className={`flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${
-                                p.isVerified 
-                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+
+                            <span className={`flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${p.isVerified
+                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                     : 'bg-amber-50 text-amber-600 border-amber-100'
-                            }`}>
+                                }`}>
                                 {p.isVerified ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
                                 {p.isVerified ? 'Verified' : 'Pending'}
                             </span>
@@ -62,9 +58,14 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
                             {shortDesc}
                         </p>
 
+                        {/* MOBILE PRICE DISPLAY */}
                         <div className="flex flex-wrap items-center gap-2 mt-2 sm:hidden">
                             <span className="font-bold text-slate-700 text-xs">
-                                ₹{p.price}
+                                {p.priceType === 'QUOTE' ? (
+                                    <span className="text-slate-500">Custom Quote</span>
+                                ) : (
+                                    <>₹{Number(p.price).toLocaleString()} <span className="text-[9px] text-slate-400 font-medium uppercase">/{p.unit || 'PIECE'}</span></>
+                                )}
                             </span>
                             <span className="text-[9px] font-bold uppercase bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">
                                 {categoryName}
@@ -95,8 +96,18 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
                 </div>
             </td>
 
+            {/* DESKTOP PRICE DISPLAY */}
             <td className="py-4 align-middle font-bold text-slate-700 text-sm hidden sm:table-cell">
-                ₹{p.price}
+                {p.priceType === 'QUOTE' ? (
+                    <span className="text-slate-500 italic font-medium text-xs">Custom Quote</span>
+                ) : (
+                    <>
+                        ₹{Number(p.price).toLocaleString()}
+                        <span className="text-[10px] text-slate-400 font-medium ml-1 uppercase">
+                            /{p.unit || 'PIECE'}
+                        </span>
+                    </>
+                )}
             </td>
 
             <td className="py-4 align-middle hidden md:table-cell">

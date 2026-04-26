@@ -1,3 +1,4 @@
+// app/hook/useProviderDashboard.ts
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
@@ -16,17 +17,12 @@ export const useProviderDashboard = (userId: string | undefined) => {
 
       if (!res.ok) throw new Error('Failed to fetch provider status');
 
-      const data = await res.json();
-      return data;
+      return await res.json();
     },
-
     enabled: !!userId,
-
-    // 🚀 PRODUCTION SETTINGS
-    staleTime: 1000 * 60 * 5, // Data is "fresh" for 5 mins (Instant loads)
+    staleTime: 1000 * 60 * 5, // Data is "fresh" for 5 mins
     gcTime: 1000 * 60 * 30,    // Keep in memory for 30 mins
-
-    refetchOnWindowFocus: true, // Auto-update when user comes back to tab
+    refetchOnWindowFocus: true,
     retry: 2,
   });
 };

@@ -16,18 +16,14 @@ interface ProductCategoriesProps {
 
 export default function ProductCategories({ categories }: ProductCategoriesProps) {
     const router = useRouter();
-
-    // Take only the first 6 categories
     const displayCategories = categories.slice(0, 6);
 
     return (
         <div>
-            {/* Header Section */}
             <div className="flex justify-between items-center mb-4 md:mb-6 px-1">
                 <div className="flex items-center gap-3">
-                    {/* Back Button */}
                     <button
-                        onClick={() => router.back()}
+                        onClick={() => router.push('/')}
                         className="p-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-full transition shadow-sm active:scale-95"
                         aria-label="Go back"
                     >
@@ -40,7 +36,7 @@ export default function ProductCategories({ categories }: ProductCategoriesProps
                 </div>
 
                 <Link
-                    href="/categories"
+                    href="/categories?tab=PRODUCT" // ✅ ADDED TAB PARAMETER
                     className="text-xs font-bold text-slate-500 hover:text-blue-600 uppercase tracking-wide"
                 >
                     View All
@@ -54,13 +50,12 @@ export default function ProductCategories({ categories }: ProductCategoriesProps
                             href={`/categories?categoryId=${cat.id}`}
                             key={cat.id}
                             className={`
-                bg-white border border-gray-100 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex-col items-center justify-center
-                p-2 md:p-4 
-                h-24 md:h-32
-                ${index > 3 ? 'hidden md:flex' : 'flex'}
-              `}
+                                bg-white border border-gray-100 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex-col items-center justify-center
+                                p-2 md:p-4 
+                                h-24 md:h-32
+                                ${index > 3 ? 'hidden md:flex' : 'flex'}
+                            `}
                         >
-                            {/* Image Container */}
                             <div className="w-full h-8 md:h-12 mb-2 relative group-hover:scale-110 transition flex items-center justify-center">
                                 {cat.image ? (
                                     <img
@@ -75,7 +70,6 @@ export default function ProductCategories({ categories }: ProductCategoriesProps
                                 )}
                             </div>
 
-                            {/* Category Name */}
                             <div className="text-[10px] md:text-xs font-bold text-slate-700 uppercase tracking-wide line-clamp-2 leading-tight">
                                 {cat.name}
                             </div>

@@ -150,8 +150,10 @@ export default function ProfilePage() {
                         onCloseEditProfile();
                         setIsPhoneModalOpen(true);
                     }}
-                    onSave={async (formData, file) => {
-                        await updateProfile({ formData, file, currentUser: userAny });
+                    // ✅ FIX: Removed 'file' from the arguments here
+                    onSave={async (formData) => {
+                        // ✅ FIX: Removed 'file' from the payload here
+                        await updateProfile({ formData, currentUser: userAny });
 
                         await refetch();
                         await updateSession();

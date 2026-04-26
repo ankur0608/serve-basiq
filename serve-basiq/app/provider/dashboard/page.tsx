@@ -1,16 +1,16 @@
 // app/provider/dashboard/page.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import Image from 'next/image';
 import { useUIStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import { useProviderDashboard } from '@/app/hook/useProviderDashboard';
 import {
     LayoutGrid, ClipboardList, Package, UserCircle,
-    BellRing, ArrowLeft, Loader2, AlertTriangle, LogOut
+    BellRing, ArrowLeft, Loader2, AlertTriangle, LogOut, Globe
 } from 'lucide-react';
 import clsx from 'clsx';
-import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { fullLogout } from '@/lib/logout';
 import ConfirmLogoutModal from '@/components/auth/ConfirmLogoutModal';
@@ -18,23 +18,25 @@ import ConfirmLogoutModal from '@/components/auth/ConfirmLogoutModal';
 import { NavButton, MobileNavBtn } from '@/components/providers/DashboardComponents';
 import { ProviderDashboardContent } from '@/components/providers/ProviderDashboardContent';
 
+const EMPTY_ARRAY: any[] = [];
+
 export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
     const router = useRouter();
     const { data: session, status, update } = useSession();
+
     const { data: dashboardData, isLoading: loading, refetch: refetchDashboard, isError } = useProviderDashboard(currentUser?.id);
+
     useEffect(() => {
         if (status === 'authenticated' && session?.user && !session.user.isWorker) {
-            // If the client knows they should be a worker (via Zustand) but session says NO:
             console.log("Session mismatch detected. Attempting silent refresh...");
-            update(); // Silent background refresh
+            update();
         }
     }, [session, status, update]);
+
     const [activeView, setActiveView] = useState('dashboard');
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
-
-    // ✅ Added state for the Logout Modal
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const userData = dashboardData?.user;
@@ -47,23 +49,26 @@ export default function ProviderDashboard() {
     const providerType = userData?.providerType || 'BOTH';
     const isVerified = dashboardData?.isSetupComplete || userData?.isFullProfile || false;
 
+    // 🚀 PERFORMANCE FIX: Stable reference for stats
     const safeStats = useMemo(() => {
         return dashboardData?.stats || {
             revenue: 0, jobsCompleted: 0, pendingRequests: 0, rating: 0,
             service: { shopName: '' }
         };
-    }, [dashboardData]);
+    }, [dashboardData?.stats]);
 
-    const recentBookings = dashboardData?.bookings || [];
-    const recentOrders = dashboardData?.orders || [];
-    const recentRentals = dashboardData?.rentals || [];
+    // 🚀 PERFORMANCE FIX: Use stable empty arrays to prevent cascade re-renders
+    const recentBookings = dashboardData?.bookings || EMPTY_ARRAY;
+    const recentOrders = dashboardData?.orders || EMPTY_ARRAY;
+    const recentRentals = dashboardData?.rentals || EMPTY_ARRAY;
 
-    const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
+    // 🚀 PERFORMANCE FIX: Memoized functions
+    const showToast = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3000);
-    };
+    }, []);
 
-    const handleBackToHome = async () => {
+    const handleBackToHome = useCallback(async () => {
         if (!currentUser) return;
         try {
             await fetch('/api/user/switch-mode', {
@@ -76,9 +81,11 @@ export default function ProviderDashboard() {
         } catch (error) {
             showToast("Failed to switch mode", "error");
         }
-    };
+    }, [currentUser, router, setCurrentUser, showToast]);
 
-    const handleViewChange = (view: string) => setActiveView(view);
+    const handleViewChange = useCallback((view: string) => {
+        setActiveView(view);
+    }, []);
 
     const getActiveNavId = (view: string) => {
         if (['settings', 'products', 'add-product'].includes(view)) return 'settings';
@@ -116,20 +123,32 @@ export default function ProviderDashboard() {
 
             <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 z-50 shadow-sm">
                 <div className="flex items-center gap-2 h-20 px-6 border-b border-slate-100">
-                    <img src="/navbar.png" alt="ServeBasiq Logo" className="h-24 object-contain" />
+                    <Image
+                        src="/navbar.png"
+                        alt="ServeBasiq Logo"
+                        width={200}
+                        height={96}
+                        priority
+                        className="h-24 w-auto object-contain"
+                    />
                     <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-widest mt-1">Provider</span>
                 </div>
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
                     <NavButton id="dashboard" icon={LayoutGrid} label="Dashboard" active={activeNavId} set={handleViewChange} />
-                    <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeNavId} set={handleViewChange} badge={dashboardData?.stats?.pendingRequests} />
+                    <NavButton id="requests" icon={ClipboardList} label="Operations" active={activeNavId} set={handleViewChange} badge={safeStats.pendingRequests} />
                     <NavButton id="settings" icon={Package} label="Management" active={activeNavId} set={handleViewChange} />
                     <NavButton id="profile" icon={UserCircle} label="Account" active={activeNavId} set={handleViewChange} />
                 </nav>
 
-                {/* ✅ Added Logout Icon to the Desktop Sidebar bottom section */}
                 <div className="p-4 border-t border-slate-100 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors flex-1 min-w-0" onClick={() => handleViewChange('profile')}>
-                        <img src={displayImg} className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm shrink-0" alt="User" />
+                        <Image
+                            src={displayImg}
+                            alt="User"
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
+                        />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-slate-900 truncate">{displayName}</p>
                             <p className="text-[10px] text-slate-500 font-bold uppercase">{providerType}</p>
@@ -147,9 +166,16 @@ export default function ProviderDashboard() {
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 h-20 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 shrink-0">
                         <div className="md:hidden flex items-center h-full">
-                            <img src="/navbar.png" alt="ServeBasiq Logo" className="h-24 object-contain" />
+                            <Image
+                                src="/navbar.png"
+                                alt="ServeBasiq Logo"
+                                width={200}
+                                height={96}
+                                priority
+                                className="h-24 w-auto object-contain"
+                            />
                         </div>
                         <div className="hidden md:block">
                             <h2 className="text-xl font-bold text-slate-900 capitalize">
@@ -159,27 +185,41 @@ export default function ProviderDashboard() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 sm:gap-4">
-                        <button onClick={handleBackToHome} className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 group transition-all">
-                            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                    {/* 📱 OPTIMIZED RIGHT SIDE ACTIONS FOR MOBILE */}
+                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+
+                        {/* 🎯 BIGGER & CLEARER WEBSITE BUTTON */}
+                        <button
+                            onClick={handleBackToHome}
+                            className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 shadow-sm px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-blue-200 group transition-all shrink-0"
+                            title="Exit to Website"
+                        >
+                            <Globe size={16} className="text-blue-600 group-hover:scale-110 transition-transform shrink-0" />
                             <span className="hidden sm:inline">Exit to Website</span>
+                            <span className="sm:hidden">Website</span> {/* Short text visible on mobile! */}
                         </button>
-                        <button className="relative p-2.5 rounded-xl text-slate-400 hover:bg-slate-100 transition-colors hidden sm:block">
+
+                        <button className="relative p-2 sm:p-2.5 rounded-xl text-slate-400 hover:bg-slate-100 transition-colors hidden sm:block shrink-0">
                             <BellRing size={20} />
                             <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-white"></span>
                         </button>
 
-                        {/* ✅ Added Logout Icon visible only on Mobile Header */}
                         <button
                             onClick={() => setShowLogoutModal(true)}
-                            className="lg:hidden relative p-2.5 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            className="lg:hidden relative p-2 rounded-xl text-slate-500 bg-white border border-slate-200 shadow-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors shrink-0"
                             title="Log Out"
                         >
-                            <LogOut size={20} />
+                            <LogOut size={16} />
                         </button>
 
-                        <div className="h-9 w-9 rounded-full overflow-hidden border border-slate-200 cursor-pointer shadow-sm shrink-0" onClick={() => handleViewChange('profile')}>
-                            <img src={displayImg} className="h-full w-full object-cover" alt="Profile" />
+                        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full overflow-hidden border-2 border-slate-200 cursor-pointer shadow-sm shrink-0" onClick={() => handleViewChange('profile')}>
+                            <Image
+                                src={displayImg}
+                                alt="Profile"
+                                width={36}
+                                height={36}
+                                className="h-full w-full object-cover"
+                            />
                         </div>
                     </div>
                 </header>

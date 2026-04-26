@@ -12,7 +12,6 @@ export default function RegisterPage() {
             <p className="text-gray-500">
                 (This is the /auth/register page your app was looking for)
             </p>
-            {/* Add your form to collect Phone Number / Role here */}
         </div>
     );
 }

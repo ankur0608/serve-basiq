@@ -14,7 +14,7 @@ export async function GET() {
 
         if (!session?.user?.id) {
             // console.log("🔴 [API] 401: No User ID in session");
-            return NextResponse.json({ services: [], products: [] });
+            return NextResponse.json({ services: [], products: [], rentals: [] });
         }
 
         // console.log(`🔵 [API] Fetching favorites for User ID: ${session.user.id}`);
@@ -23,21 +23,23 @@ export async function GET() {
             where: { id: session.user.id },
             select: {
                 favoriteServices: { select: { serviceId: true } },
-                favoriteProducts: { select: { productId: true } }
+                favoriteProducts: { select: { productId: true } },
+                favoriteRentals: { select: { rentalId: true } }
             }
         });
 
         if (!user) {
             // console.log("🔴 [API] User not found in DB");
-            return NextResponse.json({ services: [], products: [] });
+            return NextResponse.json({ services: [], products: [], rentals: [] });
         }
 
         const serviceIds = user.favoriteServices.map(f => f.serviceId);
         const productIds = user.favoriteProducts.map(f => f.productId);
+        const rentalIds = user.favoriteRentals.map(f => f.rentalId);
 
         // console.log(`🟢 [API] Success. Found ${serviceIds.length} services and ${productIds.length} products.`);
 
-        return NextResponse.json({ services: serviceIds, products: productIds });
+        return NextResponse.json({ services: serviceIds, products: productIds, rentals: rentalIds });
 
     } catch (error) {
         console.error("🔴 [API] CRITICAL ERROR in /api/user/favorites:", error);

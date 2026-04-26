@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { unstable_cache } from "next/cache";
 import ServiceDetailView from '@/components/services/ServiceDetailView';
+import { toOgImageUrl, OG_IMAGE_DIMENSIONS } from '@/lib/og-image';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -20,15 +21,25 @@ const getCachedServiceData = unstable_cache(
           select: {
             id: true, name: true, image: true, profileImage: true, isVerified: true,
             phone: true, shopName: true, instagramUrl: true, facebookUrl: true,
-            youtubeUrl: true, websiteUrl: true, addresses: true
+            youtubeUrl: true, websiteUrl: true,
+            addresses: {
+              select: {
+                id: true, type: true, line1: true, line2: true, landmark: true,
+                city: true, state: true, pincode: true,
+              },
+              take: 5,
+            }
           }
         },
         category: { select: { name: true } },
         subcategory: { select: { name: true } },
         reviews: {
           orderBy: { createdAt: 'desc' },
-          take: 10, // Limit reviews for performance
-          include: { author: { select: { name: true, image: true } } }
+          take: 10,
+          select: {
+            id: true, rating: true, comment: true, images: true, createdAt: true,
+            author: { select: { id: true, name: true, image: true } },
+          }
         }
       }
     });
@@ -52,24 +63,55 @@ const getCachedServiceData = unstable_cache(
   { revalidate: 60, tags: ['service'] } // Revalidates cache every 60 seconds
 );
 
+// Pre-render the most recently verified services at build time (ISR covers the rest on-demand)
+export async function generateStaticParams() {
+  const services = await prisma.service.findMany({
+    where: { isVerified: true, user: { isVerified: true } },
+    select: { id: true },
+    orderBy: { updatedAt: 'desc' },
+    take: 100,
+  });
+  return services.map((s) => ({ id: s.id }));
+}
+
 // 🚀 2. Add SEO Metadata for production sharing
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const data = await getCachedServiceData(id);
 
-  if (!data) return { title: "Service Not Found | Servebasiq " };
+  if (!data) return { title: "Service Not Found" };
 
   const { rawService } = data;
   const sellerName = rawService.user?.shopName || rawService.user?.name || "Servebasiq Provider";
-  const mainImage = rawService.serviceimg || rawService.coverImg || rawService.mainimg;
+  const rawMainImage = rawService.serviceimg || rawService.coverImg || rawService.mainimg;
+  const ogImage = toOgImageUrl(rawMainImage);
+  const description = rawService.desc?.substring(0, 160) || `Book ${rawService.name} from ${sellerName} on ServeBasiq.`;
+  const canonical = `/services/${id}`;
+  const title = `${rawService.name} by ${sellerName}`;
 
   return {
-    title: `${rawService.name} by ${sellerName} | Servebasiq `,
-    description: rawService.desc.substring(0, 160),
+    title,
+    description,
+    alternates: { canonical },
     openGraph: {
-      title: rawService.name,
-      description: rawService.desc.substring(0, 160),
-      images: mainImage ? [{ url: mainImage }] : [],
+      type: 'website',
+      url: canonical,
+      title,
+      description,
+      images: [{
+        url: ogImage,
+        secureUrl: ogImage,
+        type: 'image/jpeg',
+        width: OG_IMAGE_DIMENSIONS.width,
+        height: OG_IMAGE_DIMENSIONS.height,
+        alt: rawService.name,
+      }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
     },
   };
 }
@@ -137,26 +179,88 @@ export default async function ServiceDetailPage({ params }: Props) {
   if (session?.user?.email) {
     const rawUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      include: { addresses: true }
+      include: {
+        addresses: {
+          select: {
+            id: true, type: true, line1: true, line2: true, landmark: true,
+            city: true, state: true, pincode: true,
+          },
+          take: 10,
+        }
+      }
     });
 
     if (rawUser) {
       loggedInUser = {
         ...rawUser,
-        // ✅ Fix: Handle user dates too
         createdAt: formatDate(rawUser.createdAt),
         updatedAt: formatDate(rawUser.updatedAt),
       };
     }
   }
 
+  const sellerName = rawService.user?.shopName || rawService.user?.name || "Servebasiq Provider";
+  const mainImage = rawService.serviceimg || rawService.coverImg || rawService.mainimg;
+  const serviceCity = service.city || undefined;
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: rawService.name,
+    description: rawService.desc,
+    ...(mainImage && { image: mainImage }),
+    serviceType: rawService.category?.name,
+    provider: {
+      '@type': 'LocalBusiness',
+      name: sellerName,
+      ...(rawService.user?.phone && { telephone: rawService.user.phone }),
+      ...(serviceCity && {
+        address: {
+          '@type': 'PostalAddress',
+          addressLocality: serviceCity,
+          ...(service.state && { addressRegion: service.state }),
+          ...(service.pincode && { postalCode: service.pincode }),
+          addressCountry: 'IN',
+        },
+      }),
+    },
+    ...(serviceCity && { areaServed: { '@type': 'City', name: serviceCity } }),
+    offers: {
+      '@type': 'Offer',
+      price: Number(rawService.price),
+      priceCurrency: 'INR',
+      availability: 'https://schema.org/InStock',
+    },
+    ...(Number(rawService.rating) > 0 && rawService.reviews.length > 0 && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: Number(rawService.rating),
+        reviewCount: rawService.reviews.length,
+      },
+    }),
+  };
+
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.servebasiq.in' },
+      { '@type': 'ListItem', position: 2, name: 'Services', item: 'https://www.servebasiq.in/services' },
+      { '@type': 'ListItem', position: 3, name: rawService.name },
+    ],
+  };
+
   return (
-    <ServiceDetailView
-      service={service as any}
-      loggedInUser={loggedInUser}
-      session={session}
-      relatedServices={relatedServices}
-      listingType="SERVICE"
-    />
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <ServiceDetailView
+        service={service as any}
+        loggedInUser={loggedInUser}
+        session={session}
+        relatedServices={relatedServices}
+        listingType="SERVICE"
+      />
+    </>
   );
 }

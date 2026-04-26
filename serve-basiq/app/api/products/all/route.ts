@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -147,11 +147,18 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      products: formattedProducts,
-      nextCursor
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        products: formattedProducts,
+        nextCursor,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      }
+    );
 
   } catch (error) {
     console.error("API Error:", error);

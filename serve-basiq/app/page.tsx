@@ -3,21 +3,71 @@ import { prisma } from "@/lib/prisma";
 import FeaturedProviders from '@/components/sections/FeaturedProviders';
 import TrendingProducts from '@/components/sections/TrendingProducts';
 import Hero from '@/components/home/Hero';
-import ServiceCategories from '@/components/home/ServiceCategories';
-import ProductCategories from '@/components/home/ProductCategories'; // ✅ Import
 import HowItWorks from '@/components/home/HowItWorks';
-import BecomeProviderBanner from "@/components/profile/BecomeProviderBanner"; // 👉 IMPORT COMPONENT
+import BecomeProviderBanner from "@/components/profile/BecomeProviderBanner";
+import StartSellingCard from "@/components/home/StartSellingCard"; // ✅ Imported new component
 
 import {
-  FaWrench, FaBoxesStacked, FaPenFancy, FaStore,
-  FaShieldHalved, FaWallet, FaHeadset, FaArrowRight, FaToolbox // ✅ Added FaTools here
+  FaShieldHalved, 
+  FaWallet, 
+  FaHeadset,
+  FaWrench,
+  FaCubes,
+  FaPenNib
 } from 'react-icons/fa6';
+
 import HomeServiceCategories from '@/components/home/HomeServiceCategories';
 import HomeProductCategories from '@/components/home/HomeProductCategories';
+import FeaturedRentals from '@/components/sections/FeaturedRentals';
+
+const SITE_URL = 'https://www.servebasiq.in';
+
+const homeJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: 'ServeBasiq',
+      url: SITE_URL,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${SITE_URL}/logo.png`,
+        width: 512,
+        height: 512,
+      },
+      description: 'India\'s hyper-local marketplace connecting customers with nearby services, products, and rentals from verified providers.',
+      areaServed: { '@type': 'Country', name: 'India' },
+      contactPoint: {
+        '@type': 'ContactPoint',
+        email: 'servebasiq@gmail.com',
+        contactType: 'customer support',
+        availableLanguage: ['English', 'Hindi'],
+      },
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: 'ServeBasiq',
+      description: 'Discover verified local services, products, and rentals near you.',
+      publisher: { '@id': `${SITE_URL}/#organization` },
+      inLanguage: 'en-IN',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+        },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  ],
+};
 
 export default async function Home() {
 
-  // 1. Fetch Service Categories (Existing)
+  // 1. Fetch Service Categories
   const serviceCategories = await prisma.category.findMany({
     take: 6,
     where: {
@@ -27,7 +77,7 @@ export default async function Home() {
     select: { id: true, name: true, image: true }
   });
 
-  // 2. ✅ Fetch Product Categories (New Logic based on your API)
+  // 2. Fetch Product Categories
   const productCategories = await prisma.category.findMany({
     take: 6,
     where: {
@@ -40,72 +90,69 @@ export default async function Home() {
     select: {
       id: true,
       name: true,
-      image: true // We need the image for the UI
+      image: true
     },
     orderBy: { name: 'asc' }
   });
 
   return (
     <div className="pb-12 bg-gray-50/50">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
+      />
 
       {/* 1. HERO SECTION */}
       <Hero />
 
       {/* ================= MAIN CONTENT ================= */}
-      <div className="max-w-7xl mx-auto px-4 -mt-8 relative z-20 space-y-16 pb-16">
+      <div className="max-w-7xl mx-auto px-4 -mt-10 sm:-mt-16 relative z-20 space-y-16 pb-16">
 
-        {/* 2. QUICK NAVIGATION CARDS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-
-          {/* 1. Book Services */}
-          <Link href="/services" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
-            <div className="w-12 h-12 mx-auto bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
-              <FaWrench />
+        {/* 2. MAIN ACTION CARDS */}
+        <div className="mx-auto max-w-5xl grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+          
+          {/* Card 1: Book Services */}
+          <Link href="/services" className="flex flex-col items-center justify-center p-6 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all border border-gray-100 hover:-translate-y-1">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4 bg-blue-50 text-blue-500">
+              <FaWrench size={24} />
             </div>
-            <h3 className="font-bold text-slate-900">Book Services</h3>
-            <p className="text-xs text-gray-500 mt-1">Plumbers • Electricians</p>
+            <h3 className="font-bold text-slate-900 mb-1 text-sm sm:text-base">Book Services</h3>
+            <p className="text-xs text-slate-500 text-center">Plumbers, Cleaners...</p>
           </Link>
 
-          {/* 2. Buy Products */}
-          <Link href="/products" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
-            <div className="w-12 h-12 mx-auto bg-green-50 text-green-600 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
-              <FaBoxesStacked />
+          {/* Card 2: Wholesale */}
+          <Link href="/products" className="flex flex-col items-center justify-center p-6 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all border border-gray-100 hover:-translate-y-1">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4 bg-green-50 text-green-500">
+              <FaCubes size={24} />
             </div>
-            <h3 className="font-bold text-slate-900">Buy Products</h3>
-            <p className="text-xs text-gray-500 mt-1">Local Shops • Wholesale</p>
+            <h3 className="font-bold text-slate-900 mb-1 text-sm sm:text-base">Wholesale</h3>
+            <p className="text-xs text-slate-500 text-center">Bulk Products</p>
           </Link>
 
-          {/* 3. Rent Items */}
-          <Link href="/rentals" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
-            <div className="w-12 h-12 mx-auto bg-purple-50 text-purple-600 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
-              <FaToolbox />
+          {/* Card 3: Post Request */}
+          <Link href="/post-requirement" className="flex flex-col items-center justify-center p-6 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all border border-gray-100 hover:-translate-y-1">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4 bg-purple-50 text-purple-500">
+              <FaPenNib size={24} />
             </div>
-            <h3 className="font-bold text-slate-900">Rent Items</h3>
-            <p className="text-xs text-gray-500 mt-1">Tools • Equipment</p>
+            <h3 className="font-bold text-slate-900 mb-1 text-sm sm:text-base">Post Request</h3>
+            <p className="text-xs text-slate-500 text-center">Get Custom Quotes</p>
           </Link>
 
-          {/* 4. Post Requirement */}
-          <Link href="/post-requirement" className="bg-white p-5 rounded-2xl shadow-card hover:shadow-lg transition cursor-pointer border border-gray-100 group text-center active:scale-95">
-            <div className="w-12 h-12 mx-auto bg-orange-50 text-orange-500 rounded-full flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition">
-              <FaPenFancy />
-            </div>
-            <h3 className="font-bold text-slate-900">Post Requirement</h3>
-            <p className="text-xs text-gray-500 mt-1">Get Quotes Fast</p>
-          </Link>
+          {/* Card 4: Start Selling (Now an interactive client component) */}
+          <StartSellingCard />
 
         </div>
 
+        {/* 3. CATEGORIES & BANNERS */}
         <div className="space-y-12">
-
           <HomeServiceCategories categories={serviceCategories} />
           <BecomeProviderBanner />
-          {/* ✅ Dynamic Product Categories */}
           <HomeProductCategories categories={productCategories} />
-
         </div>
 
         {/* 4. LISTINGS */}
         <FeaturedProviders />
+        <FeaturedRentals />
         <TrendingProducts />
 
         {/* 5. WHY CHOOSE US */}

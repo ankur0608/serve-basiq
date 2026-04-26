@@ -23,16 +23,22 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
         if (!form.name.trim()) newErrors.name = "Required";
         if (!form.categoryId) newErrors.categoryId = "Required";
 
-        // ✅ NEW VALIDATION LOGIC FOR 'OTHER'
-        if (form.categoryId === 'OTHER' && !form.customCategoryName.trim()) {
-            newErrors.customCategoryName = "Required";
-        } else if (form.categoryId !== 'OTHER' && !form.subCategoryId) {
-            newErrors.subCategoryId = "Required";
+        if (form.categoryId === 'OTHER') {
+            if (!form.customCategoryName.trim()) newErrors.customCategoryName = "Required";
+        } else {
+            if (!form.subCategoryId) newErrors.subCategoryId = "Required";
+            if (form.subCategoryId === 'OTHER' && !form.customCategoryName.trim()) {
+                newErrors.customCategoryName = "Required";
+            }
         }
 
         if (!form.unit) newErrors.unit = "Required";
         if (!form.desc.trim()) newErrors.desc = "Required";
-        if (!form.price || Number(form.price) <= 0) newErrors.price = "Valid price required";
+
+        if (form.priceType !== 'QUOTE' && (!form.price || Number(form.price) <= 0)) {
+            newErrors.price = "Valid price required";
+        }
+
         if (!form.moq || Number(form.moq) <= 0) newErrors.moq = "Required";
 
         setErrors(newErrors);
@@ -68,7 +74,7 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                 />
             </div>
 
-            {/* 2. Category & Sub-Category */}
+            {/* 2. Category & Sub-Category (Reverted to standard grid-cols-2) */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <Select
@@ -76,7 +82,7 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                         icon={<LayoutGrid size={18} className={errors.categoryId ? "text-red-400" : "text-slate-400"} />}
                         value={form.categoryId}
                         onChange={e => onFieldChange('categoryId', e.target.value)}
-                        showSearch={true} // ✅ ADDED SEARCH HERE
+                        showSearch={true}
                         placeholder="Search Category..."
                         className={getErrorClass(!!errors.categoryId)}
                         options={[
@@ -87,7 +93,6 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                     />
                 </div>
 
-                {/* ✅ TOGGLE: Show Input if OTHER is selected, else show Dropdown */}
                 {form.categoryId === 'OTHER' ? (
                     <div className="space-y-1 animate-in fade-in zoom-in-95 duration-200">
                         <Input
@@ -100,21 +105,37 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                         />
                     </div>
                 ) : (
-                    <div className="space-y-1">
-                        <Select
-                            label="SUB-CATEGORY"
-                            icon={<Box size={18} className={errors.subCategoryId ? "text-red-400" : "text-slate-400"} />}
-                            value={form.subCategoryId}
-                            onChange={e => onFieldChange('subCategoryId', e.target.value)}
-                            showSearch={true} // ✅ ADDED SEARCH HERE
-                            placeholder={!form.categoryId ? "Select Category First" : "Search Sub-Category..."}
-                            className={getErrorClass(!!errors.subCategoryId)}
-                            disabled={!form.categoryId}
-                            options={[
-                                { label: activeSubCategories.length === 0 ? "No Sub-categories" : "Select", value: '' },
-                                ...activeSubCategories.map(s => ({ label: s.name, value: s.id }))
-                            ]}
-                        />
+                    <div className="flex flex-col gap-3">
+                        <div className="space-y-1">
+                            <Select
+                                label="SUB-CATEGORY"
+                                icon={<Box size={18} className={errors.subCategoryId ? "text-red-400" : "text-slate-400"} />}
+                                value={form.subCategoryId}
+                                onChange={e => onFieldChange('subCategoryId', e.target.value)}
+                                showSearch={true}
+                                placeholder={!form.categoryId ? "Select Category First" : "Search Sub-Category..."}
+                                className={getErrorClass(!!errors.subCategoryId)}
+                                disabled={!form.categoryId}
+                                options={[
+                                    { label: activeSubCategories.length === 0 ? "No Sub-categories" : "Select", value: '' },
+                                    ...activeSubCategories.map(s => ({ label: s.name, value: s.id })),
+                                    { label: 'Other (Please Specify)', value: 'OTHER' }
+                                ]}
+                            />
+                        </div>
+
+                        {form.subCategoryId === 'OTHER' && (
+                            <div className="space-y-1 animate-in fade-in zoom-in-95 duration-200">
+                                <Input
+                                    label="CUSTOM SUB-CATEGORY NAME"
+                                    icon={<Box size={18} className={errors.customCategoryName ? "text-red-400" : "text-slate-400"} />}
+                                    placeholder="e.g. Specialized Tools"
+                                    value={form.customCategoryName || ""}
+                                    onChange={e => onFieldChange('customCategoryName', e.target.value)}
+                                    className={getErrorClass(!!errors.customCategoryName)}
+                                />
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -126,7 +147,6 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                     icon={<Scale size={18} className={errors.unit ? "text-red-400" : "text-slate-400"} />}
                     value={form.unit}
                     onChange={e => onFieldChange('unit', e.target.value)}
-                    // showSearch={true} // Optional: Added search here too since there are many units
                     placeholder="Search Unit..."
                     className={getErrorClass(!!errors.unit)}
                     options={[
@@ -136,19 +156,48 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                 />
             </div>
 
-            {/* 4. Price & MOQ */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                    <Input
-                        label={`PRICE (${form.unit || 'UNIT'})`}
-                        type="number"
-                        icon={<BadgeIndianRupee size={18} className={errors.price ? "text-red-400" : "text-slate-400"} />}
-                        placeholder="0.00"
-                        value={form.price}
-                        onChange={e => onFieldChange('price', e.target.value)}
-                        className={getErrorClass(!!errors.price)}
-                    />
+            {/* 4. Price & MOQ (Upgraded UI: Stacks on mobile, splits on desktop) */}
+            {/* 4. Price & MOQ (Upgraded UI: Stacks on mobile, splits on desktop) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                <div className="space-y-2">
+                    {/* Segmented Control for Pricing Model */}
+                    <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200">
+                        {['FIXED', 'QUOTE'].map(t => (
+                            <button
+                                key={t}
+                                type="button"
+                                onClick={() => onFieldChange('priceType', t)}
+                                className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all outline-none focus:outline-none ${form.priceType === t
+                                        ? 'bg-slate-900 text-white shadow-md' // 👈 Updated to black background
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                                    }`}
+                            >
+                                {t === 'FIXED' ? 'FIXED PRICE' : 'GET A QUOTE'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Price Input or Quote Notice */}
+                    {form.priceType !== 'QUOTE' ? (
+                        <Input
+                            label={`PRICE (${form.unit || 'UNIT'})`}
+                            type="number"
+                            icon={<BadgeIndianRupee size={18} className={errors.price ? "text-red-400" : "text-slate-400"} />}
+                            placeholder="0.00"
+                            value={form.price}
+                            onChange={e => onFieldChange('price', e.target.value)}
+                            className={getErrorClass(!!errors.price)}
+                        />
+                    ) : (
+                        <div className="h-[52px] px-3 bg-blue-50/80 border border-blue-100 rounded-xl flex items-center gap-2">
+                            <AlertCircle size={16} className="text-blue-500 shrink-0" />
+                            <p className="text-[10px] font-medium text-blue-800 leading-tight">
+                                Customers will contact you directly for a custom price quote.
+                            </p>
+                        </div>
+                    )}
                 </div>
+
                 <div className="space-y-1">
                     <Input
                         label="MIN ORDER (MOQ)"
@@ -162,7 +211,7 @@ export function Step1Details({ form, categories, activeSubCategories, handleChan
                 </div>
             </div>
 
-            {/* 5. Condition & Stock */}
+            {/* 5. Condition & Stock (Reverted to standard grid-cols-2) */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <Select

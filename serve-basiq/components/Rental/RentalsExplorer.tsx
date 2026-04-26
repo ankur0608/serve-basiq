@@ -24,6 +24,7 @@ export default function RentalsExplorer() {
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
     const [selectedLocation, setSelectedLocation] = useState('');
     const [sortOption, setSortOption] = useState('');
+    const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
 
     const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -46,15 +47,18 @@ export default function RentalsExplorer() {
         sort: sortOption
     });
 
-    // Derived Data
-    const uniqueLocations = useMemo(() => {
-        const locs = new Set(rawRentals.map(r => r.location).filter(Boolean));
-        return Array.from(locs).sort();
+    useEffect(() => {
+        if (rawRentals?.length) {
+            setUniqueLocations((prevLocations) => {
+                const currentLocations = rawRentals.map(r => r.location).filter(Boolean) as string[];
+                const combined = new Set([...prevLocations, ...currentLocations]);
+                return Array.from(combined).sort();
+            });
+        }
     }, [rawRentals]);
-
     const availableSubcategories = useMemo(() => {
         if (!selectedCategory) return [];
-        const cat = rawCategories.find((c: any) => String(c.id) === String(selectedCategory));
+        const cat = rawCategories.find(c => String(c.id) === String(selectedCategory));
         return cat ? cat.children : [];
     }, [selectedCategory, rawCategories]);
 
@@ -102,7 +106,7 @@ export default function RentalsExplorer() {
             {/* Header / Categories */}
             <div className="pt-4 md:pt-6 bg-slate-50">
                 <div className="container mx-auto max-w-7xl px-4 mb-6">
-                    {/* ✅ CATEGORY SKELETON: Matches the boxy UI */}
+                    {/* CATEGORY SKELETON */}
                     {isFiltering ? (
                         <div className="flex gap-4 overflow-hidden animate-pulse mb-6 pb-2">
                             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -171,10 +175,10 @@ export default function RentalsExplorer() {
                         </div>
                     </div>
 
-                    {/* ✅ DYNAMIC GRID / SKELETON */}
+                    {/* DYNAMIC GRID / SKELETON */}
                     <div className="transition-opacity duration-300">
                         {isFiltering ? (
-                            // INLINE GRID SKELETON (Shows immediately when typing or filtering)
+                            // INLINE GRID SKELETON
                             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                                 {[1, 2, 3, 4, 5, 6].map((i) => (
                                     <div key={i} className="bg-slate-200 animate-pulse rounded-2xl h-[280px] w-full border border-slate-100 flex flex-col p-4 justify-end">
@@ -191,18 +195,17 @@ export default function RentalsExplorer() {
                                     <KeyRound className="text-slate-400" size={40} />
                                 </div>
                                 <h4 className="text-xl font-bold text-slate-800">No rentals found</h4>
-                                {/* <button onClick={resetFilters} className="mt-4 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">Clear Filters</button> */}
                             </div>
                         ) : (
                             <>
-                                {/* NATIVE GRID */}
                                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                                    {/* Map no longer needs (item: any) ! */}
                                     {rawRentals.map((item) => (
                                         <RentalCard
                                             key={item.id}
                                             rental={item}
                                             isFav={favoriteIds?.includes(item.id)}
-                                            toggleFav={(e) => handleToggleFav(e!, item.id)}
+                                            toggleFav={(e) => handleToggleFav(e, item.id)}
                                             currentUser={currentUser}
                                         />
                                     ))}

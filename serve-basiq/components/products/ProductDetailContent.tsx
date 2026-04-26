@@ -1,404 +1,82 @@
 "use client";
 
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import {
-    FaArrowLeft, FaLocationDot, FaStar,
-    FaShieldHalved, FaPhone,
-    FaInstagram, FaFacebook, FaYoutube, FaGlobe,
-    FaCircleCheck, FaLock, FaBoxOpen,
-    FaTruckFast, FaCube, FaStore
-} from 'react-icons/fa6';
-import AppImage from '@/components/ui/AppImage';
 import { Session } from 'next-auth';
-import { useListingPageData } from '@/app/hook/useListingPageData'; // ✅ Imported the new dynamic hook
+import ListingDetailView, { ListingData, RelatedListing } from '@/components/shared/ListingDetailView';
+import { useListingPageData } from '@/app/hook/useListingPageData';
 
-// 🚀 Lazy load heavy components
-const BookingWrapper = dynamic(() => import('@/components/booking/BookingWrapper'), { ssr: false });
-const ProductSlider = dynamic(() => import('@/components/products/ProductSlider'), { ssr: false });
-const InteractiveProductGallery = dynamic(() => import('@/components/products/InteractiveGallery'));
-const SupplierProfileModal = dynamic(() => import('@/components/products/SupplierProfileModal'), { ssr: false });
-const RatingForm = dynamic(() => import('@/components/Rating/RatingForm'), { ssr: false });
-const AppVideo = dynamic(() => import('../ui/AppVideo'), { ssr: false });
+const ProductWrapper = dynamic(() => import('@/components/products/ProductWrapper'), { ssr: false });
 
-const isVideo = (url: string | null | undefined) => {
-    if (!url) return false;
-    return url.match(/\.(mp4|webm|mov|mkv)$/i);
-};
-
-interface ProductDetailContentProps {
-    service: any; // Mapped data from the server
+interface Props {
+    product: any;
     loggedInUser: any;
     session: Session | null;
-    relatedServices?: any[];
-    listingType: 'SERVICE' | 'PRODUCT' | 'RENTAL'; // ✅ Added listingType
+    relatedProducts?: any[];
+    listingType: 'SERVICE' | 'PRODUCT' | 'RENTAL';
 }
 
 export default function ProductDetailContent({
-    service,
-    loggedInUser: initialUser,
+    product,
+    loggedInUser,
     session,
-    relatedServices = [],
-    listingType
-}: ProductDetailContentProps) {
-    const displayName = service.user.shopName || service.name;
+    relatedProducts = [],
+    listingType,
+}: Props) {
 
-    // ✅ Using the new hook and passing the correct IDs and Type
-    const { currentUser, eligibility, isEligibilityLoading } = useListingPageData({
-        itemId: service.id,
-        listingType: listingType,
-        initialUser,
-        session
+    const displayName = product?.user?.shopName || product?.user?.name || product?.name || 'Item';
+
+    const { currentUser } = useListingPageData({
+        itemId: product?.id,
+        listingType,
+        initialUser: loggedInUser,
+        session,
     });
 
-    const providerImage = service.user.profileImage || service.user.image || "";
-    const ratingValue = Number(service.rating) || 5.0;
-    const isVerified = service.isVerified || service.user.isVerified;
+    const bookingSlot = (
+        <ProductWrapper
+            productId={product?.id}
+            productName={displayName}
+            productPrice={product?.price}
+            priceType={product?.priceType}
+            productUnit={product?.unit || 'PIECE'}
+            moq={product?.moq || 1}
+            currentUser={currentUser}
+            userAddresses={currentUser?.addresses || []}
+            type={listingType}
+        />
+    );
 
-    const addressParts = [
-        service.addressLine1,
-        service.addressLine2,
-        service.landmark ? `Near ${service.landmark}` : null,
-        service.city,
-        service.state ? `${service.state}` : null
-    ].filter(Boolean);
+    const listing: ListingData = {
+        ...product,
+        // Products compute rating from reviews; treat 0 as null (no reviews yet)
+        rating: product?.reviews?.length > 0
+            ? product.reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / product.reviews.length
+            : null,
+    };
 
-    let fullAddress = addressParts.join(', ');
-    if (service.pincode) fullAddress += ` - ${service.pincode}`;
-    if (!fullAddress && service.loc) fullAddress = service.loc;
-    if (!fullAddress) fullAddress = "Location not specified";
-
-    const socials = [
-        { name: 'Instagram', icon: <FaInstagram size={20} />, url: service.instagramUrl || service.user.instagramUrl, styleClass: "text-pink-600 bg-pink-50 border-pink-100 hover:bg-pink-600 hover:text-white" },
-        { name: 'Facebook', icon: <FaFacebook size={20} />, url: service.facebookUrl || service.user.facebookUrl, styleClass: "text-blue-600 bg-blue-50 border-blue-100 hover:bg-blue-600 hover:text-white" },
-        { name: 'YouTube', icon: <FaYoutube size={20} />, url: service.youtubeUrl || service.user.youtubeUrl, styleClass: "text-red-600 bg-red-50 border-red-100 hover:bg-red-600 hover:text-white" },
-        { name: 'Website', icon: <FaGlobe size={20} />, url: service.websiteUrl || service.user.websiteUrl, styleClass: "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-600 hover:text-white" },
-    ].filter(s => s.url && s.url.trim() !== "" && s.url !== "null");
-
-    const formattedRelatedServices = relatedServices.map((s) => ({
-        id: s.id,
-        name: s.name || s.user?.shopName || 'Item',
-        price: s.price || 0,
-        unit: s.priceType === 'HOURLY' ? 'hour' : 'fixed',
-        productImage: (s.serviceImages && s.serviceImages.length > 0) ? s.serviceImages[0] : (s.coverImg || s.serviceimg || s.mainimg || null),
-        gallery: Array.isArray(s.gallery) ? s.gallery : [],
-        category: s.category,
-        listingType: listingType,
-        ownerLocation: s.city || s.loc || 'Location not specified'
+    // ✅ priceType forwarded — QUOTE products show "Custom Quote" in slider
+    const related: RelatedListing[] = relatedProducts.map(p => ({
+        id:           p.id,
+        name:         p.name || p.user?.shopName || 'Item',
+        price:        Number(p.price) || 0,
+        priceType:    p.priceType,
+        unit:         p.priceType === 'HOURLY' ? 'hour' : 'fixed',
+        productImage: p.serviceImages?.[0] || p.coverImg || p.serviceimg || p.mainimg || null,
+        gallery:      Array.isArray(p.gallery) ? p.gallery : [],
+        category:     p.category,
+        listingType,
+        ownerLocation: p.city || p.loc || 'Location not specified',
     }));
 
-    const allImages = Array.from(new Set([
-        service.serviceimg || service.rentalImg || service.mainimg || service.coverImg,
-        ...(service.serviceImages || service.rentalImages || []),
-        ...(service.gallery || [])
-    ])).filter(Boolean) as string[];
-
-    if (allImages.length === 0) {
-        allImages.push("https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2071&auto=format&fit=crop");
-    }
-
-    const mainImg = allImages[0];
-
     return (
-        <div className="pb-20 bg-slate-50 min-h-screen pt-4 md:pt-8 scroll-smooth">
-            <div className="max-w-7xl mx-auto px-4">
-
-                {/* 1. BACK BUTTON */}
-                <div className="mb-6">
-                    <Link href={`/${listingType.toLowerCase()}s`} className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 font-medium transition px-4 py-2 rounded-xl">
-                        <FaArrowLeft /> Back to {listingType === 'PRODUCT' ? 'Products' : 'Services'}
-                    </Link>
-                </div>
-
-                {/* 2. MAIN GRID LAYOUT */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                    {/* ================= LEFT COLUMN ================= */}
-                    <div className="lg:col-span-2 space-y-8 order-1">
-
-                        {/* 👉 TITLE & CATEGORY ROW */}
-                        <div>
-                            {/* Badges */}
-                            <div className="flex items-center flex-wrap gap-2 mb-3">
-                                <span className="text-blue-600 text-[10px] md:text-xs font-bold uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                                    {service.category?.name || (listingType === 'PRODUCT' ? "Product" : "Service")}
-                                    {service.subcategory?.name && ` • ${service.subcategory.name}`}
-                                </span>
-
-                                {service.isRemote && (
-                                    <span className="flex items-center gap-1 text-purple-600 text-[10px] md:text-xs font-bold uppercase bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
-                                        <FaGlobe /> Online / Remote
-                                    </span>
-                                )}
-
-                                {isVerified && (
-                                    <span className="flex items-center gap-1 text-emerald-600 text-[10px] md:text-xs font-bold bg-emerald-50 px-3 py-1 rounded-full">
-                                        <FaCircleCheck /> Verified
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Title and Rating */}
-                            <div className="flex flex-wrap items-center justify-start gap-4">
-                                <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-tight">
-                                    {displayName}
-                                </h1>
-
-                                <div className="flex items-center gap-2 bg-white px-3 py-2 md:px-4 md:py-2 rounded-2xl border border-slate-200 shadow-sm shrink-0 w-fit">
-                                    <FaStar className="text-amber-500 text-lg md:text-xl" />
-                                    <span className="font-black text-slate-900 text-lg md:text-xl leading-none">{ratingValue.toFixed(1)}</span>
-                                    <span className="text-slate-300 mx-1">|</span>
-                                    <a href="#reviews" className="text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors">
-                                        ({service.reviews?.length || 0} Reviews)
-                                    </a>
-                                </div>
-                            </div>
-
-                            {/* Location */}
-                            <div className="flex items-start gap-2 mt-4 text-sm md:text-base font-medium text-slate-600">
-                                <FaLocationDot className="text-red-400 text-lg shrink-0 mt-0.5" />
-                                <span>{fullAddress}</span>
-                            </div>
-                        </div>
-
-                        {/* Interactive Gallery */}
-                        <InteractiveProductGallery
-                            mainProductImage={mainImg}
-                            productImages={allImages.slice(1)}
-                            productName={displayName}
-                        />
-
-                        {/* Main Description Card */}
-                        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
-                            <div className="border-b border-slate-100 pb-6">
-                                <h3 className="text-xl font-bold text-slate-900 mb-4">Description</h3>
-                                <p className="text-slate-600 leading-relaxed whitespace-pre-line text-sm md:text-base">{service.desc}</p>
-                            </div>
-
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Experience / Age</p>
-                                    <p className="font-bold text-slate-900 flex items-center gap-2"><FaBoxOpen className="text-slate-300" /> {service.experience || 0}+ Yrs</p>
-                                </div>
-
-                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">{service.isRemote ? 'Coverage' : 'Delivery Area'}</p>
-                                    <p className="font-bold text-slate-900 flex items-center gap-2 truncate">
-                                        {service.isRemote ? <FaGlobe className="text-slate-300 shrink-0" /> : <FaTruckFast className="text-slate-300 shrink-0" />}
-                                        {service.isRemote ? 'Global / Online' : `${service.radiusKm || 10} km`}
-                                    </p>
-                                </div>
-
-                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Billing</p>
-                                    <p className="font-bold text-slate-900 flex items-center gap-2"><FaCube className="text-slate-300 shrink-0" /> {service.priceType === 'QUOTE' ? 'Custom Quote' : service.priceType}</p>
-                                </div>
-                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Status</p>
-                                    <p className="font-bold text-slate-900 truncate uppercase">
-                                        {service.is24x7 ? "24x7 Open" : "Standard"}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Socials */}
-                            {socials.length > 0 && (
-                                <div className="mt-8 pt-6 border-t border-slate-100">
-                                    <h4 className="font-bold text-slate-900 text-sm mb-3 uppercase tracking-wider">Connect with Provider</h4>
-                                    <div className="flex gap-3">
-                                        {socials.map((social, i) => (
-                                            <a key={i} href={social.url!} target="_blank" rel="noopener noreferrer" className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all duration-300 shadow-sm hover:-translate-y-1 ${social.styleClass}`}>
-                                                {social.icon}
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Full Gallery Section */}
-                        {allImages.length > 0 && (
-                            <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200" id="Gallery">
-                                <h3 className="text-xl font-bold text-slate-900 mb-6">Gallery Media</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    {allImages.map((mediaUrl, i) => (
-                                        <div key={i} className="aspect-square w-full relative group rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 cursor-pointer">
-                                            {isVideo(mediaUrl) ? (
-                                                <AppVideo src={mediaUrl} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <AppImage
-                                                    src={mediaUrl}
-                                                    alt={`Gallery ${i}`}
-                                                    type="gallery"
-                                                    className="w-full h-full object-contain mix-blend-multiply p-2 group-hover:scale-110 transition duration-500"
-                                                />
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Review Card */}
-                        <div id="reviews" className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 scroll-mt-24">
-                            <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-8">Customer Reviews</h3>
-                            <div className="grid md:grid-cols-2 gap-10">
-                                <div className="space-y-6 max-h-150 overflow-y-auto pr-2 custom-scrollbar">
-                                    {service.reviews.length > 0 ? (
-                                        service.reviews.map((review: any) => (
-                                            <div key={review.id} className="border-b border-slate-100 pb-6 last:border-0">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <div className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden flex-shrink-0 relative">
-                                                        <AppImage src={review.author.image || ""} alt={review.author.name || "User"} type="avatar" className="w-full h-full object-cover" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-slate-900 text-sm">{review.author.name || "Customer"}</p>
-                                                        <div className="flex text-amber-500 text-[10px]">
-                                                            {[...Array(5)].map((_, i) => (
-                                                                <FaStar key={i} className={i < review.rating ? "fill-current" : "text-slate-200"} />
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <p className="text-slate-600 text-sm italic mb-3">"{review.comment}"</p>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                                            <FaStar className="mx-auto text-slate-300 text-3xl mb-2" />
-                                            <p className="text-slate-400 font-medium text-sm mt-2">No reviews yet.</p>
-                                        </div>
-                                    )}
-                                </div>
-                                <div>
-                                    {!session ? null : isEligibilityLoading ? <p>Loading...</p> : eligibility?.canReview ? (
-                                        <RatingForm serviceId={service.id} type={listingType} /> // ✅ Note: Pass type here if your RatingForm needs to know!
-                                    ) : (
-                                        <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center top-24">
-                                            <FaLock className="mx-auto text-slate-400 text-2xl mb-2" />
-                                            <p className="text-slate-800 text-sm font-bold">Verified Order Only</p>
-                                            <p className="text-slate-500 text-xs mt-2">Purchase this {listingType.toLowerCase()} and mark as complete to leave a review.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ================= RIGHT COLUMN (Price & Booking) ================= */}
-                    <div className="space-y-6 order-2 h-fit lg:top-24 z-20">
-
-                        {/* Pricing & Booking Card */}
-                        <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 mt-2">
-
-                            <div className="mb-6 pb-6 border-b border-slate-100">
-                                <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">
-                                    {service.priceType === 'QUOTE' ? 'Pricing' : 'Starting at'}
-                                </p>
-                                <div className="flex items-baseline gap-1 mt-1">
-                                    {service.priceType === 'QUOTE' ? (
-                                        <span className="text-4xl font-black text-slate-900">Custom Quote</span>
-                                    ) : (
-                                        <>
-                                            <span className="text-5xl font-black text-slate-900">₹{Number(service.price).toLocaleString()}</span>
-                                            <span className="text-slate-400 font-bold text-lg">{service.priceType === 'HOURLY' ? '/hour' : '/fixed'}</span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 mb-6">
-                                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                        <FaPhone size={14} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Direct Contact</p>
-                                        <p className="text-sm font-bold text-slate-900">Connect with Provider</p>
-                                    </div>
-                                </div>
-                                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                    <h4 className="text-emerald-900 font-bold text-sm mb-2 flex items-center gap-2"><FaShieldHalved /> Safe Order</h4>
-                                    <ul className="text-xs text-emerald-700 space-y-1">
-                                        <li>• Verified Professional</li>
-                                        <li>• No hidden charges</li>
-                                        <li>• Secure Platform</li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <BookingWrapper
-                                serviceId={service.id}
-                                serviceName={displayName!}
-                                price={service.price}
-                                currentUser={currentUser}
-                                userAddresses={currentUser?.addresses || []}
-                                type={listingType} // ✅ Pass type to booking wrapper if necessary
-                            />
-                        </div>
-
-                        {/* Availability Info */}
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-                            <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase text-xs tracking-widest">
-                                Business Hours
-                            </h4>
-
-                            <div className="flex justify-between items-center text-sm mb-4">
-                                <span className="text-slate-500 font-medium uppercase text-[10px]">Status</span>
-                                <span className={`font-black ${service.is24x7 ? 'text-green-600' : 'text-slate-900'}`}>
-                                    {service.is24x7 ? 'OPEN 24/7' : `${service.openTime} - ${service.closeTime}`}
-                                </span>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                                {service.is24x7 ? (
-                                    <span className="text-[10px] px-3 py-1.5 rounded-lg font-bold bg-green-50 text-green-700 border border-green-100 flex items-center gap-1">
-                                        <FaCircleCheck size={10} /> Every Day (Monday - Sunday)
-                                    </span>
-                                ) : (
-                                    service.workingDays && service.workingDays.length > 0 ? (
-                                        service.workingDays.map((day: string) => (
-                                            <span key={day} className="text-[10px] px-2 py-1 rounded-md font-bold bg-slate-900 text-white shadow-sm">
-                                                {day}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="text-[10px] text-slate-400 italic font-medium">Days not specified</span>
-                                    )
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Supplier Card */}
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-                            <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase text-xs tracking-widest">
-                                <FaStore className="text-slate-400" /> Supplier Profile
-                            </h4>
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden relative shrink-0">
-                                    <AppImage src={providerImage} alt={displayName} type="avatar" className="w-full h-full object-cover" />
-                                </div>
-                                <div className="overflow-hidden">
-                                    <h5 className="font-bold text-slate-900 leading-tight truncate">{service.user.name}</h5>
-                                    {isVerified && (
-                                        <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md mt-1 w-fit">
-                                            <FaCircleCheck /> Verified
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <SupplierProfileModal supplier={service.user} />
-                        </div>
-                    </div>
-                </div>
-
-                {formattedRelatedServices.length > 0 && (
-                    <div className="mt-16 pt-16 border-t border-slate-200">
-                        <ProductSlider title={`Related ${listingType === 'PRODUCT' ? 'Products' : 'Services'}`} products={formattedRelatedServices} currentUser={currentUser} />
-                    </div>
-                )}
-            </div>
-        </div>
+        <ListingDetailView
+            listing={listing}
+            relatedListings={related}
+            session={session}
+            loggedInUser={loggedInUser}
+            listingType={listingType}
+            bookingSlot={bookingSlot}
+            requireLoginForContact
+        />
     );
 }

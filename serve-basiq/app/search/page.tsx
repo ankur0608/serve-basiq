@@ -1,7 +1,27 @@
 import { Loader2 } from "lucide-react";
 import { Suspense } from "react";
-import SearchContent from "@/components/search/SearchContent"
-// 2. Wrap the exported page component in Suspense
+import { Metadata } from 'next';
+import SearchContent from "@/components/search/SearchContent";
+
+export const metadata: Metadata = {
+    title: 'Search Services, Products & Rentals Near You | ServeBasiq',
+    description: 'Search for any local service, product, or rental near you on ServeBasiq. Find plumbers, electricians, electronics, furniture, tools, and more from trusted local providers.',
+    keywords: [
+        'search local services', 'find services near me', 'search products nearby',
+        'ServeBasiq search', 'local marketplace search India', 'find rentals near me'
+    ],
+    openGraph: {
+        title: 'Search | ServeBasiq Local Discovery',
+        description: 'Search for local services, products, and rentals near you on ServeBasiq.',
+        url: 'https://www.servebasiq.com/search',
+        siteName: 'ServeBasiq',
+        type: 'website',
+    },
+    alternates: {
+        canonical: 'https://www.servebasiq.com/search',
+    },
+};
+
 export default function GlobalSearchPage() {
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">

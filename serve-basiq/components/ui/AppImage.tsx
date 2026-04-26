@@ -4,17 +4,10 @@ import React, { useState, useEffect } from "react";
 import Image, { ImageProps } from "next/image";
 import { FaImage } from "react-icons/fa6";
 
-// Define allowed presets
-type ImageType =
-  | "avatar"
-  | "card"
-  | "banner"
-  | "gallery"
-  | "thumbnail"
-  | "full";
+type ImageType = "avatar" | "card" | "banner" | "gallery" | "thumbnail" | "full" | "icon";
 
-// ImageKit Transformations
 const IMAGE_PRESETS: Record<ImageType, string> = {
+  icon: "w-80,h-80,c-at_max,q-auto,f-auto",
   avatar: "w-120,h-120,c-fill,q-auto,f-auto",
   thumbnail: "w-300,h-220,c-fill,q-auto,f-auto",
   card: "w-420,h-300,c-fill,q-auto,f-auto",
@@ -23,15 +16,14 @@ const IMAGE_PRESETS: Record<ImageType, string> = {
   full: "w-1920,q-auto,f-auto",
 };
 
-// Extend Next.js ImageProps but make src optional to handle nulls gracefully
 interface AppImageProps extends Omit<ImageProps, "src" | "alt"> {
   src: string | null | undefined;
   alt?: string;
   type?: ImageType;
   fallbackIcon?: React.ReactNode;
+  imageClassName?: string;
 }
 
-// Simple utility to join classes (Use cn() from clsx/tailwind-merge if you have it)
 const cn = (...classes: (string | undefined | null | false)[]) =>
   classes.filter(Boolean).join(" ");
 
@@ -40,33 +32,46 @@ export default function AppImage({
   alt = "Image",
   type = "card",
   className,
+  imageClassName = "object-cover",
   priority = false,
   fallbackIcon,
+  sizes = "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
   ...rest
 }: AppImageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Prevent hydration mismatches for random/date-based srcs
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 1. URL Processing
   const getProcessedUrl = (url: string) => {
     if (!url) return "";
 
-    // Handle ImageKit
-    if (url.includes("imagekit.io")) {
-      const transform = IMAGE_PRESETS[type];
-      const separator = url.includes("?") ? "&" : "?";
-      return `${url}${separator}tr=${transform}`;
+    // Pulls from your environment variables
+    const IMAGEKIT_ENDPOINT = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || "";
+    const R2_DOMAIN = "pub-eed0956fae1644049c2d454121ca27a4.r2.dev";
+
+    let finalUrl = url;
+
+    // Intercept R2 URLs and route them to ImageKit, assuming the env variable exists
+    if (IMAGEKIT_ENDPOINT && url.includes(R2_DOMAIN)) {
+      // Remove trailing slash if present in the env variable to avoid double slashes
+      const cleanEndpoint = IMAGEKIT_ENDPOINT.replace(/\/$/, "");
+      finalUrl = url.replace(`https://${R2_DOMAIN}`, cleanEndpoint);
     }
-    return url;
+
+    // Apply the sizing transformations
+    if (finalUrl.includes("imagekit.io")) {
+      const transform = IMAGE_PRESETS[type];
+      const separator = finalUrl.includes("?") ? "&" : "?";
+      return `${finalUrl}${separator}tr=${transform}`;
+    }
+
+    return finalUrl;
   };
 
-  // 2. Error / Empty State
   if (!src || error) {
     return (
       <div
@@ -83,9 +88,9 @@ export default function AppImage({
   }
 
   const finalSrc = getProcessedUrl(src);
-
-  // R2 images often timeout on Vercel's optimization layer, so we skip it for them
-  const isUnoptimized = src.includes("r2.dev") || src.includes("blob:");
+  
+  // Since we are now compressing via ImageKit, it is safe to skip Vercel's optimizer
+  const isUnoptimized = src.includes("r2.dev") || src.includes("blob:") || src.includes("imagekit.io");
 
   return (
     <div className={cn("relative overflow-hidden", className)}>
@@ -94,19 +99,17 @@ export default function AppImage({
         alt={alt}
         fill
         priority={priority}
-        unoptimized={isUnoptimized}
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        unoptimized={isUnoptimized} 
+        sizes={sizes}
         onLoad={() => setIsLoading(false)}
         onError={() => setError(true)}
         className={cn(
-          "object-cover duration-500 ease-in-out",
-          // Blur effect logic:
+          "duration-500 ease-in-out",
+          imageClassName,
           isLoading ? "scale-110 blur-lg grayscale" : "scale-100 blur-0 grayscale-0"
         )}
         {...rest}
       />
-
-      {/* Optional: Skeleton Overlay while loading (if blur isn't enough) */}
       {isLoading && (
         <div className="absolute inset-0 bg-slate-200 animate-pulse -z-10" />
       )}

@@ -7,7 +7,7 @@ import { Loader2, ChevronRight, ArrowLeft, PenLine, FileText, Zap, Calendar, Cal
 import clsx from 'clsx';
 import Input from '@/components/ui/Input';
 import LoginModal from '@/components/auth/LoginModal';
-import toast from 'react-hot-toast'; // ✅ Imported toast
+import toast from 'react-hot-toast';
 
 import SuccessScreen from './SuccessScreen';
 import RequirementTypeSelector from './RequirementTypeSelector';
@@ -34,12 +34,45 @@ export default function PostRequirementForm() {
         timeline: 'URGENT' as TimelineType,
     });
 
+    // Added errors state
+    const [errors, setErrors] = useState<{ title?: string; description?: string }>({});
+
+    // Added validation function
+    const validateForm = () => {
+        const newErrors: { title?: string; description?: string } = {};
+        
+        if (!form.title.trim()) {
+            newErrors.title = 'Title is required';
+        } else if (form.title.trim().length < 5) {
+            newErrors.title = 'Title must be at least 5 characters long';
+        }
+
+        if (!form.description.trim()) {
+            newErrors.description = 'Description is required';
+        } else if (form.description.trim().length < 15) {
+            newErrors.description = 'Please provide more details (at least 15 characters)';
+        }
+
+        setErrors(newErrors);
+        
+        // Returns true if there are no errors
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Run validation before proceeding
+        if (!validateForm()) {
+            toast.error('Please fix the errors in the form');
+            return;
+        }
+
         if (!currentUser) {
             setShowLoginModal(true);
             return;
         }
+        
         setLoading(true);
         try {
             const payload = { userId: currentUser.id, ...form };
@@ -54,8 +87,6 @@ export default function PostRequirementForm() {
 
             if (data.success || res.ok) {
                 setStep(3); // Show Success Screen
-                // Optional: You can also add a success toast here if you want it alongside the SuccessScreen
-                // toast.success('Requirement posted successfully!');
             } else {
                 const errorMsg = data.errors?.timeline?._errors?.[0] || data.message || 'Failed to post requirement';
                 toast.error(errorMsg); 
@@ -95,31 +126,48 @@ export default function PostRequirementForm() {
                     />
 
                     <div className="space-y-6">
-                        <Input
-                            label="TITLE"
-                            icon={<PenLine size={16} />}
-                            required
-                            value={form.title}
-                            onChange={e => setForm({ ...form, title: e.target.value })}
-                            placeholder={form.type === 'PRODUCT' ? "e.g. 50 Bags of Cement" : "e.g. Kitchen Sink Repair"}
-                            className="bg-slate-50/50"
-                        />
+                        {/* Title Input with Validation */}
+                        <div>
+                            <Input
+                                label="TITLE"
+                                icon={<PenLine size={16} />}
+                                required
+                                value={form.title}
+                                onChange={e => {
+                                    setForm({ ...form, title: e.target.value });
+                                    if (errors.title) setErrors({ ...errors, title: undefined }); // Clear error on typing
+                                }}
+                                placeholder={form.type === 'PRODUCT' ? "e.g. 50 Bags of Cement" : "e.g. Kitchen Sink Repair"}
+                                className={clsx("bg-slate-50/50", errors.title && "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500")}
+                            />
+                            {errors.title && <p className="text-red-500 text-xs font-semibold mt-1.5 ml-1">{errors.title}</p>}
+                        </div>
 
+                        {/* Description Textarea with Validation */}
                         <div>
                             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5 ml-1">
-                                Details
+                                Details <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
-                                <FileText size={16} className="absolute left-3.5 top-3.5 text-gray-400 pointer-events-none" />
+                                <FileText size={16} className={clsx("absolute left-3.5 top-3.5 pointer-events-none", errors.description ? "text-red-400" : "text-gray-400")} />
                                 <textarea
                                     required
                                     rows={5}
                                     value={form.description}
-                                    onChange={e => setForm({ ...form, description: e.target.value })}
-                                    className="w-full border border-gray-200 bg-slate-50/50 rounded-xl pl-10 pr-4 py-3 text-sm font-medium outline-none transition focus:border-blue-500 focus:bg-white resize-none placeholder:text-gray-400"
+                                    onChange={e => {
+                                        setForm({ ...form, description: e.target.value });
+                                        if (errors.description) setErrors({ ...errors, description: undefined }); // Clear error on typing
+                                    }}
+                                    className={clsx(
+                                        "w-full border bg-slate-50/50 rounded-xl pl-10 pr-4 py-3 text-sm font-medium outline-none transition resize-none placeholder:text-gray-400",
+                                        errors.description 
+                                            ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50/10" 
+                                            : "border-gray-200 focus:border-blue-500 focus:bg-white"
+                                    )}
                                     placeholder="Describe exactly what you need..."
                                 />
                             </div>
+                            {errors.description && <p className="text-red-500 text-xs font-semibold mt-1.5 ml-1">{errors.description}</p>}
                         </div>
 
                         <TimelineDropdown

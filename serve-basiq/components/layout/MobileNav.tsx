@@ -49,13 +49,17 @@ export default function MobileNav() {
     };
   }, [pathname]);
 
-  if (pathname.startsWith("/auth")) return null;
+  // ✅ ADDED: Check if the current route is a details page (e.g., /services/123, /products/abc)
+  const isDetailsPage = /^\/(services|products|rentals)\/[^\/]+(\/.*)?$/.test(pathname);
+
+  // ✅ ADDED: Hide navigation on Auth pages AND Details pages
+  if (pathname.startsWith("/auth") || isDetailsPage) return null;
 
   const links: NavLink[] = [
     { href: "/", label: "Home", icon: FaHouse },
     { href: "/services", label: "Services", icon: FaScrewdriverWrench },
-    { href: "/rentals", label: "Rentals", icon: FaScrewdriverWrench },
     { href: "/products", label: "Products", icon: FaBoxOpen },
+    { href: "/rentals", label: "Rentals", icon: FaScrewdriverWrench },
     { href: "/profile", label: "Profile", icon: FaUser },
   ];
 

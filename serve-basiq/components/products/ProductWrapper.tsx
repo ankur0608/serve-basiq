@@ -16,9 +16,10 @@ interface Props {
     productId: string;
     productName: string;
     productPrice: number;
+    priceType?: string; 
     productUnit: string;
     moq: number;
-    type?: 'SERVICE' | 'PRODUCT' | 'RENTAL'; // ✅ Add this line
+    type?: 'SERVICE' | 'PRODUCT' | 'RENTAL';
     currentUser: any;
     userAddresses: any[];
     defaultOpen?: boolean;
@@ -29,6 +30,7 @@ export default function ProductWrapper({
     productId,
     productName,
     productPrice,
+    priceType, 
     type,
     productUnit,
     moq,
@@ -112,8 +114,6 @@ export default function ProductWrapper({
         } else {
             document.body.style.overflow = 'unset';
         }
-
-        // Cleanup function in case component unmounts
         return () => {
             document.body.style.overflow = 'unset';
         };
@@ -125,6 +125,9 @@ export default function ProductWrapper({
         checkAndProceed();
     };
 
+    // ✅ ROBUST QUOTE CHECK
+    const isQuote = priceType?.toUpperCase() === 'QUOTE' || Number(productPrice) === 0 || !productPrice;
+
     if (defaultOpen && (status === "loading" || (shouldFetch && isFetchingUser))) {
         return (
             <div className="w-full h-full flex items-center justify-center bg-white">
@@ -135,13 +138,12 @@ export default function ProductWrapper({
 
     return (
         <>
-            {/* 👉 UPDATED BUTTON DESIGN */}
             {!defaultOpen && (
                 <button
                     onClick={handleRequestClick}
                     className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-200 transition-all active:scale-[0.98]"
                 >
-                    Request Quote <FaPaperPlane size={16} />
+                    {isQuote ? 'Request Quote' : 'Order Now'} <FaPaperPlane size={16} />
                 </button>
             )}
 
@@ -165,12 +167,12 @@ export default function ProductWrapper({
             {/* PRODUCT REQUEST FORM */}
             {mounted && isFormOpen && activeUser && (
                 defaultOpen ? (
-                    // Inline Mode
                     <div className="w-full h-full">
                         <ProductRequestForm
                             productId={productId}
                             productName={productName}
                             price={productPrice}
+                            priceType={priceType} 
                             unit={productUnit}
                             moq={moq}
                             userId={activeUser?.id}
@@ -182,18 +184,22 @@ export default function ProductWrapper({
                     </div>
                 ) : (
                     createPortal(
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                            <div className="relative w-full max-w-sm bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                            <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                                
+                                {/* ✅ FIX: Solid white close button so it doesn't get lost in the dark header */}
                                 <button
                                     onClick={handleClose}
-                                    className="absolute top-4 right-4 z-50 w-8 h-8 flex items-center justify-center bg-black/10 hover:bg-black/20 text-white rounded-full transition backdrop-blur-sm"
+                                    className="absolute top-3 right-3 z-[60] w-8 h-8 flex items-center justify-center bg-white text-slate-900 hover:bg-gray-100 rounded-full shadow-md transition"
                                 >
                                     <FaXmark size={14} />
                                 </button>
+                                
                                 <ProductRequestForm
                                     productId={productId}
                                     productName={productName}
                                     price={productPrice}
+                                    priceType={priceType} 
                                     unit={productUnit}
                                     moq={moq}
                                     userId={activeUser?.id}
@@ -216,8 +222,8 @@ export default function ProductWrapper({
                         setIsSuccessOpen(false);
                         if (onRequestClose) onRequestClose();
                     }}
-                    title="Request Sent!"
-                    message={`Your quote request for ${productName} has been sent successfully.`}
+                    title={isQuote ? "Quote Requested!" : "Order Requested!"}
+                    message={`Your ${isQuote ? 'quote' : 'order'} request for ${productName} has been sent successfully.`}
                     buttonText="View My Orders"
                     onButtonClick={() => router.push('/profile/orders')}
                 />

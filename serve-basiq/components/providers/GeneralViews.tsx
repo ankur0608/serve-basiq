@@ -15,7 +15,6 @@ import clsx from 'clsx';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
 
-// (Keep revenueData, revenueOptions, and trafficData as they were in your original code)
 const revenueData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
     datasets: [{
@@ -81,7 +80,6 @@ export function DashboardHomeView({
 
     const dashboardStats = stats?.stats || { revenue: 0, jobsCompleted: 0, pendingRequests: 0, rating: 5.0 };
 
-    // ✅ Combine Services and Rentals into one chronologically sorted timeline
     const combinedActivity = useMemo(() => {
         const services = recentBookings.map((b: any) => ({
             id: `srv_${b.id}`,
@@ -100,14 +98,13 @@ export function DashboardHomeView({
             type: 'RENTAL',
             title: r.rental?.name,
             customerName: r.user?.name,
-            image: r.rental?.rentalImg || '/placeholder-rental.png', // ✅ Updated to rentalImg
+            image: r.rental?.rentalImg || '/placeholder-rental.png',
             priceLabel: `₹${r.rental?.price || r.totalPrice || 0}`,
             badgeLabel: 'RENTAL',
             status: r.status,
             createdAt: r.createdAt
         }));
 
-        // Merge and sort by newest first, then keep top 5
         return [...services, ...rentals]
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .slice(0, 5);
@@ -116,7 +113,8 @@ export function DashboardHomeView({
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+            {/* ✅ FIXED: Changed grid-cols-1 to grid-cols-2, and adjusted mobile gap to gap-3 */}
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6">
                 <StatCard icon={TrendingUp} label="Total Income" value={`₹${dashboardStats.revenue.toLocaleString('en-IN')}`} trend="12%" color="emerald" />
                 <StatCard icon={Briefcase} label="Total Orders" value={dashboardStats.jobsCompleted} trend="5%" color="blue" />
                 <StatCard icon={Bell} label="Pending Requests" value={dashboardStats.pendingRequests} color="orange" />
@@ -147,7 +145,7 @@ export function DashboardHomeView({
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                {/* ✅ RECENT BOOKINGS & RENTALS */}
+                {/* RECENT BOOKINGS & RENTALS */}
                 {['SERVICE', 'RENTAL', 'BOTH'].includes(providerType) && (
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
                         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -175,7 +173,6 @@ export function DashboardHomeView({
                                                         className="h-10 w-10 rounded-lg object-cover border border-slate-100"
                                                         alt={item.title}
                                                     />
-                                                    {/* Little indicator icon for Rentals vs Services */}
                                                     <div className={clsx(
                                                         "absolute -bottom-1 -right-1 p-0.5 rounded-full border-2 border-white",
                                                         item.type === 'RENTAL' ? "bg-purple-500 text-white" : "bg-blue-500 text-white"

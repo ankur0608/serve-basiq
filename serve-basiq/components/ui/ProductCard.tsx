@@ -40,7 +40,14 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
 
     if (!product) return null;
 
-    const { id, name, category, minOrder, price, unit, user } = product;
+    const { id, name, category, minOrder, price, priceType, unit, user } = product;
+
+    // ✅ FIX: Now also checks if price is 0 or null. If price is 0, it forces "Custom Quote".
+    const isQuote = 
+        priceType?.toUpperCase() === 'QUOTE' || 
+        unit?.toUpperCase() === 'QUOTE' || 
+        Number(price) === 0 || 
+        !price;
 
     const effectiveUser = useMemo(() => {
         if (currentUser) return currentUser;
@@ -73,7 +80,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
 
     const handleRequestClick = (e: React.MouseEvent) => {
         e.preventDefault();
-        e.stopPropagation(); // Prevents redirecting to details page
+        e.stopPropagation();
 
         if (!session) {
             setShowLoginModal(true);
@@ -101,7 +108,6 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
 
     return (
         <>
-            {/* The Outer Div makes the ENTIRE card clickable */}
             <div
                 onClick={handleDetailsClick}
                 className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full"
@@ -128,7 +134,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                     {toggleFav && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation(); // Prevents redirecting to details page
+                                e.stopPropagation();
                                 toggleFav(e);
                             }}
                             className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-sm shadow-sm transition-all active:scale-90 z-10"
@@ -157,8 +163,15 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                         <div className="flex-1 min-w-[50%]">
                             <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-0.5">Price</p>
                             <div className="flex items-baseline whitespace-nowrap">
-                                <span className="text-sm sm:text-base font-bold text-slate-900">₹{price.toLocaleString()}</span>
-                                <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium ml-1">/ {unit}</span>
+                                {/* ✅ LOGIC UPDATED FOR QUOTE */}
+                                {isQuote ? (
+                                    <span className="text-sm sm:text-base font-bold text-blue-600">Custom Quote</span>
+                                ) : (
+                                    <>
+                                        <span className="text-sm sm:text-base font-bold text-slate-900">₹{price?.toLocaleString()}</span>
+                                        <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium ml-1">/ {unit}</span>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -167,7 +180,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                                 MOQ <Box size={10} />
                             </p>
                             <span className="inline-block text-[10px] sm:text-[11px] font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded whitespace-nowrap">
-                                {moqValue} {unit}
+                                {moqValue} {!isQuote && unit}
                             </span>
                         </div>
                     </div>
@@ -183,14 +196,19 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                             onClick={handleRequestClick}
                             className="py-2 px-2 sm:px-4 text-[11px] sm:text-xs font-bold text-white bg-slate-900 hover:bg-blue-600 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                         >
-                            Quote <FaPaperPlane size={10} />
+                            {/* ✅ Button Text Dynamic Based on isQuote */}
+                            {isQuote ? 'Request Quote' : 'Order Now'} <FaPaperPlane size={10} />
                         </button>
                     </div>
                 </div>
             </div>
 
-            <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
-
+            <LoginModal
+                isOpen={showLoginModal}
+                onClose={() => setShowLoginModal(false)}
+                initialStep="INPUT_DETAILS"
+                initialRole="user"
+            />
             <MobileVerificationModal
                 isOpen={showVerifyModal}
                 onClose={() => setShowVerifyModal(false)}
@@ -213,6 +231,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                                 productId={id}
                                 productName={name}
                                 productPrice={price}
+                                priceType={priceType} 
                                 productUnit={unit}
                                 moq={moqValue}
                                 currentUser={effectiveUser}

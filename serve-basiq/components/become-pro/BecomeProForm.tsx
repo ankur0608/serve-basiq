@@ -13,7 +13,8 @@ import AddressDetails from "./AddressDetails";
 
 export default function BecomeProForm() {
     const router = useRouter();
-    const { data: session, status } = useSession();
+    // ✅ 1. Extracted the 'update' function from useSession
+    const { data: session, status, update } = useSession();
     const [isPhoneModalOpen, setPhoneModalOpen] = useState(false);
     const isInitialized = useRef(false);
 
@@ -128,9 +129,10 @@ export default function BecomeProForm() {
                     userId={session.user.id}
                     isOpen={isPhoneModalOpen}
                     onClose={() => setPhoneModalOpen(false)}
-                    onSuccess={() => {
+                    // ✅ 2. Changed to async and use await update()
+                    onSuccess={async () => {
                         setPhoneModalOpen(false);
-                        window.location.reload();
+                        await update();
                     }}
                 />
             )}

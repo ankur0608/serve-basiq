@@ -121,6 +121,7 @@ function FormWrapper({ initialType, onBack, ...props }: ServiceSettingsProps & {
               handleGetLocation={handleGetLocation}
               gettingLoc={gettingLoc}
               toggleDay={toggleDay}
+              serviceId={props.serviceData?.id}
             />
           )}
 

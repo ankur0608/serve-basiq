@@ -24,6 +24,16 @@ const normalizeSubIds = (data: any): string[] => {
     return subs?.id ? [subs.id] : [];
 };
 
+// ✅ Unified Media Settings
+const MEDIA_COMPRESSION = {
+    maxSizeMB: 0.5,           // Targets ~500 KB
+    maxWidthOrHeight: 1920,   // High resolution
+    useWebWorker: true,
+    fileType: "image/webp" as const,
+    initialQuality: 0.85
+};
+const MAX_VIDEO_SIZE_MB = 50;
+
 export function useServiceForm({ userId, serviceData, userData, userAddress, onComplete, showToast, preSelectedType }: ServiceSettingsProps) {
     const queryClient = useQueryClient();
 
@@ -57,11 +67,12 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         desc: serviceData?.desc || '',
         experience: serviceData?.experience || '',
         stock: serviceData?.stock || 1,
-        categoryId: serviceData?.categoryId || '',
-        customCategoryName: serviceData?.customCategory || '', // ✅ Added state for the custom text
-        subCategoryIds: normalizeSubIds(serviceData),
-        altPhone: serviceData?.altPhone || userData?.phone || '',
 
+        categoryId: serviceData?.customCategory ? 'OTHER' : (serviceData?.categoryId || ''),
+        customCategoryName: serviceData?.customCategory || '',
+        subCategoryIds: serviceData?.customCategory ? ['OTHER'] : normalizeSubIds(serviceData),
+
+        altPhone: serviceData?.altPhone || userData?.phone || '',
         isRemote: serviceData?.isRemote || false,
 
         mainimg: serviceData?.serviceimg || serviceData?.rentalImg || serviceData?.mainimg || '',
@@ -76,6 +87,14 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         securityDeposit: serviceData?.securityDeposit || '',
         minDuration: serviceData?.minDuration || '1 Hour',
         rentalMode: serviceData?.rentalMode || 'PICKUP',
+        isAvailable: serviceData?.isAvailable ?? true,
+        slots: (serviceData?.slots || []).map((s: any) => ({
+            id: s.id,
+            date: typeof s.date === 'string' ? s.date.split('T')[0] : new Date(s.date).toISOString().split('T')[0],
+            startTime: s.startTime,
+            endTime: s.endTime,
+            isBooked: s.isBooked,
+        })),
 
         addressLine1: serviceData?.addressLine1 || userAddress?.line1 || '',
         city: serviceData?.city || userAddress?.city || '',
@@ -118,18 +137,25 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         setForm(prev => { const newArr = [...prev.serviceImages]; newArr.splice(index, 1); return { ...prev, serviceImages: newArr }; });
     };
 
-    const processFile = async (file: File) => {
-        let uploadFile = file;
+    // ✅ Unified Media Processor
+    const processFile = async (file: File): Promise<string> => {
+        const targetFolder = listingType === 'RENTAL' ? 'rentals' : 'services';
+
         if (file.type.startsWith('image/')) {
-            try {
-                const compressedBlob = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: "image/webp" });
-                const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
-                uploadFile = new File([compressedBlob], newFileName, { type: "image/webp" });
-            } catch (err) {
-                console.error("Image compress failed", err);
-            }
+            const compressedBlob = await imageCompression(file, MEDIA_COMPRESSION);
+            const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+            const webpFile = new File([compressedBlob], newFileName, { type: 'image/webp' });
+            return await uploadToBackend(webpFile, targetFolder);
         }
-        return await uploadToBackend(uploadFile);
+
+        if (file.type.startsWith('video/')) {
+            if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+                throw new Error(`Video exceeds the ${MAX_VIDEO_SIZE_MB}MB limit.`);
+            }
+            return await uploadToBackend(file, targetFolder);
+        }
+
+        throw new Error("Unsupported file type.");
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
@@ -148,7 +174,7 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         } finally {
             setUploading(false);
             setActiveUploadField(null);
-            e.target.value = '';
+            e.target.value = ''; // Resets the input
         }
     };
 
@@ -164,7 +190,7 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
             setForm(prev => ({ ...prev, [field]: [...prev[field], ...newUrls] }));
             showToast?.(`${newUrls.length} items uploaded`, 'success');
         } catch (error: any) {
-            showToast?.('Upload failed', 'error');
+            showToast?.(error.message || 'Upload failed', 'error');
         } finally {
             setUploading(false);
             setActiveUploadField(null);
@@ -185,6 +211,9 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
         setLoading(true);
 
         try {
+            const isOtherCategory = form.categoryId === 'OTHER';
+            const isOtherSubCategory = form.subCategoryIds?.[0] === 'OTHER';
+
             const payload = {
                 ...form,
                 price: form.priceType === 'QUOTE' ? 0 : Number(form.price),
@@ -194,10 +223,8 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
                 latitude: Number(form.latitude),
                 longitude: Number(form.longitude),
 
-                // ✅ Send empty subCategory array if "OTHER" is picked
-                subCategoryIds: form.categoryId === 'OTHER' ? [] : form.subCategoryIds,
-                // ✅ Extract Custom Category Name into payload
-                customCategoryName: form.categoryId === 'OTHER' ? form.customCategoryName : undefined,
+                subCategoryIds: (isOtherCategory || isOtherSubCategory) ? [] : form.subCategoryIds,
+                customCategoryName: (isOtherCategory || isOtherSubCategory) ? form.customCategoryName : undefined,
 
                 isRemote: form.isRemote,
 
@@ -210,6 +237,11 @@ export function useServiceForm({ userId, serviceData, userData, userAddress, onC
                 workingDays: form.is24x7 ? [] : form.workingDays,
                 openTime: form.is24x7 ? null : form.openTime,
                 closeTime: form.is24x7 ? null : form.closeTime,
+                isAvailable: form.isAvailable,
+                // Only post slots that haven't been persisted yet.
+                slots: listingType === 'RENTAL'
+                    ? (form.slots || []).filter((s: any) => !s.id)
+                    : undefined,
             };
 
             const endpoint = listingType === 'RENTAL' ? '/api/rentals' : '/api/services';

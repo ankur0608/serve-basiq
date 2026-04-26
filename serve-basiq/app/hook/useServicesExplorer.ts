@@ -1,5 +1,4 @@
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useInfiniteQuery, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useFavorites } from './useFavorites';
 
 export interface ServiceItem {
@@ -10,7 +9,7 @@ export interface ServiceItem {
     subcategoryId?: string;
     subcategoryName?: string;
     price: number;
-    priceType: 'FIXED' | 'HOURLY' | 'ESTIMATE';
+    priceType: 'FIXED' | 'HOURLY' | 'QUOTE';
     rating: number;
     reviewCount: number;
     location: string;
@@ -40,25 +39,30 @@ export function useServicesExplorer({
             if (!res.ok) return null;
             return res.json();
         },
-        staleTime: 1000 * 60 * 10,
+        staleTime: 1000 * 60 * 30, // 30 minutes
     });
 
     const { data: categoriesData } = useQuery({
         queryKey: ['categories', 'service'],
         queryFn: async () => {
+            const startTime = performance.now();
             const res = await fetch('/api/categories?type=SERVICE');
+            const endTime = performance.now();
+            
+            console.log(`🚀 [Client API] Categories fetched in ${(endTime - startTime).toFixed(2)}ms`);
+            
             return res.json();
         },
-        staleTime: 1000 * 60 * 60 * 24,
+        staleTime: 1000 * 60 * 60 * 24, // 24 hours
     });
 
     const {
-        data,
+        data: services,
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
         isLoading,
-        isFetching, // 👈 Needed for the loading overlay
+        isFetching,
         isError
     } = useInfiniteQuery({
         queryKey: ['services', 'explorer', search, category, subcategory, location, sort],
@@ -72,57 +76,53 @@ export function useServicesExplorer({
             if (location) params.append('location', location);
             if (sort) params.append('sort', sort);
 
+            const startTime = performance.now();
             const res = await fetch(`/api/services?${params.toString()}`);
+            const endTime = performance.now();
+            
+            console.log(`🚀 [Client API] Services fetched in ${(endTime - startTime).toFixed(2)}ms`);
+
             if (!res.ok) throw new Error('Network response was not ok');
             return res.json();
         },
         getNextPageParam: (lastPage: any) => lastPage.nextCursor ?? undefined,
         initialPageParam: undefined,
-
-        // --- CRITICAL FIX FOR FLASHING ---
-        placeholderData: keepPreviousData, // Keeps old data visible while fetching new filter data
-
-        staleTime: 1000 * 60 * 5,
-        gcTime: 1000 * 60 * 30,
+        placeholderData: keepPreviousData,
         refetchOnWindowFocus: false,
+
+        // 🚀 Caching limits: 30 mins fresh, 45 mins in memory
+        staleTime: 1000 * 60 * 30,
+        gcTime: 1000 * 60 * 45,
+
+        select: (data) => {
+            const rawItems = data.pages.flatMap((page: any) => page.items || []);
+            const uniqueMap = new Map<string, ServiceItem>();
+
+            for (const item of rawItems) {
+                if (!uniqueMap.has(item.id)) {
+                    uniqueMap.set(item.id, {
+                        id: item.id,
+                        name: item.name,
+                        categoryId: item.category?.id,
+                        categoryName: item.category?.name || "General",
+                        subcategoryId: item.subcategory?.id,
+                        subcategoryName: item.subcategory?.name,
+                        price: Number(item.price) || 0,
+                        priceType: item.priceType === 'QUOTE' ? 'QUOTE' : (item.priceType || 'FIXED'),
+                        rating: Number(item.rating) || 0,
+                        reviewCount: item._count?.reviews || 0,
+                        location: item.user?.addresses?.[0]?.city || item.city || "Remote",
+                        image: item.serviceimg || item.mainimg || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80",
+                        type: 'Service'
+                    });
+                }
+            }
+            return Array.from(uniqueMap.values());
+        }
     });
 
-    const services = useMemo(() => {
-        if (!data) return [];
-
-        // 1. Flatten all pages into a single array
-        const rawItems = data.pages.flatMap((page: any) => page.items || []);
-
-        // 2. DEDUPLICATION LOGIC
-        // We use a Map to filter out duplicate IDs. 
-        // If the API returns the same item in two different pages, this prevents the React key error.
-        const uniqueItems = new Map();
-
-        rawItems.forEach((item: any) => {
-            if (!uniqueItems.has(item.id)) {
-                uniqueItems.set(item.id, item);
-            }
-        });
-
-        return Array.from(uniqueItems.values()).map((item: any): ServiceItem => ({
-            id: item.id,
-            name: item.name,
-            categoryId: item.category?.id,
-            categoryName: item.category?.name || "General",
-            subcategoryId: item.subcategory?.id,
-            subcategoryName: item.subcategory?.name,
-            price: Number(item.price) || 0,
-            priceType: item.priceType || 'FIXED',
-            rating: Number(item.rating) || 0,
-            reviewCount: item._count?.reviews || 0,
-            // Inside useServicesExplorer.ts mapping:
-            location: item.user?.addresses?.[0]?.city || item.city || "Remote", image: item.serviceimg || item.mainimg || "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80",
-            type: 'Service'
-        }));
-    }, [data]);
-
     return {
-        services,
+        services: services || [],
         categories: categoriesData || [],
         currentUser,
         favoriteIds: favoriteServices,

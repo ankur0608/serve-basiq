@@ -18,12 +18,14 @@ interface Props {
     rentalImage?: string;
     ownerLocation?: string;
     price: number,
+    priceType?: string; // ✅ ADDED THIS TO FIX THE TYPESCRIPT ERROR
     hourlyPrice?: number;
     dailyPrice?: number;
     weeklyPrice?: number;
     monthlyPrice?: number;
     fixedPrice?: number;
-    type?: 'RENTAL'; // Added type
+    isAvailable?: boolean;
+    type?: 'RENTAL';
     currentUser: any;
     userAddresses: any[];
     defaultOpen?: boolean;
@@ -36,12 +38,14 @@ export default function RentalBookingWrapper({
     rentalImage,
     ownerLocation,
     price,
+    priceType, // ✅ DESTRUCTURED IT
     hourlyPrice,
     dailyPrice,
     weeklyPrice,
     monthlyPrice,
     fixedPrice,
-    type = 'RENTAL', // Destructured type
+    isAvailable = true,
+    type = 'RENTAL',
     currentUser,
     userAddresses,
     defaultOpen = false,
@@ -124,9 +128,13 @@ export default function RentalBookingWrapper({
             {!defaultOpen && (
                 <button
                     onClick={handleProceedClick}
-                    className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-slate-200"
+                    disabled={!isAvailable}
+                    className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-slate-200 disabled:bg-slate-400 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                    Request Rental <FaArrowRight className="group-hover:translate-x-1 transition" />
+                    {!isAvailable
+                        ? 'Currently Unavailable'
+                        : (priceType === 'QUOTE' ? 'Request Quote' : 'Request Rental')}
+                    {isAvailable && <FaArrowRight className="group-hover:translate-x-1 transition" />}
                 </button>
             )}
 
@@ -149,7 +157,8 @@ export default function RentalBookingWrapper({
                     <div className="w-full h-full">
                         <RentalBookingForm
                             rentalId={rentalId} rentalName={rentalName} rentalImage={rentalImage} ownerLocation={ownerLocation}
-                            price={price} hourlyPrice={hourlyPrice} dailyPrice={dailyPrice} weeklyPrice={weeklyPrice} monthlyPrice={monthlyPrice} fixedPrice={fixedPrice}
+                            price={price} priceType={priceType} hourlyPrice={hourlyPrice} dailyPrice={dailyPrice} weeklyPrice={weeklyPrice} monthlyPrice={monthlyPrice} fixedPrice={fixedPrice}
+                            isAvailable={isAvailable}
                             userId={activeUser?.id} userAddresses={effectiveAddresses} userDetails={activeUser}
                             onSuccess={handleBookingSuccess} onRequestClose={handleClose}
                         />
@@ -157,13 +166,15 @@ export default function RentalBookingWrapper({
                 ) : (
                     createPortal(
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                            <div className="relative w-full max-w-sm bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]">
+                            {/* ✅ Changed rounded-[32px] to rounded-3xl to fix your warning */}
+                            <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]">
                                 <button onClick={handleClose} className="absolute top-4 right-4 z-50 w-8 h-8 flex items-center justify-center bg-black/10 hover:bg-black/20 text-white rounded-full transition backdrop-blur-sm">
                                     <FaXmark size={14} />
                                 </button>
                                 <RentalBookingForm
                                     rentalId={rentalId} rentalName={rentalName} rentalImage={rentalImage} ownerLocation={ownerLocation}
-                                    price={price} hourlyPrice={hourlyPrice} dailyPrice={dailyPrice} weeklyPrice={weeklyPrice} monthlyPrice={monthlyPrice} fixedPrice={fixedPrice}
+                                    price={price} priceType={priceType} hourlyPrice={hourlyPrice} dailyPrice={dailyPrice} weeklyPrice={weeklyPrice} monthlyPrice={monthlyPrice} fixedPrice={fixedPrice}
+                                    isAvailable={isAvailable}
                                     userId={activeUser?.id} userAddresses={effectiveAddresses} userDetails={activeUser}
                                     onSuccess={handleBookingSuccess} onRequestClose={handleClose}
                                 />
@@ -181,9 +192,9 @@ export default function RentalBookingWrapper({
                         setIsSuccessOpen(false);
                         if (onRequestClose) onRequestClose();
                     }}
-                    title="Rental Requested!"
-                    message={`Your request for ${rentalName} has been sent. The owner will review dates and approve shortly.`}
-                    buttonText="View My Rentals"
+                    title={priceType === 'QUOTE' ? "Quote Requested!" : "Rental Requested!"}
+                    message={`Your request for ${rentalName} has been sent. The owner will review it and get back to you shortly.`}
+                    buttonText="View My Requests"
                     onButtonClick={() => router.push('/profile/bookings')}
                 />
             )}

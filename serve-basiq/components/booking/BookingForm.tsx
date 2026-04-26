@@ -180,22 +180,29 @@ export default function BookingForm({
     <div className="bg-white w-full h-full flex flex-col overflow-hidden relative">
 
       {/* --- HEADER --- */}
-      <div className="bg-slate-900 px-5 sm:px-6 py-4 sm:py-5 text-white flex justify-between items-center shrink-0 shadow-md z-10 rounded-t-3xl sm:rounded-t-none">
-        <div className='flex flex-col justify-center max-w-[60%]'>
-          {/* ✅ Dynamic Header Title */}
-          <h2 className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-0.5">
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-5 sm:px-6 py-5 text-white flex justify-between items-end shrink-0 shadow-md z-10 rounded-t-3xl sm:rounded-t-none relative overflow-hidden">
+
+        {/* Decorative corner glow so it doesn't look flat */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+
+        {/* ✅ Left side (Title) - Pushed down with mt-6 to avoid close button */}
+        <div className='flex flex-col justify-end flex-1 min-w-0 pr-4 relative z-10 mt-6'>
+          <h2 className="text-[10px] font-extrabold uppercase tracking-widest text-blue-400 mb-1">
             {priceType === 'QUOTE' ? 'Requesting Quote' : 'Requesting Service'}
           </h2>
-          <p className="text-white font-bold text-base sm:text-lg leading-tight truncate">{serviceName}</p>
+          <p className="text-white font-bold text-lg sm:text-xl leading-tight truncate">{serviceName}</p>
         </div>
-        <div className="text-right flex flex-col items-end justify-center">
-          {/* ✅ Dynamic Pricing Layout */}
+
+        {/* ✅ Right side (Price) - Kept on one line, pushed down */}
+        <div className="text-right flex flex-col items-end justify-end shrink-0 relative z-10 mt-6">
           {priceType === 'QUOTE' ? (
-            <span className="text-sm font-bold text-slate-300 mt-4 sm:mt-7">To be discussed</span>
+            <span className="text-xs sm:text-sm font-bold text-slate-300 whitespace-nowrap mb-0.5 pr-1">
+              To be discussed
+            </span>
           ) : (
             <>
-              <span className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-0.5 mt-4 sm:mt-7">Total Amount</span>
-              <span className="text-lg sm:text-xl font-bold text-white tracking-tight">₹{price}</span>
+              <span className="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5 pr-1">Total</span>
+              <span className="text-xl sm:text-2xl font-black text-white tracking-tight pr-1">₹{price}</span>
             </>
           )}
         </div>
@@ -225,7 +232,7 @@ export default function BookingForm({
         <button
           type="button"
           onClick={onRequestClose}
-          className="flex-1 py-3 border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition"
+          className="flex-1 py-3.5 border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition"
         >
           Cancel
         </button>
@@ -233,9 +240,8 @@ export default function BookingForm({
           type="button"
           onClick={handleSubmit}
           disabled={loading || !addressId}
-          className="flex-[2] bg-slate-900 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-[2] bg-slate-900 text-white py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {/* ✅ Dynamic Button Text */}
           {loading ? <Loader2 className="animate-spin" /> : (priceType === 'QUOTE' ? 'Request Quote' : 'Confirm Booking')}
         </button>
       </div>

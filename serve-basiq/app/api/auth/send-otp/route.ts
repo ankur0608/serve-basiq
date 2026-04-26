@@ -64,65 +64,133 @@
 //   });
 // }
 
+
+//prodction 
+
+// export const runtime = "nodejs";
+
+// import { NextResponse } from "next/server";
+// import { prisma } from "@/lib/prisma";
+// import { messageCentral } from "@/lib/messageCentral";
+
+// export async function POST(req: Request) {
+//   try {
+//     const { phone } = await req.json();
+
+//     if (!phone || phone.length !== 10) {
+//       return NextResponse.json({ message: "Invalid phone number" }, { status: 400 });
+//     }
+
+//     // ==========================================
+//     // 🛡️ RATE LIMITING LOGIC START
+//     // ==========================================
+
+//     // 1. Check if an OTP request was made for this phone recently
+//     // We now use the OtpLog table to ensure rate limiting works across all server instances.
+//     const lastRequest = await prisma.otpLog.findFirst({
+//       where: { phone },
+//       orderBy: { createdAt: 'desc' }
+//     });
+
+//     if (lastRequest) {
+//       const now = new Date();
+//       const timeSinceLastRequest = (now.getTime() - lastRequest.createdAt.getTime()) / 1000; // in seconds
+
+//       if (timeSinceLastRequest < 60) {
+//         return NextResponse.json(
+//           { error: `Please wait ${Math.ceil(60 - timeSinceLastRequest)} seconds before requesting another OTP.` },
+//           { status: 429 } 
+//         );
+//       }
+//     }
+
+//     await prisma.otpLog.create({
+//       data: { phone }
+//     });
+
+//     const existingUser = await prisma.user.findUnique({
+//       where: { phone },
+//     });
+
+//     const isNewUser = !existingUser;
+
+//     const verificationId = await messageCentral.sendOtp(phone);
+
+//     return NextResponse.json({
+//       success: true,
+//       verificationId,
+//       isNewUser,
+//     });
+//   } catch (error: any) {
+//     console.error("🔥 [API] Send OTP Error:", error.message);
+//     return NextResponse.json(
+//       { error: error.message || "Failed to send OTP" },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// api/auth/send-otp/route.ts — complete updated file
+
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { messageCentral } from "@/lib/messageCentral";
 
+function normalizePhone(raw: string): string {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.startsWith("91") && digits.length === 12) return digits.slice(2);
+    return digits.slice(-10);
+}
+
 export async function POST(req: Request) {
-  try {
-    const { phone } = await req.json();
+    try {
+        const body = await req.json();
+        const phone = normalizePhone(body.phone ?? "");
 
-    if (!phone || phone.length !== 10) {
-      return NextResponse.json({ message: "Invalid phone number" }, { status: 400 });
-    }
+        if (!phone || phone.length !== 10) {
+            return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
+        }
 
-    // ==========================================
-    // 🛡️ RATE LIMITING LOGIC START
-    // ==========================================
+        // ── Rate limit ────────────────────────────────────────────────────
+        const lastRequest = await prisma.otpLog.findFirst({
+            where: { phone },
+            orderBy: { createdAt: "desc" },
+        });
 
-    // 1. Check if an OTP request was made for this phone recently
-    // We now use the OtpLog table to ensure rate limiting works across all server instances.
-    const lastRequest = await prisma.otpLog.findFirst({
-      where: { phone },
-      orderBy: { createdAt: 'desc' }
-    });
+        if (lastRequest) {
+            const elapsed = (Date.now() - lastRequest.createdAt.getTime()) / 1000;
+            if (elapsed < 60) {
+                return NextResponse.json(
+                    { error: `Please wait ${Math.ceil(60 - elapsed)} seconds before requesting another OTP.` },
+                    { status: 429 }
+                );
+            }
+        }
 
-    if (lastRequest) {
-      const now = new Date();
-      const timeSinceLastRequest = (now.getTime() - lastRequest.createdAt.getTime()) / 1000; // in seconds
+        // ── Write new log + clean up stale logs in one go ─────────────────
+        await prisma.$transaction([
+            prisma.otpLog.create({ data: { phone } }),
+            // ✅ Delete logs older than 24 h for this phone
+            prisma.otpLog.deleteMany({
+                where: {
+                    phone,
+                    createdAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+                },
+            }),
+        ]);
 
-      if (timeSinceLastRequest < 60) {
+        const existingUser  = await prisma.user.findUnique({ where: { phone } });
+        const isNewUser     = !existingUser;
+        const verificationId = await messageCentral.sendOtp(phone);
+
+        return NextResponse.json({ success: true, verificationId, isNewUser });
+    } catch (error: any) {
+        console.error("Send OTP error:", error.message);
         return NextResponse.json(
-          { error: `Please wait ${Math.ceil(60 - timeSinceLastRequest)} seconds before requesting another OTP.` },
-          { status: 429 } 
+            { error: error.message || "Failed to send OTP" },
+            { status: 500 }
         );
-      }
     }
-
-    await prisma.otpLog.create({
-      data: { phone }
-    });
-
-    const existingUser = await prisma.user.findUnique({
-      where: { phone },
-    });
-
-    const isNewUser = !existingUser;
-
-    const verificationId = await messageCentral.sendOtp(phone);
-
-    return NextResponse.json({
-      success: true,
-      verificationId,
-      isNewUser,
-    });
-  } catch (error: any) {
-    console.error("🔥 [API] Send OTP Error:", error.message);
-    return NextResponse.json(
-      { error: error.message || "Failed to send OTP" },
-      { status: 500 }
-    );
-  }
 }

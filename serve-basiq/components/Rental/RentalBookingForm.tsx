@@ -1,20 +1,30 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     MapPin, Plus, Loader2, Pencil, AlignLeft,
-    Truck, PackageOpen, IndianRupee, CalendarIcon, CheckCircle2
+    Truck, PackageOpen, IndianRupee, CalendarIcon, CheckCircle2,
+    Clock, Ban
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
-import toast from 'react-hot-toast'; // ✅ Imported toast
+import toast from 'react-hot-toast';
 import AddressModal from '@/components/booking/AddressModal';
+
+interface SlotOption {
+    id: string;
+    date: string;      // ISO
+    startTime: string; // HH:MM
+    endTime: string;   // HH:MM
+    isBooked: boolean;
+}
 
 interface RentalFormProps {
     rentalId: string;
     rentalName: string;
 
     price: number;
+    priceType?: string; // ✅ ADDED TO RECEIVE PROP
     hourlyPrice?: number;
     dailyPrice?: number;
     weeklyPrice?: number;
@@ -23,6 +33,7 @@ interface RentalFormProps {
 
     rentalImage?: string;
     ownerLocation?: string;
+    isAvailable?: boolean;
     userId: string;
     userAddresses: any[];
     userDetails?: any;
@@ -35,12 +46,14 @@ export default function RentalBookingForm({
     rentalName,
     hourlyPrice,
     price,
+    priceType, // ✅ DESTRUCTURED
     dailyPrice,
     weeklyPrice,
     monthlyPrice,
     fixedPrice,
     rentalImage,
     ownerLocation,
+    isAvailable = true,
     userId,
     userAddresses: initialAddresses,
     userDetails,
@@ -62,13 +75,18 @@ export default function RentalBookingForm({
     // --- Pricing Model State ---
     const availableModels = useMemo(() => {
         const models = [];
+        // ✅ If it's a quote, we don't need regular pricing models
+        if (priceType === 'QUOTE') {
+            models.push({ id: 'QUOTE', label: 'Custom Quote', price: 0 });
+            return models;
+        }
+
         if (hourlyPrice && hourlyPrice > 0) models.push({ id: 'HOURLY', label: 'Hourly', price: hourlyPrice });
         if (dailyPrice && dailyPrice > 0) models.push({ id: 'DAILY', label: 'Daily', price: dailyPrice });
-        // 👉 THE FIX: If no specific tier is found, use the base 'price' prop 
-        // and map it to the 'priceType' defined in the database (e.g., WEEKLY)
+
         if (models.length === 0) {
             models.push({
-                id: 'DAILY', // Defaulting to DAILY for calculation if unknown
+                id: 'DAILY',
                 label: 'Standard Rate',
                 price: price || 0
             });
@@ -77,7 +95,7 @@ export default function RentalBookingForm({
         if (monthlyPrice && monthlyPrice > 0) models.push({ id: 'MONTHLY', label: 'Monthly', price: monthlyPrice });
         if (fixedPrice && fixedPrice > 0) models.push({ id: 'FIXED', label: 'Fixed Price', price: fixedPrice });
         return models;
-    }, [hourlyPrice, dailyPrice, weeklyPrice, monthlyPrice, fixedPrice]);
+    }, [hourlyPrice, dailyPrice, weeklyPrice, monthlyPrice, fixedPrice, price, priceType]);
 
     const [pricingModel, setPricingModel] = useState<string>(
         (availableModels[0]?.id as any) || 'DAILY'
@@ -93,6 +111,42 @@ export default function RentalBookingForm({
     const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
     const [editingAddress, setEditingAddress] = useState<any>(null);
 
+    // --- Slot State ---
+    const [slots, setSlots] = useState<SlotOption[]>([]);
+    const [slotsLoading, setSlotsLoading] = useState(true);
+    const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        setSlotsLoading(true);
+        (async () => {
+            try {
+                const res = await fetch(`/api/rentals/${rentalId}/slots?from=${startDate}`);
+                const data = await res.json();
+                if (!cancelled && data.success) setSlots(data.slots || []);
+            } catch {
+                if (!cancelled) setSlots([]);
+            } finally {
+                if (!cancelled) setSlotsLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [rentalId, startDate]);
+
+    const availableSlots = useMemo(
+        () => slots.filter((s) => !s.isBooked),
+        [slots]
+    );
+    const slotsByDate = useMemo(() => {
+        const map = new Map<string, SlotOption[]>();
+        for (const s of availableSlots) {
+            const key = s.date.split('T')[0];
+            if (!map.has(key)) map.set(key, []);
+            map.get(key)!.push(s);
+        }
+        return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+    }, [availableSlots]);
+
     // --- CALCULATION LOGIC ---
     const { totalDays, totalPrice, activePrice } = useMemo(() => {
         const start = new Date(startDate);
@@ -101,38 +155,23 @@ export default function RentalBookingForm({
         let days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         if (days < 1 || isNaN(days)) days = 1;
 
-        // let calculatedPrice = 0;
-        // let unitPrice = 0;
         const currentModel = availableModels.find(m => m.id === pricingModel);
         const unitPrice = currentModel ? currentModel.price : (price || 0);
 
         let calculatedPrice = 0;
         switch (pricingModel) {
-            case 'HOURLY':
-                calculatedPrice = (days * 24) * unitPrice;
-                break;
-            case 'DAILY':
-                calculatedPrice = days * unitPrice;
-                break;
-            case 'WEEKLY':
-                calculatedPrice = Math.max(1, Math.ceil(days / 7)) * unitPrice;
-                break;
-            case 'MONTHLY':
-                calculatedPrice = Math.max(1, Math.ceil(days / 30)) * unitPrice;
-                break;
-            case 'FIXED':
-                calculatedPrice = unitPrice;
-                break;
-            default:
-                calculatedPrice = days * unitPrice;
+            case 'HOURLY': calculatedPrice = (days * 24) * unitPrice; break;
+            case 'DAILY': calculatedPrice = days * unitPrice; break;
+            case 'WEEKLY': calculatedPrice = Math.max(1, Math.ceil(days / 7)) * unitPrice; break;
+            case 'MONTHLY': calculatedPrice = Math.max(1, Math.ceil(days / 30)) * unitPrice; break;
+            case 'FIXED': calculatedPrice = unitPrice; break;
+            case 'QUOTE': calculatedPrice = 0; break; // ✅ Quotes are 0
+            default: calculatedPrice = days * unitPrice;
         }
 
-        return {
-            totalDays: days,
-            totalPrice: calculatedPrice,
-            activePrice: unitPrice
-        };
+        return { totalDays: days, totalPrice: calculatedPrice, activePrice: unitPrice };
     }, [startDate, endDate, pricingModel, price, availableModels]);
+
     // --- HANDLERS ---
     const handleAddAddress = () => {
         setEditingAddress(null);
@@ -174,13 +213,20 @@ export default function RentalBookingForm({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // ✅ Replaced alerts with toast.error
+        if (!isAvailable) {
+            toast.error("This rental is currently unavailable.");
+            return;
+        }
         if (new Date(endDate) <= new Date(startDate)) {
             toast.error("End date must be after start date");
             return;
         }
         if (deliveryType === 'DELIVERY' && !addressId) {
             toast.error("Please select a delivery address");
+            return;
+        }
+        if (slotsByDate.length > 0 && !selectedSlotId) {
+            toast.error("Please pick a time slot");
             return;
         }
 
@@ -197,6 +243,7 @@ export default function RentalBookingForm({
                 deliveryType,
                 pricingModel,
                 addressId: deliveryType === 'DELIVERY' ? addressId : null,
+                slotId: selectedSlotId || undefined,
                 notes: instructions,
             };
 
@@ -221,7 +268,6 @@ export default function RentalBookingForm({
 
             const data = await res.json();
             if (data.success) {
-                toast.success('Rental requested successfully!');
                 if (onSuccess) onSuccess();
                 else onRequestClose();
                 router.refresh();
@@ -249,18 +295,12 @@ export default function RentalBookingForm({
             };
         }
         return {
-            addressLine1: "",
-            addressLine2: "",
-            landmark: "",
-            city: "",
-            district: "",
-            state: "",
-            pincode: ""
+            addressLine1: "", addressLine2: "", landmark: "", city: "", district: "", state: "", pincode: ""
         };
     };
 
     return (
-        <div className="bg-white w-full h-full flex flex-col overflow-hidden relative sm:rounded-2xl sm:max-h-[85vh] shadow-2xl">
+        <div className="bg-white w-full h-full flex flex-col overflow-hidden relative sm:rounded-3xl sm:max-h-[85vh] shadow-2xl">
 
             {/* --- HEADER --- */}
             <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-5 text-white flex justify-between items-center shrink-0 shadow-md z-10 relative overflow-hidden">
@@ -270,23 +310,45 @@ export default function RentalBookingForm({
                     <h2 className="text-[10px] mt-5 font-extrabold uppercase tracking-widest text-blue-400">Requesting Rental</h2>
                     <p className="text-white font-bold text-lg leading-tight truncate max-w-[200px] sm:max-w-[250px]">{rentalName}</p>
                 </div>
+
+                {/* ✅ DYNAMIC PRICING HEADER */}
                 <div className="text-right relative z-10">
-                    <div className="text-2xl mt-7 font-black text-white tracking-tight flex items-center justify-end">
-                        <IndianRupee size={20} strokeWidth={3} className="mt-0.5" />{totalPrice}
-                    </div>
-                    {/* ✅ Display appropriate unit metric based on plan */}
-                    <span className="block text-[11px] font-medium text-slate-300">
-                        {pricingModel === 'FIXED' ? 'Fixed Price' :
-                            pricingModel === 'HOURLY' ? `${totalDays * 24} Hours` :
-                                pricingModel === 'WEEKLY' ? `${Math.max(1, Math.ceil(totalDays / 7))} Week(s)` :
-                                    pricingModel === 'MONTHLY' ? `${Math.max(1, Math.ceil(totalDays / 30))} Month(s)` :
-                                        `${totalDays} Day${totalDays > 1 ? 's' : ''}`}
-                    </span>
+                    {priceType === 'QUOTE' ? (
+                        <div className="text-lg mt-7 font-bold text-slate-200 tracking-tight flex items-center justify-end">
+                            To be discussed
+                        </div>
+                    ) : (
+                        <>
+                            <div className="text-2xl mt-7 font-black text-white tracking-tight flex items-center justify-end">
+                                <IndianRupee size={20} strokeWidth={3} className="mt-0.5" />{totalPrice}
+                            </div>
+                            <span className="block text-[11px] font-medium text-slate-300">
+                                {pricingModel === 'FIXED' ? 'Fixed Price' :
+                                    pricingModel === 'HOURLY' ? `${totalDays * 24} Hours` :
+                                        pricingModel === 'WEEKLY' ? `${Math.max(1, Math.ceil(totalDays / 7))} Week(s)` :
+                                            pricingModel === 'MONTHLY' ? `${Math.max(1, Math.ceil(totalDays / 30))} Month(s)` :
+                                                `${totalDays} Day${totalDays > 1 ? 's' : ''}`}
+                            </span>
+                        </>
+                    )}
                 </div>
             </div>
 
             {/* --- BODY --- */}
             <form id="rental-booking-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar min-h-0 p-6 space-y-7">
+
+                {/* Availability banner */}
+                {!isAvailable && (
+                    <div className="flex items-start gap-3 p-4 rounded-xl border border-red-200 bg-red-50 text-red-800">
+                        <Ban size={18} className="mt-0.5 shrink-0" />
+                        <div className="text-xs">
+                            <p className="font-extrabold uppercase tracking-wide mb-0.5">Currently unavailable</p>
+                            <p className="text-red-700/90">
+                                The owner has paused this rental. You can still browse other items.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* 1. Dates Selection */}
                 <div className="grid grid-cols-2 gap-4">
@@ -318,8 +380,67 @@ export default function RentalBookingForm({
                     </div>
                 </div>
 
-                {/* 2. PRICING MODEL SELECTOR */}
-                {availableModels.length > 1 && (
+                {/* 1b. Available Slots */}
+                <div>
+                    <label className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase mb-2 ml-1">
+                        <span className="flex items-center gap-1.5">
+                            <Clock size={13} /> Pick a Time Slot
+                        </span>
+                        <span className="font-medium normal-case text-[11px] text-slate-400">
+                            {slotsLoading ? 'Loading…' : `${availableSlots.length} available`}
+                        </span>
+                    </label>
+
+                    {slotsLoading ? (
+                        <div className="h-16 rounded-xl border border-slate-200 bg-slate-50 animate-pulse" />
+                    ) : slotsByDate.length === 0 ? (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                                The owner hasn't published specific slots yet. Your request will be reviewed
+                                for the dates above.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                            {slotsByDate.map(([dateKey, daySlots]) => (
+                                <div key={dateKey} className="rounded-xl border border-slate-200 bg-white p-3">
+                                    <p className="text-[11px] font-bold text-slate-600 mb-2 flex items-center gap-1.5">
+                                        <CalendarIcon size={12} />
+                                        {new Date(dateKey).toLocaleDateString(undefined, {
+                                            weekday: 'short',
+                                            day: 'numeric',
+                                            month: 'short',
+                                        })}
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {daySlots.map((s) => {
+                                            const selected = selectedSlotId === s.id;
+                                            return (
+                                                <button
+                                                    key={s.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedSlotId(selected ? null : s.id)}
+                                                    className={clsx(
+                                                        'px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5',
+                                                        selected
+                                                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/30'
+                                                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-700'
+                                                    )}
+                                                >
+                                                    {selected && <CheckCircle2 size={12} />}
+                                                    {s.startTime} – {s.endTime}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* 2. PRICING MODEL SELECTOR (Hidden if QUOTE) */}
+                {priceType !== 'QUOTE' && availableModels.length > 1 && (
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Select Rate Plan</label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -481,11 +602,21 @@ export default function RentalBookingForm({
                 <button
                     type="submit"
                     form="rental-booking-form"
-                    disabled={loading || (deliveryType === 'DELIVERY' && !addressId) || new Date(endDate) <= new Date(startDate)}
+                    disabled={
+                        loading
+                        || !isAvailable
+                        || (deliveryType === 'DELIVERY' && !addressId)
+                        || new Date(endDate) <= new Date(startDate)
+                        || (slotsByDate.length > 0 && !selectedSlotId)
+                    }
                     className="flex-[2] bg-blue-600 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                     {loading ? <Loader2 className="animate-spin" size={18} /> : (
-                        <>Confirm Request <span className="opacity-80 text-xs font-medium ml-1 bg-black/10 px-1.5 py-0.5 rounded-md">₹{totalPrice}</span></>
+                        priceType === 'QUOTE' ? (
+                            "Request Quote"
+                        ) : (
+                            <>Confirm Request <span className="opacity-80 text-xs font-medium ml-1 bg-black/10 px-1.5 py-0.5 rounded-md">₹{totalPrice}</span></>
+                        )
                     )}
                 </button>
             </div>

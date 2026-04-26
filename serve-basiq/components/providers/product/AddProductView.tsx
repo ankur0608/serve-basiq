@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useProducts } from '@/app/hook/useProducts';
 import { X } from 'lucide-react';
 import { uploadToBackend } from '@/lib/uploadToBackend';
+import imageCompression from 'browser-image-compression';
 import { Step1Details } from './Step1Info';
 import { Step2Media } from './Step2Images';
 
@@ -19,6 +20,7 @@ export interface ProductForm {
     productImage: string;
     productImages: string[];
     gallery: string[];
+    priceType: string; 
     price: string;
     moq: string;
     stockStatus: string;
@@ -34,6 +36,17 @@ interface AddProductProps {
     editingProduct?: any;
 }
 
+// ✅ Image Compression Settings: Targets ~500KB for high-quality product photos
+const PRODUCT_IMAGE_COMPRESSION = {
+    maxSizeMB: 0.5,           // Targets a max of 500 KB
+    maxWidthOrHeight: 1920,   // Keeps images very sharp
+    useWebWorker: true,
+    fileType: "image/webp" as const,
+    initialQuality: 0.85      // High initial quality to keep it around the 350-500kb sweet spot
+};
+
+const MAX_VIDEO_SIZE_MB = 50; // Strict limit for frontend video uploads
+
 export function AddProductView({ setActiveView, userId, showToast, editingProduct }: AddProductProps) {
     const { saveProduct, isSaving } = useProducts(userId);
     const [step, setStep] = useState(1);
@@ -42,24 +55,18 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const [categories, setCategories] = useState<Category[]>([]);
 
     const [form, setForm] = useState<ProductForm>(() => {
-        // ✅ THE FIX: If there is a customCategory string, force categoryId to "OTHER"
         const isCustom = !!editingProduct?.customCategory;
 
         return {
             name: editingProduct?.name || '',
             desc: editingProduct?.desc || '',
-
-            // ✅ Set to "OTHER" if it was a custom category, otherwise use the real ID
             categoryId: isCustom ? 'OTHER' : (editingProduct?.categoryId || ''),
-
             subCategoryId: editingProduct?.subCategoryId || editingProduct?.subcategory?.id || '',
-
-            // ✅ Pre-fill the custom text!
             customCategoryName: editingProduct?.customCategory || '',
-
             productImage: editingProduct?.productImage || '',
             productImages: editingProduct?.productImages || [],
             gallery: editingProduct?.gallery || [],
+            priceType: editingProduct?.priceType || 'FIXED', 
             price: editingProduct?.price ? String(editingProduct.price) : '',
             moq: editingProduct?.moq ? String(editingProduct.moq) : '1',
             stockStatus: editingProduct?.stockStatus || 'IN_STOCK',
@@ -97,24 +104,24 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
-    // const handleMainImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    //     const file = e.target.files?.[0];
-    //     if (!file) return;
+    // ✅ Unified Media Processor: Compresses images to WebP, limits video sizes
+    const processAndUploadMedia = async (file: File): Promise<string> => {
+        if (file.type.startsWith('image/')) {
+            const compressedBlob = await imageCompression(file, PRODUCT_IMAGE_COMPRESSION);
+            const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+            const webpFile = new File([compressedBlob], newFileName, { type: 'image/webp' });
+            return await uploadToBackend(webpFile, "products");
+        } 
+        
+        if (file.type.startsWith('video/')) {
+            if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+                throw new Error(`Video exceeds the ${MAX_VIDEO_SIZE_MB}MB limit.`);
+            }
+            return await uploadToBackend(file, "products");
+        }
 
-    //     setUploading(true);
-    //     setActiveUploadField('main');
-
-    //     try {
-    //         const url = await uploadToBackend(file);
-    //         setForm(prev => ({ ...prev, productImage: url }));
-    //         showToast("Main image uploaded!", "success");
-    //     } catch (e) {
-    //         showToast("Upload failed", "error");
-    //     } finally {
-    //         setUploading(false);
-    //         setActiveUploadField(null);
-    //     }
-    // }, [showToast]);
+        throw new Error("Unsupported file type.");
+    };
 
     const handleMainImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -124,40 +131,16 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField('main');
 
         try {
-            // ✅ NEW: Added "products" folder
-            const url = await uploadToBackend(file, "products");
+            const url = await processAndUploadMedia(file);
             setForm(prev => ({ ...prev, productImage: url }));
-            showToast("Main image uploaded!", "success");
-        } catch (e) {
-            showToast("Upload failed", "error");
+            showToast("Main image uploaded successfully!", "success");
+        } catch (error: any) {
+            showToast(error.message || "Upload failed", "error");
         } finally {
             setUploading(false);
             setActiveUploadField(null);
         }
     }, [showToast]);
-
-    // const handleProductImagesUpload = useCallback(async (files: File[]) => {
-    //     if (!files || files.length === 0) return;
-    //     if (form.productImages.length + files.length > 5) {
-    //         showToast("You can only add up to 5 product images", "error");
-    //         return;
-    //     }
-
-    //     setUploading(true);
-    //     setActiveUploadField('productImages');
-
-    //     try {
-    //         const uploadPromises = files.map(file => uploadToBackend(file));
-    //         const uploadedUrls = await Promise.all(uploadPromises);
-    //         setForm(prev => ({ ...prev, productImages: [...prev.productImages, ...uploadedUrls].slice(0, 5) }));
-    //         showToast(`${uploadedUrls.length} product images uploaded!`, "success");
-    //     } catch (e) {
-    //         showToast("Upload failed", "error");
-    //     } finally {
-    //         setUploading(false);
-    //         setActiveUploadField(null);
-    //     }
-    // }, [form.productImages.length, showToast]);
 
     const handleProductImagesUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
@@ -170,13 +153,12 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField('productImages');
 
         try {
-            // ✅ NEW: Added "products" folder to the map function
-            const uploadPromises = files.map(file => uploadToBackend(file, "products"));
+            const uploadPromises = files.map(file => processAndUploadMedia(file));
             const uploadedUrls = await Promise.all(uploadPromises);
             setForm(prev => ({ ...prev, productImages: [...prev.productImages, ...uploadedUrls].slice(0, 5) }));
             showToast(`${uploadedUrls.length} product images uploaded!`, "success");
-        } catch (e) {
-            showToast("Upload failed", "error");
+        } catch (error: any) {
+            showToast(error.message || "Upload failed", "error");
         } finally {
             setUploading(false);
             setActiveUploadField(null);
@@ -191,25 +173,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         });
     }, []);
 
-    // const handleGalleryUpload = useCallback(async (files: File[]) => {
-    //     if (!files || files.length === 0) return;
-
-    //     setUploading(true);
-    //     setActiveUploadField('gallery');
-
-    //     try {
-    //         const uploadPromises = files.map(file => uploadToBackend(file));
-    //         const uploadedUrls = await Promise.all(uploadPromises);
-    //         setForm(prev => ({ ...prev, gallery: [...prev.gallery, ...uploadedUrls] }));
-    //         showToast(`${uploadedUrls.length} items added to gallery`, "success");
-    //     } catch (e) {
-    //         showToast("One or more items failed to upload", "error");
-    //     } finally {
-    //         setUploading(false);
-    //         setActiveUploadField(null);
-    //     }
-    // }, [showToast]);
-
     const handleGalleryUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
 
@@ -217,13 +180,12 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         setActiveUploadField('gallery');
 
         try {
-            // ✅ NEW: Added "products" folder to the map function
-            const uploadPromises = files.map(file => uploadToBackend(file, "products"));
+            const uploadPromises = files.map(file => processAndUploadMedia(file));
             const uploadedUrls = await Promise.all(uploadPromises);
             setForm(prev => ({ ...prev, gallery: [...prev.gallery, ...uploadedUrls] }));
             showToast(`${uploadedUrls.length} items added to gallery`, "success");
-        } catch (e) {
-            showToast("One or more items failed to upload", "error");
+        } catch (error: any) {
+            showToast(error.message || "One or more items failed to upload", "error");
         } finally {
             setUploading(false);
             setActiveUploadField(null);
@@ -249,12 +211,12 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         const payload = {
             id: editingProduct?.id,
             ...form,
-            subCategoryId: form.categoryId === 'OTHER' ? '' : form.subCategoryId,
-            customCategoryName: form.categoryId === 'OTHER' ? form.customCategoryName : undefined,
-            price: parseFloat(form.price),
+            subCategoryId: (form.categoryId === 'OTHER' || form.subCategoryId === 'OTHER') ? '' : form.subCategoryId,
+            customCategoryName: (form.categoryId === 'OTHER' || form.subCategoryId === 'OTHER') ? form.customCategoryName : undefined,
+            priceType: form.priceType, 
+            price: form.priceType === 'QUOTE' ? 0 : parseFloat(form.price), 
             moq: parseInt(form.moq),
         };
-
         try {
             await saveProduct(payload);
             showToast(editingProduct ? "Product Updated!" : "Product Created!", "success");

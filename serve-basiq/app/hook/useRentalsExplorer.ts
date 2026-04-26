@@ -1,5 +1,15 @@
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData, InfiniteData } from '@tanstack/react-query';
 import { useMemo } from 'react';
+
+export interface UserProfile {
+    id: string;
+    name: string;
+    email?: string;
+    image?: string;
+    isPhoneVerified?: boolean;
+    phone?: string;
+    addresses?: any[];
+}
 
 export interface RentalItem {
     id: string;
@@ -32,6 +42,32 @@ export interface CategoryData {
     children: { id: string; name: string }[];
 }
 
+interface UseRentalsProps {
+    category?: string;
+    subcategory?: string;
+    search?: string;
+    location?: string;
+    sort?: string;
+}
+
+interface FetchRentalsResponse {
+    items: any[];
+    nextCursor?: string | null;
+}
+
+export interface UseRentalsExplorerResult {
+    currentUser: UserProfile | null | undefined;
+    rawRentals: RentalItem[];
+    rawCategories: CategoryData[];
+    isLoading: boolean;
+    isFetching: boolean;
+    fetchNextPage: () => void;
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    favoriteIds: string[];
+    toggleFavorite: (variables: { id: string; type: 'RENTAL' | 'SERVICE' }) => void;
+}
+
 const normalizeRentals = (data: any[]): RentalItem[] => {
     if (!Array.isArray(data)) return [];
     return data.map((item: any) => {
@@ -41,7 +77,9 @@ const normalizeRentals = (data: any[]): RentalItem[] => {
         const effectiveMonthly = Number(item.monthlyPrice) || (type === 'MONTHLY' ? genericPrice : 0);
         const effectiveFixed = Number(item.fixedPrice) || (type === 'FIXED' ? genericPrice : 0);
         const displayPrice = effectiveDaily || effectiveFixed || effectiveMonthly || genericPrice;
-        const displayType = effectiveDaily ? 'DAILY' : (effectiveFixed ? 'FIXED' : 'MONTHLY');
+        
+        // Ensure "QUOTE" is preserved to fix the pricing display issue
+        const displayType = type === 'QUOTE' ? 'QUOTE' : (effectiveDaily ? 'DAILY' : (effectiveFixed ? 'FIXED' : 'MONTHLY'));
 
         return {
             id: item.id,
@@ -69,18 +107,10 @@ const normalizeRentals = (data: any[]): RentalItem[] => {
     });
 };
 
-interface UseRentalsProps {
-    category?: string;
-    subcategory?: string;
-    search?: string;
-    location?: string;
-    sort?: string;
-}
-
-export function useRentalsExplorer({ category, subcategory, search, location, sort }: UseRentalsProps = {}) {
+export function useRentalsExplorer({ category, subcategory, search, location, sort }: UseRentalsProps = {}): UseRentalsExplorerResult {
     const queryClient = useQueryClient();
 
-    const { data: currentUser } = useQuery({
+    const { data: currentUser } = useQuery<UserProfile | null>({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
             const res = await fetch('/api/user/profile');
@@ -90,7 +120,7 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
         staleTime: 1000 * 60 * 10,
     });
 
-    const { data: categoriesData } = useQuery({
+    const { data: categoriesData } = useQuery<CategoryData[]>({
         queryKey: ['categories', 'rental'],
         queryFn: async () => {
             const res = await fetch('/api/categories?type=RENTAL');
@@ -106,7 +136,6 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
             const res = await fetch('/api/favorites?type=RENTAL');
             if (!res.ok) return [];
             const data = await res.json();
-
             return data.map((f: any) => f.itemId || f.rentalId || f.id);
         },
         enabled: !!currentUser,
@@ -125,13 +154,10 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
         },
         onMutate: async ({ id }) => {
             await queryClient.cancelQueries({ queryKey: ['favorites', 'RENTAL'] });
-
             const previousFavorites = queryClient.getQueryData<string[]>(['favorites', 'RENTAL']);
-
             queryClient.setQueryData<string[]>(['favorites', 'RENTAL'], (old = []) =>
                 old.includes(id) ? old.filter(favId => favId !== id) : [...old, id]
             );
-
             return { previousFavorites };
         },
         onError: (err, variables, context) => {
@@ -143,6 +169,7 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
             queryClient.invalidateQueries({ queryKey: ['favorites', 'RENTAL'] });
         }
     });
+
     const {
         data,
         fetchNextPage,
@@ -150,12 +177,11 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
         isFetchingNextPage,
         isLoading,
         isFetching
-    } = useInfiniteQuery({
+    } = useInfiniteQuery<FetchRentalsResponse, Error, InfiniteData<FetchRentalsResponse>>({
         queryKey: ['rentals', 'infinite', category, subcategory, search, location, sort],
         queryFn: async ({ pageParam = undefined }) => {
             const params = new URLSearchParams();
             params.append('limit', '24');
-
             if (pageParam) params.append('cursor', pageParam as string);
             if (category) params.append('categoryId', category);
             if (subcategory) params.append('subcategoryId', subcategory);
@@ -166,18 +192,18 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
             const res = await fetch(`/api/rentals?${params.toString()}`);
             return res.json();
         },
-        getNextPageParam: (lastPage: any) => lastPage.nextCursor,
+        getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
         initialPageParam: undefined,
         placeholderData: keepPreviousData,
         staleTime: 1000 * 60 * 5,
     });
 
-    const rawRentals = useMemo(() => {
+    const rawRentals = useMemo<RentalItem[]>(() => {
         if (!data) return [];
-        const allItems = data.pages.flatMap((page: any) => page.items || []);
+        const allItems = data.pages.flatMap((page) => page.items || []);
         const normalizedItems = normalizeRentals(allItems);
 
-        const uniqueMap = new Map();
+        const uniqueMap = new Map<string, RentalItem>();
         normalizedItems.forEach((item) => {
             if (!uniqueMap.has(item.id)) {
                 uniqueMap.set(item.id, item);
@@ -190,13 +216,13 @@ export function useRentalsExplorer({ category, subcategory, search, location, so
     return {
         currentUser,
         rawRentals,
-        rawCategories: (categoriesData || []) as CategoryData[],
+        rawCategories: categoriesData || [],
         isLoading,
         isFetching,
-        fetchNextPage,
-        hasNextPage,
+        fetchNextPage: () => fetchNextPage(),
+        hasNextPage: !!hasNextPage,
         isFetchingNextPage,
-        favoriteIds,      
-        toggleFavorite    
+        favoriteIds,
+        toggleFavorite
     };
 }

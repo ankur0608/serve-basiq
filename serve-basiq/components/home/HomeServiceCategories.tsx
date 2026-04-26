@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FaScrewdriverWrench } from 'react-icons/fa6';
+import AppImage from '@/components/ui/AppImage';
 
 interface Category {
     id: string;
@@ -14,12 +15,10 @@ interface CategoryProps {
 }
 
 export default function HomeServiceCategories({ categories }: CategoryProps) {
-    // We take the first 6 categories
     const displayCategories = categories.slice(0, 6);
 
     return (
         <div>
-            {/* Header Section */}
             <div className="flex justify-between items-center mb-4 md:mb-6 px-1">
                 <div className="flex items-center gap-3">
                     <h2 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -28,7 +27,7 @@ export default function HomeServiceCategories({ categories }: CategoryProps) {
                 </div>
 
                 <Link
-                    href="/categories"
+                    href="/categories?tab=SERVICE"
                     className="text-xs font-bold text-slate-500 hover:text-brand-600 uppercase tracking-wide"
                 >
                     View All
@@ -39,22 +38,24 @@ export default function HomeServiceCategories({ categories }: CategoryProps) {
                 {displayCategories.length > 0 ? (
                     displayCategories.map((cat, index) => (
                         <Link
-                            href={`/services/category/${cat.id}`}
+                            href={`/services?categoryId=${cat.id}`}
                             key={cat.id}
                             className={`
-                bg-white border border-gray-100 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex-col items-center justify-center
-                p-2 md:p-4 
-                h-24 md:h-32
-                ${index > 3 ? 'hidden md:flex' : 'flex'}
-              `}
+                                bg-white border border-gray-100 rounded-xl text-center hover:shadow-md transition cursor-pointer active:scale-95 group flex-col items-center justify-center
+                                p-2 md:p-4 
+                                h-24 md:h-32
+                                ${index > 3 ? 'hidden md:flex' : 'flex'}
+                            `}
                         >
-                            {/* Image Container - Smaller on mobile */}
                             <div className="w-full h-8 md:h-12 mb-2 relative group-hover:scale-110 transition flex items-center justify-center">
                                 {cat.image ? (
-                                    <img
+                                    <AppImage
                                         src={cat.image}
                                         alt={cat.name}
-                                        className="object-contain max-h-full max-w-full"
+                                        type="icon"
+                                        imageClassName="object-contain"
+                                        className="w-full h-full"
+                                        sizes="(max-width: 768px) 25vw, (max-width: 1200px) 16vw, 10vw"
                                     />
                                 ) : (
                                     <div className="w-full h-full bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg md:text-xl">
@@ -63,7 +64,6 @@ export default function HomeServiceCategories({ categories }: CategoryProps) {
                                 )}
                             </div>
 
-                            {/* Category Name - Smaller text on mobile */}
                             <div className="text-[10px] md:text-xs font-bold text-slate-700 uppercase tracking-wide line-clamp-2 leading-tight">
                                 {cat.name}
                             </div>

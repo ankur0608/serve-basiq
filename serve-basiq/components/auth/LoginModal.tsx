@@ -227,36 +227,32 @@
 //   );
 // }
 
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { FaXmark, FaGoogle, FaMobileScreen, FaUser, FaBriefcase, FaArrowLeft } from "react-icons/fa6";
 import clsx from "clsx";
+import { FcGoogle } from "react-icons/fc";
 import { signIn } from "next-auth/react";
 import { useUIStore } from "@/lib/store";
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialStep?: "SELECT_ROLE" | "INPUT_DETAILS";
+  initialRole?: "user" | "provider";
 }
 
 type ModalStep = "SELECT_ROLE" | "INPUT_DETAILS";
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
-  // UI States
+export default function LoginModal({ isOpen, onClose, initialStep = "SELECT_ROLE", initialRole }: LoginModalProps) {
   const [showModal, setShowModal] = useState(false);
-  const [step, setStep] = useState<ModalStep>("SELECT_ROLE");
-
-  // Form Data
+  const [step, setStep] = useState<ModalStep>(initialStep);
   const [phone, setPhone] = useState("");
-
-  // States
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  // Store actions
   const onOpenOtp = useUIStore((state) => state.onOpenOtp);
   const setLoginIntent = useUIStore((state) => state.setLoginIntent);
   const loginIntent = useUIStore((state) => state.loginIntent);
@@ -264,7 +260,13 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   useEffect(() => {
     if (isOpen) {
       setShowModal(true);
-      setStep("SELECT_ROLE");
+      setStep(initialStep);
+
+      // If an initial role is provided, set it in the store immediately
+      if (initialRole) {
+        setLoginIntent(initialRole);
+      }
+
       document.body.style.overflow = "hidden";
       setError("");
       setPhone("");
@@ -273,7 +275,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       document.body.style.overflow = "unset";
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, initialStep, initialRole, setLoginIntent]);
 
   const handleRoleSelect = (role: 'user' | 'provider') => {
     setLoginIntent(role);
@@ -306,9 +308,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         return;
       }
 
-      // ✅ Pass verificationId to the store
       onOpenOtp(phone, data.verificationId, data.isNewUser);
-
     } catch (err) {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -340,19 +340,18 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4 text-center">
-
         <div
           className={clsx("fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300", isOpen ? "opacity-100" : "opacity-0")}
           onClick={onClose}
         />
 
         <div className={clsx("relative w-full max-w-md bg-white rounded-3xl shadow-2xl text-left transform transition-all duration-300", isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4")}>
-
           <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition-colors">
             <FaXmark className="text-lg" />
           </button>
 
-          {step === "INPUT_DETAILS" && (
+          {/* Only show the back button if they didn't skip the role selection via props */}
+          {step === "INPUT_DETAILS" && !initialRole && (
             <button onClick={() => setStep("SELECT_ROLE")} className="absolute top-4 left-4 p-2 text-gray-400 hover:text-slate-900 hover:bg-gray-100 rounded-full z-10 transition-colors">
               <FaArrowLeft className="text-lg" />
             </button>
@@ -442,8 +441,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   disabled={isLoading || isGoogleLoading}
                   className="w-full flex items-center justify-center gap-3 py-3.5 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 font-bold text-slate-700 transition-all active:scale-95 disabled:opacity-50 shadow-sm"
                 >
-                  {isGoogleLoading ? <span className="h-5 w-5 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin"></span> : <FaGoogle className="text-xl text-red-500" />}
-                  <span>Google</span>
+                  {isGoogleLoading ? <span className="h-5 w-5 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin"></span> : <FcGoogle size={25} />}
+                  <span>Login with Google</span>
                 </button>
               </div>
             )}

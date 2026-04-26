@@ -37,7 +37,6 @@ export default function ProductFiltersMobile({
         setIsOpen(false);
     };
 
-    // 👇 Updated: Modal stays open after reset
     const handleReset = () => {
         resetFilters();
     };
@@ -115,24 +114,29 @@ export default function ProductFiltersMobile({
                                 </div>
                             </div>
 
-                            {/* Subcategory Group */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subcategory</label>
-                                <div className="relative">
-                                    <select
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-700 appearance-none focus:ring-2 focus:ring-slate-900 disabled:opacity-50"
-                                        value={selectedSubcategory}
-                                        onChange={(e) => setSelectedSubcategory(e.target.value)}
-                                        disabled={!selectedCategory || availableSubcategories.length === 0}
-                                    >
-                                        <option value="">All Subcategories</option>
-                                        {availableSubcategories.map((sub) => (
-                                            <option key={sub.id} value={sub.id}>{sub.name}</option>
-                                        ))}
-                                    </select>
-                                    <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
+                            {/* Subcategory Group - ONLY SHOWS IF CATEGORY IS SELECTED */}
+                            {selectedCategory && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subcategory</label>
+                                    <div className="relative">
+                                        <select
+                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-700 appearance-none focus:ring-2 focus:ring-slate-900 disabled:opacity-50"
+                                            value={selectedSubcategory}
+                                            onChange={(e) => setSelectedSubcategory(e.target.value)}
+                                            disabled={availableSubcategories.length === 0}
+                                        >
+                                            <option value="">All Subcategories</option>
+                                            {availableSubcategories.map((sub) => (
+                                                <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                            ))}
+                                        </select>
+                                        <Filter className="absolute right-3 top-3.5 text-slate-400 w-4 h-4 pointer-events-none" />
+                                    </div>
+                                    {availableSubcategories.length === 0 && (
+                                        <p className="text-[10px] text-slate-400 ml-1">No subcategories available</p>
+                                    )}
                                 </div>
-                            </div>
+                            )}
 
                             {/* Location Group */}
                             <div className="space-y-2">

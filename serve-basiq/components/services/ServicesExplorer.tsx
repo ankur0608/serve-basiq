@@ -8,7 +8,7 @@ import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6';
 import { useServicesExplorer } from '@/app/hook/useServicesExplorer';
 import { useDebounce } from '@/app/hook/useDebounce';
 import ServiceCard from '@/components/ui/ServiceCard';
-import ServiceCategories from '../home/ServiceCategories';
+import ServiceCategories from '../home/ServiceCategories'; // Adjust path if needed
 import ServiceFiltersDesktop from './ServiceFiltersDesktop';
 import ServiceFiltersMobile from './ServiceFiltersMobile';
 import { ProductsSkeleton } from '../products/ProductsSkeleton';
@@ -19,13 +19,28 @@ export default function ServicesExplorer() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
-
+    const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
     const [selectedLocation, setSelectedLocation] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
+
+    // ✅ FIXED: Changed 'category' to 'categoryId' to match the Link from the top bar
+    const [selectedCategory, setSelectedCategory] = useState(searchParams.get('categoryId') || '');
     const [selectedSubcategory, setSelectedSubcategory] = useState(searchParams.get('subcategory') || '');
     const [sortOption, setSortOption] = useState('');
 
     const observerTarget = useRef<HTMLDivElement>(null);
+
+    // ✅ FIXED: Added useEffect to listen to URL changes when a user clicks a top-bar category
+    useEffect(() => {
+        const urlCategoryId = searchParams.get('categoryId');
+        if (urlCategoryId !== null) {
+            setSelectedCategory(urlCategoryId);
+            // Optionally clear subcategory when main category changes via URL
+            setSelectedSubcategory('');
+        } else {
+            // If they go back to /services with no params, clear it
+            setSelectedCategory('');
+        }
+    }, [searchParams]);
 
     const {
         services,
@@ -47,23 +62,34 @@ export default function ServicesExplorer() {
     });
 
     const availableSubcategories = useMemo(() => {
-        if (!selectedCategory) return [];
+        if (!selectedCategory || !categories?.length) return [];
         const cat = categories.find((c: any) => String(c.id) === String(selectedCategory));
         return cat ? cat.children : [];
     }, [selectedCategory, categories]);
 
-    const uniqueLocations = useMemo(() =>
-        [...new Set(services.map(i => i.location).filter(Boolean))].sort(),
-        [services]);
+    useEffect(() => {
+        if (services?.length) {
+            setUniqueLocations((prevLocations) => {
+                // Get locations from current services
+                const currentLocations = services.map((i: any) => i.location).filter(Boolean);
 
-    const resetFilters = () => {
+                // Combine them with previously seen locations so they don't disappear
+                const combined = new Set([...prevLocations, ...currentLocations]);
+
+                return Array.from(combined).sort();
+            });
+        }
+    }, [services]);
+
+    const resetFilters = useCallback(() => {
         setSearchTerm('');
         setSelectedLocation('');
         setSelectedCategory('');
         setSelectedSubcategory('');
         setSortOption('');
-        router.push('/services');
-    };
+        // ✅ FIXED: Clear the URL parameters completely
+        router.push('/services', { scroll: false });
+    }, [router]);
 
     const handleToggleFav = useCallback((e: React.MouseEvent, id: string) => {
         e.preventDefault(); e.stopPropagation();
@@ -71,22 +97,22 @@ export default function ServicesExplorer() {
     }, [toggleFavorite]);
 
     useEffect(() => {
+        if (!hasNextPage || isFetchingNextPage || isFetching) return;
+
         const observer = new IntersectionObserver(
             (entries) => {
-                const target = entries[0];
-                if (target.isIntersecting && hasNextPage && !isFetchingNextPage && !isFetching) {
+                if (entries[0].isIntersecting) {
                     fetchNextPage();
                 }
             },
-            { threshold: 0, rootMargin: '800px' }
+            { threshold: 0, rootMargin: '400px' }
         );
 
-        const currentTarget = observerTarget.current;
-        if (currentTarget) observer.observe(currentTarget);
+        if (observerTarget.current) {
+            observer.observe(observerTarget.current);
+        }
 
-        return () => {
-            if (currentTarget) observer.unobserve(currentTarget);
-        };
+        return () => observer.disconnect();
     }, [hasNextPage, fetchNextPage, isFetchingNextPage, isFetching]);
 
     if (isLoading) return <ProductsSkeleton />;
@@ -184,12 +210,12 @@ export default function ServicesExplorer() {
                         ) : (
                             <>
                                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                    {services.map((item) => (
+                                    {services.map((item: any) => (
                                         <ServiceCard
                                             key={item.id}
                                             service={item}
                                             isFav={favoriteIds.includes(item.id)}
-                                            toggleFav={(e) => handleToggleFav(e!, item.id)}
+                                            toggleFav={(e: any) => handleToggleFav(e, item.id)}
                                             currentUser={currentUser}
                                         />
                                     ))}

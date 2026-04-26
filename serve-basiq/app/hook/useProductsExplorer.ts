@@ -1,22 +1,37 @@
 import { useMemo } from 'react';
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient, keepPreviousData, InfiniteData } from '@tanstack/react-query';
+
+export interface UserProfile {
+    id: string;
+    name: string;
+    email?: string;
+    image?: string;
+    isPhoneVerified?: boolean;
+    phone?: string;
+    addresses?: any[];
+}
 
 export interface ProductItem {
     id: string;
     name: string;
     description: string;
     price: number;
+    priceType: string; 
     minOrderQty: number;
+    minOrder?: number;
     unit: string;
     images: string[];
+    image?: string;
     categoryId?: string;
     categoryName: string;
+    category?: any;
     subcategoryId?: string;
     subcategoryName?: string;
     rating: number;
     reviewsCount: number;
     inStock: boolean;
     location: string;
+    user?: any;
     provider: {
         id: string;
         name: string;
@@ -24,6 +39,7 @@ export interface ProductItem {
         image: string;
         verified: boolean;
     };
+    [key: string]: any;
 }
 
 export interface CategoryData {
@@ -33,7 +49,25 @@ export interface CategoryData {
     children: { id: string; name: string }[];
 }
 
-// Normalizer
+interface FetchProductsResponse {
+    products?: any[];
+    items?: any[];
+    nextCursor?: string | null;
+}
+
+export interface UseProductsExplorerResult {
+    currentUser: UserProfile | null | undefined;
+    favorites: string[];
+    toggleFavorite: (e: React.MouseEvent, id: string) => void;
+    rawProducts: ProductItem[];
+    rawCategories: CategoryData[];
+    isLoading: boolean;
+    isFetching: boolean;
+    fetchNextPage: () => void;
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+}
+
 const normalizeProducts = (data: any[]): ProductItem[] => {
     if (!Array.isArray(data)) return [];
     return data.map((item: any) => {
@@ -45,14 +79,27 @@ const normalizeProducts = (data: any[]): ProductItem[] => {
         const validImages = rawImageList.filter(url => !url.includes('via.placeholder.com'));
         if (validImages.length === 0) validImages.push("https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80");
 
+        // ✅ THE BULLETPROOF FIX:
+        const rawPrice = Number(item.price) || 0;
+        let displayType = String(item.priceType || 'FIXED').toUpperCase();
+
+        // If price is 0, ALWAYS treat it as a Quote
+        if (rawPrice === 0) {
+            displayType = 'QUOTE';
+        }
+
         return {
+            ...item,
             id: item.id,
             name: item.name,
             description: item.description || item.desc || "",
-            price: Number(item.price) || 0,
+            price: rawPrice,
+            priceType: displayType, // ✅ Safe display type applied
             minOrderQty: item.moq || item.minOrderQty || 1,
+            minOrder: item.minOrder || item.moq || item.minOrderQty || 1,
             unit: item.unit || 'pcs',
             images: validImages,
+            image: validImages[0],
             categoryId: item.category?.id || item.categoryId,
             categoryName: item.category?.name || item.categoryName || "General",
             subcategoryId: item.subcategory?.id || item.subcategoryId,
@@ -60,7 +107,6 @@ const normalizeProducts = (data: any[]): ProductItem[] => {
             rating: item.rating || 0,
             reviewsCount: item.reviewsCount || item._count?.reviews || 0,
             inStock: item.inStock !== false && item.stockStatus !== 'OUT_OF_STOCK',
-            // Location is now sent properly formatted from the API
             location: item.location || "Worldwide",
             provider: {
                 id: item.provider?.id || item.user?.id,
@@ -87,11 +133,10 @@ export function useProductsExplorer({
     search = "",
     location,
     sort
-}: UseProductsExplorerProps = {}) {
+}: UseProductsExplorerProps = {}): UseProductsExplorerResult {
     const queryClient = useQueryClient();
 
-    // 1. Fetch User Profile
-    const { data: currentUser } = useQuery({
+    const { data: currentUser } = useQuery<UserProfile | null>({
         queryKey: ['user', 'profile'],
         queryFn: async () => {
             const res = await fetch('/api/user/profile');
@@ -101,7 +146,7 @@ export function useProductsExplorer({
         staleTime: 1000 * 60 * 10,
     });
 
-    const { data: favData } = useQuery({
+    const { data: favData } = useQuery<{ products: string[] }>({
         queryKey: ['favorites', 'user'],
         queryFn: async () => {
             const res = await fetch('/api/user/favorites');
@@ -111,7 +156,6 @@ export function useProductsExplorer({
         staleTime: 1000 * 60 * 5,
     });
 
-    // 3. INFINITE Query
     const {
         data,
         fetchNextPage,
@@ -119,7 +163,7 @@ export function useProductsExplorer({
         isFetchingNextPage,
         isLoading,
         isFetching,
-    } = useInfiniteQuery({
+    } = useInfiniteQuery<FetchProductsResponse, Error, InfiniteData<FetchProductsResponse>>({
         queryKey: ['products', 'infinite', category, subcategory, search, location, sort],
         queryFn: async ({ pageParam = undefined }) => {
             const params = new URLSearchParams();
@@ -136,7 +180,7 @@ export function useProductsExplorer({
             if (!res.ok) throw new Error("Failed to fetch products");
             return res.json();
         },
-        getNextPageParam: (lastPage: any) => lastPage.nextCursor ?? undefined,
+        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
         initialPageParam: undefined,
         placeholderData: keepPreviousData,
         staleTime: 1000 * 60 * 5,
@@ -144,14 +188,13 @@ export function useProductsExplorer({
         refetchOnWindowFocus: false,
     });
 
-    const rawProducts = useMemo(() => {
+    const rawProducts = useMemo<ProductItem[]>(() => {
         if (!data) return [];
 
-        const allItems = data.pages.flatMap((page: any) => page.products || page.items || []);
-
+        const allItems = data.pages.flatMap((page) => page.products || page.items || []);
         const normalizedItems = normalizeProducts(allItems);
 
-        const uniqueMap = new Map();
+        const uniqueMap = new Map<string, ProductItem>();
         normalizedItems.forEach((item) => {
             if (!uniqueMap.has(item.id)) {
                 uniqueMap.set(item.id, item);
@@ -161,7 +204,7 @@ export function useProductsExplorer({
         return Array.from(uniqueMap.values());
     }, [data]);
 
-    const { data: categoriesData } = useQuery({
+    const { data: categoriesData } = useQuery<CategoryData[]>({
         queryKey: ['categories', 'product'],
         queryFn: async () => {
             const res = await fetch('/api/categories?type=PRODUCT');
@@ -180,19 +223,21 @@ export function useProductsExplorer({
         },
         onMutate: async ({ id }) => {
             await queryClient.cancelQueries({ queryKey: ['favorites', 'user'] });
-            const previousFavs = queryClient.getQueryData(['favorites', 'user']);
+            const previousFavs = queryClient.getQueryData<{ products: string[] }>(['favorites', 'user']);
 
-            queryClient.setQueryData(['favorites', 'user'], (old: any) => {
+            queryClient.setQueryData<{ products: string[] }>(['favorites', 'user'], (old) => {
                 const list = old?.products || [];
                 return {
-                    ...old,
+                    ...(old || {}),
                     products: list.includes(id) ? list.filter((x: string) => x !== id) : [...list, id]
                 };
             });
             return { previousFavs };
         },
         onError: (err, vars, context) => {
-            queryClient.setQueryData(['favorites', 'user'], context?.previousFavs);
+            if (context?.previousFavs) {
+                queryClient.setQueryData(['favorites', 'user'], context.previousFavs);
+            }
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['favorites', 'user'] });
@@ -207,11 +252,11 @@ export function useProductsExplorer({
             toggleMutation.mutate({ id });
         },
         rawProducts,
-        rawCategories: (categoriesData || []) as CategoryData[],
+        rawCategories: categoriesData || [],
         isLoading,
         isFetching,
-        fetchNextPage,
-        hasNextPage,
+        fetchNextPage: () => fetchNextPage(),
+        hasNextPage: !!hasNextPage,
         isFetchingNextPage
     };
 }

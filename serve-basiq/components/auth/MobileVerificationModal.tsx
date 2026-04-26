@@ -17,9 +17,10 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
   const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(["", "", "", ""]);
+  const [verificationId, setVerificationId] = useState(''); // ✅ Added state for verificationId
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(''); // ✅ Handle errors visually
+  const [errorMessage, setErrorMessage] = useState('');
 
   const router = useRouter();
   const { update } = useSession();
@@ -31,6 +32,7 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
       setPhone('');
       setOtp(["", "", "", ""]);
       setErrorMessage('');
+      setVerificationId(''); // ✅ Clear verificationId
     }
   }, [isOpen]);
 
@@ -83,6 +85,7 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
         if (data.otp) {
           setOtp(data.otp.toString().split(""));
         }
+        setVerificationId(data.verificationId); // ✅ Save the verificationId from the backend
         setStep('OTP');
       } else {
         setErrorMessage(data.error || 'Failed to send OTP');
@@ -107,8 +110,8 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // ✅ PASS userId HERE (This triggers Scenario A in your API)
-        body: JSON.stringify({ phone, otp: code, userId }),
+        // ✅ PASS userId AND verificationId HERE
+        body: JSON.stringify({ phone, otp: code, userId, verificationId }),
       });
 
       const data = await res.json();
@@ -224,6 +227,7 @@ export default function MobileVerificationModal({ userId, isOpen, onClose, onSuc
                   setStep('PHONE');
                   setOtp(["", "", "", ""]);
                   setErrorMessage('');
+                  setVerificationId(''); 
                 }}
                 className="w-full flex items-center justify-center gap-2 text-sm text-slate-500 font-bold hover:text-slate-900 transition"
               >

@@ -1,69 +1,56 @@
 import { useState, useCallback } from 'react';
+import { uploadToBackend } from '@/lib/uploadToBackend'; 
+import imageCompression from 'browser-image-compression';
+
+// ✅ Custom settings for Documents: Higher resolution than avatars so text remains readable
+const DOC_COMPRESSION_OPTIONS = {
+    maxSizeMB: 0.5,           // Targets ~500KB (perfect for reading text on IDs)
+    maxWidthOrHeight: 1920,   // Keeps enough pixels to read fine print
+    useWebWorker: true,
+    fileType: "image/webp" as const,
+    initialQuality: 0.8
+};
 
 export function useVerification() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const uploadDocument = useCallback(async (file: File | Blob) => {
-        const filename = 'name' in file ? file.name : 'compressed-document.jpg';
-        const fileType = file.type || 'image/jpeg';
-        const fileSize = file.size;
-
-        // ✅ NEW: Add the folder property to the payload!
-        const payload = {
-            filename,
-            fileType,
-            fileSize,
-            folder: "users"
-        };
-
-        const res = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) {
-            const errText = await res.text();
-            console.error("🔥 [Hook] /api/upload error body:", errText);
-
-            let errorMessage = 'Failed to generate upload URL';
-            try {
-                const errData = JSON.parse(errText);
-                errorMessage = errData.message || errorMessage;
-            } catch (e) {
-                // Ignore parse error on the error response itself
+        try {
+            // 1. Standardize the incoming file
+            let originalFile: File;
+            if (file instanceof File) {
+                originalFile = file;
+            } else {
+                originalFile = new File([file], 'verification-document.jpg', { 
+                    type: file.type || 'image/jpeg' 
+                });
             }
-            throw new Error(errorMessage);
+
+            // 2. Compress and forcefully convert to WebP format
+            const compressedBlob = await imageCompression(originalFile, DOC_COMPRESSION_OPTIONS);
+            
+            // 3. Rename the file to ensure it has the .webp extension
+            const newFileName = originalFile.name.replace(/\.[^/.]+$/, "") + ".webp";
+            const webpFile = new File([compressedBlob], newFileName, { 
+                type: 'image/webp' 
+            });
+
+            // 4. Upload the new WebP file to Cloudflare R2
+            const publicUrl = await uploadToBackend(webpFile, "users");
+            
+            return publicUrl;
+            
+        } catch (error: any) {
+            console.error("🔥 [Hook] Document upload/compression failed:", error);
+            throw new Error(error.message || 'Failed to process and upload document');
         }
-
-        const data = await res.json();
-
-        const { uploadUrl, publicUrl } = data;
-
-        const uploadRes = await fetch(uploadUrl, {
-            method: 'PUT',
-            body: file,
-            headers: { 'Content-Type': fileType },
-        });
-
-
-        if (!uploadRes.ok) {
-            const r2Error = await uploadRes.text();
-            console.error("🔥 [Hook] R2 Upload failed:", r2Error);
-            throw new Error('Failed to upload file to storage bucket');
-        }
-
-        return publicUrl;
     }, []);
 
     const submitVerificationData = useCallback(async (userId: string, form: any, existingProviderType: string) => {
         setIsSubmitting(true);
         try {
-            // console.log("🚀 [Hook] Submitting verification data for user:", userId);
-
             // Update Provider Status if it has changed
             if (form.providerType !== existingProviderType) {
-                // console.log("🔄 [Hook] Updating provider status to:", form.providerType);
                 await fetch('/api/user/status', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -72,7 +59,6 @@ export function useVerification() {
             }
 
             // Submit Final Verification Data
-            // console.log("📤 [Hook] Sending profile update data...");
             const res = await fetch('/api/provider/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -86,7 +72,6 @@ export function useVerification() {
                 throw new Error(data.error || data.message || 'Submission failed');
             }
 
-            // console.log("✅ [Hook] Verification data submitted successfully!");
             return true;
         } catch (error: any) {
             console.error("🔥 [Hook] submitVerificationData error:", error);

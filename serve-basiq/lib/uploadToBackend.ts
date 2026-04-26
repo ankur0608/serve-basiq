@@ -27,7 +27,11 @@ export async function uploadToBackend(file: File, folder: string = "misc"): Prom
         // console.log(`✅ [uploadToBackend] Step 1 Complete: Presigned URL received!`);
         // console.log(`🌐 [uploadToBackend] Final Public URL will be: ${publicUrl}`);
 
-        // console.log(`⏳ [uploadToBackend] Step 2: Uploading file directly to Cloudflare R2...`);
+        console.log(`⏳ [uploadToBackend] Step 2: Uploading file directly to Cloudflare R2...`);
+        
+        // ⏱️ START THE UPLOAD TIMER
+        const startTime = performance.now();
+
         const r2Res = await fetch(uploadUrl, {
             method: 'PUT',
             body: file,
@@ -36,12 +40,18 @@ export async function uploadToBackend(file: File, folder: string = "misc"): Prom
             },
         });
 
+        // ⏱️ STOP THE UPLOAD TIMER
+        const endTime = performance.now();
+        const timeTakenMs = endTime - startTime;
+        const timeTakenSec = (timeTakenMs / 1000).toFixed(2);
+
         if (!r2Res.ok) {
             console.error(`❌ [uploadToBackend] R2 Upload Failed with status: ${r2Res.status}`);
             throw new Error('Failed to upload file directly to Cloudflare R2');
         }
 
-        // console.log(`✅ [uploadToBackend] Step 2 Complete: File successfully uploaded to R2!`);
+        // ✅ LOG THE FINAL TIME AND FILE SIZE
+        console.log(`✅ [uploadToBackend] Upload finished in ${timeTakenSec} seconds (${timeTakenMs.toFixed(0)}ms). File size: ${(file.size / 1024).toFixed(2)} KB`);
 
         return publicUrl;
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // ✅ Imported useState
+import React, { useState } from 'react';
 import AppImage from '@/components/ui/AppImage';
 import { UploadCloud, Loader2, Trash2, Plus, PlayCircle, FileVideo, Save } from 'lucide-react';
 import { ProductForm } from './AddProductView';
@@ -18,6 +18,10 @@ interface Step2Props {
     editingProduct?: any;
 }
 
+// ✅ Added File Size Constants to match backend
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
+
 export function Step2Media({
     form,
     uploading,
@@ -33,7 +37,6 @@ export function Step2Media({
 }: Step2Props) {
     const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 
-    // ✅ State to hold validation errors
     const [errors, setErrors] = useState<{ main?: string; angles?: string; gallery?: string }>({});
 
     const compressionOptions = {
@@ -49,7 +52,13 @@ export function Step2Media({
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setErrors(prev => ({ ...prev, main: undefined })); // ✅ Clear error on upload
+        // ✅ Check main image size
+        if (file.size > MAX_IMAGE_SIZE) {
+            setErrors(prev => ({ ...prev, main: "Image exceeds 5MB limit. Please select a smaller file." }));
+            return;
+        }
+
+        setErrors(prev => ({ ...prev, main: undefined }));
 
         try {
             const compressedBlob = await imageCompression(file, compressionOptions);
@@ -62,7 +71,7 @@ export function Step2Media({
 
             handleMainImageUpload(syntheticEvent);
         } catch (error) {
-            handleMainImageUpload(e); // Fallback to uncompressed
+            handleMainImageUpload(e);
         }
     };
 
@@ -70,12 +79,19 @@ export function Step2Media({
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
-        setErrors(prev => ({ ...prev, angles: undefined })); // ✅ Clear error on upload
+        let hasSizeError = false;
+        setErrors(prev => ({ ...prev, angles: undefined }));
 
         const fileArray = Array.from(files);
         const processedFiles: File[] = [];
 
         for (const file of fileArray) {
+            // ✅ Check product angle image sizes
+            if (file.size > MAX_IMAGE_SIZE) {
+                hasSizeError = true;
+                continue; // Skip the oversized file
+            }
+
             if (file.type.startsWith('image/')) {
                 try {
                     const compressedBlob = await imageCompression(file, compressionOptions);
@@ -86,14 +102,22 @@ export function Step2Media({
                 }
             }
         }
-        handleProductImagesUpload(processedFiles);
+
+        if (hasSizeError) {
+            setErrors(prev => ({ ...prev, angles: "One or more images skipped. Max size is 5MB." }));
+        }
+
+        if (processedFiles.length > 0) {
+            handleProductImagesUpload(processedFiles);
+        }
     };
 
     const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
-        setErrors(prev => ({ ...prev, gallery: undefined })); // ✅ Clear error on upload
+        let sizeErrorMessage = "";
+        setErrors(prev => ({ ...prev, gallery: undefined }));
 
         const currentVideos = form.gallery.filter(isVideo).length;
         const currentImages = form.gallery.length - currentVideos;
@@ -105,6 +129,16 @@ export function Step2Media({
         const processedFiles: File[] = [];
 
         for (const file of fileArray) {
+            // ✅ Check Gallery file sizes based on type
+            if (file.type.startsWith('image/') && file.size > MAX_IMAGE_SIZE) {
+                sizeErrorMessage = "Some images were skipped (Max 5MB).";
+                continue;
+            }
+            if (file.type.startsWith('video/') && file.size > MAX_VIDEO_SIZE) {
+                sizeErrorMessage = sizeErrorMessage ? "Some files were skipped due to size limits." : "Some videos were skipped (Max 50MB).";
+                continue;
+            }
+
             if (file.type.startsWith('image/')) {
                 if (currentImages + addedImages >= 45) continue;
                 try {
@@ -120,10 +154,13 @@ export function Step2Media({
             }
         }
 
+        if (sizeErrorMessage) {
+            setErrors(prev => ({ ...prev, gallery: sizeErrorMessage }));
+        }
+
         if (processedFiles.length > 0) handleGalleryUpload(processedFiles);
     };
 
-    // ✅ Inline Validation Handler
     const handleSaveValidation = (e: React.MouseEvent<HTMLButtonElement>) => {
         const newErrors: { main?: string; angles?: string; gallery?: string } = {};
         let hasError = false;
@@ -142,7 +179,7 @@ export function Step2Media({
         }
 
         if (hasError) {
-            e.preventDefault(); // Stop form submission
+            e.preventDefault();
             setErrors(newErrors);
         } else {
             setErrors({});
@@ -151,10 +188,9 @@ export function Step2Media({
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
-
             {/* 1. MAIN PRODUCT IMAGE SLOT */}
             <div>
-                <label className={labelClass}>Main Product Image <span className="text-red-500">*</span></label>
+                <label className={labelClass}>Main Product Image (Max 5MB) <span className="text-red-500">*</span></label>
                 <div className={`relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed overflow-hidden flex flex-col items-center justify-center group transition-colors ${errors.main ? 'border-red-400' : 'border-slate-200 hover:border-blue-300'}`}>
                     <input
                         type="file"
@@ -183,7 +219,7 @@ export function Step2Media({
 
             {/* 2. PRODUCT IMAGES (EXTRA ANGLES) */}
             <div>
-                <label className={labelClass}>Product Angles (Max 5) <span className="text-red-500">*</span></label>
+                <label className={labelClass}>Product Angles (Max 5 | Max 5MB each) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-5 gap-2">
                     {form.productImages.map((url, i) => (
                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200">
@@ -225,7 +261,7 @@ export function Step2Media({
 
             {/* 3. GALLERY MEDIA */}
             <div>
-                <label className={labelClass}>Gallery Media (Images: Max 45 | Videos: Max 5) <span className="text-red-500">*</span></label>
+                <label className={labelClass}>Gallery Media (Images: Max 5MB | Videos: Max 50MB) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-4 gap-2">
                     {form.gallery.map((url, i) => (
                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-100 bg-black">

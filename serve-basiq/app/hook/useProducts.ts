@@ -6,7 +6,8 @@ export interface ProductProps {
     category: string;
     categoryObject?: any;
     subcategory?: { id: string; name: string } | null;
-    customCategory?: string; // ✅ ADDED
+    customCategory?: string;
+    priceType: string; // ✅ ADDED
     price: number;
     moq: number;
     unit: string;
@@ -54,8 +55,9 @@ const fetchProductsFn = async (userId?: string): Promise<ProductProps[]> => {
         categoryObject: item.category,
         subcategory: item.subcategory || null,
 
-        customCategory: item.customCategory || "", // ✅ MAPPED HERE
+        customCategory: item.customCategory || "",
 
+        priceType: item.priceType || 'FIXED', // ✅ MAPPED HERE
         price: Number(item.price) || 0,
         moq: Number(item.moq) || 1,
         unit: item.unit || 'PIECE',

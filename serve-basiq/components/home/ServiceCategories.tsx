@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaScrewdriverWrench, FaArrowLeft } from 'react-icons/fa6';
 
-// --- UPDATED INTERFACE ---
-// We added '?' to image to allow 'undefined' (which solves the error)
 interface Category {
   id: string;
   name: string;
@@ -18,18 +16,14 @@ interface CategoryProps {
 
 export default function ServiceCategories({ categories }: CategoryProps) {
   const router = useRouter();
-
-  // We take the first 6 categories
   const displayCategories = categories.slice(0, 6);
 
   return (
     <div>
-      {/* Header Section */}
       <div className="flex justify-between items-center mb-4 md:mb-6 px-1">
         <div className="flex items-center gap-3">
-          {/* Back Button */}
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/')}
             className="p-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-full transition shadow-sm active:scale-95"
             aria-label="Go back"
           >
@@ -42,7 +36,7 @@ export default function ServiceCategories({ categories }: CategoryProps) {
         </div>
 
         <Link
-          href="/categories"
+          href="/categories?tab=SERVICE" // ✅ ADDED TAB PARAMETER
           className="text-xs font-bold text-slate-500 hover:text-brand-600 uppercase tracking-wide"
         >
           View All
@@ -62,7 +56,6 @@ export default function ServiceCategories({ categories }: CategoryProps) {
                 ${index > 3 ? 'hidden md:flex' : 'flex'}
               `}
             >
-              {/* Image Container - Smaller on mobile */}
               <div className="w-full h-8 md:h-12 mb-2 relative group-hover:scale-110 transition flex items-center justify-center">
                 {cat.image ? (
                   <img
@@ -77,7 +70,6 @@ export default function ServiceCategories({ categories }: CategoryProps) {
                 )}
               </div>
 
-              {/* Category Name - Smaller text on mobile */}
               <div className="text-[10px] md:text-xs font-bold text-slate-700 uppercase tracking-wide line-clamp-2 leading-tight">
                 {cat.name}
               </div>

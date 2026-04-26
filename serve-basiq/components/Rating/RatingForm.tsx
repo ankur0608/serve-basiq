@@ -7,14 +7,10 @@ import { Loader2 } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import toast from "react-hot-toast";
 
-// 🌟 Import your shiny new reusable upload function!
 import { uploadToBackend } from "@/lib/uploadToBackend";
-
-// Import actions
 import { submitServiceReview } from "@/app/actions/reviews";
 import { submitProductReview } from "@/app/actions/productReviews";
 import { submitRentalReview } from "@/app/actions/rentalReviews";
-
 import SuccessModal from "../ui/SuccessModal";
 
 interface RatingFormProps {
@@ -24,7 +20,7 @@ interface RatingFormProps {
     type?: 'SERVICE' | 'PRODUCT' | 'RENTAL';
 }
 
-export default function RatingForm({ serviceId, productId, rentalId, type }: RatingFormProps) { // ✅ Destructured type here
+export default function RatingForm({ serviceId, productId, rentalId, type }: RatingFormProps) { 
     const [rating, setRating] = useState(0);
     const [hover, setHover] = useState(0);
     const [comment, setComment] = useState("");
@@ -36,13 +32,11 @@ export default function RatingForm({ serviceId, productId, rentalId, type }: Rat
     const activeId = serviceId || productId || rentalId;
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // 📸 Handles selecting images, shrinking them, and converting to WebP
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files) return;
 
         const selectedFiles = Array.from(e.target.files);
 
-        // Limit to 5 images total
         if (images.length + selectedFiles.length > 5) {
             toast.error("You can only upload a maximum of 5 images.");
             return;
@@ -54,10 +48,11 @@ export default function RatingForm({ serviceId, productId, rentalId, type }: Rat
             const compressedFiles = await Promise.all(
                 selectedFiles.map(async (file) => {
                     const compressedBlob = await imageCompression(file, {
-                        maxSizeMB: 0.8, // 800KB max per image
-                        maxWidthOrHeight: 1920,
+                        maxSizeMB: 0.05,          // ✅ Targets ~50 KB max
+                        maxWidthOrHeight: 800,    // ✅ Reduced resolution to keep the 50KB image looking crisp
                         useWebWorker: true,
                         fileType: "image/webp",
+                        initialQuality: 0.7       // ✅ Starts compression lower for faster processing
                     });
 
                     const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
@@ -81,7 +76,6 @@ export default function RatingForm({ serviceId, productId, rentalId, type }: Rat
         setImages((prev) => prev.filter((_, i) => i !== index));
     };
 
-    // 📤 Handles the final form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -97,17 +91,15 @@ export default function RatingForm({ serviceId, productId, rentalId, type }: Rat
         setLoading(true);
 
         try {
-            // 1️⃣ Upload compressed WebP images directly to R2 first
             const uploadedUrls: string[] = [];
 
             if (images.length > 0) {
                 for (const image of images) {
-                    // ✅ NEW: Tell the helper function to put this in the "reviews" folder
                     const url = await uploadToBackend(image, "reviews");
                     uploadedUrls.push(url);
                 }
             }
-            // 2️⃣ Prepare FormData
+            
             const formData = new FormData();
             formData.append("rating", rating.toString());
             formData.append("comment", comment);
@@ -115,7 +107,6 @@ export default function RatingForm({ serviceId, productId, rentalId, type }: Rat
 
             let res;
 
-            // 3️⃣ ✅ PERFECTED LOGIC: Call the correct Server Action based on the `type` or specific ID
             if (type === 'PRODUCT' || productId) {
                 formData.append("productId", activeId);
                 res = await submitProductReview(formData);
@@ -123,15 +114,12 @@ export default function RatingForm({ serviceId, productId, rentalId, type }: Rat
                 formData.append("rentalId", activeId);
                 res = await submitRentalReview(formData);
             } else {
-                // Defaults to Service if type is SERVICE or serviceId is provided
                 formData.append("serviceId", activeId);
                 res = await submitServiceReview(formData);
             }
 
-            // 4️⃣ Handle Success
             if (res?.success) {
                 setShowSuccessModal(true);
-                // Reset Form completely
                 setRating(0);
                 setComment("");
                 setImages([]);

@@ -19,12 +19,13 @@ const ProductSchema = z.object({
             return imageCount <= 45 && videoCount <= 5;
         }, "Gallery can have a maximum of 45 images and 5 videos"),
 
+    priceType: z.enum(['FIXED', 'HOURLY', 'QUOTE']).default('FIXED'),
     price: z.number(),
     moq: z.number(),
 
     categoryId: z.string().min(1, "Category is required"),
     subCategoryId: z.string().optional(),
-    customCategoryName: z.string().optional(), // ✅ ADDED THIS TO SCHEMA
+    customCategoryName: z.string().optional(),
 
     stockStatus: z.enum(['IN_STOCK', 'OUT_OF_STOCK', 'ON_DEMAND', 'MADE_TO_ORDER']).default('IN_STOCK'),
     unit: z.enum(['PIECE', 'KG', 'GRAM', 'LITER', 'ML', 'BOX', 'PACK', 'SET', 'METER', 'SQ_FT', 'TON']).default('PIECE'),
@@ -35,13 +36,12 @@ const ProductSchema = z.object({
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        // console.log("📝 [API] Product Create/Update Body:", JSON.stringify(body, null, 2));
-
         const { userId, productId, ...formData } = body;
 
         if (!userId) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
+
         if (formData.subCategoryIds && Array.isArray(formData.subCategoryIds) && formData.subCategoryIds.length > 0) {
             formData.subCategoryId = formData.subCategoryIds[0];
         }
@@ -54,6 +54,8 @@ export async function POST(req: Request) {
             productImage: data.productImages[0],
             productImages: data.productImages,
             gallery: data.gallery || [],
+
+            priceType: data.priceType,
             price: data.price,
             moq: data.moq,
             stockStatus: data.stockStatus,
@@ -62,52 +64,28 @@ export async function POST(req: Request) {
             condition: data.condition,
             isVerified: false,
 
-            // 🌟 SAVE CUSTOM TEXT HERE
             customCategory: data.categoryId === 'OTHER' ? data.customCategoryName : null,
         };
 
-        let product;
+        const product = await prisma.product.create({
+            data: {
+                user: { connect: { id: userId } },
+                ...basePayload,
+                category: data.categoryId && data.categoryId !== 'OTHER'
+                    ? { connect: { id: data.categoryId } }
+                    : undefined,
+                subcategory: data.subCategoryId && data.categoryId !== 'OTHER'
+                    ? { connect: { id: data.subCategoryId } }
+                    : undefined,
+            },
+        });
 
-        if (productId) {
-            // console.log(`🔄 Updating Product: ${productId}`);
-            product = await prisma.product.update({
-                where: { id: productId },
-                data: {
-                    ...basePayload,
-                    category: data.categoryId && data.categoryId !== 'OTHER'
-                        ? { connect: { id: data.categoryId } }
-                        : { disconnect: true },
-
-                    subcategory: data.subCategoryId && data.categoryId !== 'OTHER'
-                        ? { connect: { id: data.subCategoryId } }
-                        : { disconnect: true },
-                },
-            });
-        } else {
-            // console.log(`✨ Creating Product for User: ${userId}`);
-            product = await prisma.product.create({
-                data: {
-                    user: { connect: { id: userId } },
-                    ...basePayload,
-                    category: data.categoryId && data.categoryId !== 'OTHER'
-                        ? { connect: { id: data.categoryId } }
-                        : undefined,
-
-                    subcategory: data.subCategoryId && data.categoryId !== 'OTHER'
-                        ? { connect: { id: data.subCategoryId } }
-                        : undefined,
-                },
-            });
-        }
-
-        // console.log("✅ Success! Product ID:", product.id);
         return NextResponse.json({ success: true, product });
 
     } catch (error: any) {
         console.error("❌ Create Product Error:", error);
 
         if (error instanceof z.ZodError) {
-            console.error("Zod Validation Error Details:", JSON.stringify(error.issues, null, 2));
             return NextResponse.json({
                 success: false,
                 message: "Validation Error",
