@@ -4,10 +4,9 @@
 import { DashboardHomeView } from '@/components/providers/GeneralViews'; // Adjust path if needed
 import ProfileView from '@/components/providers/ProfileView';
 import { AddProductView } from '@/components/providers/product/AddProductView';
-import { ManagementView } from '@/components/providers/Management';
+import { UnifiedManagementView } from '@/components/providers/UnifiedManagement';
 import { VerificationView } from '@/components/providers/VerificationView';
 import RequestsView from '@/components/providers/RequestsView';
-import { ProductsView } from '@/components/providers/ProductsView';
 
 interface ContentProps {
     activeView: string;
@@ -16,7 +15,6 @@ interface ContentProps {
     safeStats: any;
     isVerified: boolean;
     showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
-    providerType: string;
     userData: any;
     currentUser: any;
     refetchDashboard: () => void;
@@ -30,9 +28,9 @@ interface ContentProps {
 export function ProviderDashboardContent(props: ContentProps) {
     const {
         activeView, handleViewChange, handleBackToHome, safeStats,
-        isVerified, showToast, providerType, userData, currentUser,
+        isVerified, showToast, userData, currentUser,
         refetchDashboard, setSelectedProduct, selectedProduct,
-        recentBookings, recentOrders, recentRentals // ✅ DESTRUCTURED HERE
+        recentBookings, recentOrders, recentRentals
     } = props;
 
     return (
@@ -44,10 +42,9 @@ export function ProviderDashboardContent(props: ContentProps) {
                     setActiveView={handleViewChange}
                     onBackToHome={handleBackToHome}
                     isVerified={isVerified}
-                    providerType={providerType}
                     recentBookings={recentBookings}
                     recentOrders={recentOrders}
-                    recentRentals={recentRentals} // ✅ PASSED TO HOME VIEW
+                    recentRentals={recentRentals}
                 />
             )}
 
@@ -55,7 +52,6 @@ export function ProviderDashboardContent(props: ContentProps) {
             {activeView === 'requests' && (
                 <RequestsView
                     showToast={showToast}
-                    providerType={providerType}
                 />
             )}
 
@@ -68,45 +64,20 @@ export function ProviderDashboardContent(props: ContentProps) {
                 />
             )}
 
-            {/* 4. Service / Product Management (Parent View) */}
-            {activeView === 'settings' && (
-                providerType === 'PRODUCT' ? (
-                    <div className="space-y-6">
-                        <h2 className="text-xl font-bold text-slate-900">Inventory Management</h2>
-                        {currentUser?.id && (
-                            <ProductsView
-                                setActiveView={handleViewChange}
-                                userId={currentUser.id}
-                                setSelectedProduct={setSelectedProduct}
-                                showToast={showToast}
-                                providerType={providerType}
-                            />
-                        )}
-                    </div>
-                ) : (
-                    <ManagementView
-                        currentUser={currentUser}
-                        userData={userData}
-                        showToast={showToast}
-                        setActiveView={handleViewChange}
-                        providerType={providerType}
-                    />
-                )
-            )}
-
-            {/* 5. Products Specific Tab (for Hybrid Providers) */}
-            {activeView === 'products' && (
-                <div className="space-y-6">
-                    {currentUser?.id && (
-                        <ProductsView
-                            setActiveView={handleViewChange}
-                            userId={currentUser.id}
-                            setSelectedProduct={setSelectedProduct}
-                            showToast={showToast}
-                            providerType={providerType}
-                        />
-                    )}
-                </div>
+            {/* 4. Unified Listing Management (Services / Rentals / Products) */}
+            {(activeView === 'settings' || activeView === 'rentals' || activeView === 'products') && (
+                <UnifiedManagementView
+                    currentUser={currentUser}
+                    userData={userData}
+                    showToast={showToast}
+                    setActiveView={handleViewChange}
+                    setSelectedProduct={setSelectedProduct}
+                    initialTab={
+                        activeView === 'rentals' ? 'RENTAL'
+                            : activeView === 'products' ? 'PRODUCT'
+                                : 'SERVICE'
+                    }
+                />
             )}
 
             {/* 6. Verification / Edit Profile */}

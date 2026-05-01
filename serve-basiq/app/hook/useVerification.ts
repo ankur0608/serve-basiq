@@ -46,19 +46,9 @@ export function useVerification() {
         }
     }, []);
 
-    const submitVerificationData = useCallback(async (userId: string, form: any, existingProviderType: string) => {
+    const submitVerificationData = useCallback(async (userId: string, form: any) => {
         setIsSubmitting(true);
         try {
-            // Update Provider Status if it has changed
-            if (form.providerType !== existingProviderType) {
-                await fetch('/api/user/status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, providerType: form.providerType })
-                });
-            }
-
-            // Submit Final Verification Data
             const res = await fetch('/api/provider/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

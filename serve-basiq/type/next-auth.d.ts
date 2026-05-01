@@ -10,7 +10,6 @@ declare module "next-auth" {
             role: string;
             isWorker: boolean;
             isWebsite: boolean;
-            providerType: string | null;
         } & DefaultSession["user"];
     }
 
@@ -20,7 +19,6 @@ declare module "next-auth" {
         role: string;
         isWorker: boolean;
         isWebsite: boolean;
-        providerType: string | null;
     }
 }
 
@@ -32,6 +30,5 @@ declare module "next-auth/jwt" {
         role: string;
         isWorker: boolean;
         isWebsite: boolean;
-        providerType: string | null;
     }
 }

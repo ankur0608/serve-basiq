@@ -64,7 +64,7 @@ const trafficData = {
 };
 
 export function DashboardHomeView({
-    stats, setActiveView, recentBookings = [], recentOrders = [], recentRentals = [], providerType
+    stats, setActiveView, recentBookings = [], recentOrders = [], recentRentals = []
 }: any) {
 
     const getStatusBadge = (status: string) => {
@@ -146,8 +146,7 @@ export function DashboardHomeView({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {/* RECENT BOOKINGS & RENTALS */}
-                {['SERVICE', 'RENTAL', 'BOTH'].includes(providerType) && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
                         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
@@ -205,11 +204,9 @@ export function DashboardHomeView({
                             )}
                         </div>
                     </div>
-                )}
 
                 {/* RECENT ORDERS (Products) */}
-                {['PRODUCT', 'BOTH'].includes(providerType) && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
                         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Package size={18} /></div>
@@ -251,7 +248,6 @@ export function DashboardHomeView({
                             )}
                         </div>
                     </div>
-                )}
             </div>
         </div>
     );

@@ -54,10 +54,10 @@ export async function PATCH(
 
     const existingProduct = await prisma.product.findUnique({
       where: { id: productId },
-      select: { 
-        productImage: true, 
-        productImages: true, 
-        gallery: true 
+      select: {
+        productImage: true,
+        productImages: true,
+        // gallery: true
       }
     });
 
@@ -68,14 +68,14 @@ export async function PATCH(
     const oldUrls = [
       existingProduct.productImage,
       ...(Array.isArray(existingProduct.productImages) ? existingProduct.productImages : []),
-      ...(Array.isArray(existingProduct.gallery) ? existingProduct.gallery : [])
+      // ...(Array.isArray(existingProduct.gallery) ? existingProduct.gallery : [])
     ].filter(Boolean) as string[];
 
     // Flatten new URLs coming from the frontend payload
     const newUrls = [
       body.productImage,
       ...(Array.isArray(body.productImages) ? body.productImages : []),
-      ...(Array.isArray(body.gallery) ? body.gallery : [])
+      // ...(Array.isArray(body.gallery) ? body.gallery : [])
     ].filter(Boolean) as string[];
 
     const urlsToDelete = oldUrls.filter(oldUrl => !newUrls.includes(oldUrl));
@@ -105,7 +105,7 @@ export async function PATCH(
 
         productImage: body.productImages?.[0] || body.productImage,
         productImages: body.productImages || [],
-        gallery: body.gallery || [],
+        // gallery: body.gallery || [],
 
         customCategory: body.categoryId === 'OTHER' ? body.customCategoryName : null,
         category: body.categoryId && body.categoryId !== 'OTHER'
@@ -145,11 +145,11 @@ export async function DELETE(
     console.log(`🔍 [DELETE API] Fetching PRODUCT record...`);
     const product = await prisma.product.findUnique({
       where: { id },
-      select: { 
-        productImage: true, 
-        productImages: true, 
-        gallery: true 
-      } 
+      select: {
+        productImage: true,
+        productImages: true,
+        // gallery: true
+      }
     });
 
     if (!product) {
@@ -161,7 +161,7 @@ export async function DELETE(
     const urlsToDelete = [
       product.productImage,
       ...(Array.isArray(product.productImages) ? product.productImages : []),
-      ...(Array.isArray(product.gallery) ? product.gallery : [])
+      // ...(Array.isArray(product.gallery) ? product.gallery : [])
     ].filter(Boolean) as string[];
 
     console.log("📸 [DELETE API] Found PRODUCT media to delete:", urlsToDelete);

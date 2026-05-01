@@ -23,8 +23,8 @@ export default function AuthListener() {
                 // 🚀 SAME LOGIC AS MOBILE FLOW
                 // ============================================================
 
-                // Check if they are an Existing Provider (SERVICE / PRODUCT / BOTH)
-                if (user.providerType) {
+                // Check if they are an existing provider
+                if (user.isWorker) {
                     // Existing Provider -> Switch Mode Then Dashboard
                     const handleLoginSwitch = async () => {
                         try {

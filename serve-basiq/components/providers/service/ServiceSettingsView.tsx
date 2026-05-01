@@ -7,16 +7,18 @@ import { StepOneDetails, StepTwoMedia } from './steps/StepOneBasic'; // Ensure t
 
 const defaultToast = (msg: string, type: 'success' | 'error') => alert(`${type.toUpperCase()}: ${msg}`);
 
-export function ServiceSettingsView(props: ServiceSettingsProps) {
-  const { onComplete, showToast = defaultToast, serviceData } = props;
+export function ServiceSettingsView(props: ServiceSettingsProps & { forcedType?: 'SERVICE' | 'RENTAL' }) {
+  const { onComplete, showToast = defaultToast, serviceData, forcedType } = props;
 
   const [initialType, setInitialType] = useState<'SERVICE' | 'RENTAL' | null>(
-    serviceData ? (serviceData.listingType === 'RENTAL' || serviceData.rentalImg ? 'RENTAL' : 'SERVICE') : null
+    forcedType
+      ? forcedType
+      : serviceData ? (serviceData.listingType === 'RENTAL' || serviceData.rentalImg ? 'RENTAL' : 'SERVICE') : null
   );
 
   return (
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      {!serviceData && !initialType ? (
+      {!serviceData && !forcedType && !initialType ? (
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full relative animate-in zoom-in-95 duration-200">
           <button onClick={onComplete} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
             <X size={24} />
@@ -53,7 +55,7 @@ export function ServiceSettingsView(props: ServiceSettingsProps) {
         <FormWrapper
           {...props}
           initialType={initialType!}
-          onBack={!serviceData ? () => setInitialType(null) : undefined}
+          onBack={!serviceData && !forcedType ? () => setInitialType(null) : undefined}
         />
       )}
     </div>

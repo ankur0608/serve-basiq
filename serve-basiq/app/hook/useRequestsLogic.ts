@@ -4,7 +4,7 @@ import { Filter, Clock, Truck, CheckCircle2, XCircle } from 'lucide-react';
 import { useProviderRequests } from '@/app/hook/useProviderRequests';
 
 export type TabType = 'ALL' | 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
-export type ViewMode = 'SERVICES' | 'PRODUCTS';
+export type ViewMode = 'SERVICES' | 'RENTALS' | 'PRODUCTS';
 
 export const STATUS_TABS: { id: TabType; label: string; icon: any }[] = [
     { id: 'ALL', label: 'All', icon: Filter },
@@ -14,21 +14,38 @@ export const STATUS_TABS: { id: TabType; label: string; icon: any }[] = [
     { id: 'CANCELLED', label: 'Rejected', icon: XCircle },
 ];
 
-export function useRequestsLogic(providerType: string, currentUserId: string | undefined, showToast: any) {
-    const [viewMode, setViewMode] = useState<ViewMode>(providerType === 'PRODUCT' ? 'PRODUCTS' : 'SERVICES');
+export function useRequestsLogic(currentUserId: string | undefined, showToast: any) {
+    const [viewMode, setViewMode] = useState<ViewMode>('SERVICES');
     const [activeTab, setActiveTab] = useState<TabType>('PENDING');
     const [searchTerm, setSearchTerm] = useState('');
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     const [processingId, setProcessingId] = useState<string | null>(null);
 
-    const { data, isLoading, refetch } = useProviderRequests(currentUserId, providerType);
+    const { data, isLoading, refetch } = useProviderRequests(currentUserId);
     const bookings = data?.bookings || [];
     const orders = data?.orders || [];
 
+    const requestCounts = useMemo(() => {
+        const services = bookings.filter((b: any) => !b.rental).length;
+        const rentals = bookings.filter((b: any) => !!b.rental).length;
+        const products = orders.length;
+        return { SERVICES: services, RENTALS: rentals, PRODUCTS: products };
+    }, [bookings, orders]);
+
+    const visibleViewModes = useMemo<ViewMode[]>(() => {
+        const list: ViewMode[] = [];
+        if (requestCounts.SERVICES > 0) list.push('SERVICES');
+        if (requestCounts.RENTALS > 0) list.push('RENTALS');
+        if (requestCounts.PRODUCTS > 0) list.push('PRODUCTS');
+        return list;
+    }, [requestCounts]);
+
     useEffect(() => {
-        if (providerType === 'PRODUCT') setViewMode('PRODUCTS');
-        else if (providerType === 'SERVICE') setViewMode('SERVICES');
-    }, [providerType]);
+        if (visibleViewModes.length === 0) return;
+        if (!visibleViewModes.includes(viewMode)) {
+            setViewMode(visibleViewModes[0]);
+        }
+    }, [visibleViewModes, viewMode]);
 
     useEffect(() => {
         if (isFilterModalOpen) {
@@ -40,8 +57,11 @@ export function useRequestsLogic(providerType: string, currentUserId: string | u
     }, [isFilterModalOpen]);
 
     const currentData = useMemo(() => {
-        if (viewMode === 'SERVICES') {
-            return bookings.map((b: any) => {
+        if (viewMode === 'SERVICES' || viewMode === 'RENTALS') {
+            const filtered = bookings.filter((b: any) =>
+                viewMode === 'RENTALS' ? !!b.rental : !b.rental
+            );
+            return filtered.map((b: any) => {
                 const isRental = !!b.rental;
                 return {
                     ...b,
@@ -100,7 +120,7 @@ export function useRequestsLogic(providerType: string, currentUserId: string | u
         let endpoint = '';
         let bodyKey = 'bookingId';
 
-        if (viewMode === 'SERVICES') {
+        if (viewMode === 'SERVICES' || viewMode === 'RENTALS') {
             if (isRental) {
                 endpoint = '/api/rentals/update-status';
                 bodyKey = 'bookingId';
@@ -142,6 +162,8 @@ export function useRequestsLogic(providerType: string, currentUserId: string | u
         isLoading,
         currentData,
         filteredRequests,
-        handleUpdateStatus
+        handleUpdateStatus,
+        requestCounts,
+        visibleViewModes
     };
 }

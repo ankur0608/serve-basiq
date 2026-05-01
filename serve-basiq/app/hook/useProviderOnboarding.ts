@@ -43,8 +43,7 @@ export function useProviderOnboarding() {
         pincode: "",
         latitude: 0,
         longitude: 0,
-        shopName: "", 
-        providerType: "BOTH",
+        shopName: "",
     });
 
     useEffect(() => {
@@ -98,8 +97,7 @@ export function useProviderOnboarding() {
                 fullName: profileData.name || prev.fullName || "",
                 email: profileData.email || prev.email || "",
                 altPhone: profileData.phone || prev.altPhone || "",
-                shopName: profileData.shopName || prev.shopName || "", 
-                providerType: profileData.providerType || prev.providerType,
+                shopName: profileData.shopName || prev.shopName || "",
                 addressLine1: addr?.line1 || prev.addressLine1,
                 addressLine2: addr?.line2 || prev.addressLine2,
                 landmark: addr?.landmark || prev.landmark,
@@ -132,7 +130,6 @@ export function useProviderOnboarding() {
                     ...currentUser,
                     isWorker: true,
                     isWebsite: false,
-                    providerType: form.providerType as any,
                 };
                 setCurrentUser(updatedUser);
             }

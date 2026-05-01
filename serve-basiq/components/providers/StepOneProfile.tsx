@@ -1,40 +1,12 @@
 'use client';
 
-import {
-    UserCircle,
-    Hexagon
-} from 'lucide-react';
+import { UserCircle } from 'lucide-react';
 
 export default function StepOnePersonal({ form, updateField, errors, getInputClass }: any) {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
 
-            {/* 1. Account Mode */}
-            <section className="bg-white rounded-2xl shadow-sm border-l-4 border-indigo-500 p-6 md:p-8">
-                <div className="flex items-center gap-3 mb-6 border-b border-slate-50 pb-4">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                        <Hexagon size={24} />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-slate-900 text-lg">Account Mode</h3>
-                        <p className="text-xs text-slate-500">Select how you want to operate</p>
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Provider Type</label>
-                    <select
-                        value={form.providerType}
-                        onChange={e => updateField('providerType', e.target.value)}
-                        className={getInputClass('providerType')}
-                    >
-                        <option value="BOTH">Services & Products</option>
-                        <option value="SERVICE">Service Only</option>
-                        <option value="PRODUCT">Product Only</option>
-                    </select>
-                </div>
-            </section>
-
-            {/* 2. Personal Details */}
+            {/* Personal Details */}
             <section className="bg-white rounded-2xl shadow-sm border-l-4 border-blue-500 p-6 md:p-8">
                 <div className="flex items-center gap-3 mb-6 border-b border-slate-50 pb-4">
                     <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">

@@ -11,7 +11,6 @@ export async function POST(req: Request) {
 
         const {
             userId,
-            providerType,
             fullName, email, phone, gender, dob, preferredLanguage,
             addressLine1, addressLine2, landmark, city, state, pincode,
             shopName, bizAddressLine1, bizAddressLine2, bizCity, bizState, bizPincode,
@@ -41,7 +40,6 @@ export async function POST(req: Request) {
                     name: fullName,
                     email,
                     phone,
-                    providerType: providerType || "BOTH",
                     shopName,
                     gender,
                     dob: validDob, 

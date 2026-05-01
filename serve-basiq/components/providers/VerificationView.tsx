@@ -24,7 +24,7 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
     const { submitVerificationData, isSubmitting } = useVerification();
 
     const [form, setForm] = useState({
-        fullName: '', email: '', phone: '', gender: 'MALE', dob: '', preferredLanguage: 'English', providerType: 'BOTH',
+        fullName: '', email: '', phone: '', gender: 'MALE', dob: '', preferredLanguage: 'English',
         instagramUrl: '', facebookUrl: '', youtubeUrl: '', websiteUrl: '',
         addressLine1: '', addressLine2: '', landmark: '', city: '', state: '', pincode: '',
         shopName: '', bizAddressLine1: '', bizAddressLine2: '', bizCity: '', bizState: '', bizPincode: '', sameAsPersonal: false,
@@ -49,7 +49,6 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
             email: existingData.email || '',
             phone: existingData.phone || '',
             gender: existingData.gender || 'MALE',
-            providerType: existingData.providerType || 'BOTH',
             dob: formattedDob,
             preferredLanguage: existingData.preferredLanguage || 'English',
             instagramUrl: existingData.instagramUrl || '',
@@ -159,7 +158,7 @@ export function VerificationView({ userId, existingData, showToast, onBack }: Pr
         }
 
         try {
-            await submitVerificationData(userId, form, existingData?.providerType);
+            await submitVerificationData(userId, form);
             showToast('Profile submitted successfully', 'success');
             onBack();
         } catch (error: any) {

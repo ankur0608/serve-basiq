@@ -16,7 +16,6 @@ export async function POST(req: Request) {
         const body = await req.json();
 
         const validData = onboardSchema.parse(body);
-        const { providerType } = body;
 
         if (validData.email) {
             const existingUser = await prisma.user.findFirst({
@@ -39,8 +38,7 @@ export async function POST(req: Request) {
                     email: validData.email,
                     phone: validData.phone,
                     profileImage: validData.profileImage,
-                    shopName: validData.shopName, // ✅ Stored securely
-                    providerType: providerType || "BOTH", // ✅ Accepts RENTAL
+                    shopName: validData.shopName,
                     isWorker: true,
                     isWebsite: false,
                 },

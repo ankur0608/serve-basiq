@@ -574,7 +574,7 @@ export default function OtpModal({ isOpen, onClose }: OtpModalProps) {
             }
 
             if (loginIntent === 'provider') {
-                if (data.providerType) {
+                if (data.isWorker) {
                     router.push('/provider/dashboard');
                 } else {
                     router.push('/become-pro');

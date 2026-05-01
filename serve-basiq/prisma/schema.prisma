@@ -388,7 +388,6 @@ model User {
 
     role              String        @default("USER")
     profileImage      String?
-    providerType      CategoryType?
     gender            Gender?
     dob               DateTime?
     preferredLanguage String?       @default("English")

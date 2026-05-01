@@ -277,7 +277,6 @@ export async function GET(request: Request) {
             dateOfBirth: formattedDob,
             preferredLanguage: val(user.preferredLanguage) || "English",
             role: user.role,
-            providerType: user.providerType,
             isWorker: user.isWorker,
             isonline: user.isOnline,
             isPhoneVerified: user.isPhoneVerified,

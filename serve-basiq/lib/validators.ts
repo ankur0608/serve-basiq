@@ -28,10 +28,6 @@ export const onboardSchema = z.object({
 });
 
 export const providerOnboardSchema = onboardSchema.extend({
-    providerType: z.enum(["BOTH", "SERVICE", "PRODUCT"]).refine(
-        val => val !== undefined,
-        { message: "Please select a valid service type" }
-    ),
     latitude: z.number().refine(val => val !== 0, "Location is required for providers").optional(),
 });
 export const serviceSettingsSchema = z.object({

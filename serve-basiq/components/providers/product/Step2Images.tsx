@@ -173,10 +173,10 @@ export function Step2Media({
             newErrors.angles = "Please add at least one product angle.";
             hasError = true;
         }
-        if (!form.gallery || form.gallery.length === 0) {
-            newErrors.gallery = "Please add at least one item to the gallery.";
-            hasError = true;
-        }
+        // if (!form.gallery || form.gallery.length === 0) {
+        //     newErrors.gallery = "Please add at least one item to the gallery.";
+        //     hasError = true;
+        // }
 
         if (hasError) {
             e.preventDefault();
@@ -259,7 +259,8 @@ export function Step2Media({
                 {errors.angles && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.angles}</p>}
             </div>
 
-            {/* 3. GALLERY MEDIA */}
+            {/* 3. GALLERY MEDIA - COMMENTED OUT */}
+            {/*
             <div>
                 <label className={labelClass}>Gallery Media (Images: Max 5MB | Videos: Max 50MB) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-4 gap-2">
@@ -285,9 +286,9 @@ export function Step2Media({
                         </div>
                     )}
                 </div>
-                {/* ✅ Gallery Error Message */}
                 {errors.gallery && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.gallery}</p>}
             </div>
+            */}
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">Back</button>

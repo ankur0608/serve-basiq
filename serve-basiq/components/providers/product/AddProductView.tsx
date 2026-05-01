@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useProducts } from '@/app/hook/useProducts';
 import { X } from 'lucide-react';
 import { uploadToBackend } from '@/lib/uploadToBackend';
@@ -52,7 +53,19 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
     const [step, setStep] = useState(1);
     const [uploading, setUploading] = useState(false);
     const [activeUploadField, setActiveUploadField] = useState<'main' | 'productImages' | 'gallery' | null>(null);
-    const [categories, setCategories] = useState<Category[]>([]);
+    const { data: categories = [] } = useQuery<Category[]>({
+        queryKey: ['categories', 'PRODUCT'],
+        queryFn: async () => {
+            const res = await fetch('/api/categories?type=PRODUCT');
+            if (!res.ok) throw new Error('Failed to fetch categories');
+            const data = await res.json();
+            return Array.isArray(data) ? data : [];
+        },
+        staleTime: Infinity,
+        gcTime: 1000 * 60 * 60 * 24,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+    });
 
     const [form, setForm] = useState<ProductForm>(() => {
         const isCustom = !!editingProduct?.customCategory;
@@ -75,22 +88,6 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
             condition: editingProduct?.condition || 'NEW'
         };
     });
-
-    useEffect(() => {
-        let isMounted = true;
-        const fetchCategories = async () => {
-            if (categories.length > 0) return;
-            try {
-                const res = await fetch('/api/categories?type=PRODUCT');
-                const data = await res.json();
-                if (isMounted && Array.isArray(data)) setCategories(data);
-            } catch (error) {
-                console.error("Failed to load categories", error);
-            }
-        };
-        fetchCategories();
-        return () => { isMounted = false; };
-    }, [categories.length]);
 
     const activeSubCategories = useMemo(() => {
         const selectedCat = categories.find(c => c.id === form.categoryId);

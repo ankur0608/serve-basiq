@@ -10,7 +10,6 @@ interface ManagementViewProps {
     userData: any;
     showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
     setActiveView: (view: string) => void;
-    providerType: string;
 }
 
 const ServiceTableRow = memo(
@@ -91,8 +90,7 @@ export function ManagementView({
     currentUser,
     userData,
     showToast,
-    setActiveView,
-    providerType
+    setActiveView
 }: ManagementViewProps) {
 
     const { services: rawServices, rentals: rawRentals, isLoading, refetch, deleteItem } = useServices(currentUser?.id);
@@ -154,7 +152,7 @@ export function ManagementView({
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 space-y-6">
 
-            {providerType === 'BOTH' && !isEditingService && !isCreatingService && (
+            {!isEditingService && !isCreatingService && (
                 <div className="flex p-1.5 bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
                     <button onClick={() => setActiveView('settings')} className="flex-1 py-2.5 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all">Services</button>
                     <button onClick={() => setActiveView('products')} className="flex-1 py-2.5 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 transition-all">Products</button>

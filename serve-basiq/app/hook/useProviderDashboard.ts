@@ -12,7 +12,6 @@ export const useProviderDashboard = (userId: string | undefined) => {
       const res = await fetch('/api/provider/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
       });
 
       if (!res.ok) throw new Error('Failed to fetch provider status');

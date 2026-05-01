@@ -24,7 +24,6 @@ export interface User {
   image?: string | null;
   profileImage?: string | null;
   role: string;
-  providerType?: "SERVICE" | "PRODUCT" | "BOTH" | string;
 
   isPhoneVerified: boolean;
   isWorker: boolean;

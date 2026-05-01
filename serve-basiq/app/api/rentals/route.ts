@@ -196,7 +196,7 @@ export async function POST(req: Request) {
 
         const {
             id, userId, name, desc, rentalImg,
-            rentalImages, coverImg, gallery,
+            rentalImages, coverImg, /* gallery, */
             categoryId, subCategoryId, subCategoryIds,
             customCategoryName,
             price, priceType, stock, radiusKm,
@@ -224,7 +224,7 @@ export async function POST(req: Request) {
         const dataPayload: any = {
             name, desc, rentalImg,
             rentalImages: rentalImages || [],
-            coverImg, gallery: gallery || [],
+            coverImg, /* gallery: gallery || [], */
             price: numericPrice,
             priceType: selectedPriceType,
             hourlyPrice: selectedPriceType === 'HOURLY' ? numericPrice : undefined,
@@ -263,11 +263,11 @@ export async function POST(req: Request) {
             console.log(`🔍 [Rental API] Fetching existing rental id: ${id} to check for deleted media...`);
             const existingRental = await prisma.rental.findUnique({
                 where: { id },
-                select: { 
-                    rentalImg: true, 
-                    coverImg: true, 
-                    gallery: true, 
-                    rentalImages: true 
+                select: {
+                    rentalImg: true,
+                    coverImg: true,
+                    // gallery: true,
+                    rentalImages: true
                 }
             });
 
@@ -276,7 +276,7 @@ export async function POST(req: Request) {
                 const oldUrls = [
                     existingRental.rentalImg,
                     existingRental.coverImg,
-                    ...(Array.isArray(existingRental.gallery) ? existingRental.gallery : []),
+                    // ...(Array.isArray(existingRental.gallery) ? existingRental.gallery : []),
                     ...(Array.isArray(existingRental.rentalImages) ? existingRental.rentalImages : [])
                 ].filter(Boolean) as string[];
 
@@ -284,7 +284,7 @@ export async function POST(req: Request) {
                 const newUrls = [
                     rentalImg,
                     coverImg,
-                    ...(Array.isArray(gallery) ? gallery : []),
+                    // ...(Array.isArray(gallery) ? gallery : []),
                     ...(Array.isArray(rentalImages) ? rentalImages : [])
                 ].filter(Boolean) as string[];
 

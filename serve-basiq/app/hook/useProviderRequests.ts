@@ -2,13 +2,13 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-export const useProviderRequests = (userId: string | undefined, providerType: string) => {
+export const useProviderRequests = (userId: string | undefined) => {
     return useQuery({
-        queryKey: ['provider-requests', userId, providerType],
+        queryKey: ['provider-requests', userId],
         queryFn: async () => {
             if (!userId) return { bookings: [], orders: [] };
 
-            const res = await fetch(`/api/provider/requests?userId=${userId}&type=${providerType}`);
+            const res = await fetch(`/api/provider/requests?userId=${userId}`);
             if (!res.ok) throw new Error('Failed to fetch requests');
 
             return res.json();

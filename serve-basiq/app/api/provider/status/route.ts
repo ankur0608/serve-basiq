@@ -1,53 +1,91 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
-    const { userId } = await req.json();
+    const session = await getServerSession(authOptions);
 
-    if (!userId) return NextResponse.json({ success: false, message: "User ID missing" }, { status: 400 });
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
 
-    const user = await prisma.user.findUnique({
+    const userSelect = {
+      id: true,
+      name: true,
+      shopName: true,
+      email: true,
+      image: true,
+      profileImage: true,
+      phone: true,
+      gender: true,
+      dob: true,
+      preferredLanguage: true,
+      addresses: true,
+      kycDetails: {
+        select: {
+          status: true,
+          idProofType: true,
+          idProofNumber: true,
+          idProofFrontImg: true,
+          gstRegistered: true,
+          gstNumber: true
+        }
+      },
+      services: { select: { rating: true } },
+    } as const;
+
+    let user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: userSelect,
+    });
+
+    if (!user) {
+      const fallbackFilters = [
+        session.user.email ? { email: session.user.email } : null,
+        session.user.phone ? { phone: session.user.phone } : null,
+      ].filter(Boolean) as Array<{ email?: string; phone?: string }>;
+
+      if (fallbackFilters.length > 0) {
+        user = await prisma.user.findFirst({
+          where: { OR: fallbackFilters },
+          select: userSelect,
+        });
+      }
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: "Session user not found. Please sign in again." },
+        { status: 401 }
+      );
+    }
+
+    const userId = user.id;
+
+    // Fetch the full provider snapshot for the authenticated user.
+    const providerUser = await prisma.user.findUnique({
       where: { id: userId },
       select: {
-        id: true,
-        name: true,
-        shopName: true,
-        email: true,
-        image: true,
-        profileImage: true,
-        phone: true,
-        gender: true,
-        dob: true,
-        providerType: true,
-        preferredLanguage: true,
-        addresses: true,
-        kycDetails: {
-          select: {
-            status: true,
-            idProofType: true,
-            idProofNumber: true,
-            idProofFrontImg: true,
-            gstRegistered: true,
-            gstNumber: true
-          }
-        },
-        services: { select: { rating: true } },
+        ...userSelect,
       },
     });
 
-    if (!user) return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+    if (!providerUser) {
+      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+    }
 
     // 2. Aggregate Rating from User's Services
-    const serviceRatings = user.services.map(s => s.rating);
+    const serviceRatings = providerUser.services.map(s => s.rating);
     const avgRating = serviceRatings.length > 0
       ? serviceRatings.reduce((a, b) => a + b, 0) / serviceRatings.length
       : 5.0;
 
     // 3. Define setup status
-    const setupFinished = !!(user.kycDetails && user.kycDetails.status !== "NOT_STARTED");
+    const setupFinished = !!(providerUser.kycDetails && providerUser.kycDetails.status !== "NOT_STARTED");
 
     // 4. Fetch Recent Data (Services, Products, and Rentals) in parallel for better performance
     const [recentBookings, recentOrders, recentRentals] = await Promise.all([
@@ -99,7 +137,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       isSetupComplete: setupFinished,
-      user: { ...user, isSetupComplete: setupFinished, services: undefined },
+      user: { ...providerUser, isSetupComplete: setupFinished, services: undefined },
       bookings: recentBookings,
       orders: recentOrders,
       rentals: recentRentals, // ✅ Return rentals to the frontend

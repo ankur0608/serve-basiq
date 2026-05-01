@@ -48,11 +48,6 @@ export function ContactButton({
                 ${locked ? 'opacity-60 cursor-pointer grayscale-[30%]' : 'cursor-pointer'}
             `}
         >
-            {locked && (
-                <span className="absolute -top-1.5 -right-1.5 bg-slate-700 text-white rounded-full w-4 h-4 flex items-center justify-center z-10 shadow">
-                    <FaLock size={8} />
-                </span>
-            )}
             <span className={size === 'large' ? 'text-xl' : 'text-base'}>{icon}</span>
             {label}
         </a>
@@ -86,11 +81,6 @@ export function MobileContactButton({
                 ${locked ? 'opacity-60 grayscale-[20%]' : ''}
             `}
         >
-            {locked && (
-                <span className="absolute -top-1.5 -right-1.5 bg-slate-700 text-white rounded-full w-4 h-4 flex items-center justify-center shadow z-10">
-                    <FaLock size={8} />
-                </span>
-            )}
             {icon}
         </a>
     );
@@ -126,7 +116,7 @@ export function DirectContactBlock({
                     label="Call"
                     size="large"
                     icon={<FaPhone size={18} />}
-                    className="bg-white border-2 border-slate-200 hover:border-blue-400 hover:shadow-md text-slate-700 shadow-sm"
+                    className="bg-white border-2 border-slate-200 hover:border-blue-400 hover:shadow-md text-blue-600 shadow-sm"
                     onGuestClick={onGuestClick}
                 />
                 <ContactButton
@@ -136,7 +126,7 @@ export function DirectContactBlock({
                     label="WhatsApp"
                     size="large"
                     icon={<FaWhatsapp size={20} />}
-                    className="bg-white border-2 border-slate-200 hover:border-green-400 hover:shadow-md text-slate-700 shadow-sm"
+                    className="bg-white border-2 border-slate-200 hover:border-green-400 hover:shadow-md text-green-600 shadow-sm"
                     onGuestClick={onGuestClick}
                 />
             </div>

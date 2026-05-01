@@ -152,11 +152,22 @@ export default function SupplierProfileModal({ supplier }: SupplierProps) {
 
                         {supplier.phone && (
                             <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-50/50 hover:bg-emerald-50 transition-colors text-emerald-700">
-                                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                                    <FaPhone size={14} />
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shrink-0">
+                                    <FaPhone size={14} className="text-white" />
                                 </div>
                                 <span className="text-sm font-semibold">
-                                    {supplier.phone}
+                                    {(() => {
+                                        const raw = supplier.phone.replace(/\D/g, '');
+                                        if (raw.length === 10) {
+                                            return `${raw.slice(0, 2)}******${raw.slice(-2)}`;
+                                        }
+                                        if (supplier.phone.startsWith('+91') && raw.length === 12) {
+                                            return `+91 ${raw.slice(2, 4)}******${raw.slice(-2)}`;
+                                        }
+                                        return supplier.phone.length > 4
+                                            ? `${supplier.phone.slice(0, 2)}******${supplier.phone.slice(-2)}`
+                                            : supplier.phone;
+                                    })()}
                                 </span>
                             </div>
                         )}

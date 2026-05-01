@@ -1,7 +1,6 @@
 import { memo, useState } from "react";
-import { User, Mail, Briefcase, ShieldCheck, Smartphone, Pencil, AlertTriangle, Store } from 'lucide-react';
+import { User, Mail, ShieldCheck, Smartphone, Pencil, AlertTriangle, Store } from 'lucide-react';
 import Input from "@/components/ui/Input"; // Adjust path if needed
-import Select from "@/components/ui/Select"; // Adjust path if needed
 
 interface PersonalDetailsProps {
     form: any;
@@ -10,12 +9,6 @@ interface PersonalDetailsProps {
     session: any;
     onVerifyStart: () => void;
 }
-
-const PROVIDER_OPTIONS = [
-    { label: "Both Services & Products", value: "BOTH" },
-    { label: "Services Only", value: "SERVICE" },
-    { label: "Products Only", value: "PRODUCT" }
-];
 
 const PersonalDetails = memo(({ form, errors, onChange, session, onVerifyStart }: PersonalDetailsProps) => {
     const [isEditingPhone, setIsEditingPhone] = useState(false);
@@ -61,18 +54,6 @@ const PersonalDetails = memo(({ form, errors, onChange, session, onVerifyStart }
                     />
                     <ErrorMsg field="shopName" />
                 </div>
-                <div>
-                    <Select
-                        label="WHAT DO YOU WANT TO OFFER?"
-                        icon={<Briefcase size={16} />}
-                        value={form.providerType || 'BOTH'}
-                        onChange={e => onChange('providerType', e.target.value)}
-                        options={PROVIDER_OPTIONS}
-                        className={errors.providerType ? "border-red-500 focus:border-red-500" : ""}
-                    />
-                    <ErrorMsg field="providerType" />
-                </div>
-
                 <div>
                     <Input
                         label="EMAIL"

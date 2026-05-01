@@ -9,15 +9,15 @@ const ProductSchema = z.object({
     desc: z.string().optional().or(z.literal('')),
     productImages: z.array(z.string()).min(1, "At least one product image is required").max(5, "Maximum 5 product images allowed"),
 
-    gallery: z.array(z.string())
-        .max(50, "Gallery cannot exceed 50 items")
-        .optional()
-        .refine((urls) => {
-            if (!urls) return true;
-            const videoCount = urls.filter(isVideo).length;
-            const imageCount = urls.length - videoCount;
-            return imageCount <= 45 && videoCount <= 5;
-        }, "Gallery can have a maximum of 45 images and 5 videos"),
+    // gallery: z.array(z.string())
+    //     .max(50, "Gallery cannot exceed 50 items")
+    //     .optional()
+    //     .refine((urls) => {
+    //         if (!urls) return true;
+    //         const videoCount = urls.filter(isVideo).length;
+    //         const imageCount = urls.length - videoCount;
+    //         return imageCount <= 45 && videoCount <= 5;
+    //     }, "Gallery can have a maximum of 45 images and 5 videos"),
 
     priceType: z.enum(['FIXED', 'HOURLY', 'QUOTE']).default('FIXED'),
     price: z.number(),
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
             desc: data.desc || "",
             productImage: data.productImages[0],
             productImages: data.productImages,
-            gallery: data.gallery || [],
+            // gallery: data.gallery || [],
 
             priceType: data.priceType,
             price: data.price,

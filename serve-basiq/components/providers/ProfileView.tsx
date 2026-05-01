@@ -94,7 +94,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
         gender: 'MALE',
         dob: '',
         preferredLanguage: 'English',
-        providerType: 'BOTH',
         shopName: '',
         instagramUrl: '',
         facebookUrl: '',
@@ -143,7 +142,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                 gender: user.gender || 'MALE',
                 dob: formattedDob,
                 preferredLanguage: user.preferredLanguage || 'English',
-                providerType: user.providerType || 'BOTH',
                 shopName: user.shopName || '',
                 instagramUrl: user.instagramUrl || '',
                 facebookUrl: user.facebookUrl || '',
@@ -183,17 +181,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     const handleSave = async () => {
         setLoading(true);
         try {
-            if (activeModal === 'PERSONAL' && form.providerType !== user?.providerType) {
-                await fetch('/api/user/status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: form.userId,
-                        providerType: form.providerType
-                    })
-                });
-            }
-
             const res = await fetch('/api/provider/update-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -322,12 +309,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
                         <p className="text-slate-600 flex justify-between"><strong>Gender:</strong> <span className="text-slate-900">{formatGender(user?.gender)}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Date of Birth:</strong> <span className="text-slate-900">{formatDate(user?.dob)}</span></p>
                         <p className="text-slate-600 flex justify-between"><strong>Language:</strong> <span className="text-slate-900">{user?.preferredLanguage || "English"}</span></p>
-                        <div className="pt-2 mt-2 border-t border-slate-50">
-                            <p className="text-slate-600 flex justify-between items-center">
-                                <strong>Account Type:</strong>
-                                <span className="px-2 py-1 bg-slate-100 rounded text-slate-900 font-bold text-xs">{user?.providerType || "BOTH"}</span>
-                            </p>
-                        </div>
                     </div>
                 </div>
 

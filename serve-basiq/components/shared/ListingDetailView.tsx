@@ -778,7 +778,7 @@ export default function ListingDetailView({
                                         />
                                     ) : (
                                         <div className="p-6 rounded-2xl bg-slate-100 border border-slate-200 text-center">
-                                            <FaLock className="mx-auto text-slate-400 text-2xl mb-2" />
+                                            <FaCircleCheck className="mx-auto text-emerald-500 text-2xl mb-2" />
                                             <p className="text-slate-800 text-sm font-bold">
                                                 {listingType === 'RENTAL' ? 'Verified Rental Only' : 'Verified Booking Only'}
                                             </p>

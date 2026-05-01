@@ -11,7 +11,6 @@ interface ProductsViewProps {
     userId: string;
     setSelectedProduct: (product: any) => void;
     showToast: (msg: string, type: 'success' | 'error') => void;
-    providerType?: string;
 }
 
 const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, index: number, onEdit: (p: any) => void, onDelete: (id: string) => void, onView: (p: any) => void }) => {
@@ -135,7 +134,7 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
 ProductTableRow.displayName = "ProductTableRow";
 
 
-export function ProductsView({ setActiveView, userId, setSelectedProduct, showToast, providerType }: ProductsViewProps) {
+export function ProductsView({ setActiveView, userId, setSelectedProduct, showToast }: ProductsViewProps) {
 
     const { products, loading, deleteProduct, isDeleting } = useProducts(userId);
 
@@ -175,31 +174,35 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
     }, [setSelectedProduct, setActiveView]);
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 p-4 md:p-0 relative">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 px-4 md:px-0 space-y-6 relative">
 
             {/* View Toggle */}
-            {providerType === 'BOTH' && (
-                <div className="flex bg-white rounded-xl mb-6 max-w-md border border-slate-200 shadow-sm mx-auto md:mx-0">
-                    <button
-                        onClick={() => setActiveView('settings')}
-                        className="flex-1 py-4 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all"
-                    >
-                        Services
-                    </button>
-                    <button
-                        onClick={() => setActiveView('products')}
-                        className="flex-1 py-4 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all"
-                    >
-                        Products
-                    </button>
-                </div>
-            )}
+            <div className="flex bg-white rounded-xl max-w-xl border border-slate-200 shadow-sm mx-auto md:mx-0">
+                <button
+                    onClick={() => setActiveView('settings')}
+                    className="flex-1 py-4 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                >
+                    Services
+                </button>
+                <button
+                    onClick={() => setActiveView('rentals')}
+                    className="flex-1 py-4 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                >
+                    Rentals
+                </button>
+                <button
+                    onClick={() => setActiveView('products')}
+                    className="flex-1 py-4 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all"
+                >
+                    Products
+                </button>
+            </div>
 
-            {/* Mobile Optimized Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center items-start justify-between gap-4 mb-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center items-start justify-between gap-4">
                 <div>
                     <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">My Products</h2>
-                    <p className="text-slate-500 text-xs md:text-sm mt-1">Manage your inventory and pricing.</p>
+                    <p className="text-slate-500 text-xs md:text-sm mt-1">Manage your products and pricing.</p>
                 </div>
                 <button
                     onClick={handleCreateNew}
@@ -216,7 +219,7 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                     <span className="font-medium text-sm">Loading inventory...</span>
                 </div>
             ) : products.length === 0 ? (
-                <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center mx-4 md:mx-0">
+                <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center">
                     <Package className="text-slate-300 mb-4" size={48} />
                     <h3 className="text-slate-900 font-bold text-lg">No products found</h3>
                     <button onClick={handleCreateNew} className="mt-4 text-blue-600 font-bold text-sm bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition">

@@ -599,10 +599,10 @@ export const StepTwoMedia = ({
             newErrors.angles = "Please add at least one extra angle.";
             hasError = true;
         }
-        if (!form.gallery || form.gallery.length === 0) {
-            newErrors.gallery = "Please add at least one item to the gallery.";
-            hasError = true;
-        }
+        // if (!form.gallery || form.gallery.length === 0) {
+        //     newErrors.gallery = "Please add at least one item to the gallery.";
+        //     hasError = true;
+        // }
 
         if (hasError) {
             e.preventDefault();
@@ -677,7 +677,8 @@ export const StepTwoMedia = ({
                 {errors.angles && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.angles}</p>}
             </div>
 
-            {/* 3. Gallery Section */}
+            {/* 3. Gallery Section - COMMENTED OUT */}
+            {/*
             <div>
                 <label className={labelClass}>Gallery Media (Images: Max 5MB | Videos: Max 50MB) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-4 gap-3">
@@ -710,6 +711,7 @@ export const StepTwoMedia = ({
                 </div>
                 {errors.gallery && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.gallery}</p>}
             </div>
+            */}
 
             {/* Buttons */}
             <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">

@@ -24,8 +24,9 @@ export default function ProviderDashboard() {
     const { currentUser, setCurrentUser } = useUIStore();
     const router = useRouter();
     const { data: session, status, update } = useSession();
+    const dashboardUserId = status === 'authenticated' ? session?.user?.id : undefined;
 
-    const { data: dashboardData, isLoading: loading, refetch: refetchDashboard, isError } = useProviderDashboard(currentUser?.id);
+    const { data: dashboardData, isLoading: loading, refetch: refetchDashboard, isError } = useProviderDashboard(dashboardUserId);
 
     useEffect(() => {
         if (status === 'authenticated' && session?.user && !session.user.isWorker) {
@@ -33,6 +34,18 @@ export default function ProviderDashboard() {
             update();
         }
     }, [session, status, update]);
+
+    useEffect(() => {
+        if (
+            status === 'authenticated' &&
+            session?.user?.id &&
+            dashboardData?.user?.id &&
+            session.user.id !== dashboardData.user.id
+        ) {
+            console.log('Session user id is stale. Refreshing session to match resolved provider user.');
+            update();
+        }
+    }, [dashboardData?.user?.id, session?.user?.id, status, update]);
 
     const [activeView, setActiveView] = useState('dashboard');
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -46,7 +59,6 @@ export default function ProviderDashboard() {
         return userData?.profileImage || userData?.image || userData?.img || "/placeholder-user.png";
     }, [userData]);
 
-    const providerType = userData?.providerType || 'BOTH';
     const isVerified = dashboardData?.isSetupComplete || userData?.isFullProfile || false;
 
     // 🚀 PERFORMANCE FIX: Stable reference for stats
@@ -97,7 +109,7 @@ export default function ProviderDashboard() {
     const activeNavId = getActiveNavId(activeView);
     const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    if (loading) return (
+    if (status === 'loading' || loading) return (
         <div className="h-screen flex flex-col items-center justify-center bg-[#F8F9FC] gap-3">
             <Loader2 className="animate-spin h-10 w-10 text-blue-600" />
             <p className="font-bold text-sm text-slate-600 animate-pulse">Loading ServeBasiq Dashboard...</p>
@@ -151,7 +163,6 @@ export default function ProviderDashboard() {
                         />
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-slate-900 truncate">{displayName}</p>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase">{providerType}</p>
                         </div>
                     </div>
                     <button
@@ -179,7 +190,7 @@ export default function ProviderDashboard() {
                         </div>
                         <div className="hidden md:block">
                             <h2 className="text-xl font-bold text-slate-900 capitalize">
-                                {activeView === 'settings' ? 'Service Management' : activeView.replace('-', ' ')}
+                                {activeView === 'settings' ? 'Management' : activeView.replace('-', ' ')}
                             </h2>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{currentDate}</p>
                         </div>
@@ -232,7 +243,6 @@ export default function ProviderDashboard() {
                         safeStats={safeStats}
                         isVerified={isVerified}
                         showToast={showToast}
-                        providerType={providerType}
                         userData={userData}
                         currentUser={currentUser}
                         refetchDashboard={refetchDashboard}

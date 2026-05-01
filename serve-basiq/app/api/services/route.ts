@@ -162,7 +162,7 @@ export async function POST(req: Request) {
         // console.log("📥 [Service API] Received Body:", body);
 
         const {
-            id, userId, name, desc, serviceimg, serviceImages, coverImg, gallery,
+            id, userId, name, desc, serviceimg, serviceImages, coverImg, /* gallery, */
             categoryId, subCategoryId, subCategoryIds,
             customCategoryName,
             price, priceType, experience, workingDays, openTime, closeTime, is24x7, isRemote,
@@ -176,7 +176,7 @@ export async function POST(req: Request) {
         const finalSubId = subCategoryId || (Array.isArray(subCategoryIds) && subCategoryIds.length > 0 ? subCategoryIds[0] : null);
 
         const dataPayload: any = {
-            name, desc, serviceimg, serviceImages: serviceImages || [], coverImg, gallery: gallery || [],
+            name, desc, serviceimg, serviceImages: serviceImages || [], coverImg, /* gallery: gallery || [], */
             price: parseFloat(price) || 0, priceType: priceType || 'FIXED',
             experience: experience ? parseInt(experience) : 0,
             radiusKm: parseInt(radiusKm) || 10,
@@ -204,11 +204,11 @@ export async function POST(req: Request) {
             console.log(`🔍 [Service API] Fetching existing service id: ${id} to check for deleted media...`);
             const existingService = await prisma.service.findUnique({
                 where: { id },
-                select: { 
+                select: {
                     serviceimg: true,
-                    coverImg: true, 
-                    gallery: true, 
-                    serviceImages: true 
+                    coverImg: true,
+                    // gallery: true,
+                    serviceImages: true
                 }
             });
 
@@ -217,7 +217,7 @@ export async function POST(req: Request) {
                 const oldUrls = [
                     existingService.serviceimg,
                     existingService.coverImg,
-                    ...(Array.isArray(existingService.gallery) ? existingService.gallery : []),
+                    // ...(Array.isArray(existingService.gallery) ? existingService.gallery : []),
                     ...(Array.isArray(existingService.serviceImages) ? existingService.serviceImages : [])
                 ].filter(Boolean) as string[];
 
@@ -225,7 +225,7 @@ export async function POST(req: Request) {
                 const newUrls = [
                     serviceimg,
                     coverImg,
-                    ...(Array.isArray(gallery) ? gallery : []),
+                    // ...(Array.isArray(gallery) ? gallery : []),
                     ...(Array.isArray(serviceImages) ? serviceImages : [])
                 ].filter(Boolean) as string[];
 

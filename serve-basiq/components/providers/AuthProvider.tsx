@@ -24,7 +24,6 @@ function AuthSync({ children }: { children: React.ReactNode }) {
                 isPhoneVerified: session.user.isPhoneVerified ?? currentUser?.isPhoneVerified ?? false,
                 isWorker: session.user.isWorker ?? currentUser?.isWorker ?? false,
                 role: session.user.role || currentUser?.role || 'USER',
-                providerType: session.user.providerType ?? currentUser?.providerType,
                 isWebsite: currentUser?.isWebsite ?? true,
                 isVerified: currentUser?.isVerified ?? false,
             } as any);
