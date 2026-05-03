@@ -7,7 +7,7 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const SlotInput = z.object({
-    date: z.string().min(1),
+    date: z.string().min(1).optional(),
     startTime: z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM"),
     endTime: z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM"),
 });
@@ -103,7 +103,7 @@ export async function POST(
                 prisma.rentalSlot.create({
                     data: {
                         rentalId: id,
-                        date: new Date(s.date),
+                        date: s.date ? new Date(s.date) : new Date(),
                         startTime: s.startTime,
                         endTime: s.endTime,
                     },

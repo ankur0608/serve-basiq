@@ -123,13 +123,13 @@ const RentalTableRow = memo(
 
                 <td className="py-4 pr-4 md:pr-6 align-middle text-right">
                     <div className="flex justify-end gap-1.5 sm:gap-2">
-                        <button onClick={() => onView(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-400 transition-colors" title="View Details">
+                        <button onClick={() => onView(s)} className="p-2 border border-emerald-200 bg-emerald-50 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors" title="View Details">
                             <Eye size={14} />
                         </button>
-                        <button onClick={() => onEdit(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-400 transition-colors" title="Edit">
+                        <button onClick={() => onEdit(s)} className="p-2 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" title="Edit">
                             <Pencil size={14} />
                         </button>
-                        <button onClick={() => onDelete({ id: s.id, type: 'RENTAL' })} className="p-2 border border-slate-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-colors" title="Delete">
+                        <button onClick={() => onDelete({ id: s.id, type: 'RENTAL' })} className="p-2 border border-red-200 bg-red-50 rounded-lg hover:bg-red-100 text-red-600 transition-colors" title="Delete">
                             <Trash2 size={14} />
                         </button>
                     </div>

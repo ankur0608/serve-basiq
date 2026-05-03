@@ -12,7 +12,7 @@ const RentalBookingSchema = z.object({
   addressId: z.string().optional().nullable(),
   slotId: z.string().optional().nullable(),
   deliveryType: z.enum(['PICKUP', 'DELIVERY']).default('PICKUP'),
-  pricingModel: z.enum(["DAILY", "MONTHLY", "FIXED", "HOURLY", "WEEKLY", "QUOTE"]),
+  pricingModel: z.enum(["DAILY", "MONTHLY", "FIXED", "HOURLY", "WEEKLY", "QUOTE", "SLOT"]),
   minDuration: z.enum(['ONE_HOUR', 'ONE_DAY', 'SEVEN_DAYS', 'FIFTEEN_DAYS', 'THIRTY_DAYS']).default('ONE_DAY'),
   notes: z.string().optional(),
   newAddress: z.object({
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       where: { id: data.rentalId },
       select: {
         id: true,
-        name: true, // <-- Added to get the name of the rental item for WhatsApp
+        name: true,
         hourlyPrice: true,
         dailyPrice: true,
         weeklyPrice: true,
@@ -90,7 +90,8 @@ export async function POST(req: Request) {
         fixedPrice: true,
         price: true,
         isAvailable: true,
-        user: true, // <-- Added to fetch the owner's phone number and name
+        advanceNotice: true,
+        user: true,
       }
     });
 
@@ -103,6 +104,19 @@ export async function POST(req: Request) {
         { success: false, message: "This rental is currently unavailable" },
         { status: 409 }
       );
+    }
+
+    // Enforce advance notice requirement
+    if (rentalItem.advanceNotice && rentalItem.advanceNotice > 0) {
+      const minStart = new Date();
+      minStart.setDate(minStart.getDate() + rentalItem.advanceNotice);
+      minStart.setHours(0, 0, 0, 0);
+      if (start < minStart) {
+        return NextResponse.json(
+          { success: false, message: `This rental requires at least ${rentalItem.advanceNotice} day(s) advance notice. Earliest available date: ${minStart.toISOString().split('T')[0]}` },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate slot if one was chosen
@@ -157,7 +171,11 @@ export async function POST(req: Request) {
         finalTotalPrice = appliedFixedPrice;
         break;
       case 'QUOTE':
-        finalTotalPrice = 0; 
+        finalTotalPrice = 0;
+        break;
+      case 'SLOT':
+        // price per slot; one slot selected per booking
+        finalTotalPrice = rentalItem.price;
         break;
     }
 

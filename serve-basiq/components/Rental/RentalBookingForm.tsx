@@ -75,9 +75,12 @@ export default function RentalBookingForm({
     // --- Pricing Model State ---
     const availableModels = useMemo(() => {
         const models = [];
-        // ✅ If it's a quote, we don't need regular pricing models
         if (priceType === 'QUOTE') {
             models.push({ id: 'QUOTE', label: 'Custom Quote', price: 0 });
+            return models;
+        }
+        if (priceType === 'SLOT') {
+            models.push({ id: 'SLOT', label: 'Per Slot', price: price || 0 });
             return models;
         }
 
@@ -165,7 +168,8 @@ export default function RentalBookingForm({
             case 'WEEKLY': calculatedPrice = Math.max(1, Math.ceil(days / 7)) * unitPrice; break;
             case 'MONTHLY': calculatedPrice = Math.max(1, Math.ceil(days / 30)) * unitPrice; break;
             case 'FIXED': calculatedPrice = unitPrice; break;
-            case 'QUOTE': calculatedPrice = 0; break; // ✅ Quotes are 0
+            case 'QUOTE': calculatedPrice = 0; break;
+            case 'SLOT': calculatedPrice = unitPrice; break; // price per slot
             default: calculatedPrice = days * unitPrice;
         }
 
@@ -324,10 +328,11 @@ export default function RentalBookingForm({
                             </div>
                             <span className="block text-[11px] font-medium text-slate-300">
                                 {pricingModel === 'FIXED' ? 'Fixed Price' :
-                                    pricingModel === 'HOURLY' ? `${totalDays * 24} Hours` :
-                                        pricingModel === 'WEEKLY' ? `${Math.max(1, Math.ceil(totalDays / 7))} Week(s)` :
-                                            pricingModel === 'MONTHLY' ? `${Math.max(1, Math.ceil(totalDays / 30))} Month(s)` :
-                                                `${totalDays} Day${totalDays > 1 ? 's' : ''}`}
+                                    pricingModel === 'SLOT' ? 'Per Slot' :
+                                        pricingModel === 'HOURLY' ? `${totalDays * 24} Hours` :
+                                            pricingModel === 'WEEKLY' ? `${Math.max(1, Math.ceil(totalDays / 7))} Week(s)` :
+                                                pricingModel === 'MONTHLY' ? `${Math.max(1, Math.ceil(totalDays / 30))} Month(s)` :
+                                                    `${totalDays} Day${totalDays > 1 ? 's' : ''}`}
                             </span>
                         </>
                     )}
@@ -614,6 +619,8 @@ export default function RentalBookingForm({
                     {loading ? <Loader2 className="animate-spin" size={18} /> : (
                         priceType === 'QUOTE' ? (
                             "Request Quote"
+                        ) : priceType === 'SLOT' ? (
+                            <>Confirm Slot Booking <span className="opacity-80 text-xs font-medium ml-1 bg-black/10 px-1.5 py-0.5 rounded-md">₹{totalPrice}</span></>
                         ) : (
                             <>Confirm Request <span className="opacity-80 text-xs font-medium ml-1 bg-black/10 px-1.5 py-0.5 rounded-md">₹{totalPrice}</span></>
                         )

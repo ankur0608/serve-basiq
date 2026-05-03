@@ -14,7 +14,6 @@ const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-2";
 const sectionTitleClass = "text-sm font-extrabold text-slate-900 border-b border-slate-200 pb-2 mb-4 uppercase tracking-wider";
 const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white";
 
-// Helper function
 const isVideo = (url: string) => {
     if (!url) return false;
     return url.match(/\.(mp4|webm|mov|mkv)$/i);
@@ -26,14 +25,10 @@ export const StepOneDetails = ({
 }: any) => {
     const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // ✅ 1. Add state to track inline errors
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const PRICING_OPTIONS = listingType === 'RENTAL'
-        ? ['HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUOTE']
-        : ['FIXED', 'HOURLY', 'QUOTE'];
+    const PRICING_OPTIONS = ['FIXED', 'HOURLY', 'QUOTE']; // SERVICE only; RENTAL uses Per dropdown
 
-    // ✅ 2. Wrap the handleChange to clear the error instantly when the user starts typing
     const onFieldChange = (field: string, value: any) => {
         handleChange(field, value);
         if (errors[field]) {
@@ -48,7 +43,6 @@ export const StepOneDetails = ({
     const handleNextStep = () => {
         const newErrors: Record<string, string> = {};
 
-        // Collect all errors instead of stopping at the first one
         if (!form.name) {
             newErrors.name = listingType === 'SERVICE' ? "Please enter a service title." : "Please enter an item name.";
         }
@@ -67,7 +61,6 @@ export const StepOneDetails = ({
             newErrors.price = "Please enter a valid price.";
         }
 
-        // ✅ 3. If there are any errors, update state and stop. Otherwise, proceed to step 2.
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             return;
@@ -94,20 +87,21 @@ export const StepOneDetails = ({
                 )}
             </div>
 
+            {/* ── BASIC INFO ── */}
             <div>
                 <h3 className={sectionTitleClass}>Basic Information</h3>
                 <div className="space-y-4">
+                    {/* Name + Stock/Experience */}
                     <div className="grid grid-cols-3 gap-4">
                         <div className="col-span-2">
                             <Input
-                                label={listingType === 'SERVICE' ? 'SERVICE TITLE' : 'ITEM NAME'}
+                                label={listingType === 'SERVICE' ? 'SERVICE TITLE' : 'ITEM TITLE'}
                                 icon={<Briefcase size={18} className="text-slate-400" />}
-                                placeholder={listingType === 'SERVICE' ? "e.g. AC Repair" : "e.g. Generator 5KV"}
+                                placeholder={listingType === 'SERVICE' ? "e.g. AC Repair" : "e.g. LED Screen 10×6 ft"}
                                 value={form.name}
                                 onChange={(e: any) => onFieldChange('name', e.target.value)}
                                 className={`bg-slate-50/50 ${errors.name ? 'border-red-500 focus:border-red-500' : ''}`}
                             />
-                            {/* ✅ Show Error Message */}
                             {errors.name && <p className="text-red-500 text-xs mt-1.5 font-bold ml-1">{errors.name}</p>}
                         </div>
                         <div>
@@ -133,6 +127,7 @@ export const StepOneDetails = ({
                         </div>
                     </div>
 
+                    {/* Category + Sub-category — same 2-col layout for both types */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Select
@@ -148,7 +143,6 @@ export const StepOneDetails = ({
                                     { label: "Other (Please Specify)", value: "OTHER" }
                                 ]}
                             />
-                            {/* ✅ Show Error Message */}
                             {errors.categoryId && <p className="text-red-500 text-xs mt-1.5 font-bold ml-1">{errors.categoryId}</p>}
                         </div>
 
@@ -161,7 +155,6 @@ export const StepOneDetails = ({
                                     onChange={(e: any) => onFieldChange('customCategoryName', e.target.value)}
                                     className={`bg-slate-50/50 ${errors.customCategoryName ? 'border-red-500 focus:border-red-500' : 'border-blue-300 focus:border-blue-500'}`}
                                 />
-                                {/* ✅ Show Error Message */}
                                 {errors.customCategoryName && <p className="text-red-500 text-xs mt-1.5 font-bold ml-1">{errors.customCategoryName}</p>}
                             </div>
                         ) : (
@@ -182,7 +175,6 @@ export const StepOneDetails = ({
                                         { label: "Other (Please Specify)", value: "OTHER" }
                                     ]}
                                 />
-
                                 {form.subCategoryIds?.[0] === 'OTHER' && (
                                     <div className="animate-in fade-in zoom-in-95 duration-200">
                                         <Input
@@ -192,7 +184,6 @@ export const StepOneDetails = ({
                                             onChange={(e: any) => onFieldChange('customCategoryName', e.target.value)}
                                             className={`bg-slate-50/50 ${errors.customCategoryName ? 'border-red-500 focus:border-red-500' : 'border-blue-300 focus:border-blue-500'}`}
                                         />
-                                        {/* ✅ Show Error Message */}
                                         {errors.customCategoryName && <p className="text-red-500 text-xs mt-1.5 font-bold ml-1">{errors.customCategoryName}</p>}
                                     </div>
                                 )}
@@ -200,12 +191,13 @@ export const StepOneDetails = ({
                         )}
                     </div>
 
+                    {/* Description */}
                     <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1 uppercase">Description</label>
                         <textarea
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 outline-none text-sm font-medium transition-all bg-slate-50/50 focus:bg-white resize-none"
                             rows={3}
-                            placeholder={listingType === 'SERVICE' ? "Describe your service..." : "Describe item features..."}
+                            placeholder={listingType === 'SERVICE' ? "Describe your service..." : "Specs, dimensions, what's included, delivery info..."}
                             value={form.desc}
                             onChange={(e: any) => onFieldChange('desc', e.target.value)}
                         />
@@ -213,47 +205,75 @@ export const StepOneDetails = ({
                 </div>
             </div>
 
+            {/* ── RENTAL SPECIFICATIONS ── */}
             {listingType === 'RENTAL' && (
                 <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 space-y-4">
-                    <h3 className="text-sm font-extrabold text-orange-800 mb-2 uppercase tracking-wider">Rental Specifications</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <Select
-                            label="ITEM CONDITION"
-                            icon={<Box size={16} className="text-slate-400" />}
-                            value={form.itemCondition}
-                            onChange={(e: any) => onFieldChange('itemCondition', e.target.value)}
-                            className="bg-white/50 cursor-pointer"
-                            options={[
-                                { label: 'New', value: 'NEW' },
-                                { label: 'Excellent', value: 'EXCELLENT' },
-                                { label: 'Good', value: 'GOOD' },
-                                { label: 'Used', value: 'USED' }
-                            ]}
+                    <h3 className="text-sm font-extrabold text-orange-800 mb-2 uppercase tracking-wider">Pricing & Duration</h3>
+
+                    {/* Base price + Per unit — combined input row */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">BASE PRICE</label>
+                        <div className={`flex items-stretch border rounded-xl overflow-hidden bg-white/80 focus-within:ring-2 focus-within:ring-orange-400 ${errors.price ? 'border-red-400' : 'border-slate-200'}`}>
+                            <div className="flex items-center px-3 text-slate-400 border-r border-slate-200 bg-white/60 shrink-0">
+                                <BadgeIndianRupee size={18} />
+                            </div>
+                            <input
+                                type="number"
+                                placeholder="0.00"
+                                value={form.price}
+                                onChange={(e: any) => onFieldChange('price', e.target.value)}
+                                className="flex-1 px-3 py-3 text-sm font-bold text-slate-800 bg-transparent outline-none min-w-0"
+                            />
+                            <select
+                                value={form.priceType}
+                                onChange={(e) => onFieldChange('priceType', e.target.value)}
+                                className="px-3 py-3 text-xs font-bold bg-orange-50 border-l border-orange-200 text-orange-700 outline-none cursor-pointer shrink-0"
+                            >
+                                <option value="HOURLY">Per Hour</option>
+                                <option value="SLOT">Per Slot</option>
+                                <option value="DAILY">Per Day</option>
+                                <option value="WEEKLY">Per Week</option>
+                                <option value="MONTHLY">Per Month</option>
+                                <option value="FIXED">Fixed Price</option>
+                                <option value="QUOTE">Custom Quote</option>
+                            </select>
+                        </div>
+                        {errors.price && <p className="text-red-500 text-xs mt-1.5 font-bold ml-1">{errors.price}</p>}
+                    </div>
+
+                    {/* Min + Max duration + Advance notice */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <Input
+                            label="MIN DURATION (DAYS)"
+                            icon={<Hourglass size={16} className="text-slate-400" />}
+                            type="number"
+                            placeholder="1"
+                            min="1"
+                            value={form.minDuration}
+                            onChange={(e: any) => onFieldChange('minDuration', e.target.value)}
+                            className="bg-white/50"
                         />
                         <Input
-                            label="SECURITY DEPOSIT (₹)"
-                            icon={<ShieldCheck size={16} className="text-slate-400" />}
+                            label="MAX DURATION (DAYS)"
+                            type="number"
+                            placeholder="No limit"
+                            min="1"
+                            value={form.maxDuration}
+                            onChange={(e: any) => onFieldChange('maxDuration', e.target.value)}
+                            className="bg-white/50"
+                        />
+                        <Input
+                            label="ADVANCE NOTICE (DAYS)"
                             type="number"
                             placeholder="0"
-                            value={form.securityDeposit}
-                            onChange={(e: any) => onFieldChange('securityDeposit', e.target.value)}
+                            min="0"
+                            value={form.advanceNotice}
+                            onChange={(e: any) => onFieldChange('advanceNotice', e.target.value)}
                             className="bg-white/50"
                         />
                     </div>
-                    <div>
-                        <Select
-                            label="MIN RENTAL DURATION"
-                            icon={<Hourglass size={16} className="text-slate-400" />}
-                            value={form.minDuration}
-                            onChange={(e: any) => onFieldChange('minDuration', e.target.value)}
-                            className="bg-white/50 cursor-pointer"
-                            options={[
-                                { label: '1 Hour', value: '1 Hour' },
-                                { label: '1 Day', value: '1 Day' },
-                                { label: '1 Week', value: '1 Week' }
-                            ]}
-                        />
-                    </div>
+
+                    {/* Rental mode */}
                     <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">RENTAL MODE</label>
                         <div className="flex gap-4 mt-2">
@@ -285,10 +305,28 @@ export const StepOneDetails = ({
                             aria-label="Toggle availability"
                             className={`relative w-11 h-6 rounded-full transition-colors ${form.isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`}
                         >
-                            <span
-                                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.isAvailable ? 'translate-x-5' : 'translate-x-0'}`}
-                            />
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.isAvailable ? 'translate-x-5' : 'translate-x-0'}`} />
                         </button>
+                    </div>
+
+                    {/* Working Days */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase mb-2 ml-1">Working Days</label>
+                        <div className="flex flex-wrap gap-2">
+                            {DAYS.map((day: string) => {
+                                const isSelected = form.workingDays?.includes(day);
+                                return (
+                                    <button
+                                        key={day}
+                                        type="button"
+                                        onClick={() => toggleDay(day)}
+                                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all border shadow-sm ${isSelected ? 'bg-orange-500 text-white border-orange-500 scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
+                                    >
+                                        {day}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Slot manager */}
@@ -296,13 +334,15 @@ export const StepOneDetails = ({
                         <RentalSlotManager
                             value={form.slots || []}
                             onChange={(slots) => onFieldChange('slots', slots)}
+                            workingDays={form.workingDays || []}
                             rentalId={serviceId || undefined}
                         />
                     </div>
                 </div>
             )}
 
-            <div>
+            {/* ── PRICING (SERVICE only — RENTAL has pricing inside the orange box) ── */}
+            {listingType === 'SERVICE' && <div>
                 <h3 className={sectionTitleClass}>Pricing</h3>
                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                     <div className="flex justify-between items-center mb-4">
@@ -335,7 +375,6 @@ export const StepOneDetails = ({
                                     onChange={(e: any) => onFieldChange('price', e.target.value)}
                                 />
                             </div>
-                            {/* ✅ Show Error Message */}
                             {errors.price && <p className="text-red-500 text-xs mt-1.5 font-bold ml-1">{errors.price}</p>}
                         </div>
                     ) : (
@@ -347,9 +386,10 @@ export const StepOneDetails = ({
                         </div>
                     )}
                 </div>
-            </div>
+            </div>}
 
-            <div>
+            {/* ── AVAILABILITY & LOCATION (SERVICE only) ── */}
+            {listingType === 'SERVICE' && <div>
                 <h3 className={sectionTitleClass}>Availability & Location</h3>
 
                 {listingType === 'SERVICE' && (
@@ -373,7 +413,8 @@ export const StepOneDetails = ({
                     </div>
                 )}
 
-                {!form.isRemote && (
+                {/* Radius + GPS — only for SERVICE */}
+                {listingType === 'SERVICE' && !form.isRemote && (
                     <div className="space-y-5">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -399,8 +440,9 @@ export const StepOneDetails = ({
                         </div>
                     </div>
                 )}
-            </div>
+            </div>}
 
+            {/* 24x7 + Working Days — SERVICE only */}
             {listingType === 'SERVICE' && (
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <div className="flex items-center justify-between mb-2">
@@ -471,9 +513,9 @@ export const StepOneDetails = ({
         </div>
     );
 };
-// ✅ Added File Size Constants
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 
 export const StepTwoMedia = ({
     form, setStep, handleImageUpload, uploadMultipleFiles, activeUploadField,
@@ -482,27 +524,22 @@ export const StepTwoMedia = ({
 
     const [errors, setErrors] = useState<{ main?: string; angles?: string; gallery?: string }>({});
 
-    // If labelClass is defined outside in your actual file, you can remove this fallback
     const labelClass = "block text-sm font-bold text-slate-700 mb-2";
 
-    // Helper function
     const isVideo = (url: string) => url?.match(/\.(mp4|webm|ogg)$/i);
 
     const handleMainChangeWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // ✅ Check main image size
         if (file.size > MAX_IMAGE_SIZE) {
             setErrors(prev => ({ ...prev, main: "Image exceeds 5MB limit. Please select a smaller file." }));
-            e.target.value = ''; // Reset input so user can try again
+            e.target.value = '';
             return;
         }
 
         setErrors(prev => ({ ...prev, main: undefined }));
         handleImageUpload(e, 'mainimg');
-        
-        // ✅ Fix 1: Clear the input value so onChange fires reliably every time
         e.target.value = '';
     };
 
@@ -541,55 +578,6 @@ export const StepTwoMedia = ({
         e.target.value = '';
     };
 
-    const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-
-        let sizeErrorMessage = "";
-        setErrors(prev => ({ ...prev, gallery: undefined }));
-
-        const currentVideos = (form.gallery || []).filter(isVideo).length;
-        const currentImages = (form.gallery || []).length - currentVideos;
-
-        let addedImages = 0;
-        let addedVideos = 0;
-        const validFiles: File[] = [];
-
-        for (const file of Array.from(files)) {
-            // ✅ Check Gallery sizes based on type
-            if (file.type.startsWith('image/') && file.size > MAX_IMAGE_SIZE) {
-                sizeErrorMessage = "Some images were skipped (Max 5MB).";
-                continue;
-            }
-            if (file.type.startsWith('video/') && file.size > MAX_VIDEO_SIZE) {
-                sizeErrorMessage = sizeErrorMessage ? "Some files were skipped due to size limits." : "Some videos were skipped (Max 50MB).";
-                continue;
-            }
-
-            if (file.type.startsWith('image/')) {
-                if (currentImages + addedImages >= 25) {
-                    continue;
-                }
-                validFiles.push(file);
-                addedImages++;
-            } else if (file.type.startsWith('video/')) {
-                if (currentVideos + addedVideos >= 5) {
-                    continue;
-                }
-                validFiles.push(file);
-                addedVideos++;
-            }
-        }
-
-        // ✅ Set error if any files were skipped
-        if (sizeErrorMessage) {
-            setErrors(prev => ({ ...prev, gallery: sizeErrorMessage }));
-        }
-
-        if (validFiles.length > 0) uploadMultipleFiles(validFiles, 'gallery');
-        e.target.value = '';
-    };
-
     const handleSaveValidation = (e: React.MouseEvent<HTMLButtonElement>) => {
         const newErrors: { main?: string; angles?: string; gallery?: string } = {};
         let hasError = false;
@@ -602,10 +590,6 @@ export const StepTwoMedia = ({
             newErrors.angles = "Please add at least one extra angle.";
             hasError = true;
         }
-        // if (!form.gallery || form.gallery.length === 0) {
-        //     newErrors.gallery = "Please add at least one item to the gallery.";
-        //     hasError = true;
-        // }
 
         if (hasError) {
             e.preventDefault();
@@ -619,12 +603,10 @@ export const StepTwoMedia = ({
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
-            {/* 1. Main Image Section */}
+            {/* Main Image */}
             <div>
                 <label className={labelClass}>Main Image (Max 5MB) <span className="text-red-500">*</span></label>
                 <div className={`relative aspect-video rounded-xl bg-slate-50 border-2 border-dashed overflow-hidden flex flex-col items-center justify-center group transition-all cursor-pointer ${errors.main ? 'border-red-400' : 'border-slate-300 hover:border-blue-500 hover:bg-blue-50/30'}`}>
-
-                    {/* ✅ Fix 2: Changed z-10 to z-20 so the input sits securely ON TOP of the overlay */}
                     <input
                         type="file"
                         accept="image/*"
@@ -632,13 +614,9 @@ export const StepTwoMedia = ({
                         className="absolute inset-0 opacity-0 cursor-pointer z-20"
                         disabled={!!processingMsg}
                     />
-
                     {form.mainimg ? (
                         <>
-                            {/* NOTE: Make sure AppImage is imported in your actual file */}
                             <AppImage src={form.mainimg} alt="Main Service" type="card" className="w-full h-full absolute inset-0" />
-
-                            {/* ✅ Fix 3: Added pointer-events-none so this visual layer doesn't block the click */}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 pointer-events-none">
                                 <p className="text-white text-xs font-bold flex items-center gap-2">Change Photo</p>
                             </div>
@@ -652,9 +630,9 @@ export const StepTwoMedia = ({
                 {errors.main && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.main}</p>}
             </div>
 
-            {/* 2. Business Details Images Section */}
+            {/* Detail Images */}
             <div>
-                <label className={labelClass}>Business details images (Max 25 images + 5 videos | 5MB / 50MB each) <span className="text-red-500">*</span></label>
+                <label className={labelClass}>Detail images (Max 25 images + 5 videos | 5MB / 50MB each) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-5 gap-2">
                     {(form.serviceImages || []).map((url: string, i: number) => (
                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 bg-black">
@@ -690,42 +668,6 @@ export const StepTwoMedia = ({
                 </div>
                 {errors.angles && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.angles}</p>}
             </div>
-
-            {/* 3. Gallery Section - COMMENTED OUT */}
-            {/*
-            <div>
-                <label className={labelClass}>Gallery Media (Images: Max 5MB | Videos: Max 50MB) <span className="text-red-500">*</span></label>
-                <div className="grid grid-cols-4 gap-3">
-                    {(form.gallery || []).map((url: string, i: number) => (
-                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 shadow-sm bg-black">
-                            {isVideo(url) ? (
-                                <>
-                                    <video src={url} className="w-full h-full object-cover opacity-80" muted playsInline />
-                                    <div className="absolute bottom-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-white font-bold flex items-center gap-1 z-10 pointer-events-none">VIDEO</div>
-                                </>
-                            ) : (
-                                <AppImage src={url} alt={`Gallery ${i}`} type="thumbnail" className="w-full h-full absolute inset-0 bg-white" />
-                            )}
-                            <button type="button" onClick={() => removeGalleryImg(i)} className="absolute top-1 right-1 p-1 bg-white/90 rounded-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shadow-sm z-30">
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    ))}
-
-                    {(form.gallery || []).length < 30 && (
-                        <div className={`relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed flex items-center justify-center transition-colors cursor-pointer ${errors.gallery ? 'border-red-400' : 'border-slate-300 hover:border-blue-500'}`}>
-                            <input type="file" accept="image/*, video/mp4, video/webm" multiple onChange={handleGalleryChange} className="absolute inset-0 opacity-0 cursor-pointer z-20" disabled={!!processingMsg} />
-                            {activeUploadField === 'gallery' ? (
-                                <div className="flex flex-col items-center justify-center px-1 text-center pointer-events-none"><span className="text-[8px] font-bold text-blue-500 leading-tight">{processingMsg || "Uploading..."}</span></div>
-                            ) : (
-                                <div className="flex flex-col items-center pointer-events-none"><span className="text-[10px] text-slate-400 font-bold mt-1">Add Media</span></div>
-                            )}
-                        </div>
-                    )}
-                </div>
-                {errors.gallery && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.gallery}</p>}
-            </div>
-            */}
 
             {/* Buttons */}
             <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">

@@ -202,7 +202,8 @@ export async function POST(req: Request) {
             price, priceType, stock, radiusKm,
             latitude, longitude, addressLine1, addressLine2, city, state, pincode,
             itemCondition, securityDeposit, minDuration, rentalMode,
-            isAvailable, slots
+            isAvailable, slots,
+            advanceNotice, workingDays, openTime, closeTime
         } = body;
 
         if (!userId || !name || !rentalImg || price === undefined || !categoryId) {
@@ -212,9 +213,8 @@ export async function POST(req: Request) {
         const finalSubId = subCategoryId || (Array.isArray(subCategoryIds) && subCategoryIds.length > 0 ? subCategoryIds[0] : null);
         const numericPrice = parseFloat(price);
 
-        // Allow 'QUOTE' in addition to standard types
         let selectedPriceType = priceType ? priceType.toUpperCase() : 'DAILY';
-        if (!['HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUOTE'].includes(selectedPriceType)) {
+        if (!['HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUOTE', 'FIXED', 'SLOT'].includes(selectedPriceType)) {
             selectedPriceType = 'DAILY';
         }
 
@@ -241,6 +241,10 @@ export async function POST(req: Request) {
             minDuration,
             rentalMode: formattedMode,
             isAvailable: typeof isAvailable === 'boolean' ? isAvailable : true,
+            advanceNotice: advanceNotice !== undefined ? parseInt(advanceNotice) : 0,
+            workingDays: Array.isArray(workingDays) ? workingDays : [],
+            openTime: openTime || null,
+            closeTime: closeTime || null,
 
             customCategory: categoryId === 'OTHER' ? customCategoryName : null
         };

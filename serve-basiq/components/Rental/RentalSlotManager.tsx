@@ -1,85 +1,51 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { CalendarDays, Clock, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Clock, Plus, Trash2, Loader2, AlertCircle, CalendarDays } from 'lucide-react';
 import clsx from 'clsx';
 
 export interface DraftSlot {
-    id?: string;          // Server id (for already-saved slots)
-    localId?: string;     // Client id (for unsaved drafts)
-    date: string;         // YYYY-MM-DD
-    startTime: string;    // HH:MM
-    endTime: string;      // HH:MM
+    id?: string;
+    localId?: string;
+    startTime: string;
+    endTime: string;
     isBooked?: boolean;
 }
 
 interface Props {
-    /**
-     * Controlled list of slots. Parent owns state so the rental form can
-     * include them in its submit payload (via the `slots` field).
-     */
     value: DraftSlot[];
     onChange: (slots: DraftSlot[]) => void;
-
-    /**
-     * Optional — when supplied, the component can persist/remove individual
-     * slots directly against the server (used on the edit flow).
-     */
+    workingDays: string[];
     rentalId?: string;
 }
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const labelClass = 'block text-[11px] font-bold text-slate-500 uppercase mb-1.5 tracking-wider';
 const inputClass =
     'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-medium bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all';
 
-function isValidSlot(s: Pick<DraftSlot, 'date' | 'startTime' | 'endTime'>) {
-    if (!s.date || !s.startTime || !s.endTime) return false;
-    return s.startTime < s.endTime;
-}
-
-export default function RentalSlotManager({ value, onChange, rentalId }: Props) {
-    const [draft, setDraft] = useState<DraftSlot>({
-        date: todayStr(),
-        startTime: '09:00',
-        endTime: '12:00',
-    });
+export default function RentalSlotManager({ value, onChange, workingDays, rentalId }: Props) {
+    const [draft, setDraft] = useState({ startTime: '09:00', endTime: '17:00' });
     const [busyId, setBusyId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    const grouped = useMemo(() => {
-        const map = new Map<string, DraftSlot[]>();
-        for (const s of value) {
-            const key = s.date;
-            if (!map.has(key)) map.set(key, []);
-            map.get(key)!.push(s);
-        }
-        return Array.from(map.entries())
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([date, slots]) => ({
-                date,
-                slots: slots.sort((a, b) => a.startTime.localeCompare(b.startTime)),
-            }));
-    }, [value]);
 
     const handleAdd = async () => {
         setError(null);
 
-        if (!isValidSlot(draft)) {
+        if (!draft.startTime || !draft.endTime || draft.startTime >= draft.endTime) {
             setError('End time must be after start time.');
             return;
         }
 
         const duplicate = value.some(
-            (s) => s.date === draft.date && s.startTime === draft.startTime && s.endTime === draft.endTime
+            (s) => s.startTime === draft.startTime && s.endTime === draft.endTime
         );
         if (duplicate) {
             setError('That slot is already in the list.');
             return;
         }
 
-        // Edit mode → persist immediately so the owner sees it live.
         if (rentalId) {
             try {
                 setBusyId('new');
@@ -99,7 +65,6 @@ export default function RentalSlotManager({ value, onChange, rentalId }: Props) 
             return;
         }
 
-        // Create mode → keep as local draft, parent posts on form submit.
         onChange([...value, { ...draft, localId: `local-${Date.now()}` }]);
     };
 
@@ -130,30 +95,22 @@ export default function RentalSlotManager({ value, onChange, rentalId }: Props) 
         onChange(value.filter((s) => (slot.id ? s.id !== slot.id : s.localId !== slot.localId)));
     };
 
+    const selectedDays = DAYS.filter((d) => workingDays.includes(d));
+
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-2">
-                <CalendarDays className="text-blue-600" size={16} />
+                <Clock className="text-orange-500" size={16} />
                 <h4 className="text-sm font-bold text-slate-900">Available Time Slots</h4>
-                <span className="ml-auto text-[11px] text-slate-500">
-                    {value.length} {value.length === 1 ? 'slot' : 'slots'}
+                <span className="ml-auto text-[11px] text-slate-400 font-medium">
+                    {value.length} {value.length === 1 ? 'slot' : 'slots'} · applied to all working days
                 </span>
             </div>
 
-            {/* Add-slot row */}
-            <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr_1fr_auto] gap-3 items-end bg-slate-50 border border-slate-200 rounded-xl p-3">
+            {/* Add slot row */}
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end bg-white border border-slate-200 rounded-xl p-3">
                 <div>
-                    <label className={labelClass}>Date</label>
-                    <input
-                        type="date"
-                        min={todayStr()}
-                        value={draft.date}
-                        onChange={(e) => setDraft({ ...draft, date: e.target.value })}
-                        className={inputClass}
-                    />
-                </div>
-                <div>
-                    <label className={labelClass}>Start</label>
+                    <label className={labelClass}>Start Time</label>
                     <input
                         type="time"
                         value={draft.startTime}
@@ -162,7 +119,7 @@ export default function RentalSlotManager({ value, onChange, rentalId }: Props) 
                     />
                 </div>
                 <div>
-                    <label className={labelClass}>End</label>
+                    <label className={labelClass}>End Time</label>
                     <input
                         type="time"
                         value={draft.endTime}
@@ -174,7 +131,7 @@ export default function RentalSlotManager({ value, onChange, rentalId }: Props) 
                     type="button"
                     onClick={handleAdd}
                     disabled={busyId === 'new'}
-                    className="h-[42px] px-4 bg-blue-600 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-blue-700 transition shadow-sm shadow-blue-600/20 disabled:opacity-60"
+                    className="h-[42px] px-4 bg-orange-500 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-orange-600 transition disabled:opacity-60"
                 >
                     {busyId === 'new' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                     Add
@@ -187,29 +144,26 @@ export default function RentalSlotManager({ value, onChange, rentalId }: Props) 
                 </div>
             )}
 
-            {/* Slot list */}
-            {grouped.length === 0 ? (
-                <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl text-xs text-slate-500">
-                    No slots yet. Add the first one above — users will only be able to book dates/times you list here.
+            {/* Schedule preview: each working day with its slots */}
+            {selectedDays.length === 0 ? (
+                <div className="text-center py-5 border-2 border-dashed border-slate-200 rounded-xl text-xs text-slate-400">
+                    Select working days above to see the schedule.
+                </div>
+            ) : value.length === 0 ? (
+                <div className="text-center py-5 border-2 border-dashed border-slate-200 rounded-xl text-xs text-slate-400">
+                    No slots yet. Add time slots above — they apply to all selected working days.
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {grouped.map(({ date, slots }) => (
-                        <div key={date} className="bg-white border border-slate-200 rounded-xl p-3">
-                            <div className="flex items-center gap-2 mb-2">
-                                <CalendarDays size={14} className="text-slate-500" />
-                                <span className="text-xs font-bold text-slate-700">
-                                    {new Date(date).toLocaleDateString(undefined, {
-                                        weekday: 'short',
-                                        day: 'numeric',
-                                        month: 'short',
-                                        year: 'numeric',
-                                    })}
-                                </span>
+                <div className="space-y-2">
+                    {selectedDays.map((day) => (
+                        <div key={day} className="bg-white border border-slate-200 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-2.5">
+                                <CalendarDays size={13} className="text-orange-500" />
+                                <span className="text-xs font-bold text-slate-700">{day}</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                {slots.map((s) => {
-                                    const key = s.id ?? s.localId ?? `${s.date}-${s.startTime}`;
+                                {value.map((s) => {
+                                    const key = s.id ?? s.localId ?? `${s.startTime}-${s.endTime}`;
                                     return (
                                         <div
                                             key={key}
@@ -217,25 +171,28 @@ export default function RentalSlotManager({ value, onChange, rentalId }: Props) 
                                                 'group relative pl-3 pr-8 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5',
                                                 s.isBooked
                                                     ? 'bg-amber-50 border-amber-200 text-amber-800'
-                                                    : 'bg-blue-50 border-blue-200 text-blue-800'
+                                                    : 'bg-orange-50 border-orange-200 text-orange-800'
                                             )}
                                         >
-                                            <Clock size={12} />
+                                            <Clock size={11} />
                                             {s.startTime} – {s.endTime}
-                                            {s.isBooked && <span className="ml-1 text-[10px] uppercase">Booked</span>}
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemove(s)}
-                                                disabled={s.isBooked || busyId === s.id}
-                                                title={s.isBooked ? 'Booked slot cannot be removed' : 'Remove slot'}
-                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-white/70 disabled:opacity-40 disabled:cursor-not-allowed"
-                                            >
-                                                {busyId === s.id ? (
-                                                    <Loader2 size={12} className="animate-spin" />
-                                                ) : (
-                                                    <Trash2 size={12} />
-                                                )}
-                                            </button>
+                                            {s.isBooked && <span className="ml-1 text-[9px] uppercase font-bold">Booked</span>}
+                                            {/* Only show remove on first day to avoid duplicate clicks */}
+                                            {day === selectedDays[0] && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemove(s)}
+                                                    disabled={s.isBooked || busyId === s.id}
+                                                    title={s.isBooked ? 'Booked — cannot remove' : 'Remove slot'}
+                                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-white/70 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                >
+                                                    {busyId === s.id ? (
+                                                        <Loader2 size={11} className="animate-spin" />
+                                                    ) : (
+                                                        <Trash2 size={11} />
+                                                    )}
+                                                </button>
+                                            )}
                                         </div>
                                     );
                                 })}

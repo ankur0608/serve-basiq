@@ -159,6 +159,7 @@ enum RentalPricingType {
     MONTHLY
     QUOTE
     FIXED
+    SLOT
 }
 
 model RentalBooking {
@@ -255,6 +256,11 @@ model Rental {
     maxDuration     String?
 
     rentalMode RentalMode @default(PICKUP)
+
+    advanceNotice Int     @default(0)
+    workingDays   String[]
+    openTime      String?
+    closeTime     String?
 
     addressLine1 String?
     addressLine2 String?
@@ -396,6 +402,7 @@ model User {
     isWorker        Boolean  @default(false)
     isWebsite       Boolean  @default(true)
     rejectionReason String?
+    providerType    String?
     rentals         Rental[]
 
     isOnline       Boolean @default(false)
