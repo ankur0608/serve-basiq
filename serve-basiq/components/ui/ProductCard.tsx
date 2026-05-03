@@ -168,7 +168,7 @@ function ProductCard({ product, isFav = false, toggleFav, currentUser }: Product
                                     <span className="text-sm sm:text-base font-bold text-blue-600">Custom Quote</span>
                                 ) : (
                                     <>
-                                        <span className="text-sm sm:text-base font-bold text-slate-900">₹{price?.toLocaleString()}</span>
+                                        <span className="text-sm sm:text-base font-bold text-slate-900">₹{price?.toLocaleString('en-IN')}</span>
                                         <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium ml-1">/ {unit}</span>
                                     </>
                                 )}

@@ -117,6 +117,7 @@ export const authOptions: NextAuthOptions = {
                     token.role = resolvedUser.role;
                     token.isWorker = resolvedUser.isWorker;
                     token.isWebsite = resolvedUser.isWebsite;
+                    token.profileImage = resolvedUser.profileImage ?? null;
                 }
 
                 if (trigger === "update") {
@@ -139,6 +140,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.role = token.role as string;
                 session.user.isWorker = token.isWorker as boolean;
                 session.user.isWebsite = token.isWebsite as boolean;
+                session.user.profileImage = (token.profileImage as string | null) ?? null;
             }
 
             return session;

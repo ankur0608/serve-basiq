@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import { Suspense } from 'react';
 import ProductsExplorer from '@/components/products/ProductsExplorer';
 import { ProductsSkeleton } from '@/components/products/ProductsSkeleton';
+// import InlinePageFAQ from '@/components/shared/InlinePageFAQ';
+import { productsFaqs } from '@/components/FAQContent/faqData';
 
 export const metadata: Metadata = {
   title: 'B2B Marketplace — Wholesale Products, Electronics, Furniture & More',
@@ -9,7 +11,9 @@ export const metadata: Metadata = {
   keywords: [
     'B2B marketplace India', 'wholesale products', 'business products', 'buy from local sellers',
     'bulk orders', 'electronics near me', 'furniture nearby', 'building materials local',
-    'nearby products India', 'verified suppliers', 'ServeBasiq products'
+    'nearby products India', 'verified suppliers', 'ServeBasiq products',
+    'auto accessories local', 'fashion products India', 'beauty products near me',
+    'home appliances local', 'kitchen equipment wholesale', 'buy products in bulk India'
   ],
   alternates: { canonical: '/products' },
   openGraph: {
@@ -33,18 +37,30 @@ const SITE_URL = 'https://www.servebasiq.in';
 
 const productsJsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'CollectionPage',
-  name: 'Products Marketplace',
-  description: 'Browse verified local sellers offering electronics, furniture, fashion, beauty, auto accessories, and building materials across India.',
-  url: `${SITE_URL}/products`,
-  isPartOf: { '@type': 'WebSite', name: 'ServeBasiq', url: SITE_URL },
-  breadcrumb: {
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Products', item: `${SITE_URL}/products` },
-    ],
-  },
+  '@graph': [
+    {
+      '@type': 'CollectionPage',
+      name: 'Products Marketplace',
+      description: 'Browse verified local sellers offering electronics, furniture, fashion, beauty, auto accessories, and building materials across India.',
+      url: `${SITE_URL}/products`,
+      isPartOf: { '@type': 'WebSite', name: 'ServeBasiq', url: SITE_URL },
+      breadcrumb: {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Products', item: `${SITE_URL}/products` },
+        ],
+      },
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: productsFaqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+      })),
+    },
+  ],
 };
 
 export default function B2BMarketplacePage() {
@@ -58,6 +74,7 @@ export default function B2BMarketplacePage() {
       <Suspense fallback={<ProductsSkeleton />}>
         <ProductsExplorer />
       </Suspense>
+      {/* <InlinePageFAQ faqs={productsFaqs} title="Common Questions About Buying Products" /> */}
     </>
   );
 }

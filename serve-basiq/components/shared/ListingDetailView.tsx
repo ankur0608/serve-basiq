@@ -29,19 +29,17 @@ import {
     MobileBottomBar,
 } from './listing/ListingContactBar';
 
-const ProductSlider       = dynamic(() => import('@/components/products/ProductSlider'),       { ssr: false });
-const InteractiveGallery  = dynamic(() => import('@/components/products/InteractiveGallery'),  { ssr: false });
+const ProductSlider = dynamic(() => import('@/components/products/ProductSlider'), { ssr: false });
+const InteractiveGallery = dynamic(() => import('@/components/products/InteractiveGallery'), { ssr: false });
 const SupplierProfileModal = dynamic(() => import('@/components/products/SupplierProfileModal'), { ssr: false });
-const RatingForm          = dynamic(() => import('@/components/Rating/RatingForm'),            { ssr: false });
-const LoginModal          = dynamic(() => import('@/components/auth/LoginModal'),              { ssr: false });
+const RatingForm = dynamic(() => import('@/components/Rating/RatingForm'), { ssr: false });
+const LoginModal = dynamic(() => import('@/components/auth/LoginModal'), { ssr: false });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatEnum = (str?: string) => {
     if (!str) return 'N/A';
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase().replace(/_/g, ' ');
 };
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 export type ListingType = 'SERVICE' | 'PRODUCT' | 'RENTAL';
 
 export interface ListingDetailViewProps {
@@ -131,7 +129,6 @@ export interface DetailStat {
     icon: React.ReactNode;
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function ListingDetailView({
     listing,
     relatedListings,
@@ -151,13 +148,12 @@ export default function ListingDetailView({
 
     const isLoggedIn = !!session;
     const [loginModalOpen, setLoginModalOpen] = useState(false);
-    const openLoginModal  = () => setLoginModalOpen(true);
+    const openLoginModal = () => setLoginModalOpen(true);
     const closeLoginModal = () => {
         setLoginModalOpen(false);
         document.body.style.overflow = 'auto';
     };
 
-    // ── Like + Share state ────────────────────────────────────────────────────
     const [isLiked, setIsLiked] = useState(false);
     const [isLikeLoading, setIsLikeLoading] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
@@ -226,12 +222,11 @@ export default function ListingDetailView({
         } catch { /* clipboard blocked — silently ignore */ }
     };
 
-    // ── Derived values ────────────────────────────────────────────────────────
-    const isQuote      = listing.priceType?.toUpperCase() === 'QUOTE';
-    const provider     = listing.user;
-    const displayName  = provider?.shopName || provider?.name || listing.name;
-    const isVerified   = listing.isVerified || provider?.isVerified;
-    const userPhone    = provider?.phone || '';
+    const isQuote = listing.priceType?.toUpperCase() === 'QUOTE';
+    const provider = listing.user;
+    const displayName = provider?.shopName || provider?.name || listing.name;
+    const isVerified = listing.isVerified || provider?.isVerified;
+    const userPhone = provider?.phone || '';
 
     const addressParts = [
         listing.addressLine1,
@@ -254,7 +249,6 @@ export default function ListingDetailView({
                 ? listing.reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / listing.reviews.length
                 : null;
 
-    // ── All images (deduped) ──────────────────────────────────────────────────
     const allImages = Array.from(new Set([
         listing.coverImg || listing.rentalImg || listing.serviceimg || listing.mainimg || listing.productImage,
         ...(listing.serviceImages || listing.rentalImages || listing.productImages || []),
@@ -265,19 +259,17 @@ export default function ListingDetailView({
         allImages.push('https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2071&auto=format&fit=crop');
     }
 
-    const mainImg       = allImages[0];
+    const mainImg = allImages[0];
     const galleryImages = (Array.isArray(listing.gallery) ? listing.gallery : []).filter(Boolean) as string[];
 
-    // ── Share targets (built after mainImg + price label is known) ────────────
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
     const sharePriceLabel = isQuote
         ? 'Custom Quote'
-        : `₹${Number(listing.price || 0).toLocaleString()}${
-            listingType === 'PRODUCT'
-                ? ` / ${(listing.unit?.toLowerCase() || 'piece')}`
-                : listingType === 'RENTAL'
-                    ? ` / ${formatEnum(listing.priceType)}`
-                    : listing.priceType?.toUpperCase() === 'HOURLY' ? ' / hour' : ''
+        : `₹${Number(listing.price || 0).toLocaleString()}${listingType === 'PRODUCT'
+            ? ` / ${(listing.unit?.toLowerCase() || 'piece')}`
+            : listingType === 'RENTAL'
+                ? ` / ${formatEnum(listing.priceType)}`
+                : listing.priceType?.toUpperCase() === 'HOURLY' ? ' / hour' : ''
         }`;
     const shareCityLabel = [listing.city, listing.state].filter(Boolean).join(', ');
     const shareCategoryLabel = listing.category?.name || listingType;
@@ -313,44 +305,40 @@ export default function ListingDetailView({
         },
     ];
 
-    // ── Socials ───────────────────────────────────────────────────────────────
     const socials = [
         { name: 'Instagram', icon: <FaInstagram size={20} />, url: provider?.instagramUrl, styleClass: 'text-pink-600 bg-pink-50 border-pink-100 hover:bg-pink-600 hover:text-white' },
-        { name: 'Facebook',  icon: <FaFacebook  size={20} />, url: provider?.facebookUrl,  styleClass: 'text-blue-600 bg-blue-50 border-blue-100 hover:bg-blue-600 hover:text-white' },
-        { name: 'YouTube',   icon: <FaYoutube   size={20} />, url: provider?.youtubeUrl,   styleClass: 'text-red-600 bg-red-50 border-red-100 hover:bg-red-600 hover:text-white' },
-        { name: 'Website',   icon: <FaGlobe     size={20} />, url: provider?.websiteUrl,   styleClass: 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-600 hover:text-white' },
+        { name: 'Facebook', icon: <FaFacebook size={20} />, url: provider?.facebookUrl, styleClass: 'text-blue-600 bg-blue-50 border-blue-100 hover:bg-blue-600 hover:text-white' },
+        { name: 'YouTube', icon: <FaYoutube size={20} />, url: provider?.youtubeUrl, styleClass: 'text-red-600 bg-red-50 border-red-100 hover:bg-red-600 hover:text-white' },
+        { name: 'Website', icon: <FaGlobe size={20} />, url: provider?.websiteUrl, styleClass: 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-600 hover:text-white' },
     ].filter(s => s.url && s.url.trim() !== '' && s.url !== 'null');
 
-    // ── Detail stats ──────────────────────────────────────────────────────────
     const detailStats: DetailStat[] = listingType === 'RENTAL' ? [
-        { label: 'Condition',     icon: <FaBoxOpen  className="text-slate-300" />,             value: formatEnum(listing.itemCondition) },
-        { label: 'Min. Duration', icon: <FaClock    className="text-slate-300 shrink-0" />,    value: isQuote ? 'Flexible' : String(listing.minDuration || '1 Day') },
-        { label: 'Deposit',       icon: null,                                                  value: `₹${listing.securityDeposit || 0}` },
-        { label: 'Owner',         icon: null,                                                  value: provider?.shopName || provider?.name },
+        { label: 'Condition', icon: <FaBoxOpen className="text-slate-300" />, value: formatEnum(listing.itemCondition) },
+        { label: 'Min. Duration', icon: <FaClock className="text-slate-300 shrink-0" />, value: isQuote ? 'Flexible' : String(listing.minDuration || '1 Day') },
+        { label: 'Deposit', icon: null, value: `₹${listing.securityDeposit || 0}` },
+        { label: 'Owner', icon: null, value: provider?.shopName || provider?.name },
     ] : listingType === 'PRODUCT' ? [
-        { label: 'Condition',  icon: <FaCube      className="text-slate-300" />,               value: listing.condition || 'NEW' },
-        { label: 'Delivery',   icon: <FaTruckFast className="text-slate-300 shrink-0" />,      value: listing.deliveryType || 'DELIVERY' },
-        { label: 'Min. Order', icon: <FaBoxOpen   className="text-slate-300 shrink-0" />,      value: `${listing.moq || 1} ${listing.unit || 'PIECE'}` },
-        { label: 'Stock',      icon: null,                                                     value: (listing.stockStatus || 'IN STOCK').replace(/_/g, ' ') },
+        { label: 'Condition', icon: <FaCube className="text-slate-300" />, value: listing.condition || 'NEW' },
+        { label: 'Delivery', icon: <FaTruckFast className="text-slate-300 shrink-0" />, value: listing.deliveryType || 'DELIVERY' },
+        { label: 'Min. Order', icon: <FaBoxOpen className="text-slate-300 shrink-0" />, value: `${listing.moq || 1} ${listing.unit || 'PIECE'}` },
+        { label: 'Stock', icon: null, value: (listing.stockStatus || 'IN STOCK').replace(/_/g, ' ') },
     ] : [
-        { label: 'Experience', icon: <FaBoxOpen   className="text-slate-300" />,               value: `${listing.experience || 0}+ Yrs` },
-        { label: listing.isRemote ? 'Coverage' : 'Service Area', icon: listing.isRemote ? <FaGlobe className="text-slate-300 shrink-0" /> : <FaTruckFast className="text-slate-300 shrink-0" />, value: listing.isRemote ? 'Global / Online' : `${listing.radiusKm || 10} km` },
-        { label: 'Billing',    icon: <FaCube      className="text-slate-300 shrink-0" />,      value: isQuote ? 'Custom Quote' : listing.priceType },
-        { label: 'Status',     icon: null,                                                     value: listing.is24x7 ? '24×7 Open' : 'Standard' },
+        { label: 'Experience', icon: <FaBoxOpen className="text-purple-500 shrink-0" />, value: `${listing.experience || 0}+ Yrs` },
+        { label: listing.isRemote ? 'Coverage' : 'Service Area', icon: listing.isRemote ? <FaGlobe className="text-blue-500 shrink-0" /> : <FaTruckFast className="text-blue-500 shrink-0" />, value: listing.isRemote ? 'Global / Online' : `${listing.radiusKm || 10} km` },
+        { label: 'Billing', icon: <FaCube className="text-amber-500 shrink-0" />, value: isQuote ? 'Custom Quote' : listing.priceType },
+        { label: 'Status', icon: <FaClock className="text-emerald-500 shrink-0" />, value: listing.is24x7 ? '24×7 Open' : 'Standard' },
     ];
 
-    // ── Price unit label ──────────────────────────────────────────────────────
     const priceUnit = listingType === 'PRODUCT'
         ? (listing.unit?.toLowerCase() || 'piece')
         : listingType === 'RENTAL'
             ? formatEnum(listing.priceType)
             : listing.priceType?.toUpperCase() === 'HOURLY' ? 'hour' : 'fixed';
 
-    const backHref    = `/${listingType.toLowerCase()}s`;
-    const backLabel   = listingType === 'PRODUCT' ? 'Products' : listingType === 'RENTAL' ? 'Rentals' : 'Services';
+    const backHref = `/${listingType.toLowerCase()}s`;
+    const backLabel = listingType === 'PRODUCT' ? 'Products' : listingType === 'RENTAL' ? 'Rentals' : 'Services';
     const supplierLabel = listingType === 'RENTAL' ? 'Owner Details' : 'Supplier Profile';
 
-    // ── Reusable blocks ───────────────────────────────────────────────────────
     const PricingAndBookingBlock = (
         <div id="booking-section" className="bg-white rounded-[32px] p-4 md:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 scroll-mt-24">
             {/* Price */}
@@ -419,21 +407,19 @@ export default function ListingDetailView({
         </div>
     );
 
-    // ── Related listings ──────────────────────────────────────────────────────
     const sliderProducts = relatedListings.map(item => ({
-        id:            item.id,
-        name:          item.name,
-        price:         item.price,
-        priceType:     item.priceType,
-        unit:          item.unit,
-        productImage:  item.productImage ?? null,
-        gallery:       item.gallery,
-        category:      item.category,
-        listingType:   item.listingType,
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        priceType: item.priceType,
+        unit: item.unit,
+        productImage: item.productImage ?? null,
+        gallery: item.gallery,
+        category: item.category,
+        listingType: item.listingType,
         ownerLocation: item.ownerLocation,
     }));
 
-    // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div className="pb-36 md:pb-20 bg-slate-50 min-h-screen pt-4 md:pt-8 scroll-smooth">
             <div className="max-w-7xl mx-auto px-4">
@@ -450,7 +436,6 @@ export default function ListingDetailView({
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                    {/* ── Left column ────────────────────────────────────── */}
                     <div className="lg:col-span-2 space-y-8 order-1">
 
                         {/* Header */}
@@ -492,11 +477,10 @@ export default function ListingDetailView({
                                         disabled={isLikeLoading}
                                         aria-pressed={isLiked}
                                         aria-label={isLiked ? 'Remove from favorites' : 'Add to favorites'}
-                                        className={`h-11 w-11 md:h-12 md:w-12 flex items-center justify-center rounded-2xl border shadow-sm transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed ${
-                                            isLiked
+                                        className={`h-11 w-11 md:h-12 md:w-12 flex items-center justify-center rounded-2xl border shadow-sm transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed ${isLiked
                                                 ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
                                                 : 'bg-white border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50'
-                                        }`}
+                                            }`}
                                     >
                                         {isLiked
                                             ? <FaHeart className="text-lg md:text-xl" />
@@ -511,26 +495,48 @@ export default function ListingDetailView({
                                             aria-label="Share this listing"
                                             aria-expanded={shareOpen}
                                             aria-haspopup="menu"
-                                            className={`h-11 px-3 md:h-12 md:px-4 inline-flex items-center gap-2 rounded-2xl border shadow-sm transition-all duration-200 ${
-                                                shareOpen
+                                            className={`h-11 px-3 md:h-12 md:px-4 inline-flex items-center gap-2 rounded-2xl border shadow-sm transition-all duration-200 ${shareOpen
                                                     ? 'bg-blue-50 border-blue-200 text-blue-600'
                                                     : 'bg-white border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50'
-                                            }`}
+                                                }`}
                                         >
                                             <FaShareNodes className="text-lg md:text-xl" />
                                             <span className="hidden sm:inline text-sm font-bold">Share</span>
                                         </button>
 
+                                        {/* Backdrop (mobile: full-screen dimmed, desktop: hidden) */}
+                                        {shareOpen && (
+                                            <div
+                                                className="fixed inset-0 bg-black/40 z-40 sm:hidden"
+                                                onClick={() => setShareOpen(false)}
+                                                aria-hidden="true"
+                                            />
+                                        )}
+
                                         {shareOpen && (
                                             <div
                                                 role="menu"
-                                                className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-white border border-slate-200 shadow-xl overflow-hidden z-30 animate-in fade-in zoom-in-95 duration-150"
+                                                className="
+                                                    fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[88vw] max-w-sm
+                                                    sm:fixed-none sm:translate-x-0 sm:translate-y-0
+                                                    sm:absolute sm:top-full sm:left-auto sm:right-0 sm:mt-2 sm:w-80
+                                                    rounded-2xl bg-white border border-slate-200 shadow-2xl overflow-hidden z-50
+                                                    animate-in fade-in zoom-in-95 duration-150
+                                                "
                                             >
-                                                <div className="px-4 py-3 border-b border-slate-100">
+                                                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                                                     <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Share this listing</p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShareOpen(false)}
+                                                        className="sm:hidden w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors text-xs font-bold"
+                                                        aria-label="Close"
+                                                    >
+                                                        ✕
+                                                    </button>
                                                 </div>
 
-                                                {/* Preview card — what recipients will see */}
+                                                {/* Preview card */}
                                                 <div className="p-3 border-b border-slate-100 bg-slate-50">
                                                     <div className="flex gap-3 bg-white rounded-xl border border-slate-200 p-2.5 shadow-sm">
                                                         <div className="w-16 h-16 rounded-lg overflow-hidden relative shrink-0 bg-slate-100">
@@ -566,10 +572,10 @@ export default function ListingDetailView({
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 onClick={() => setShareOpen(false)}
-                                                                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors"
+                                                                className="flex items-center gap-3 px-4 py-3 sm:py-2.5 hover:bg-slate-50 transition-colors"
                                                                 role="menuitem"
                                                             >
-                                                                <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.iconWrap}`}>
+                                                                <span className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg flex items-center justify-center ${t.iconWrap}`}>
                                                                     {t.icon}
                                                                 </span>
                                                                 <span className="text-sm font-semibold text-slate-700">{t.name}</span>
@@ -580,10 +586,10 @@ export default function ListingDetailView({
                                                         <button
                                                             type="button"
                                                             onClick={handleCopyLink}
-                                                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left"
+                                                            className="w-full flex items-center gap-3 px-4 py-3 sm:py-2.5 hover:bg-slate-50 transition-colors text-left"
                                                             role="menuitem"
                                                         >
-                                                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${shareCopied ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'}`}>
+                                                            <span className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg flex items-center justify-center ${shareCopied ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'}`}>
                                                                 {shareCopied ? <FaCheck size={16} /> : <FaLink size={16} />}
                                                             </span>
                                                             <span className="text-sm font-semibold text-slate-700">
@@ -703,7 +709,6 @@ export default function ListingDetailView({
                                     </h4>
                                     <div className="flex gap-3">
                                         {socials.map((social, i) => (
-                                            /* FIX: Added missing <a tag here */
                                             <a
                                                 key={i}
                                                 href={social.url!}
@@ -794,7 +799,6 @@ export default function ListingDetailView({
                         </div>
                     </div>
 
-                    {/* ── Desktop sticky sidebar ──────────────────────── */}
                     <div className="hidden lg:block space-y-6 order-2 h-fit lg:sticky lg:top-24 z-20">
                         {PricingAndBookingBlock}
                         {SupplierProfileBlock}

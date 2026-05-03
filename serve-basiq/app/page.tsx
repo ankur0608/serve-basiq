@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { prisma } from "@/lib/prisma";
 import FeaturedProviders from '@/components/sections/FeaturedProviders';
@@ -19,6 +20,34 @@ import {
 import HomeServiceCategories from '@/components/home/HomeServiceCategories';
 import HomeProductCategories from '@/components/home/HomeProductCategories';
 import FeaturedRentals from '@/components/sections/FeaturedRentals';
+
+export const metadata: Metadata = {
+  title: 'ServeBasiq — Buy Local Products, Services & Rentals Near You',
+  description: 'Discover verified local services, buy products from nearby sellers, and rent equipment in your city. India\'s hyper-local marketplace connecting customers with trusted local providers.',
+  keywords: [
+    'local marketplace India', 'services near me', 'buy products locally', 'rent equipment near me',
+    'book home services', 'nearby service providers', 'hyper-local marketplace', 'ServeBasiq',
+    'plumber near me', 'electrician near me', 'furniture near me', 'local business directory India',
+    'book local professionals', 'find vendors near me', 'B2B marketplace India',
+    'home repair services', 'beauty services nearby', 'wholesale products India'
+  ],
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    url: '/',
+    siteName: 'ServeBasiq',
+    locale: 'en_IN',
+    title: 'ServeBasiq — Local Products, Services & Rentals Near You',
+    description: 'India\'s hyper-local marketplace to discover services, buy products, and rent equipment near you.',
+    images: [{ url: '/logo.png', width: 1200, height: 630, alt: 'ServeBasiq' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ServeBasiq — Local Products, Services & Rentals',
+    description: 'Discover verified local services, nearby products, and rental equipment in your city.',
+    images: ['/logo.png'],
+  },
+};
 
 const SITE_URL = 'https://www.servebasiq.in';
 

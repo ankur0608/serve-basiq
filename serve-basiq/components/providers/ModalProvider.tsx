@@ -2,17 +2,17 @@
 
 import LoginModal from "@/components/auth/LoginModal";
 import OtpModal from "@/components/auth/OtpModal";
-import NameModal from "@/components/auth/NameModal"; // ✅ Import this
+import NameModal from "@/components/auth/NameModal";
 import { useUIStore } from "@/lib/store";
 
 export default function ModalProvider() {
     const {
         isLoginOpen,
         isOtpOpen,
-        isNameOpen, // ✅ Get name modal state
+        isNameOpen,
         onCloseLogin,
         onCloseOtp,
-        onCloseName, // ✅ Get name modal close action
+        onCloseName,
     } = useUIStore();
 
     return (
@@ -26,8 +26,6 @@ export default function ModalProvider() {
                 isOpen={isOtpOpen}
                 onClose={onCloseOtp}
             />
-
-            {/* ✅ Render Name Modal */}
             <NameModal
                 isOpen={isNameOpen}
                 onClose={onCloseName}

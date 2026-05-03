@@ -665,7 +665,7 @@ model Product {
     productImages  String[]
     gallery        String[]
 
-    priceType PriceType @default(FIXED) // <-- Added PriceType field here
+    priceType PriceType @default(FIXED) 
     price     Float
     moq       Int
 
@@ -728,7 +728,6 @@ model FavoriteRental {
 model ContactMessage {
     id String @id @default(cuid())
 
-    // Link to user (optional so non-logged-in users can still contact you)
     userId String?
     user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -737,7 +736,7 @@ model ContactMessage {
     category String
     message  String @db.Text
 
-    status    String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+    status    String   @default("OPEN") 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 }
@@ -750,9 +749,7 @@ model Worker {
     email     String?
     image     String?
     gender    Gender?
-    roleType  String? // e.g., "Plumber", "Driver", "Assistant"
-    
-    // Link to the provider/shop owner
+    roleType  String? 
     providerId String
     provider   User   @relation("ProviderWorkers", fields: [providerId], references: [id])
 

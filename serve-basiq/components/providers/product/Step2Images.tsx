@@ -85,26 +85,31 @@ export function Step2Media({
         const fileArray = Array.from(files);
         const processedFiles: File[] = [];
 
-        for (const file of fileArray) {
-            // ✅ Check product angle image sizes
-            if (file.size > MAX_IMAGE_SIZE) {
-                hasSizeError = true;
-                continue; // Skip the oversized file
-            }
+        const currentImages = form.productImages.filter((url: string) => !isVideo(url)).length;
+        const currentVideos = form.productImages.filter((url: string) => isVideo(url)).length;
+        let addedImages = 0;
+        let addedVideos = 0;
 
+        for (const file of fileArray) {
             if (file.type.startsWith('image/')) {
+                if (file.size > MAX_IMAGE_SIZE) { hasSizeError = true; continue; }
+                if (currentImages + addedImages >= 25) continue;
                 try {
                     const compressedBlob = await imageCompression(file, compressionOptions);
                     const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
                     processedFiles.push(new File([compressedBlob], newFileName, { type: 'image/webp' }));
-                } catch (err) {
-                    processedFiles.push(file);
-                }
+                    addedImages++;
+                } catch (err) { processedFiles.push(file); addedImages++; }
+            } else if (file.type.startsWith('video/')) {
+                if (file.size > MAX_VIDEO_SIZE) { hasSizeError = true; continue; }
+                if (currentVideos + addedVideos >= 5) continue;
+                processedFiles.push(file);
+                addedVideos++;
             }
         }
 
         if (hasSizeError) {
-            setErrors(prev => ({ ...prev, angles: "One or more images skipped. Max size is 5MB." }));
+            setErrors(prev => ({ ...prev, angles: "Some files skipped — max 5MB per image, 50MB per video." }));
         }
 
         if (processedFiles.length > 0) {
@@ -140,7 +145,7 @@ export function Step2Media({
             }
 
             if (file.type.startsWith('image/')) {
-                if (currentImages + addedImages >= 45) continue;
+                if (currentImages + addedImages >= 25) continue;
                 try {
                     const compressedBlob = await imageCompression(file, compressionOptions);
                     const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
@@ -219,11 +224,18 @@ export function Step2Media({
 
             {/* 2. PRODUCT IMAGES (EXTRA ANGLES) */}
             <div>
-                <label className={labelClass}>Product Angles (Max 5 | Max 5MB each) <span className="text-red-500">*</span></label>
+                <label className={labelClass}>Product Images (Max 25 images + 5 videos | 5MB / 50MB each) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-5 gap-2">
                     {form.productImages.map((url, i) => (
-                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200">
-                            <AppImage src={url} alt={`Angle ${i + 1}`} type="thumbnail" className="w-full h-full object-cover" />
+                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200 bg-black">
+                            {isVideo(url) ? (
+                                <>
+                                    <video src={url} className="w-full h-full object-cover opacity-80" muted playsInline />
+                                    <div className="absolute bottom-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-white font-bold pointer-events-none">VIDEO</div>
+                                </>
+                            ) : (
+                                <AppImage src={url} alt={`Image ${i + 1}`} type="thumbnail" className="w-full h-full object-cover" />
+                            )}
                             <button
                                 type="button"
                                 onClick={() => removeProductImage(i)}
@@ -234,28 +246,31 @@ export function Step2Media({
                         </div>
                     ))}
 
-                    {form.productImages.length < 5 && (
-                        <div className={`relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed flex items-center justify-center transition-colors cursor-pointer ${errors.angles ? 'border-red-400' : 'border-slate-200 hover:border-blue-300'}`}>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                multiple={true}
-                                onChange={handleProductImagesChange}
-                                className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                                disabled={uploading}
-                            />
-                            {uploading && activeUploadField === 'productImages' ? (
-                                <Loader2 className="animate-spin text-blue-400" size={20} />
-                            ) : (
-                                <div className="flex flex-col items-center">
-                                    <UploadCloud className="text-slate-400 mb-1" size={20} />
-                                    <span className="text-[10px] text-slate-400 font-medium text-center leading-tight">Add<br />Angle</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {(() => {
+                        const imgCount = form.productImages.filter(u => !isVideo(u)).length;
+                        const vidCount = form.productImages.filter(u => isVideo(u)).length;
+                        return (imgCount < 25 || vidCount < 5) && (
+                            <div className={`relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed flex items-center justify-center transition-colors cursor-pointer ${errors.angles ? 'border-red-400' : 'border-slate-200 hover:border-blue-300'}`}>
+                                <input
+                                    type="file"
+                                    accept="image/*, video/mp4, video/webm"
+                                    multiple={true}
+                                    onChange={handleProductImagesChange}
+                                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                    disabled={uploading}
+                                />
+                                {uploading && activeUploadField === 'productImages' ? (
+                                    <Loader2 className="animate-spin text-blue-400" size={20} />
+                                ) : (
+                                    <div className="flex flex-col items-center">
+                                        <UploadCloud className="text-slate-400 mb-1" size={20} />
+                                        <span className="text-[10px] text-slate-400 font-medium text-center leading-tight">Add<br />Media</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
-                {/* ✅ Angles Error Message */}
                 {errors.angles && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.angles}</p>}
             </div>
 
@@ -279,7 +294,7 @@ export function Step2Media({
                         </div>
                     ))}
 
-                    {form.gallery.length < 50 && (
+                    {form.gallery.length < 30 && (
                         <div className={`relative aspect-square rounded-lg bg-slate-50 border-2 border-dashed flex items-center justify-center transition-colors cursor-pointer ${errors.gallery ? 'border-red-400' : 'border-slate-200 hover:border-blue-300'}`}>
                             <input type="file" accept="image/*, video/mp4, video/webm" multiple={true} onChange={handleGalleryChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" disabled={uploading} />
                             {uploading && activeUploadField === 'gallery' ? (<Loader2 className="animate-spin text-blue-400" size={16} />) : (<div className="flex flex-col items-center"><Plus className="text-slate-400" size={20} /><span className="text-[10px] text-slate-400 font-medium text-center px-1">Add Media</span></div>)}

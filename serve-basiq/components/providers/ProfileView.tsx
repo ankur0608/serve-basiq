@@ -19,13 +19,11 @@ import {
     Languages
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
 import StepOnePersonal from './StepOneProfile';
 import StepSocial from './StepSocial';
 import StepTwoAddress from './StepTwoAddress';
 import StepThreeKYC from './StepThreeKYC';
 
-// Helper to wrap the form steps in a modal
 const EditModal = ({ isOpen, onClose, title, children, onSave, loading }: any) => {
 
     useEffect(() => {
@@ -85,7 +83,6 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
     const [activeModal, setActiveModal] = useState<'PERSONAL' | 'SOCIAL' | 'ADDRESS' | 'KYC' | null>(null);
     const [loading, setLoading] = useState(false);
 
-    // ✅ initialized with empty/defaults to prevent input crashing 
     const [form, setForm] = useState({
         userId: '',
         fullName: '',
@@ -118,10 +115,8 @@ export default function ProfileView({ stats, user, onEdit }: ProfileViewProps) {
         gstNumber: '',
     });
 
-    // ✅ EFFECT TO SYNC DB DATA WITH FORM STATE (Fixes the blank date & language issue)
     useEffect(() => {
         if (user) {
-            // Safely parse the Date to strictly match YYYY-MM-DD for the HTML date input
             let formattedDob = '';
             if (user.dob) {
                 try {

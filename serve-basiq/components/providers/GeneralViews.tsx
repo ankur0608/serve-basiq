@@ -78,7 +78,7 @@ export function DashboardHomeView({
         return <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md bg-amber-100 text-amber-700"><Clock size={12} /> Pending</span>;
     };
 
-    const dashboardStats = stats?.stats || { revenue: 0, jobsCompleted: 0, pendingRequests: 0, rating: 5.0 };
+    const dashboardStats = stats?.stats || { revenue: 0, jobsCompleted: 0, pendingRequests: 0, rating: 0.0 };
 
     const combinedActivity = useMemo(() => {
         const services = recentBookings.map((b: any) => ({

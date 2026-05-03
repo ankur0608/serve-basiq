@@ -3,6 +3,8 @@ import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query
 import ServicesExplorer from '@/components/services/ServicesExplorer';
 import { ProductsSkeleton } from '@/components/products/ProductsSkeleton';
 import { Metadata } from 'next';
+// import InlinePageFAQ from '@/components/shared/InlinePageFAQ';
+import { servicesFaqs } from '@/components/FAQContent/faqData';
 
 export const metadata: Metadata = {
     title: 'Local Services Near You — Home, Beauty, Repair & More',
@@ -12,7 +14,8 @@ export const metadata: Metadata = {
         'cleaning services near me', 'beauty services near me', 'repair services nearby',
         'professional services local', 'book home services', 'ServeBasiq services',
         'trusted local professionals', 'service providers India', 'AC repair near me',
-        'carpenter near me', 'painting services nearby'
+        'carpenter near me', 'painting services nearby', 'same day home services',
+        'pest control near me', 'appliance repair nearby', 'event services local'
     ],
     alternates: { canonical: '/services' },
     openGraph: {
@@ -36,18 +39,30 @@ const SITE_URL = 'https://www.servebasiq.in';
 
 const servicesJsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    name: 'Local Services',
-    description: 'Browse verified local service providers for home, beauty, repair and professional needs across India.',
-    url: `${SITE_URL}/services`,
-    isPartOf: { '@type': 'WebSite', name: 'ServeBasiq', url: SITE_URL },
-    breadcrumb: {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-            { '@type': 'ListItem', position: 2, name: 'Services', item: `${SITE_URL}/services` },
-        ],
-    },
+    '@graph': [
+        {
+            '@type': 'CollectionPage',
+            name: 'Local Services',
+            description: 'Browse verified local service providers for home, beauty, repair and professional needs across India.',
+            url: `${SITE_URL}/services`,
+            isPartOf: { '@type': 'WebSite', name: 'ServeBasiq', url: SITE_URL },
+            breadcrumb: {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+                    { '@type': 'ListItem', position: 2, name: 'Services', item: `${SITE_URL}/services` },
+                ],
+            },
+        },
+        {
+            '@type': 'FAQPage',
+            mainEntity: servicesFaqs.map((faq) => ({
+                '@type': 'Question',
+                name: faq.question,
+                acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+            })),
+        },
+    ],
 };
 
 export default async function ServicesPage({
@@ -96,6 +111,7 @@ export default async function ServicesPage({
                     <ServicesExplorer />
                 </Suspense>
             </HydrationBoundary>
+            {/* <InlinePageFAQ faqs={servicesFaqs} title="Common Questions About Local Services" /> */}
         </>
     );
 }

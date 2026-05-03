@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import RentalsExplorer from '@/components/Rental/RentalsExplorer';
 import { ProductsSkeleton } from '@/components/products/ProductsSkeleton';
 import { Metadata } from 'next';
+// import InlinePageFAQ from '@/components/shared/InlinePageFAQ';
+import { rentalsFaqs } from '@/components/FAQContent/faqData';
 
 export const metadata: Metadata = {
     title: 'Rent Equipment, Vehicles & Spaces Near You — Local Rentals',
@@ -10,7 +12,8 @@ export const metadata: Metadata = {
         'rentals near me', 'equipment rental India', 'vehicle rental nearby',
         'event rental services', 'furniture rental near me', 'tools for rent locally',
         'local rental marketplace', 'ServeBasiq rentals', 'rent near me India',
-        'affordable rentals nearby', 'party supplies rental'
+        'affordable rentals nearby', 'party supplies rental', 'construction equipment rental',
+        'camera rental near me', 'tent rental for events', 'daily vehicle rental India'
     ],
     alternates: { canonical: '/rentals' },
     openGraph: {
@@ -34,18 +37,30 @@ const SITE_URL = 'https://www.servebasiq.in';
 
 const rentalsJsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    name: 'Local Rentals',
-    description: 'Rent equipment, vehicles, event supplies, furniture, and spaces from trusted local providers across India.',
-    url: `${SITE_URL}/rentals`,
-    isPartOf: { '@type': 'WebSite', name: 'ServeBasiq', url: SITE_URL },
-    breadcrumb: {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-            { '@type': 'ListItem', position: 2, name: 'Rentals', item: `${SITE_URL}/rentals` },
-        ],
-    },
+    '@graph': [
+        {
+            '@type': 'CollectionPage',
+            name: 'Local Rentals',
+            description: 'Rent equipment, vehicles, event supplies, furniture, and spaces from trusted local providers across India.',
+            url: `${SITE_URL}/rentals`,
+            isPartOf: { '@type': 'WebSite', name: 'ServeBasiq', url: SITE_URL },
+            breadcrumb: {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+                    { '@type': 'ListItem', position: 2, name: 'Rentals', item: `${SITE_URL}/rentals` },
+                ],
+            },
+        },
+        {
+            '@type': 'FAQPage',
+            mainEntity: rentalsFaqs.map((faq) => ({
+                '@type': 'Question',
+                name: faq.question,
+                acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+            })),
+        },
+    ],
 };
 
 export default function RentalsPage() {
@@ -59,6 +74,7 @@ export default function RentalsPage() {
             <Suspense fallback={<ProductsSkeleton />}>
                 <RentalsExplorer />
             </Suspense>
+            {/* <InlinePageFAQ faqs={rentalsFaqs} title="Common Questions About Local Rentals" /> */}
         </>
     );
 }

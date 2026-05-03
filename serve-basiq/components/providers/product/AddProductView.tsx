@@ -141,8 +141,8 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
 
     const handleProductImagesUpload = useCallback(async (files: File[]) => {
         if (!files || files.length === 0) return;
-        if (form.productImages.length + files.length > 5) {
-            showToast("You can only add up to 5 product images", "error");
+        if (form.productImages.length + files.length > 30) {
+            showToast("You can only add up to 25 images and 5 videos", "error");
             return;
         }
 
@@ -152,7 +152,7 @@ export function AddProductView({ setActiveView, userId, showToast, editingProduc
         try {
             const uploadPromises = files.map(file => processAndUploadMedia(file));
             const uploadedUrls = await Promise.all(uploadPromises);
-            setForm(prev => ({ ...prev, productImages: [...prev.productImages, ...uploadedUrls].slice(0, 5) }));
+            setForm(prev => ({ ...prev, productImages: [...prev.productImages, ...uploadedUrls].slice(0, 30) }));
             showToast(`${uploadedUrls.length} product images uploaded!`, "success");
         } catch (error: any) {
             showToast(error.message || "Upload failed", "error");

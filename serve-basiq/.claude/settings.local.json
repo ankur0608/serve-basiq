@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\HP\\\\Desktop\\\\serve-basiq-main\\\\serve-basiq\\\\serve-basiq\\\\serve-basiq\" -Recurse -Directory -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)"
+    ]
+  }
+}

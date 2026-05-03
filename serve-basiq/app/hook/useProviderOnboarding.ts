@@ -130,6 +130,7 @@ export function useProviderOnboarding() {
                     ...currentUser,
                     isWorker: true,
                     isWebsite: false,
+                    profileImage: finalImageUrl.current || currentUser.profileImage,
                 };
                 setCurrentUser(updatedUser);
             }

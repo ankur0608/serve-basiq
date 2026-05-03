@@ -10,6 +10,7 @@ declare module "next-auth" {
             role: string;
             isWorker: boolean;
             isWebsite: boolean;
+            profileImage: string | null;
         } & DefaultSession["user"];
     }
 
@@ -30,5 +31,6 @@ declare module "next-auth/jwt" {
         role: string;
         isWorker: boolean;
         isWebsite: boolean;
+        profileImage?: string | null;
     }
 }

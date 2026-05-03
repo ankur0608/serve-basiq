@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, memo } from 'react';
-import { Package, Plus, Loader2, Pencil, Trash2, Layers, Eye, CheckCircle2, AlertCircle } from 'lucide-react'; // ✅ Added CheckCircle2 & AlertCircle
+import { Plus, Loader2, Pencil, Trash2, Layers, Eye } from 'lucide-react';
 import { useServices } from '@/app/hook/useServices';
 import { ServiceSettingsView } from '@/components/providers/service/ServiceSettingsView';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -15,16 +15,33 @@ interface ManagementViewProps {
     setActiveView: (view: string) => void;
 }
 
-const ServiceTableRow = memo(
-    ({ s, index, onEdit, onDelete, onView }: {
+const AVATAR_COLORS = [
+    { bg: 'bg-teal-100', text: 'text-teal-700' },
+    { bg: 'bg-blue-100', text: 'text-blue-700' },
+    { bg: 'bg-violet-100', text: 'text-violet-700' },
+    { bg: 'bg-rose-100', text: 'text-rose-700' },
+    { bg: 'bg-amber-100', text: 'text-amber-700' },
+    { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+];
+
+function getInitials(name: string) {
+    return name.split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
+}
+
+function getAvatarColor(name: string) {
+    const idx = name.charCodeAt(0) % AVATAR_COLORS.length;
+    return AVATAR_COLORS[idx];
+}
+
+const ListingCard = memo(
+    ({ s, onEdit, onDelete, onView }: {
         s: any;
-        index: number;
         onEdit: (s: any) => void;
         onDelete: (payload: { id: string; type: 'SERVICE' | 'RENTAL' }) => void;
         onView: (s: any) => void;
     }) => {
-
         const imageSrc = s.img || "";
+        const avatar = getAvatarColor(s.name || 'A');
 
         const getPriceUnit = (type: string) => {
             switch (type) {
@@ -35,117 +52,58 @@ const ServiceTableRow = memo(
             }
         };
 
-        const shortDesc = s.desc
-            ? (s.desc.length > 50 ? s.desc.substring(0, 50) + '...' : s.desc)
-            : 'No description provided';
-
         return (
-            <tr className="group border-b border-slate-100 last:border-none hover:bg-slate-50/50 transition-colors">
-                <td className="py-4 pl-4 md:pl-6 align-middle hidden md:table-cell w-12">
-                    <span className="text-sm font-bold text-slate-400">{index + 1 < 10 ? `0${index + 1}` : index + 1}</span>
-                </td>
-
-                <td className="py-4 pl-4 md:pl-0 align-middle w-full sm:w-auto">
-                    <div className="flex items-start sm:items-center gap-3 md:gap-4">
-                        <div className="h-12 w-12 sm:h-10 sm:w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
-                            {imageSrc ? (
-                                <img src={imageSrc} alt={s.name} className="h-full w-full object-cover" />
-                            ) : (
-                                <Package size={16} className="text-slate-300 m-auto absolute inset-0" />
-                            )}
-                        </div>
-                        <div className="flex-1 min-w-0 pr-2">
-                            <div className="flex flex-wrap items-center gap-2 mb-1">
-                                <p className="font-bold text-slate-900 text-sm truncate max-w-[160px] sm:max-w-[200px] lg:max-w-[300px]">{s.name}</p>
-
-                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${s.listingType === 'RENTAL' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
-                                    {s.listingType === 'RENTAL' ? 'Rental' : 'Service'}
-                                </span>
-
-                                <span className={`flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${s.isVerified
-                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                    : 'bg-amber-50 text-amber-600 border-amber-100'
-                                    }`}>
-                                    {s.isVerified ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
-                                    {s.isVerified ? 'Verified' : 'Pending'}
-                                </span>
-                            </div>
-
-                            <p className="text-[10px] text-slate-400 truncate max-w-[200px] sm:max-w-[250px] hidden sm:block" title={s.desc}>
-                                {shortDesc}
-                            </p>
-
-                            {/* MOBILE PRICE DISPLAY */}
-                            <div className="flex flex-wrap items-center gap-2 mt-2 sm:hidden">
-                                <span className="font-bold text-slate-700 text-xs">
-                                    {s.priceType === 'QUOTE' ? (
-                                        <span className="text-slate-500">Custom Quote</span>
-                                    ) : (
-                                        <>₹{Number(s.price).toLocaleString()} <span className="text-[9px] text-slate-400 font-medium uppercase">/{getPriceUnit(s.priceType)}</span></>
-                                    )}
-                                </span>
-                                <span className="text-[9px] font-bold uppercase bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">
-                                    {s.category?.name || 'General'}
-                                </span>
-                                {s.listingType === 'RENTAL' ? (
-                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${s.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                                        {s.stock > 0 ? 'In Stock' : 'Out'}
-                                    </span>
-                                ) : (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">Active</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </td>
-
-                <td className="py-4 align-middle hidden lg:table-cell">
-                    <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">
-                        {s.category?.name || 'General'}
-                    </span>
-                </td>
-
-                {/* DESKTOP PRICE DISPLAY */}
-                <td className="py-4 align-middle font-bold text-slate-700 text-sm hidden sm:table-cell">
-                    {s.priceType === 'QUOTE' ? (
-                        <span className="text-slate-500 italic font-medium text-xs">Custom Quote</span>
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className={`h-12 w-12 rounded-xl ${avatar.bg} flex items-center justify-center shrink-0 overflow-hidden`}>
+                    {imageSrc ? (
+                        <img src={imageSrc} alt={s.name} className="h-full w-full object-cover" />
                     ) : (
-                        <>
-                            ₹{Number(s.price).toLocaleString()}
-                            <span className="text-[10px] text-slate-400 font-medium ml-1 uppercase">
-                                /{getPriceUnit(s.priceType)}
+                        <span className={`font-bold text-sm ${avatar.text}`}>{getInitials(s.name || '?')}</span>
+                    )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold text-slate-900 text-sm truncate">{s.name}</p>
+                    <p className="text-xs text-slate-400 truncate">{s.category?.name || 'General'}</p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        {s.priceType !== 'QUOTE' ? (
+                            <span className="font-bold text-slate-700 text-xs">
+                                ₹{Number(s.price).toLocaleString()}
+                                <span className="text-[10px] text-slate-400 font-medium">/{getPriceUnit(s.priceType)}</span>
                             </span>
-                        </>
-                    )}
-                </td>
-
-                <td className="py-4 align-middle hidden md:table-cell">
-                    {s.listingType === 'RENTAL' ? (
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${s.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                            {s.stock > 0 ? `${s.stock} in Stock` : 'Out of Stock'}
+                        ) : (
+                            <span className="text-xs text-slate-400 italic">Custom Quote</span>
+                        )}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.listingType === 'RENTAL' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                            {s.listingType === 'RENTAL' ? 'Rental' : 'Service'}
                         </span>
-                    ) : (
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">Active</span>
-                    )}
-                </td>
-
-                <td className="py-4 pr-4 md:pr-6 align-middle text-right">
-                    <div className="flex justify-end gap-1.5 sm:gap-2">
-                        <button onClick={() => onView(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-400 transition-colors" title="View Details">
-                            <Eye size={14} />
-                        </button>
-                        <button onClick={() => onEdit(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-400 transition-colors" title="Edit">
-                            <Pencil size={14} />
-                        </button>
-                        <button onClick={() => onDelete({ id: s.id, type: s.listingType as 'SERVICE' | 'RENTAL' })} className="p-2 border border-slate-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-colors" title="Delete">
-                            <Trash2 size={14} />
-                        </button>
+                        {s.listingType === 'RENTAL' ? (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                {s.stock > 0 ? 'Active' : 'Out of Stock'}
+                            </span>
+                        ) : (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.isVerified ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                                {s.isVerified ? 'Active' : 'Pending'}
+                            </span>
+                        )}
                     </div>
-                </td>
-            </tr>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => onView(s)} className="p-2 rounded-xl border border-slate-100 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-400 transition-colors" title="View">
+                        <Eye size={14} />
+                    </button>
+                    <button onClick={() => onEdit(s)} className="p-2 rounded-xl border border-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-400 transition-colors" title="Edit">
+                        <Pencil size={14} />
+                    </button>
+                    <button onClick={() => onDelete({ id: s.id, type: s.listingType as 'SERVICE' | 'RENTAL' })} className="p-2 rounded-xl border border-slate-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-colors" title="Delete">
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            </div>
         );
     });
-ServiceTableRow.displayName = "ServiceTableRow";
+ListingCard.displayName = "ListingCard";
 
 export function ManagementView({
     currentUser,
@@ -218,20 +176,12 @@ export function ManagementView({
     }, []);
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 px-4 md:px-0 space-y-6 relative">
-
-            {!isEditingService && !isCreatingService && (
-                <div className="flex bg-white rounded-xl max-w-xl border border-slate-200 shadow-sm mx-auto md:mx-0">
-                    <button onClick={() => setActiveView('settings')} className="flex-1 py-4 text-sm font-bold rounded-lg bg-slate-900 text-white shadow-md transition-all">Services</button>
-                    <button onClick={() => setActiveView('rentals')} className="flex-1 py-4 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 transition-all">Rentals</button>
-                    <button onClick={() => setActiveView('products')} className="flex-1 py-4 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-900 transition-all">Products</button>
-                </div>
-            )}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto pb-20 px-4 space-y-4 relative">
 
             {isEditingService || isCreatingService ? (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div className="px-6 py-5 border-b bg-white flex justify-between items-center">
-                        <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+                        <h3 className="font-bold text-slate-900 text-lg">
                             {isCreatingService ? 'Add New Service' : 'Edit Service'}
                         </h3>
                         <button onClick={() => { setIsEditingService(false); setIsCreatingService(false); }} className="text-sm font-bold text-slate-500 hover:text-slate-900">Cancel</button>
@@ -250,55 +200,67 @@ export function ManagementView({
                 </div>
             ) : (
                 <>
-                    <div className="flex flex-col sm:flex-row sm:items-center items-start justify-between gap-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between pt-2">
                         <div>
-                            <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">My Listings</h2>
-                            <p className="text-slate-500 text-xs md:text-sm mt-1">Manage your services and pricing.</p>
+                            <h2 className="text-xl font-bold text-slate-900">My Listings</h2>
+                            <p className="text-slate-400 text-xs mt-0.5">Services, products &amp; rentals</p>
                         </div>
-                        <button onClick={handleCreateNew} className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-black transition shadow-lg active:scale-95 w-fit">
-                            <Plus size={18} /> Add Service
+                        <button onClick={handleCreateNew} className="flex items-center gap-1.5 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-black transition active:scale-95">
+                            <Plus size={15} /> Add
                         </button>
                     </div>
 
+                    {/* Pill Tabs */}
+                    <div className="flex gap-2 flex-wrap">
+                        <button
+                            onClick={() => setActiveView('settings')}
+                            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold bg-slate-900 text-white transition-all"
+                        >
+                            Service
+                            <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                {allListings.length}
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setActiveView('products')}
+                            className="px-4 py-1.5 rounded-full text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+                        >
+                            Product
+                        </button>
+                        <button
+                            onClick={() => setActiveView('rentals')}
+                            className="px-4 py-1.5 rounded-full text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+                        >
+                            Rental
+                        </button>
+                    </div>
+
+                    {/* Listing Cards */}
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-32 text-slate-400 gap-4">
-                            <Loader2 className="animate-spin" size={40} />
+                        <div className="flex flex-col items-center justify-center py-24 text-slate-400 gap-4">
+                            <Loader2 className="animate-spin" size={36} />
                             <span className="font-medium text-sm">Loading listings...</span>
                         </div>
                     ) : allListings.length === 0 ? (
-                        <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center">
-                            <Layers className="text-slate-300 mb-4" size={48} />
-                            <h3 className="text-slate-900 font-bold text-lg">No services found</h3>
-                            <button onClick={handleCreateNew} className="mt-4 text-blue-600 font-bold text-sm bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition">Create first service</button>
+                        <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center">
+                            <Layers className="text-slate-300 mb-4" size={40} />
+                            <h3 className="text-slate-900 font-bold text-base">No services yet</h3>
+                            <button onClick={handleCreateNew} className="mt-4 text-blue-600 font-bold text-sm bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-100 transition">
+                                Create first service
+                            </button>
                         </div>
                     ) : (
-                        <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                            <div className="w-full overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 bg-slate-50/50">
-                                            <th className="py-4 pl-4 md:pl-6 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell w-12">No.</th>
-                                            <th className="py-4 pl-4 md:pl-0 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Listing</th>
-                                            <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden lg:table-cell">Category</th>
-                                            <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Rate</th>
-                                            <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell">Status</th>
-                                            <th className="py-4 pr-4 md:pr-6 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {allListings.map((s: any, index: number) => (
-                                            <ServiceTableRow
-                                                key={s.id}
-                                                index={index}
-                                                s={s}
-                                                onEdit={handleEdit}
-                                                onDelete={confirmDeletePrompt}
-                                                onView={handleView}
-                                            />
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div className="space-y-3">
+                            {allListings.map((s: any) => (
+                                <ListingCard
+                                    key={s.id}
+                                    s={s}
+                                    onEdit={handleEdit}
+                                    onDelete={confirmDeletePrompt}
+                                    onView={handleView}
+                                />
+                            ))}
                         </div>
                     )}
                 </>

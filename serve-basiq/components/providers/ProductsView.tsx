@@ -45,8 +45,8 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
                             <p className="font-bold text-slate-900 text-sm truncate max-w-[160px] sm:max-w-[200px] lg:max-w-[300px]">{p.name}</p>
 
                             <span className={`flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${p.isVerified
-                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                    : 'bg-amber-50 text-amber-600 border-amber-100'
+                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                : 'bg-amber-50 text-amber-600 border-amber-100'
                                 }`}>
                                 {p.isVerified ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
                                 {p.isVerified ? 'Verified' : 'Pending'}
@@ -57,7 +57,6 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
                             {shortDesc}
                         </p>
 
-                        {/* MOBILE PRICE DISPLAY */}
                         <div className="flex flex-wrap items-center gap-2 mt-2 sm:hidden">
                             <span className="font-bold text-slate-700 text-xs">
                                 {p.priceType === 'QUOTE' ? (
@@ -95,7 +94,6 @@ const ProductTableRow = memo(({ p, index, onEdit, onDelete, onView }: { p: any, 
                 </div>
             </td>
 
-            {/* DESKTOP PRICE DISPLAY */}
             <td className="py-4 align-middle font-bold text-slate-700 text-sm hidden sm:table-cell">
                 {p.priceType === 'QUOTE' ? (
                     <span className="text-slate-500 italic font-medium text-xs">Custom Quote</span>
@@ -212,7 +210,6 @@ export function ProductsView({ setActiveView, userId, setSelectedProduct, showTo
                 </button>
             </div>
 
-            {/* List / Loading State */}
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-32 text-slate-400 gap-4">
                     <Loader2 className="animate-spin" size={40} />

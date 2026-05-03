@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import {
     Package, Plus, Loader2, Pencil, Trash2, Eye,
-    CheckCircle2, AlertCircle, Hammer, Truck, Boxes, X, ChevronRight
+    Hammer, Truck, Boxes, X, ChevronRight
 } from 'lucide-react';
 import { useServices } from '@/app/hook/useServices';
 import { useProducts } from '@/app/hook/useProducts';
@@ -33,10 +33,54 @@ const getServicePriceUnit = (type: string) => {
     }
 };
 
-const ListingTableRow = memo(
-    ({ s, index, kind, onEdit, onDelete, onView }: {
+const ALL_TABS: TabKey[] = ['SERVICE', 'RENTAL', 'PRODUCT'];
+
+const TAB_CHIP_META: Record<TabKey, { label: string }> = {
+    SERVICE: { label: 'Service' },
+    RENTAL:  { label: 'Rental' },
+    PRODUCT: { label: 'Product' },
+};
+
+const AVATAR_PALETTE = [
+    { bg: 'bg-teal-100', text: 'text-teal-700' },
+    { bg: 'bg-blue-100', text: 'text-blue-700' },
+    { bg: 'bg-violet-100', text: 'text-violet-700' },
+    { bg: 'bg-rose-100', text: 'text-rose-700' },
+    { bg: 'bg-amber-100', text: 'text-amber-700' },
+    { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+];
+
+const TYPE_BADGE: Record<TabKey, { label: string; cls: string }> = {
+    PRODUCT: { label: 'Product', cls: 'bg-emerald-50 text-emerald-600' },
+    RENTAL:  { label: 'Rental',  cls: 'bg-amber-50 text-amber-600' },
+    SERVICE: { label: 'Service', cls: 'bg-blue-50 text-blue-600' },
+};
+
+function getStatusBadge(kind: TabKey, s: any, isInStock: boolean) {
+    if (kind === 'PRODUCT') return {
+        label: s.stockStatus?.replace('_', ' ') || 'Active',
+        cls: isInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600',
+    };
+    if (kind === 'RENTAL') return {
+        label: isInStock ? 'Active' : 'Out of Stock',
+        cls: isInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600',
+    };
+    return {
+        label: s.isVerified ? 'Active' : 'Pending',
+        cls: s.isVerified ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600',
+    };
+}
+
+function getCardInitials(name: string) {
+    return (name || '?').split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
+}
+function getCardAvatar(name: string) {
+    return AVATAR_PALETTE[(name || 'A').charCodeAt(0) % AVATAR_PALETTE.length];
+}
+
+const ListingCard = memo(
+    ({ s, kind, onEdit, onDelete, onView }: {
         s: any;
-        index: number;
         kind: TabKey;
         onEdit: (s: any) => void;
         onDelete: (s: any) => void;
@@ -50,137 +94,60 @@ const ListingTableRow = memo(
             : (s.img || s.serviceimg || s.rentalImg || s.mainimg || '');
 
         const categoryName = typeof s.category === 'object' ? s.category?.name : (s.category || 'General');
-
-        const shortDesc = s.desc
-            ? (s.desc.length > 50 ? s.desc.substring(0, 50) + '...' : s.desc)
-            : 'No description provided';
-
         const isInStock = isProduct ? s.stockStatus === 'IN_STOCK' : (s.stock ?? 0) > 0;
+        const priceLabel = isProduct ? (s.unit || 'piece') : getServicePriceUnit(s.priceType);
 
-        const priceLabel = isProduct
-            ? (s.unit || 'PIECE')
-            : getServicePriceUnit(s.priceType);
-
-        const tagBg = isProduct
-            ? 'bg-emerald-50 text-emerald-600'
-            : isRental
-                ? 'bg-orange-50 text-orange-600'
-                : 'bg-blue-50 text-blue-600';
-
-        const tagLabel = isProduct ? 'Product' : isRental ? 'Rental' : 'Service';
+        const avatar = getCardAvatar(s.name || 'A');
+        const typeBadge = TYPE_BADGE[kind];
+        const statusBadge = getStatusBadge(kind, s, isInStock);
 
         return (
-            <tr className="group border-b border-slate-100 last:border-none hover:bg-slate-50/50 transition-colors">
-                <td className="py-4 pl-4 md:pl-6 align-middle hidden md:table-cell w-12">
-                    <span className="text-sm font-bold text-slate-400">
-                        {index + 1 < 10 ? `0${index + 1}` : index + 1}
-                    </span>
-                </td>
-
-                <td className="py-4 pl-4 md:pl-0 align-middle w-full sm:w-auto">
-                    <div className="flex items-start sm:items-center gap-3 md:gap-4">
-                        <div className="h-12 w-12 sm:h-10 sm:w-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 relative">
-                            {imageSrc ? (
-                                <img src={imageSrc} alt={s.name} className="h-full w-full object-cover" />
-                            ) : (
-                                <Package size={16} className="text-slate-300 m-auto absolute inset-0" />
-                            )}
-                        </div>
-                        <div className="flex-1 min-w-0 pr-2">
-                            <div className="flex flex-wrap items-center gap-2 mb-1">
-                                <p className="font-bold text-slate-900 text-sm truncate max-w-[160px] sm:max-w-[200px] lg:max-w-[300px]">
-                                    {s.name}
-                                </p>
-
-                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ${tagBg}`}>
-                                    {tagLabel}
-                                </span>
-
-                                <span className={`flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${s.isVerified
-                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                    : 'bg-amber-50 text-amber-600 border-amber-100'
-                                    }`}>
-                                    {s.isVerified ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
-                                    {s.isVerified ? 'Verified' : 'Pending'}
-                                </span>
-                            </div>
-
-                            <p className="text-[10px] text-slate-400 truncate max-w-[200px] sm:max-w-[250px] hidden sm:block" title={s.desc}>
-                                {shortDesc}
-                            </p>
-
-                            <div className="flex flex-wrap items-center gap-2 mt-2 sm:hidden">
-                                <span className="font-bold text-slate-700 text-xs">
-                                    {s.priceType === 'QUOTE' ? (
-                                        <span className="text-slate-500">Custom Quote</span>
-                                    ) : (
-                                        <>₹{Number(s.price).toLocaleString()} <span className="text-[9px] text-slate-400 font-medium uppercase">/{priceLabel}</span></>
-                                    )}
-                                </span>
-                                <span className="text-[9px] font-bold uppercase bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">
-                                    {categoryName}
-                                </span>
-                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                                    {isInStock ? 'Active' : (isProduct ? (s.stockStatus?.replace('_', ' ') || 'Out') : 'Out')}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </td>
-
-                <td className="py-4 align-middle hidden lg:table-cell">
-                    <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-600 px-2 py-1 rounded">
-                        {categoryName}
-                    </span>
-                </td>
-
-                <td className="py-4 align-middle font-bold text-slate-700 text-sm hidden sm:table-cell">
-                    {s.priceType === 'QUOTE' ? (
-                        <span className="text-slate-500 italic font-medium text-xs">Custom Quote</span>
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className={`h-12 w-12 rounded-xl ${avatar.bg} flex items-center justify-center shrink-0 overflow-hidden`}>
+                    {imageSrc ? (
+                        <img src={imageSrc} alt={s.name} className="h-full w-full object-cover" />
                     ) : (
-                        <>
-                            ₹{Number(s.price).toLocaleString()}
-                            <span className="text-[10px] text-slate-400 font-medium ml-1 uppercase">
-                                /{priceLabel}
+                        <span className={`font-bold text-sm ${avatar.text}`}>{getCardInitials(s.name)}</span>
+                    )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold text-slate-900 text-sm truncate">{s.name}</p>
+                    <p className="text-xs text-slate-400 truncate">{categoryName}</p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        {s.price && (isProduct || s.priceType !== 'QUOTE') ? (
+                            <span className="font-bold text-slate-700 text-xs">
+                                ₹{Number(s.price).toLocaleString()}
+                                <span className="text-[10px] text-slate-400 font-medium">/{priceLabel}</span>
                             </span>
-                        </>
-                    )}
-                </td>
-
-                <td className="py-4 align-middle hidden md:table-cell">
-                    {isProduct ? (
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${isInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                            {s.stockStatus?.replace('_', ' ') || 'Active'}
+                        ) : (
+                            <span className="text-xs text-slate-400 italic">Custom Quote</span>
+                        )}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${typeBadge.cls}`}>
+                            {typeBadge.label}
                         </span>
-                    ) : isRental ? (
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${isInStock ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                            {isInStock ? `${s.stock} in Stock` : 'Out of Stock'}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBadge.cls}`}>
+                            {statusBadge.label}
                         </span>
-                    ) : (
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
-                            Active
-                        </span>
-                    )}
-                </td>
-
-                <td className="py-4 pr-4 md:pr-6 align-middle text-right">
-                    <div className="flex justify-end gap-1.5 sm:gap-2">
-                        <button onClick={() => onView(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-400 transition-colors" title="View Details">
-                            <Eye size={14} />
-                        </button>
-                        <button onClick={() => onEdit(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-400 transition-colors" title="Edit">
-                            <Pencil size={14} />
-                        </button>
-                        <button onClick={() => onDelete(s)} className="p-2 border border-slate-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-colors" title="Delete">
-                            <Trash2 size={14} />
-                        </button>
                     </div>
-                </td>
-            </tr>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => onView(s)} className="p-2 rounded-xl border border-slate-100 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-300 transition-colors" title="View">
+                        <Eye size={14} />
+                    </button>
+                    <button onClick={() => onEdit(s)} className="p-2 rounded-xl border border-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-300 transition-colors" title="Edit">
+                        <Pencil size={14} />
+                    </button>
+                    <button onClick={() => onDelete(s)} className="p-2 rounded-xl border border-slate-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-300 transition-colors" title="Delete">
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            </div>
         );
     }
 );
-ListingTableRow.displayName = 'ListingTableRow';
+ListingCard.displayName = 'ListingCard';
 
 const PICKER_THEMES = {
     blue: {
@@ -237,11 +204,11 @@ export function UnifiedManagementView({
     const { services, rentals, isLoading: loadingSvc, refetch: refetchSvc, deleteItem } = useServices(userId);
     const { products, loading: loadingProd, deleteProduct, isDeleting: isDeletingProd } = useProducts(userId);
 
-    const counts = {
+    const counts = useMemo(() => ({
         SERVICE: services?.length || 0,
         RENTAL: rentals?.length || 0,
         PRODUCT: products?.length || 0,
-    };
+    }), [services, rentals, products]);
 
     const visibleTabs = useMemo<TabKey[]>(() => {
         const list: TabKey[] = [];
@@ -350,119 +317,81 @@ export function UnifiedManagementView({
     const isLoading = (activeTab === 'PRODUCT' ? loadingProd : loadingSvc);
     const isAnyDeleting = isDeletingSvc || isDeletingProd;
 
-    const tabMeta: Record<TabKey, { label: string; icon: any; color: string }> = {
-        SERVICE: { label: 'Services', icon: Hammer, color: 'blue' },
-        RENTAL: { label: 'Rentals', icon: Truck, color: 'orange' },
-        PRODUCT: { label: 'Products', icon: Boxes, color: 'emerald' },
-    };
-
-    const headerByTab: Record<TabKey, { title: string; subtitle: string; addLabel: string }> = {
-        SERVICE: { title: 'My Services', subtitle: 'Manage your services and pricing.', addLabel: 'Add Service' },
-        RENTAL: { title: 'My Rentals', subtitle: 'Manage your rentals and pricing.', addLabel: 'Add Rental' },
-        PRODUCT: { title: 'My Products', subtitle: 'Manage your products and pricing.', addLabel: 'Add Product' },
-    };
-
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto pb-20 px-4 md:px-0 space-y-6 relative">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full pb-20 px-2 md:px-4 space-y-5 relative">
 
-            {/* Tabs (only for entities user has) */}
-            {visibleTabs.length > 0 && (
-                <div className="flex bg-white rounded-xl max-w-xl border border-slate-200 shadow-sm mx-auto md:mx-0 overflow-hidden">
-                    {visibleTabs.map((t) => {
-                        const meta = tabMeta[t];
-                        const Icon = meta.icon;
-                        const isActive = activeTab === t;
-                        return (
-                            <button
-                                key={t}
-                                onClick={() => setActiveTab(t)}
-                                className={`flex-1 py-3.5 px-3 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${isActive
-                                    ? 'bg-slate-900 text-white shadow-md'
-                                    : 'text-slate-500 hover:text-slate-900'
-                                    }`}
-                            >
-                                <Icon size={15} />
-                                <span>{meta.label}</span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                    {counts[t]}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* Header / Add */}
-            <div className="flex flex-col sm:flex-row sm:items-center items-start justify-between gap-4">
+            <div className="flex items-center justify-between pt-2">
                 <div>
-                    <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-                        {headerByTab[activeTab].title}
-                    </h2>
-                    <p className="text-slate-500 text-xs md:text-sm mt-1">
-                        {headerByTab[activeTab].subtitle}
-                    </p>
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">My Listings</h2>
+                    <p className="text-slate-400 text-xs mt-0.5">Services, products &amp; rentals</p>
                 </div>
                 <button
                     onClick={handleAddClick}
-                    className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-black transition shadow-lg active:scale-95 w-fit"
+                    className="flex items-center gap-1.5 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-black transition active:scale-95"
                 >
-                    <Plus size={18} />
-                    {headerByTab[activeTab].addLabel}
+                    <Plus size={16} /> Add
                 </button>
             </div>
 
-            {/* Body: loading / empty / table */}
+            <div className="flex gap-2 flex-wrap">
+                {ALL_TABS.map((t) => {
+                    const isActive = activeTab === t;
+                    const count = counts[t];
+                    return (
+                        <button
+                            key={t}
+                            onClick={() => setActiveTab(t)}
+                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+                                isActive
+                                    ? 'bg-slate-900 text-white border-slate-900'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                            }`}
+                        >
+                            {TAB_CHIP_META[t].label}
+                            <span className={`text-[10px] font-bold min-w-[18px] text-center px-1 py-0.5 rounded-full ${
+                                isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                                {count}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
             {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-32 text-slate-400 gap-4">
-                    <Loader2 className="animate-spin" size={40} />
+                <div className="flex flex-col items-center justify-center py-24 text-slate-400 gap-4">
+                    <Loader2 className="animate-spin" size={36} />
                     <span className="font-medium text-sm">Loading...</span>
                 </div>
             ) : visibleTabs.length === 0 ? (
-                <EmptyAllListings
-                    onAdd={handleAddClick}
-                />
+                <EmptyAllListings onAdd={handleAddClick} />
             ) : listingRows.length === 0 ? (
-                <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center">
-                    <Package className="text-slate-300 mb-4" size={48} />
-                    <h3 className="text-slate-900 font-bold text-lg">No {tabMeta[activeTab].label.toLowerCase()} found</h3>
-                    <button onClick={handleAddClick} className="mt-4 text-blue-600 font-bold text-sm bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition">
-                        Create first {tabMeta[activeTab].label.slice(0, -1).toLowerCase()}
+                <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center">
+                    <Package className="text-slate-300 mb-4" size={40} />
+                    <h3 className="text-slate-900 font-bold text-base">
+                        No {TAB_CHIP_META[activeTab].label.toLowerCase()}s yet
+                    </h3>
+                    <button onClick={handleAddClick} className="mt-4 text-blue-600 font-bold text-sm bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-100 transition">
+                        Add {TAB_CHIP_META[activeTab].label}
                     </button>
                 </div>
             ) : (
-                <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden relative">
+                <div className="flex flex-col gap-3 relative">
                     {isAnyDeleting && (
-                        <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
-                            <Loader2 className="animate-spin text-slate-900" />
+                        <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center rounded-2xl col-span-full">
+                            <Loader2 className="animate-spin text-slate-900" size={28} />
                         </div>
                     )}
-                    <div className="w-full overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-slate-100 bg-slate-50/50">
-                                    <th className="py-4 pl-4 md:pl-6 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell w-12">No.</th>
-                                    <th className="py-4 pl-4 md:pl-0 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Listing</th>
-                                    <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden lg:table-cell">Category</th>
-                                    <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Rate</th>
-                                    <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell">Status</th>
-                                    <th className="py-4 pr-4 md:pr-6 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {listingRows.map((row: any, index: number) => (
-                                    <ListingTableRow
-                                        key={row.id}
-                                        index={index}
-                                        s={row}
-                                        kind={activeTab}
-                                        onEdit={handleEdit}
-                                        onDelete={handleDeletePrompt}
-                                        onView={handleView}
-                                    />
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    {listingRows.map((row: any) => (
+                        <ListingCard
+                            key={row.id}
+                            s={row}
+                            kind={activeTab}
+                            onEdit={handleEdit}
+                            onDelete={handleDeletePrompt}
+                            onView={handleView}
+                        />
+                    ))}
                 </div>
             )}
 

@@ -8,7 +8,6 @@ import AppVideo from '@/components/ui/AppVideo';
 const isVideo = (url: string | null | undefined) =>
     !!(url && url.match(/\.(mp4|webm|mov|mkv)$/i));
 
-// ─── useImageOrientation ──────────────────────────────────────────────────────
 function useImageAspectRatio(src: string) {
     const [ratio, setRatio] = useState<number | null>(null);
 

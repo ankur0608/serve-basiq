@@ -11,8 +11,6 @@ function AuthSync({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (status === 'authenticated' && session?.user) {
-            // ✅ Merging session data with existing store data
-            // This prevents overwriting 'district' or 'addressLine2'
             setCurrentUser({
                 ...currentUser,
                 id: session.user.id,
@@ -20,6 +18,7 @@ function AuthSync({ children }: { children: React.ReactNode }) {
                 email: session.user.email || currentUser?.email || '',
                 img: session.user.image || currentUser?.img || '',
                 image: session.user.image || currentUser?.image || '',
+                profileImage: session.user.profileImage || currentUser?.profileImage || null,
                 phone: session.user.phone || currentUser?.phone || '',
                 isPhoneVerified: session.user.isPhoneVerified ?? currentUser?.isPhoneVerified ?? false,
                 isWorker: session.user.isWorker ?? currentUser?.isWorker ?? false,
